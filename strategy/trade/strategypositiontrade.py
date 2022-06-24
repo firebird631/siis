@@ -458,7 +458,7 @@ class StrategyPositionTrade(StrategyTrade):
                 self.position_limit = data['take-profit']
 
             if data.get('stop-loss'):
-                self.position_limit = data['stop-loss']
+                self.position_stop = data['stop-loss']
 
             # current position quantity
             last_qty = data.get('quantity', self.position_quantity)
@@ -520,7 +520,6 @@ class StrategyPositionTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_POSITION_AMENDED:
             # update stop_loss/take_profit from outside
-            # @todo update position_stop and position_limit
             if data.get('profit-loss'):
                 self._stats['unrealized-profit-loss'] = data['profit-loss']
             if data.get('profit-currency'):
@@ -530,7 +529,7 @@ class StrategyPositionTrade(StrategyTrade):
                 self.position_limit = data['take-profit']
 
             if data.get('stop-loss'):
-                self.position_limit = data['stop-loss']
+                self.position_stop = data['stop-loss']
 
             # current position quantity
             # last_qty = data.get('quantity', self.position_quantity)

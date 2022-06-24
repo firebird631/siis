@@ -2222,7 +2222,7 @@ class StrategyTrader(object):
 
             allow = False
 
-            for trading_session in self.instrument.trading_session:
+            for trading_session in self.instrument.trading_sessions:
                 if trading_session.day_of_week == day_of_week:
                     if trading_session.from_time <= today_time <= trading_session.to_time:
                         allow = True

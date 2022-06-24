@@ -281,6 +281,8 @@ class MonitorService(Service):
                 HttpRestServer.ALLOWED_IPS = copy.copy(self._allowed_ips)
                 HttpRestServer.DENIED_IPS = copy.copy(self._denied_ips)
 
+                MonitorService.use_reactor(installSignalHandlers=False)
+
                 self._running = True
                 self._thread = threading.Thread(name="monitor-rest", target=self.run_http)
                 self._thread.start()

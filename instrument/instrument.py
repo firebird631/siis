@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, List, Union, Optional, Tuple, Dict
 
 if TYPE_CHECKING:
@@ -20,6 +21,7 @@ from common.utils import UTC, timeframe_to_str, truncate, decimal_place
 
 import logging
 logger = logging.getLogger('siis.instrument.instrument')
+error_logger = logging.getLogger('siis.error.instrument.instrument')
 
 TickType = Tuple[float, float, float, float, float, float]
 OHLCType = Tuple[float, float, float, float, float, float, float]
@@ -203,6 +205,13 @@ class TradingSession:
     day_of_week: int = 0
     from_time: float = 0.0
     to_time: float = 0.0
+
+    def to_dict(self):
+        return {
+            'day-of-week': self.day_of_week,
+            'from-time': self.from_time,
+            'to-time': self.to_time
+        }
 
 
 class Instrument(object):
@@ -539,7 +548,7 @@ class Instrument(object):
         return len(self._trading_sessions) > 0
 
     @property
-    def trading_session(self) -> List[TradingSession]:
+    def trading_sessions(self) -> List[TradingSession]:
         """
         @return: Empty list or each tuple is three values for day of week, hour of day, minute of day
         """
@@ -1327,22 +1336,34 @@ class Instrument(object):
             self._timezone = float(data['timezone'])
 
         if 'offset' in data:
-            self._session_offset = self.duration_from_str(data['offset'])
+            session_offset = Instrument.duration_from_str(data['offset'])
+            if session_offset is None:
+                error_logger.error("Trading session offset invalid format")
+            else:
+                self._session_offset = session_offset
 
         if 'duration' in data:
-            self._session_duration = self.duration_from_str(data['duration'])
+            session_duration = Instrument.duration_from_str(data['duration'])
+            if session_duration is None:
+                error_logger.error("Trading session duration invalid format")
+            else:
+                self._session_duration = session_duration
 
         if 'trading' in data:
             if type(data['trading']) is str:
-                self._trading_sessions = self.sessions_from_str(data['trading'])
+                trading_sessions = self.sessions_from_str(data['trading'])
+                if trading_sessions is None:
+                    error_logger.error("Trading sessions invalid format")
+                else:
+                    self._trading_sessions = trading_sessions
 
             elif type(data['trading']) in (list, tuple):
                 for m in data['trading']:
-                    sessions = self.sessions_from_str(m)
-                    if not sessions:
-                        continue
+                    trading_sessions = self.sessions_from_str(m)
+                    if trading_sessions is None:
+                        error_logger.error("Trading sessions invalid format")
 
-                    for session in sessions:
+                    for session in trading_sessions:
                         if session not in self._trading_sessions:
                             self._trading_sessions.append(session)
 
@@ -1370,7 +1391,8 @@ class Instrument(object):
 
         return 0.0
 
-    def duration_from_str(self, duration: str):
+    @staticmethod
+    def duration_from_str(duration: str, timezone: float = 0.0) -> Union[float, None]:
         if not duration or type(duration) is not str:
             return None
 
@@ -1384,7 +1406,7 @@ class Instrument(object):
         except ValueError:
             return None
 
-        return hours * 3600.0 + minutes * 60.0 - self._timezone * 3600.0
+        return hours * 3600.0 + minutes * 60.0 - timezone * 3600.0
 
     def sessions_from_str(self, moment: str) -> Union[List[TradingSession], None]:
         # mon tue wed thu fri sat sun
@@ -1414,8 +1436,8 @@ class Instrument(object):
         if parts[0] not in days_of_week:
             return None
 
-        fd = self.duration_from_str(times[0])
-        td = self.duration_from_str(times[1])
+        fd = Instrument.duration_from_str(times[0], self._timezone)
+        td = Instrument.duration_from_str(times[1], self._timezone)
 
         results = []
 

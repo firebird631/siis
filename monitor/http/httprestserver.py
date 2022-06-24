@@ -225,7 +225,7 @@ class StrategyInfoRestAPI(resource.Resource):
                     'timezone': instr.timezone,
                     'offset': instr.session_offset,
                     'duration': instr.session_duration,
-                    'trading': instr.trading_sessions
+                    'trading': [t.to_dict() for t in instr.trading_sessions]
                 },
                 'trade': {
                     'activity': strategy_trader.activity,       # bool
@@ -1045,6 +1045,7 @@ class StatusInfoRestAPI(resource.Resource):
 class AllowedIPOnlyFactory(server.Site):
 
     def buildProtocol(self, addr):
+        logger.debug("%s %s %s" % (HttpRestServer.DENIED_IPS, addr.host, HttpRestServer.ALLOWED_IPS))
         if HttpRestServer.DENIED_IPS and addr.host in HttpRestServer.DENIED_IPS:
             return None
 
