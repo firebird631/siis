@@ -345,6 +345,7 @@ def dynamic_stop_loss_volume_sr_short(timeframe, last_price, curr_stop_loss_pric
 
 def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, curr_stop_loss_price, depth=1,
                       orientation=0, price_epsilon=0.0, distance=0.0):
+    # @todo support distance in fixed dist (not only in decile)
     if direction > 0:
         if method == StrategyTraderContext.PRICE_NONE:
             return 0.0

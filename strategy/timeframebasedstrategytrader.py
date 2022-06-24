@@ -40,14 +40,15 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     timeframes: Dict[float, TimeframeBasedSub]
     _timeframe_streamers: Dict[float, Streamable]
 
-    def __init__(self, strategy: Strategy, instrument: Instrument, base_timeframe: float = Instrument.TF_TICK):
+    def __init__(self, strategy: Strategy, instrument: Instrument, base_timeframe: float = Instrument.TF_TICK,
+                 params: dict = None):
         """
         @param strategy Parent strategy (mandatory)
         @param instrument Related unique instance of instrument (mandatory)
         @param base_timeframe Base time-frame signal accepted. Only this timeframe of incoming data serves as
             compute signal. Default is at tick level, needing a lot of CPU usage but most reactive.
         """
-        super().__init__(strategy, instrument)
+        super().__init__(strategy, instrument, params)
 
         self._base_timeframe = base_timeframe
 

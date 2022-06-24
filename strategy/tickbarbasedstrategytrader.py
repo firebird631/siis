@@ -32,12 +32,12 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     A single configuration of tick-bar array can be generated.
     """
 
-    def __init__(self, strategy, instrument, depth=50):
+    def __init__(self, strategy, instrument, depth=50, params: dict = None):
         """
         @param strategy Parent strategy (mandatory)
         @param instrument Related unique instance of instrument (mandatory)
         """
-        super().__init__(strategy, instrument)
+        super().__init__(strategy, instrument, params)
 
         self._base_timeframe = Instrument.TF_TICK
 

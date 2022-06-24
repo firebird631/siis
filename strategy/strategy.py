@@ -584,10 +584,10 @@ class Strategy(Runnable):
             self._running = False
 
             with self._condition:
-                # wake up the update
+                self._signals.append(None)  # empty signal to wake-up and break loop
                 self._condition.notify()
 
-        # rest data
+        # reset data
         self.reset()
 
     def terminate(self):
@@ -886,6 +886,8 @@ class Strategy(Runnable):
 
         while self._signals:
             signal = self._signals.popleft()
+            if signal is None:
+                continue
 
             if signal.source == Signal.SOURCE_STRATEGY:
                 if signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
@@ -913,6 +915,9 @@ class Strategy(Runnable):
 
                                 instrument.set_base(market.base)
                                 instrument.set_quote(market.quote)
+
+                                instrument.value_per_pip = market.value_per_pip
+                                instrument.one_pip_means = market.one_pip_means
 
                                 instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
                                 instrument.set_notional_limits(market.min_notional, market.max_notional,
@@ -1178,7 +1183,7 @@ class Strategy(Runnable):
                     # no parallelization for single instrument
                     for strategy_trader in do_update:
                         self._update_strategy(self, strategy_trader)
-            
+
         return True
 
     def stream_ping(self):

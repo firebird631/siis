@@ -5,7 +5,7 @@
             "name": "cryptoalpha",
             "parameters": {}
         },
-        "watcher": [{
+        "watchers": [{
             "name": "binance.com",
             "symbols": ["*USDT"]
         }],
@@ -25,7 +25,7 @@
             "name": "cryptoalpha",
             "parameters": {}
         },
-        "watcher": [{
+        "watchers": [{
             "name": "binance.com",
             "symbols": ["*BTC"]
         }],
@@ -45,7 +45,7 @@
             "name": "cryptoalpha",
             "parameters": {}
         },
-        "watcher": [{
+        "watchers": [{
             "name": "bitmex.com",
             "symbols": ["XBTUSD", "ETHUSD"]
         }],
@@ -69,7 +69,7 @@
             "name": "cryptoalpha",
             "parameters": {}
         },
-        "watcher": [{
+        "watchers": [{
             "name": "bitmex.com",
             "symbols": ["XRPZ18", "TRXZ18"]
         }],
@@ -93,7 +93,7 @@
             "name": "forexalpha",
             "parameters": {}
         },
-        "watcher": [{
+        "watchers": [{
             "name": "ig.com",
             "symbols": [
                 "CS.D.AUDNZD.MINI.IP",
@@ -147,7 +147,7 @@
             "parameters": {
             }
         },
-        "watcher": [{
+        "watchers": [{
             "name": "ig.com",
             "symbols": ["IX.D.SPTRD.IFE.IP"]
         }],
@@ -175,7 +175,7 @@
                 "max-traded-timeframe": "15m"
             }
         },
-        "watcher": [{
+        "watchers": [{
             "name": "ig.com",
             "symbols": ["CS.D.CFEGOLD.CFE.IP"]
         }],
@@ -199,7 +199,7 @@
                 "max-traded-timeframe": "1h"
             }
         },
-        "watcher": [{
+        "watchers": [{
             "name": "binance.com",
             "symbols": ["BTCUSDT", "ETHBTC", "XRPBTC", "EOSBTC", "LTCBTC", "BCHABCBTC", "ADABTC", "XLMBTC",
                 "TRXBTC", "BCHSVBTC", "DASHBTC", "XMRBTC", "ONTBTC", "MIOTABTC", "ATOMBTC", "NEOBTC",
@@ -230,7 +230,7 @@
                 "exit": "auto"
             }
         },
-        "watcher": [{
+        "watchers": [{
             "name": "1broker.com",
             "symbols": ["(FOREX)"],
             "parameters:": {

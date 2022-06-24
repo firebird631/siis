@@ -334,6 +334,9 @@ class StrategyService(Service):
     def terminate(self):
         if self._timestep_thread and self._timestep_thread.is_alive():
             # abort backtesting
+            if not self._backtesting_play:
+                self._backtesting_play = True
+
             self._timestep_thread.abort = True
             self._timestep_thread.join()
             self._timestep_thread = None

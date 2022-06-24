@@ -76,9 +76,11 @@ class EntryExit(object):
         self.orientation = StrategyTraderContext.ORIENTATION_UP
         self.timeout = 0.0
 
-        self.distance = 0.0  # usage depends of distance_type, could be a fixed distance or a max distance
+        self.distance_value = None
+        self.distance = 0.0  # usage depends on distance_type, could be a fixed distance or a max distance
         self.distance_type = StrategyTraderContext.PRICE_NONE
 
+        self.timeout_distance_value = None
         self.timeout_distance = 0.0
         self.timeout_distance_type = StrategyTraderContext.PRICE_NONE
 
@@ -113,40 +115,41 @@ class EntryExit(object):
         if type(distance) is not str:
             raise ValueError("Invalid format 'distance' must be string for %s" % self.name())
 
-        if distance.endswith('%'):
-            # in percent from entry price or limit price
-            self.distance = float(distance[:-1]) * 0.01
-            self.distance_type = StrategyTraderContext.PRICE_FIXED_PCT
-
-        elif distance.endswith('pip'):
-            # in pips from entry price or limit price
-            self.distance = float(distance[:-3]) * strategy_trader.instrument.one_pip_means
-            self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
-
-        else:
-            # in price from entry price or limit price
-            self.distance = float(distance)
-            self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+        # standard distance
+        if distance is not None:
+            if distance.endswith('%'):
+                # in percent from entry price or limit price
+                self.distance = float(distance[:-1]) * 0.01
+                self.distance_type = StrategyTraderContext.PRICE_FIXED_PCT
+            elif distance.endswith('pip'):
+                # in pips from entry price or limit price
+                self.distance_value = float(distance[:-3])
+                self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+            else:
+                # in price from entry price or limit price
+                self.distance = float(distance)
+                self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
         # timeout distance
         timeout_distance = params.get('timeout-distance', "0.0")
         if type(timeout_distance) is not str:
             raise ValueError("Invalid format 'timeout-distance' must be string for %s" % self.name())
 
-        if timeout_distance.endswith('%'):
-            # in percent from entry price or limit price
-            self.timeout_distance = float(timeout_distance[:-1]) * 0.01
-            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_PCT
+        if timeout_distance is not None:
+            if timeout_distance.endswith('%'):
+                # in percent from entry price or limit price
+                self.timeout_distance = float(timeout_distance[:-1]) * 0.01
+                self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_PCT
 
-        elif timeout_distance.endswith('pip'):
-            # in pips from entry price or limit price
-            self.timeout_distance = float(timeout_distance[:-3]) * strategy_trader.instrument.one_pip_means
-            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+            elif timeout_distance.endswith('pip'):
+                # in pips from entry price or limit price
+                self.timeout_distance_value = float(timeout_distance[:-3])
+                self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
-        else:
-            # in price from entry price or limit price
-            self.timeout_distance = float(timeout_distance)
-            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+            else:
+                # in price from entry price or limit price
+                self.timeout_distance = float(timeout_distance)
+                self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
     def modify_distance(self, strategy_trader, distance):
         if type(distance) is str and distance.endswith('%'):
@@ -213,6 +216,18 @@ class EntryExit(object):
         elif strategy_trader.is_tickbars_based:
             self.timeframe = None
 
+        # standard distance
+        if self.distance_value is not None:
+            if self.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+                # because instrument details are guarantee only at compile time
+                self.distance = self.distance_value * strategy_trader.instrument.one_pip_means
+
+        # timeout distance
+        if self.timeout_distance_value is not None:
+            if self.timeout_distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+                # because instrument details are guarantee only at compile time
+                self.timeout_distance = self.timeout_distance_value * strategy_trader.instrument.one_pip_means
+
     def dumps(self) -> dict:
         result = {}
 
@@ -231,9 +246,14 @@ class EXEntry(EntryExit):
         super().__init__()
 
         self.cautious = True
-        
+
+        self.risk_value = None
         self.risk = 0.0
+
+        self.reward_value = None
         self.reward = 0.0
+
+        self.max_spread_value = None
         self.max_spread = 0.0
 
     def loads(self, strategy_trader, params: dict):
@@ -247,40 +267,70 @@ class EXEntry(EntryExit):
         self.cautious = params.get('cautious', True)
 
         # risk, 0.0 mean no check
-        risk = params.get('risk', 0.0)
-        if type(risk) in (float, int):
-            # value in delta price
-            self.risk = risk
-        elif type(risk) is str:
-            if risk.endswith('pip'):
-                # value in pips
-                self.risk = float(risk[:-3]) * strategy_trader.instrument.one_pip_means
-        else:
-            raise ValueError("Invalid format 'risk' must be string, int or float for %s" % self.name())
+        risk = params.get('risk', "0.0")
+        if risk is not None:
+            if type(risk) in (float, int):
+                # value in delta price
+                self.risk = risk
+            elif type(risk) is str:
+                if risk.endswith('pip'):
+                    # value in pips
+                    self.risk_value = float(risk[:-3])
+                else:
+                    # in delta price
+                    self.risk = float(risk)
+            else:
+                raise ValueError("Invalid format 'risk' must be string, int or float for %s" % self.name())
 
         # reward
-        reward = params.get('reward', 0.0)
-        if type(reward) in (float, int):
-            # value in delta price
-            self.reward = reward
-        elif type(reward) is str:
-            if reward.endswith('pip'):
-                # value in pips
-                self.reward = float(reward[:-3]) * strategy_trader.instrument.one_pip_means
-        else:
-            raise ValueError("Invalid format 'reward' must be string, int or float for %s" % self.name())
+        reward = params.get('reward', "0.0")
+        if reward is not None:
+            if type(reward) in (float, int):
+                # value in delta price
+                self.reward = reward
+            elif type(reward) is str:
+                if reward.endswith('pip'):
+                    # value in pips
+                    self.reward_value = float(reward[:-3])
+                else:
+                    # in delta price
+                    self.reward = float(reward)
+            else:
+                raise ValueError("Invalid format 'reward' must be string, int or float for %s" % self.name())
 
         # max-spread
-        max_spread = params.get('max-spread', 0.0)
-        if type(max_spread) in (float, int):
-            # value in delta price
-            self.max_spread = max_spread
-        elif type(max_spread) is str:
-            if max_spread.endswith('pip'):
-                # value in pips
-                self.max_spread = float(max_spread[:-3]) * strategy_trader.instrument.one_pip_means
-        else:
-            raise ValueError("Invalid format 'max-spread' must be string, int or float for %s" % self.name())
+        max_spread = params.get('max-spread', "0.0")
+        if self.max_spread_value is not None:
+            if type(max_spread) in (float, int):
+                # value in delta price
+                self.max_spread = max_spread
+            elif type(max_spread) is str:
+                if self.max_spread_value.endswith('pip'):
+                    # value in pips
+                    self.max_spread_value = float(max_spread[:-3])
+                else:
+                    # in delta price
+                    self.max_spread = float(max_spread)
+            else:
+                raise ValueError("Invalid format 'max-spread' must be string, int or float for %s" % self.name())
+
+    def compile(self, strategy_trader):
+        super().compile(strategy_trader)
+
+        # risk, 0.0 mean no check
+        if self.risk_value is not None:
+            # value in pips
+            self.risk = self.risk_value * strategy_trader.instrument.one_pip_means
+
+        # reward
+        if self.reward_value is not None:
+            # value in pips
+            self.reward = self.reward_value * strategy_trader.instrument.one_pip_means
+
+        # max-spread
+        if self.max_spread_value is not None:
+            # value in pips
+            self.max_spread = self.max_spread_value * strategy_trader.instrument.one_pip_means
 
     def dumps(self) -> dict:
         result = super().dumps()
@@ -442,8 +492,8 @@ class StrategyTraderContext(StrategyTraderContextBase):
         self.pre_signal = None   # runtime current pullback pre-signal
         self.last_signal = None  # runtime last generated strategy signal
 
-        self.long_call = None
-        self.short_call = None
+        self.long_call = None    # callable long method
+        self.short_call = None   # callable short method
 
         self.max_trades = 0  # >0 limit the number of trade for the context
 

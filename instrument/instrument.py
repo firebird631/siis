@@ -372,8 +372,7 @@ class Instrument(object):
         self._session_offset = 0.0   # day session offset from 00:00 in seconds
         self._session_duration = 24*60*60.0  # day session duration in seconds
 
-        # allowed trading session (empty mean anytime) else must be explicit. each session is a tuple with
-        # an int day of week, float offset from current day in seconds
+        # allowed trading session (empty mean anytime) else must be explicit. each session is a TradingSession model.
         self._trading_sessions = []
 
         self._wanted = []  # list of wanted timeframe before be ready (it is only for initialization)
@@ -536,7 +535,6 @@ class Instrument(object):
     def session_duration(self) -> float:
         return self._session_duration
 
-    @property
     def has_trading_sessions(self) -> bool:
         return len(self._trading_sessions) > 0
 
@@ -1324,22 +1322,23 @@ class Instrument(object):
         Load trading sessions details from a dict.
         @param data: session field (dict)
         """
+
         if 'timezone' in data:
             self._timezone = float(data['timezone'])
 
         if 'offset' in data:
-            self._session_offset = Instrument.duration_from_str(data['offset'])
+            self._session_offset = self.duration_from_str(data['offset'])
 
         if 'duration' in data:
-            self._session_duration = Instrument.duration_from_str(data['duration'])
+            self._session_duration = self.duration_from_str(data['duration'])
 
-        if 'allowed' in data:
+        if 'trading' in data:
             if type(data['trading']) is str:
-                self._trading_sessions = Instrument.sessions_from_str(data['trading'])
+                self._trading_sessions = self.sessions_from_str(data['trading'])
 
             elif type(data['trading']) in (list, tuple):
                 for m in data['trading']:
-                    sessions = Instrument.sessions_from_str(m)
+                    sessions = self.sessions_from_str(m)
                     if not sessions:
                         continue
 
@@ -1371,8 +1370,7 @@ class Instrument(object):
 
         return 0.0
 
-    @staticmethod
-    def duration_from_str(duration: str):
+    def duration_from_str(self, duration: str):
         if not duration or type(duration) is not str:
             return None
 
@@ -1386,10 +1384,9 @@ class Instrument(object):
         except ValueError:
             return None
 
-        return hours * 60.0 + minutes
+        return hours * 3600.0 + minutes * 60.0 - self._timezone * 3600.0
 
-    @staticmethod
-    def sessions_from_str(moment: str) -> Union[List[TradingSession], None]:
+    def sessions_from_str(self, moment: str) -> Union[List[TradingSession], None]:
         # mon tue wed thu fri sat sun
         if not moment or type(moment) is not str:
             return None
@@ -1417,8 +1414,8 @@ class Instrument(object):
         if parts[0] not in days_of_week:
             return None
 
-        fd = Instrument.duration_from_str(times[0])
-        td = Instrument.duration_from_str(times[1])
+        fd = self.duration_from_str(times[0])
+        td = self.duration_from_str(times[1])
 
         results = []
 
@@ -1426,7 +1423,7 @@ class Instrument(object):
             # any days
             for d in range(0, 7):
                 results.append(TradingSession(d, fd, td))
-        elif parts[1] == "dow":
+        elif parts[0] == "dow":
             # any days of week
             for d in range(0, 5):
                 results.append(TradingSession(d, fd, td))

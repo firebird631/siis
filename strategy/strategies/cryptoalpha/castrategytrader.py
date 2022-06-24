@@ -46,7 +46,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     timeframes: Dict[float, CryptoAlphaStrategySub]
 
     def __init__(self, strategy: Strategy, instrument: Instrument, params: dict):
-        super().__init__(strategy, instrument, Instrument.TF_TICK)
+        super().__init__(strategy, instrument, Instrument.TF_TICK, params)
 
         # mean when there is already a position on the same direction does not increase in the
         # same direction if 0 or increase at max N times

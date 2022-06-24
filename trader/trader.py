@@ -502,7 +502,7 @@ class Trader(Runnable):
         Set market info object. Used during backtesting.
 
         The paper trader can receive data from the real related watcher, but in case of
-        backtesting there is not connexion made, then market data are simulated from the record in the database.
+        backtesting there is no connexion made, then market data are simulated from the record in the database.
         Initial information must then be manually defined through this method.
         """
         if market:

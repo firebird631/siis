@@ -35,7 +35,7 @@ from .strategytradercontext import StrategyTraderContext, StrategyTraderContextB
 
 from .indicator.models import Limits
 
-from common.utils import timeframe_to_str
+from common.utils import timeframe_to_str, UTC
 from strategy.strategysignal import StrategySignal
 from terminal.terminal import Terminal
 
@@ -181,6 +181,9 @@ class StrategyTrader(object):
         }
 
         self._trade_context_builder = None
+
+        if self.instrument:
+            self.instrument.loads_session(params.get('sessions', {}))
 
     #
     # properties
@@ -2199,6 +2202,41 @@ class StrategyTrader(object):
             return True
 
         return False
+
+    def allowed_trading_session(self, timestamp: float, same_context: Optional[StrategyTraderContext] = None) -> bool:
+        """
+        @param timestamp Current UTC timestamp in seconds
+        @param same_context Context to check with
+        @return True if trading is allowed during the session.
+        """
+        result = None
+
+        if same_context:
+            pass
+
+        if self.instrument.has_trading_sessions():
+            # compute daily offset in seconds
+            today = datetime.utcfromtimestamp(timestamp).replace(tzinfo=UTC())
+            day_of_week = today.isoweekday()
+            today_time = today.hour * 3600 + today.minute * 60 + today.second
+
+            allow = False
+
+            for trading_session in self.instrument.trading_session:
+                if trading_session.day_of_week == day_of_week:
+                    if trading_session.from_time <= today_time <= trading_session.to_time:
+                        allow = True
+                        break
+
+            if not allow:
+                result = "No trading allowed outside of sessions for %s" % self.instrument.symbol
+
+        if result:
+            # logger.warning(result)
+            Terminal.inst().notice(result, view='status')
+            return False
+
+        return True
 
     #
     # notification helpers
