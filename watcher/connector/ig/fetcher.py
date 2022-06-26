@@ -113,7 +113,7 @@ class IGFetcher(Fetcher):
 
         prices = data.get('prices', [])
 
-        # get local timezone, assume its the same of the account, or overrided by account detail
+        # get local timezone, assume it is the same of the account, or override by account detail
         tzname = self._tzname or time.tzname[0]
         pst = pytz.timezone(tzname)
 
@@ -125,7 +125,7 @@ class IGFetcher(Fetcher):
             # print("<", dt, ldt)
             # dt = dt + pst.localize(ldt).dst() + pst.localize(ldt).utcoffset()
 
-            # fix for D,W,M snapshotTimeUTC, probaby because of the DST (then might be +1 or -1 hour)
+            # fix for D,W,M snapshotTimeUTC, probably because of the DST (then might be +1 or -1 hour)
             if timeframe in (Instrument.TF_1D, Instrument.TF_1W, Instrument.TF_1M):
                 if dt.hour == 22:
                     # is 22:00 on the previous day, add 2h

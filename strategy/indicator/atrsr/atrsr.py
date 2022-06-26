@@ -256,11 +256,17 @@ class ATRSRIndicator(Indicator):
         dev = atrs * self._coeff
         upper = basis + dev
         lower = basis - dev
- 
+
         with np.errstate(divide='ignore', invalid='ignore'):
             # replace by 0 when divisor is 0
             bbr = (close - lower) / (upper - lower)
             bbr[bbr == np.inf] = 0.0
+
+        if np.isnan(bbr[-1]):
+            # empty dataset
+            self._last_timestamp = timestamp
+
+            return self._up, self._down
 
         bbe = ta_EMA(bbr, self._length_MA)
 

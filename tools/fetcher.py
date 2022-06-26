@@ -4,6 +4,7 @@
 # Fetcher tool
 
 import sys
+import time
 
 from datetime import datetime
 
@@ -105,8 +106,6 @@ error_logger = logging.getLogger('siis.error.tools.fetcher')
 
 # tool = Fetcher
 
-
-
 def terminate(code=0):
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 
@@ -172,6 +171,11 @@ def do_fetcher(options):
         # else:
         do_update = True
 
+    if options.get('delay'):
+        delay = float(options['delay'])
+    else:
+        delay = 0.0
+
     try:
         fetcher.connect()
     except:
@@ -235,9 +239,10 @@ def do_fetcher(options):
 
                         print("Update %s from %s..." % (market_id, from_date))
 
-                        fetcher.fetch_and_generate(market_id, timeframe,
-                            from_date, to_date, last,
-                            spec, cascaded)
+                        fetcher.fetch_and_generate(market_id, timeframe, from_date, to_date, last, spec, cascaded)
+
+                if delay > 0:
+                    time.sleep(delay)
 
         except Exception as e:
             logger.error(repr(e))

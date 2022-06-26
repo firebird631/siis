@@ -113,6 +113,7 @@ def display_cli_help():
     Terminal.inst().message("  --cascaded=<max-timeframe> During fetch process generate the candles of highers timeframe from lowers.")
     Terminal.inst().message("    Default is none. Take care to have entire multiple to fulfill the generated candles.")
     Terminal.inst().message("  --spec=<specific-option> Specific fetcher option (exemple STOCK for alphavantage.co fetcher to fetch a stock market).")
+    Terminal.inst().message("  --delay=<number> Add a delay in seconds between two fetch call.")
     Terminal.inst().message("  --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.")
     Terminal.inst().message("  --initial-fetch Process the fetching of recent OHLCs when subscribing to a market. Default don't fetch.")
     Terminal.inst().message("  --prefetch Alias for --initial-fetch.")

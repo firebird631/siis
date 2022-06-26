@@ -156,7 +156,7 @@ def application(argv):
                     # use the importer
                     options['monitor'] = True
                 elif arg.startswith('--monitor-port='):
-                    # overrided monitor HTTP port (+1 for WS port)
+                    # override monitor HTTP port (+1 for WS port)
                     options['monitor-port'] = int(arg.split('=')[1])
 
                 elif arg == '--install-market':
@@ -216,6 +216,9 @@ def application(argv):
                 elif arg.startswith('--spec='):
                     # fetcher data history option
                     options['option'] = arg.split('=')[1]
+                elif arg.startswith('--delay='):
+                    # fetcher data history fetching delay between two calls
+                    options['delay'] = float(arg.split('=')[1])
                 elif arg.startswith('--broker='):
                     # broker name for fetcher, watcher, optimize, binarize
                     options['broker'] = arg.split('=')[1]

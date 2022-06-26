@@ -1144,8 +1144,8 @@ class HttpRestServer(object):
 
         def listen(_server, _port, _factory):
             _server._listener = reactor.listenTCP(_port, _factory)
-            if _server._listener:
-                MonitorService.use_reactor(installSignalHandlers=False)
+            # if _server._listener:
+            #     MonitorService.use_reactor(installSignalHandlers=False)
 
         reactor.callFromThread(listen, self, self._port, factory)      
 

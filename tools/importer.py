@@ -127,8 +127,12 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
     Date + time MT4 tick
 
     DATE,TIME,BID,ASK,LAST,VOL
+    @note but some version can be : DATE,TIME,BID,ASK,BIDVOL,ASKVOL
     """
     parts = row.split(',')
+
+    if len(parts) < 6:
+        return 0
 
     if '.' in parts[0]:
         dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S.%f').replace(tzinfo=UTC())
@@ -139,7 +143,7 @@ def import_tick_mt4(self, broker_id, market_id, from_date, to_date, row):
 
     if parts[2]:
         self.prev_bid = parts[2]
-    
+
     if parts[3]:
         self.prev_ask = parts[3]
 
@@ -180,6 +184,9 @@ def import_ohlc_mt4(broker_id, market_id, timeframe, from_date, to_date, row):
     """
     parts = row.split(',')
 
+    if len(parts) < 7:
+        return 0
+
     if '.' in parts[0]:
         dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M').replace(tzinfo=UTC())
     else:
@@ -214,6 +221,9 @@ def import_ohlc_mt4_long(broker_id, market_id, timeframe, from_date, to_date, ro
     DATE,TIME,OPEN,HIGH,LOW,CLOSE,TICKVOL,VOL,SPREAD
     """
     parts = row.split(',')
+
+    if len(parts) < 9:
+        return 0
 
     if '.' in parts[0]:
         dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M').replace(tzinfo=UTC())
@@ -255,6 +265,9 @@ def import_tick_mt5(self, broker_id, market_id, from_date, to_date, row):
     <DATE>  <TIME>  <BID>   <ASK>   <LAST>  <VOLUME>
     """
     parts = row.split('\t')
+
+    if len(parts) < 6:
+        return 0
 
     dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S.%f').replace(tzinfo=UTC())
     timestamp = int(dt.timestamp() * 1000)
@@ -302,6 +315,9 @@ def import_ohlc_mt5(broker_id, market_id, timeframe, from_date, to_date, row):
     """
     parts = row.split('\t')
 
+    if len(parts) < 8:
+        return 0
+
     dt = datetime.strptime(parts[0], '%Y.%m.%d').replace(tzinfo=UTC())
     timestamp = int(dt.timestamp() * 1000)
 
@@ -338,6 +354,9 @@ def import_ohlc_mt5_time(broker_id, market_id, timeframe, from_date, to_date, ro
     <DATE>  <TIME>  <OPEN>  <HIGH>  <LOW>   <CLOSE> <TICKVOL>   <VOL>   <SPREAD>
     """
     parts = row.split('\t')
+
+    if len(parts) < 9:
+        return 0
 
     dt = datetime.strptime(parts[0] + ' ' + parts[1], '%Y.%m.%d %H:%M:%S').replace(tzinfo=UTC())
     timestamp = int(dt.timestamp() * 1000)

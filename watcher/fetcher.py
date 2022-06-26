@@ -87,12 +87,13 @@ class Fetcher(object):
     def connected(self) -> bool:
         return False
 
-    def fetch_and_generate(self, market_id, timeframe, from_date=None, to_date=None, n_last=1000, fetch_option="", cascaded=None):
+    def fetch_and_generate(self, market_id, timeframe, from_date=None, to_date=None, n_last=1000,
+                           fetch_option="", cascaded=None):
         """
-        Fetch trades, quotes, tickers or OHLCs, depending of the timeframe, for a range of date, or N last entries.
-        It is possible to generate higher multime of the timeframe, until cascaded timeframe. Not that it is important to have
-        enought past sample to have a correct rebuilded higher timeframes (ex: timeframe=1D, cascaded=1W, then from date must at least
-        look for the first day of week, else the first 1w OHLCs will be wrong).
+        Fetch trades, quotes, tickers or OHLCs, depending on the timeframe, for a range of date, or N last entries.
+        It is possible to generate higher multiple of the timeframe, until cascaded timeframe. Not that it is important
+        to have enough past sample to have a correct rebuild higher timeframes (ex: timeframe=1D, cascaded=1W,
+        then from date must at least look for the first day of week, else the first 1w OHLCs will be wrong).
         """
         if timeframe > 0 and timeframe not in self.GENERATED_TF:
             logger.error("Timeframe %i is not allowed !" % (timeframe,))

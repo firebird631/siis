@@ -108,8 +108,7 @@ class TimeframeBasedSub(object):
 
     def init_candle_generator(self):
         """
-        Setup the ohlc generator for this sub unit using the configured timeframe
-        and the current opened ohlc.
+        Setup the ohlc generator for this sub, using the configured timeframe and the current opened ohlc.
         This method is called once the initial ohlc are fetched from the strategy setup process.
         """
         if self.candles_gen and not self.candles_gen.current:
@@ -120,7 +119,7 @@ class TimeframeBasedSub(object):
 
     def need_update(self, timestamp: float) -> bool:
         """
-        Return True if the compute must be done.
+        Return True if computing must be done.
         If update at close then wait for the last OHLC close, else always returns true.
         """
         if self._update_at_close:
@@ -236,6 +235,6 @@ class TimeframeBasedSub(object):
 
     def report_state(self) -> Tuple:
         """
-        Return an tuple of tuples with the data value to report.
+        Return a tuple of tuples with the data value to report.
         """
         return tuple()

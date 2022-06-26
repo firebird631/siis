@@ -300,12 +300,12 @@ class EXEntry(EntryExit):
 
         # max-spread
         max_spread = params.get('max-spread', "0.0")
-        if self.max_spread_value is not None:
+        if max_spread is not None:
             if type(max_spread) in (float, int):
                 # value in delta price
                 self.max_spread = max_spread
             elif type(max_spread) is str:
-                if self.max_spread_value.endswith('pip'):
+                if max_spread.endswith('pip'):
                     # value in pips
                     self.max_spread_value = float(max_spread[:-3])
                 else:

@@ -30,7 +30,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     """
     Timeframe based strategy trader base class.
     Sub timeframe object must be based on TimeframeBasedSub.
-    It support the generation of the OHLCs from tick level, or from others OHLCs of a sub-multiple lower timeframe.
+    It supports the generation of the OHLCs from tick level, or from others OHLCs of a sub-multiple lower timeframe.
 
     But you want either process at a close of a OHLC, or at any new price (base timeframe).
 
