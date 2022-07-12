@@ -82,8 +82,8 @@ class KrakenWatcher(Watcher):
 
     def __check_reconnect(self, ws):
         """Return True if a reconnection in needed."""
-        if ws['lost']:
-            return True
+        # if ws['lost']:
+        #     return True
 
         # 15 seconds during maintenance, 5 the rest of the time (post_only, cancel_only, online, offline)
         delay = 15.0 if self.maintenance else 5.0

@@ -18,7 +18,7 @@ class IGConnector(object):
     """
     IG connector.
     @todo could add a REST request limit per minute
-    The create order request limit of 1sec with the same value on the same market is implementated in the trader.
+    The create order request limit of 1sec with the same value on the same market is implemented in the trader.
     """
 
     TF_MAP = {

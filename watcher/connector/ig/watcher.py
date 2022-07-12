@@ -55,7 +55,8 @@ class IGWatcher(Watcher):
         - Historical price data points per week: 10,000 (Applies to price history endpoints)
 
     Streaming API:
-        - 40 concurrent subscriptions
+        - 40 concurrent subscriptions, account+positions/orders uses 2 stream, 1 market uses 2 stream.
+            It makes 19 markets max at the same time.
 
     Data history:
         - 1 Sec 4 Days
@@ -66,7 +67,6 @@ class IGWatcher(Watcher):
 
     @todo get vol24 in base and quote unit
     @todo base_exchange_rate must be updated as price changes
-
     @todo does the subscriptions renegotiated by the ws client at reconnection ?
     """
 
@@ -237,7 +237,7 @@ class IGWatcher(Watcher):
             return False
 
         if not self.connected:
-            # connection lost, ready status to false to retry a connection
+            # connection lost, set ready status to false in way to retry a connection
             self._ready = False
             return False
 
@@ -254,7 +254,8 @@ class IGWatcher(Watcher):
 
         if time.time() - self._last_market_update >= IGWatcher.UPDATE_MARKET_INFO_DELAY:  # only once per 4h
             try:
-                # session must at least be obtained each 6h, we call each 4h at least but if we have a server invalidation
+                # session must at least be obtained each 6h, we call each 4h at least but if we have
+                # a server invalidation
                 self.update_markets_info()
                 self._last_market_update = time.time()
             except Exception as e:
@@ -331,7 +332,7 @@ class IGWatcher(Watcher):
             with self._mutex:
                 self.insert_watched_instrument(market_id, [0])
 
-                # to know when market close but could be an hourly REST API call, but it consume one subscriber...
+                # to know when market close but could be an hourly REST API call, but it consumes one subscriber...
                 self.subscribe_market(market_id)
 
                 # tick data
@@ -494,7 +495,7 @@ class IGWatcher(Watcher):
             if len(name) == 2 and name[0] == 'MARKET':
                 # market data instrument by epic
                 values = item_update['values']
-                epic = name[1]
+                market_id = name[1]  # epic
 
                 ready = values['MARKET_STATE'] == 'TRADEABLE'
 
@@ -502,11 +503,11 @@ class IGWatcher(Watcher):
                 if ready:
                     # @todo take now and replace H:M:S
                     update_time = time.time()  # datetime.strptime(values['UPDATE_TIME'], '%H:%M:%S').timestamp()
-                    market_data = (name[1], True, update_time, float(values["BID"]), float(values["OFFER"]),
+                    market_data = (market_id, True, update_time, float(values["BID"]), float(values["OFFER"]),
                                    None, None, None, None, None)
                 else:
                     update_time = 0
-                    market_data = (name[1], False, 0, None, None, None, None, None, None, None)
+                    market_data = (market_id, False, 0, None, None, None, None, None, None, None)
 
                 self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
         except Exception as e:
@@ -1062,7 +1063,7 @@ class IGWatcher(Watcher):
         # cannot interpret this value because IG want it as it is
         market.expiry = instrument['expiry']
 
-        # not perfect but IG does not provides this information
+        # not perfect but IG does not provide this information
         currency = instrument['currencies'][0].get('name', instrument['currencies'][0].get('code'))
 
         if instrument['marketId'].endswith(currency):
