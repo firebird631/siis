@@ -233,6 +233,28 @@ class IGService:
         response = self.crud_session.req(action, endpoint, params, session)
         return response
 
+    def _public_req(self, action, endpoint, params, session):
+        """
+        Creates a CRUD request and returns response for public endpoints.
+        Retry after a dynamic delay between 2s to 6s if exceeded api key allowance.
+        """
+        session = self._get_session(session)
+        retry = 1
+
+        while 1:
+            try:
+                response = self.crud_session.req(action, endpoint, params, session)
+                return response
+            except Exception as e:
+                if str(e) == "error.public-api.exceeded-api-key-allowance":
+                    retry += 1
+                    time.sleep(retry)
+
+                    if retry > 3:
+                        raise
+                else:
+                    raise
+
     # ---------- PARSE_RESPONSE ----------- #
 
     def parse_response_without_exception(self, *args, **kwargs):
@@ -594,7 +616,8 @@ class IGService:
         }
         endpoint = '/clientsentiment/{market_id}'.format(**url_params)
         action = 'read'
-        response = self._req(action, endpoint, params, session)
+        # response = self._req(action, endpoint, params, session)
+        response = self._public_req(action, endpoint, params, session)
         data = self.parse_response(response.text)
 
         return data
@@ -609,7 +632,8 @@ class IGService:
         }
         endpoint = '/clientsentiment/related/{market_id}'.format(**url_params)
         action = 'read'
-        response = self._req(action, endpoint, params, session)
+        # response = self._req(action, endpoint, params, session)
+        response = self._public_req(action, endpoint, params, session)
         data = self.parse_response(response.text)
 
         return data
@@ -620,7 +644,8 @@ class IGService:
         params = {}
         endpoint = '/marketnavigation'
         action = 'read'
-        response = self._req(action, endpoint, params, session)
+        # response = self._req(action, endpoint, params, session)
+        response = self._public_req(action, endpoint, params, session)
         data = self.parse_response(response.text)
         # if self.return_munch:
         #     # ToFix: ValueError: The truth value of a DataFrame is ambiguous.
@@ -638,7 +663,8 @@ class IGService:
         }
         endpoint = '/marketnavigation/{node}'.format(**url_params)
         action = 'read'
-        response = self._req(action, endpoint, params, session)
+        # response = self._req(action, endpoint, params, session)
+        response = self._public_req(action, endpoint, params, session)
         data = self.parse_response(response.text)
 
         return data
@@ -653,7 +679,8 @@ class IGService:
         }
         endpoint = '/markets/{epic}'.format(**url_params)
         action = 'read'
-        response = self._req(action, endpoint, params, session)
+        # response = self._req(action, endpoint, params, session)
+        response = self._public_req(action, endpoint, params, session)
         data = self.parse_response(response.text)
         
         return data
@@ -665,7 +692,8 @@ class IGService:
             'searchTerm': search_term
         }
         action = 'read'
-        response = self._req(action, endpoint, params, session)
+        # response = self._req(action, endpoint, params, session)
+        response = self._public_req(action, endpoint, params, session)
         data = self.parse_response(response.text)
 
         return data
@@ -700,7 +728,8 @@ class IGService:
         action = 'read'
 
         self.crud_session.HEADERS['LOGGED_IN']['Version'] = "3"
-        response = self._req(action, endpoint, params, session)
+        # response = self._req(action, endpoint, params, session)
+        response = self._public_req(action, endpoint, params, session)
         del(self.crud_session.HEADERS['LOGGED_IN']['Version'])
         data = self.parse_response(response.text)
 
@@ -718,7 +747,8 @@ class IGService:
         }
         endpoint = '/prices/{epic}/{resolution}/{numpoints}'.format(**url_params)
         action = 'read'
-        response = self._req(action, endpoint, params, session)
+        # response = self._req(action, endpoint, params, session)
+        response = self._public_req(action, endpoint, params, session)
         data = self.parse_response(response.text)
 
         return(data)
@@ -757,7 +787,8 @@ class IGService:
         action = 'read'
 
         self.crud_session.HEADERS['LOGGED_IN']['Version'] = "3"
-        response = self._req(action, endpoint, params, session)
+        # response = self._req(action, endpoint, params, session)
+        response = self._public_req(action, endpoint, params, session)
         del(self.crud_session.HEADERS['LOGGED_IN']['Version'])
 
         data = self.parse_response(response.text)
@@ -939,7 +970,7 @@ class IGService:
     def disable_client_app_key(self, session=None):
         """
         Disables the current application key from processing further requests.
-        Disabled keys may be reenabled via the My Account section on
+        Disabled keys may be re-enabled via the My Account section on
         the IG Web Dealing Platform.
         """
         params = {}
