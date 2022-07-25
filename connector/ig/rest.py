@@ -255,7 +255,7 @@ class IGService:
                 else:
                     raise Exception(data['errorCode'])
             else:
-                return response
+                return data
 
     # ---------- PARSE_RESPONSE ----------- #
 
