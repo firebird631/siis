@@ -242,18 +242,18 @@ class IGService:
         retry = 1
 
         while 1:
-            try:
-                response = self.crud_session.req(action, endpoint, params, session)
-                return response
-            except Exception as e:
-                if str(e) == "error.public-api.exceeded-api-key-allowance":
-                    retry += 1
-                    time.sleep(retry)
+            response = self.crud_session.req(action, endpoint, params, session)
+            data = json.loads(response.text)
 
+            if 'errorCode' in data:
+                if data['errorCode'] == "error.public-api.exceeded-api-key-allowance":
+                    retry += 1
                     if retry > 3:
-                        raise
+                        raise Exception(data['errorCode'])
+
+                    time.sleep(retry)
                 else:
-                    raise
+                    raise Exception(data['errorCode'])
 
     # ---------- PARSE_RESPONSE ----------- #
 
@@ -617,8 +617,8 @@ class IGService:
         endpoint = '/clientsentiment/{market_id}'.format(**url_params)
         action = 'read'
         # response = self._req(action, endpoint, params, session)
-        response = self._public_req(action, endpoint, params, session)
-        data = self.parse_response(response.text)
+        # data = self.parse_response(response.text)
+        data = self._public_req(action, endpoint, params, session)
 
         return data
 
@@ -633,8 +633,8 @@ class IGService:
         endpoint = '/clientsentiment/related/{market_id}'.format(**url_params)
         action = 'read'
         # response = self._req(action, endpoint, params, session)
-        response = self._public_req(action, endpoint, params, session)
-        data = self.parse_response(response.text)
+        # data = self.parse_response(response.text)
+        data = self._public_req(action, endpoint, params, session)
 
         return data
 
@@ -645,13 +645,15 @@ class IGService:
         endpoint = '/marketnavigation'
         action = 'read'
         # response = self._req(action, endpoint, params, session)
-        response = self._public_req(action, endpoint, params, session)
-        data = self.parse_response(response.text)
+        # data = self.parse_response(response.text)
+        data = self._public_req(action, endpoint, params, session)
+
         # if self.return_munch:
         #     # ToFix: ValueError: The truth value of a DataFrame is ambiguous.
         #     # Use a.empty, a.bool(), a.item(), a.any() or a.all().
         #     from .utils import munchify
         #     data = munchify(data)
+
         return data
 
     def fetch_sub_nodes_by_node(self, node, session=None):
@@ -664,8 +666,8 @@ class IGService:
         endpoint = '/marketnavigation/{node}'.format(**url_params)
         action = 'read'
         # response = self._req(action, endpoint, params, session)
-        response = self._public_req(action, endpoint, params, session)
-        data = self.parse_response(response.text)
+        # data = self.parse_response(response.text)
+        data = self._public_req(action, endpoint, params, session)
 
         return data
 
@@ -680,9 +682,9 @@ class IGService:
         endpoint = '/markets/{epic}'.format(**url_params)
         action = 'read'
         # response = self._req(action, endpoint, params, session)
-        response = self._public_req(action, endpoint, params, session)
-        data = self.parse_response(response.text)
-        
+        # data = self.parse_response(response.text)
+        data = self._public_req(action, endpoint, params, session)
+
         return data
 
     def search_markets(self, search_term, session=None):
@@ -693,8 +695,8 @@ class IGService:
         }
         action = 'read'
         # response = self._req(action, endpoint, params, session)
-        response = self._public_req(action, endpoint, params, session)
-        data = self.parse_response(response.text)
+        # data = self.parse_response(response.text)
+        data = self._public_req(action, endpoint, params, session)
 
         return data
 
@@ -729,11 +731,11 @@ class IGService:
 
         self.crud_session.HEADERS['LOGGED_IN']['Version'] = "3"
         # response = self._req(action, endpoint, params, session)
-        response = self._public_req(action, endpoint, params, session)
+        # data = self.parse_response(response.text)
+        data = self._public_req(action, endpoint, params, session)
         del(self.crud_session.HEADERS['LOGGED_IN']['Version'])
-        data = self.parse_response(response.text)
 
-        return(data)
+        return data
 
     def fetch_historical_prices_by_epic_and_num_points(self, epic, resolution, numpoints, session=None):
         """
@@ -748,10 +750,10 @@ class IGService:
         endpoint = '/prices/{epic}/{resolution}/{numpoints}'.format(**url_params)
         action = 'read'
         # response = self._req(action, endpoint, params, session)
-        response = self._public_req(action, endpoint, params, session)
-        data = self.parse_response(response.text)
+        # data = self.parse_response(response.text)
+        data = self._public_req(action, endpoint, params, session)
 
-        return(data)
+        return data
 
     def fetch_historical_prices_by_epic_and_date_range(self, epic, resolution, start_date, end_date, session=None):
         """
@@ -788,10 +790,9 @@ class IGService:
 
         self.crud_session.HEADERS['LOGGED_IN']['Version'] = "3"
         # response = self._req(action, endpoint, params, session)
-        response = self._public_req(action, endpoint, params, session)
+        # data = self.parse_response(response.text)
+        data = self._public_req(action, endpoint, params, session)
         del(self.crud_session.HEADERS['LOGGED_IN']['Version'])
-
-        data = self.parse_response(response.text)
 
         return data
 
