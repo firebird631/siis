@@ -251,7 +251,7 @@ class IGService:
                     if retry > 3:
                         raise Exception(data['errorCode'])
 
-                    time.sleep(retry)
+                    time.sleep(retry*2)
                 else:
                     raise Exception(data['errorCode'])
             else:
