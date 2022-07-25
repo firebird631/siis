@@ -236,7 +236,7 @@ class IGService:
     def _public_req(self, action, endpoint, params, session):
         """
         Creates a CRUD request and returns response for public endpoints.
-        Retry after a dynamic delay between 2s to 6s if exceeded api key allowance.
+        Retry after a dynamic delay between 2s to 8s if exceeded api key allowance.
         """
         session = self._get_session(session)
         retry = 1
@@ -248,7 +248,7 @@ class IGService:
             if 'errorCode' in data:
                 if data['errorCode'] == "error.public-api.exceeded-api-key-allowance":
                     retry += 1
-                    if retry > 3:
+                    if retry > 4:
                         raise Exception(data['errorCode'])
 
                     time.sleep(retry*2)
