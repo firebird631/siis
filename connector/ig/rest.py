@@ -254,6 +254,8 @@ class IGService:
                     time.sleep(retry)
                 else:
                     raise Exception(data['errorCode'])
+            else:
+                return response
 
     # ---------- PARSE_RESPONSE ----------- #
 
