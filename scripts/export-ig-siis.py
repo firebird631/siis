@@ -61,7 +61,7 @@ def export_any(market, symbol, prefix="full"):
         print("-- Done")
 
 
-def export(market, symbol, prefix="full"):
+def export(market, symbol, prefix="distinct"):
     """Distinct file per timeframe"""
     for tf, lfrom in EXPORT_TF.items():
         dst_path = pathlib.Path(DST_PATH, market)

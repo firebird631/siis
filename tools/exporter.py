@@ -29,7 +29,8 @@ EXPORT_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60
 def export_ohlcs_siis_1_0_0(broker_id, market_id, timeframe, from_date, to_date, dst):
     last_ohlcs = {}
 
-    ohlc_streamer = Database.inst().create_ohlc_streamer(broker_id, market_id, timeframe, from_date=from_date, to_date=to_date, buffer_size=100)
+    ohlc_streamer = Database.inst().create_ohlc_streamer(broker_id, market_id, timeframe,
+                                                         from_date=from_date, to_date=to_date, buffer_size=100)
     timestamp = from_date.timestamp()
     to_timestamp = to_date.timestamp()
     progression = 0.0
@@ -71,7 +72,8 @@ def export_ohlcs_siis_1_0_0(broker_id, market_id, timeframe, from_date, to_date,
         if timestamp - prev_update >= progression_incr:
             progression += 1
 
-            Terminal.inst().info("%i%% on %s, %s for last 100 candles, current total of %s..." % (progression, format_datetime(timestamp), count, total_count))
+            Terminal.inst().info("%i%% on %s, %s for last 100 candles, current total of %s..." % (
+                progression, format_datetime(timestamp), count, total_count))
 
             prev_update = timestamp
             count = 0
@@ -212,7 +214,7 @@ def do_exporter(options):
                 dst.write("format=SIIS\tversion=%s\tcreated=%s\tbroker=%s\tmarket=%s\tfrom=%s\tto=%s\ttimeframe=any\n" % (
                     EXPORT_VERSION, cur_datetime, broker_id, market, from_date_str, to_date_str))
 
-                for tf in EXPORT_TF :
+                for tf in EXPORT_TF:
                     Terminal.inst().info("Exporting %s OHLC %s..." % (market, timeframe_to_str(tf)))
 
                     dst.write("timeframe=%s\n" % timeframe_to_str(tf))

@@ -1194,7 +1194,13 @@ class IGWatcher(Watcher):
         Update market info (very important because IG frequently changes lot or contract size).
         """
         for market_id in self._watched_instruments:
-            market = self.fetch_market(market_id)
+            try:
+                market = self.fetch_market(market_id)
+            except Exception as e:
+                continue
+
+            if not market:
+                continue
 
             if market.is_open:
                 market_data = (market_id, market.is_open, market.last_update_time, market.bid, market.ask,
