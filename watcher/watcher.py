@@ -71,7 +71,8 @@ class Watcher(Runnable):
         Instrument.TF_2HOUR,
         Instrument.TF_4HOUR,
         Instrument.TF_DAY,
-        Instrument.TF_WEEK)
+        Instrument.TF_WEEK,
+        Instrument.TF_MONTH)
 
     # generated OHLC timeframes
     GENERATED_TF = (
@@ -84,7 +85,8 @@ class Watcher(Runnable):
         Instrument.TF_2HOUR,
         Instrument.TF_4HOUR,
         Instrument.TF_DAY,
-        Instrument.TF_WEEK)
+        Instrument.TF_WEEK,
+        Instrument.TF_MONTH)
 
     _name: str
     _service: WatcherService
@@ -233,7 +235,7 @@ class Watcher(Runnable):
     def configured_symbols(self) -> Set[str]:
         """
         Configured instruments symbols from config of the watcher.
-        @return A set of symbol, can contains '*' or any symbols prefixed by a '*'.
+        @return A set of symbol, can contain '*' or any symbols prefixed by a '*'.
         """
         watcher_config = self.service.watcher_config(self._name)
         if watcher_config:
