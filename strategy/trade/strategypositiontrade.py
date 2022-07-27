@@ -400,7 +400,7 @@ class StrategyPositionTrade(StrategyTrade):
 
                 # self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
-            if data.get('profit-loss'):
+            if data.get('profit-loss') is not None:
                 self._stats['unrealized-profit-loss'] = data['profit-loss']
             if data.get('profit-currency'):
                 self._stats['profit-loss-currency'] = data['profit-currency']
@@ -409,7 +409,7 @@ class StrategyPositionTrade(StrategyTrade):
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
             self.position_id = data['id']
 
-            if data.get('profit-loss'):
+            if data.get('profit-loss') is not None:
                 self._stats['unrealized-profit-loss'] = data['profit-loss']
             if data.get('profit-currency'):
                 self._stats['profit-loss-currency'] = data['profit-currency']
@@ -449,7 +449,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_POSITION_UPDATED:
             # update the unrealized profit-loss in currency
-            if data.get('profit-loss'):
+            if data.get('profit-loss') is not None:
                 self._stats['unrealized-profit-loss'] = data['profit-loss']
             if data.get('profit-currency'):
                 self._stats['profit-loss-currency'] = data['profit-currency']
@@ -502,7 +502,7 @@ class StrategyPositionTrade(StrategyTrade):
             # no longer related position
             self.position_id = None
 
-            if data.get('profit-loss'):
+            if data.get('profit-loss') is not None:
                 self._stats['unrealized-profit-loss'] = data['profit-loss']
             if data.get('profit-currency'):
                 self._stats['profit-loss-currency'] = data['profit-currency']
@@ -520,7 +520,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_POSITION_AMENDED:
             # update stop_loss/take_profit from outside
-            if data.get('profit-loss'):
+            if data.get('profit-loss') is not None:
                 self._stats['unrealized-profit-loss'] = data['profit-loss']
             if data.get('profit-currency'):
                 self._stats['profit-loss-currency'] = data['profit-currency']
@@ -564,10 +564,10 @@ class StrategyPositionTrade(StrategyTrade):
 
             #     self.position_quantity = last_qty
 
-        if data.get('profit'):
-            self._stats['unrealized-profit-loss'] = data['profit']
-        if data.get('profit-currency'):
-            self._stats['profit-loss-currency'] = data['profit-currency']
+        # if data.get('profit-loss'):
+        #     self._stats['unrealized-profit-loss'] = data['profit']
+        # if data.get('profit-currency'):
+        #     self._stats['profit-loss-currency'] = data['profit-currency']
 
         #
         # average entry/exit prices

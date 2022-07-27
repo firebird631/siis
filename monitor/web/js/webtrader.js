@@ -94,14 +94,16 @@ $(window).ready(function() {
     // map a symbol to a market on trading-view for some specials case, like indices
     window.symbol_to_tv = {
         // ig.com mapping
+        'IX.D.CAC.IMF.IP': ['OANDA', 'FR40EUR'],
         'IX.D.DAX.IFMM.IP': ['OANDA', 'DE30EUR'],
         'IX.D.DOW.IFE.IP': ['OANDA', 'US30USD'],
         'IX.D.NASDAQ.IFE.IP': ['OANDA', 'NAS100USD'],
         'IX.D.SPTRD.IFE.IP': ['OANDA', 'SPX500USD'],
 
-        'S.D.USDCHF.MINI.IP': ['OANDA', 'USDCHF'],
+        'CS.D.USDCHF.MINI.IP': ['OANDA', 'USDCHF'],
         'CS.D.USDJPY.MINI.IP': ['OANDA', 'USDJPY'],
         'CS.D.AUDNZD.MINI.IP': ['OANDA', 'AUDNZD'],
+        'CS.D.AUDUSD.MINI.IP': ['OANDA', 'AUDUSD'],
         'CS.D.EURCAD.MINI.IP': ['OANDA', 'EURCAD'],
         'CS.D.EURCHF.MINI.IP': ['OANDA', 'EURCHF'],
         'CS.D.EURGBP.MINI.IP': ['OANDA', 'EURGBP'],
@@ -110,6 +112,8 @@ $(window).ready(function() {
         'CS.D.GBPUSD.MINI.IP': ['OANDA', 'GBPUSD'],
 
         'CS.D.CFEGOLD.CFE.IP': ['OANDA', 'XAUUSD'],
+
+        'CC.D.CL.UME.IP': ['NYMEX', 'CL1!'],
 
         // kraken.com mapping
         'XLTCZEUR': ['KRAKEN', 'LTCEUR'],
@@ -262,6 +266,34 @@ $(window).ready(function() {
             'context': null,
             'timeframe': null
         },
+        'fx-Scalp-10:30': {
+            'label': 'FX Scalp 10:30',
+            'take-profit': 'pip-30',
+            'stop-loss': 'pip-10',
+            'context': null,
+            'timeframe': null
+        },
+        'fx-Scalp-15:30': {
+            'label': 'FX Scalp 15:30',
+            'take-profit': 'pip-30',
+            'stop-loss': 'pip-15',
+            'context': null,
+            'timeframe': null
+        },
+        'fx-Scalp-20:40': {
+            'label': 'FX Scalp 20:40',
+            'take-profit': 'pip-40',
+            'stop-loss': 'pip-20',
+            'context': null,
+            'timeframe': null
+        },
+        'fx-Scalp-25:75': {
+            'label': 'FX Scalp 25:75',
+            'take-profit': 'pip-75',
+            'stop-loss': 'pip-25',
+            'context': null,
+            'timeframe': null
+        },
     };
 
     window.methods = {
@@ -275,9 +307,24 @@ $(window).ready(function() {
             'distance': 0.0,
             'type': 'price',
         },
+        'percent-0.02': {
+            'label': '0.02%',
+            'distance': 0.02,
+            'type': 'percent',
+        },
+        'percent-0.03': {
+            'label': '0.03%',
+            'distance': 0.03,
+            'type': 'percent',
+        },
         'percent-0.05': {
             'label': '0.05%',
             'distance': 0.05,
+            'type': 'percent',
+        },
+        'percent-0.07': {
+            'label': '0.07%',
+            'distance': 0.07,
             'type': 'percent',
         },
         'percent-0.10': {
@@ -369,6 +416,11 @@ $(window).ready(function() {
             'label': '100.00%',
             'distance': 100.0,
             'type': 'percent',
+        },
+        'pip-3': {
+            'label': '3pips',
+            'distance': 3,
+            'type': 'pip',
         },
         'pip-5': {
             'label': '5pips',
@@ -546,6 +598,81 @@ $(window).ready(function() {
             'label': '50.00%',
             'distance': 50.0,
             'type': 'limit-percent',
+        },
+        'pip-1': {
+            'label': '1pips',
+            'distance': 1,
+            'type': 'pip',
+        },
+        'pip-2': {
+            'label': '2pips',
+            'distance': 2,
+            'type': 'pip',
+        },
+        'pip-3': {
+            'label': '3pips',
+            'distance': 3,
+            'type': 'pip',
+        },
+        'pip-5': {
+            'label': '5pips',
+            'distance': 5,
+            'type': 'pip',
+        },
+        'pip-7': {
+            'label': '7pips',
+            'distance': 7,
+            'type': 'pip',
+        },
+        'pip-8': {
+            'label': '8pips',
+            'distance': 8,
+            'type': 'pip',
+        },
+        'pip-10': {
+            'label': '10pips',
+            'distance': 10,
+            'type': 'pip',
+        },
+        'pip-15': {
+            'label': '15pips',
+            'distance': 15,
+            'type': 'pip',
+        },
+        'pip-20': {
+            'label': '20pips',
+            'distance': 20,
+            'type': 'pip',
+        },
+        'pip-25': {
+            'label': '25pips',
+            'distance': 25,
+            'type': 'pip',
+        },
+        'pip-30': {
+            'label': '30pips',
+            'distance': 30,
+            'type': 'pip',
+        },
+        'pip-40': {
+            'label': '40pips',
+            'distance': 40,
+            'type': 'pip',
+        },
+        'pip-50': {
+            'label': '50pips',
+            'distance': 50,
+            'type': 'pip',
+        },
+        'pip-75': {
+            'label': '75pips',
+            'distance': 75,
+            'type': 'pip',
+        },
+        'pip-100': {
+            'label': '100pips',
+            'distance': 100,
+            'type': 'pip',
         },
     }
 

@@ -796,9 +796,9 @@ class IGWatcher(Watcher):
 
                         level = float(data['level']) if data.get('level') is not None else None   # exec price
                         quantity = float(data['size']) if data.get('size') is not None else 0.0
-                        stop_level = float(data['stopLevel']) if data.get('stopLevel') is not None else 0.0
-                        limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else 0.0
-                        profit_loss = float(data['profit']) if data.get('profit') is not None else 0.0
+                        stop_level = float(data['stopLevel']) if data.get('stopLevel') is not None else None
+                        limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
+                        profit_loss = float(data['profit']) if data.get('profit') is not None else None
                         profit_currency = data.get('profitCurrency', "")
 
                         # 'expiry', 'guaranteedStop'
@@ -966,7 +966,7 @@ class IGWatcher(Watcher):
                         level = float(data['level']) if data.get('level') is not None else None
                         stop_level = float(data['stopLevel']) if data.get('stopLevel') is not None else None
                         limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
-                        profit_loss = float(data['profit']) if data.get('profit') is not None else 0.0
+                        profit_loss = float(data['profit']) if data.get('profit') is not None else None
                         profit_currency = data.get('profitCurrency', "")
                         # @todo trailingStep, trailingStopDistance, guaranteedStop
 

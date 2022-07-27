@@ -25,7 +25,7 @@ class TableView(View):
     def scroll_row(self, n):
         """
         Scroll n row (positive or negative) from current first row.
-        The max number of displayed row depend of the height of the view.
+        The max number of displayed row depend on the height of the view.
         """
         self._row[0] += n
 

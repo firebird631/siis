@@ -16,7 +16,8 @@ error_logger = logging.getLogger('siis.error.strategy')
 
 
 def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False,
-                       percents=False, group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S'):
+                       percents=False, group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S',
+                       pl_pip=False):
     """
     Returns a table of any active trades.
     """

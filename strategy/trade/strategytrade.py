@@ -94,7 +94,7 @@ class StrategyTrade(object):
         # list containing the operation to process during the trade for semi-automated trading
         self._operations = []
 
-        # true if the user is responsible of the TP & SL adjustment else (default) strategy manage it
+        # true if the user is responsible for the TP & SL adjustment else (default) strategy manage it
         self._user_trade = False
 
         self._label = ""           # trade label(must be few chars)

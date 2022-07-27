@@ -208,7 +208,7 @@ class IGTrader(Trader):
 
     def create_order(self, order: Order, market_or_instrument: Union[Market, Instrument]) -> int:
         """
-        Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
+        Create a market or limit order using the REST API. Take care to do not make too many calls per minutes.
         """
         if not order or not market_or_instrument:
             return Order.REASON_INVALID_ARGS
@@ -311,15 +311,14 @@ class IGTrader(Trader):
                 # but it's in local account timezone, not createdDateUTC...
                 # but API v2 provides that
                 # @todo look with header v=2 in place of v=1
-                order.created_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'),
-                                                       "%Y/%m/%d %H:%M:%S:%f").timestamp()
-                order.transact_time = datetime.strptime(results.get('createdDate', '1970/01/01 00:00:00:000'),
-                                                        "%Y/%m/%d %H:%M:%S:%f").timestamp()
-
-                if not order.created_time:
+                if results.get('date'):
+                    order.created_time = datetime.strptime(results.get('date', '1970/01/01 00:00:00:000'),
+                                                           "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                    order.transact_time = datetime.strptime(results.get('date', '1970/01/01 00:00:00:000'),
+                                                            "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                else:
                     order.created_time = self.timestamp
-                if not order.transact_time:
-                    order.created_time = self.timestamp
+                    order.transact_time = self.timestamp
 
                 # executed price (no change in limit, but useful when market order)
                 order.set_executed(order.quantity, True, results.get('level'))
@@ -677,7 +676,7 @@ class IGTrader(Trader):
             error_logger.error("fetch positions: %s" % repr(e))
             raise
 
-        # too this can be done by signals
+        # too, this can be done by signals
         for pos_data in positions:
             pos = pos_data.get('position')
             market_data = pos_data.get('market')
@@ -739,9 +738,12 @@ class IGTrader(Trader):
                 # position are merged by epic but might be independents
                 self._positions[deal_id] = position
 
-            # account local tz, but createdDateUTC exists in API v2 (look at HTTP header v=2)
-            position.created_time = datetime.strptime(pos.get('createdDate', '1970/01/01 00:00:00:000'),
-                                                      "%Y/%m/%d %H:%M:%S:%f").timestamp()
+            # UTC datetime or local tz (prior to UTC). createdDateUTC exists in API v2 (look at HTTP header v=2)
+            if pos.get('createdDateUTC'):
+                position.created_time = datetime.strptime(pos['createdDateUTC'],
+                                                          "%Y/%m/%d %H:%M:%S:%f").replace(tzinfo=UTC()).timestamp()
+            elif pos.get('createdDate'):
+                position.created_time = datetime.strptime(pos['createdDate'], "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
             position.entry_price = pos.get('openLevel', 0.0)
             position.stop_loss = pos.get('stopLevel', 0.0)
