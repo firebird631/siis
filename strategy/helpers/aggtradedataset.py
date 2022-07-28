@@ -4,8 +4,8 @@
 # Strategy helper to get dataset
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.helpers.aggtradedataset')
+error_logger = logging.getLogger('siis.error.strategy.helpers.aggtradedataset')
 
 
 def get_agg_trades(strategy):

@@ -6,8 +6,8 @@
 from common.utils import timeframe_to_str
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.helpers.statsdataset')
+error_logger = logging.getLogger('siis.error.strategy.helpers.statsdataset')
 
 
 def get_stats(strategy):

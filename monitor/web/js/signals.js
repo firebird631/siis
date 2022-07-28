@@ -15,8 +15,10 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal, do_notify=t
     let key = market_id + ':' + signal.timestamp;
     signal_elt.attr('signal-key', key);
 
+    let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
+
     // let lsignal_id = $('<span class="signal-id"></span>').text(signal.id);
-    let signal_symbol = $('<span class="signal-symbol"></span>').text(market_id);
+    let signal_symbol = $('<span class="signal-symbol badge"></span>').text(symbol);
     let signal_direction = $('<span class="signal-direction fa"></span>')
         .addClass(signal.direction == "long" ? 'trade-long' : 'trade-short')
         .addClass(signal.direction == "long" ? 'fa-arrow-up' : 'fa-arrow-down');

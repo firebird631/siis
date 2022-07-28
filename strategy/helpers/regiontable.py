@@ -9,8 +9,8 @@ from strategy.helpers.regiondataset import get_all_regions
 from terminal.terminal import Color
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.helpers.regiontable')
+error_logger = logging.getLogger('siis.error.strategy.helpers.regiontable')
 
 
 def region_table(strategy, style='', offset=None, limit=None, col_ofs=None,

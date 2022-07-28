@@ -564,7 +564,7 @@ class StrategyPositionTrade(StrategyTrade):
 
             #     self.position_quantity = last_qty
 
-        # if data.get('profit-loss'):
+        # if data.get('profit-loss') is not None:
         #     self._stats['unrealized-profit-loss'] = data['profit']
         # if data.get('profit-currency'):
         #     self._stats['profit-loss-currency'] = data['profit-currency']

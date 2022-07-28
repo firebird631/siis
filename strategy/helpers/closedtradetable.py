@@ -13,8 +13,8 @@ from common.utils import UTC
 from strategy.helpers.closedtradedataset import get_closed_trades
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.helpers.closedtradetable')
+error_logger = logging.getLogger('siis.error.strategy.helpers.closedtradetable')
 
 
 def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False,
@@ -106,7 +106,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             if exit_color:
                 rpnl = Color.colorize(rpnl, exit_color, style=style)
 
-            # colorize TP if hit, similarly for SL, color depend if profit or loss, nothing if close at market
+            # colorize TP if hit, similarly for SL, color depends on profit or loss, nothing if close at market
             if t['stats']['exit-reason'] in ("stop-loss-market", "stop-loss-limit") and exit_color:
                 _tp = t['take-profit-price']
                 _sl = Color.colorize(t['stop-loss-price'], exit_color, style=style)

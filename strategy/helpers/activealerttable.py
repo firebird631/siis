@@ -8,8 +8,8 @@ from datetime import datetime
 from strategy.helpers.activealertdataset import get_all_active_alerts
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.helpers.activealerttable')
+error_logger = logging.getLogger('siis.error.strategy.helpers.activealerttable')
 
 
 def actives_alerts_table(strategy, style='', offset=None, limit=None, col_ofs=None,

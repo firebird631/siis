@@ -6,8 +6,8 @@
 from common.utils import timeframe_to_str
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.helpers.regiondataset')
+error_logger = logging.getLogger('siis.error.strategy.helpers.regiondataset')
 
 
 def get_all_regions(strategy):

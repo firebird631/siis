@@ -22,9 +22,9 @@ from trader.trader import Trader
 
 import logging
 
-logger = logging.getLogger('siis.monitor.httpserver')
-error_logger = logging.getLogger('siis.error.monitor.httpserver')
-traceback_logger = logging.getLogger('siis.traceback.monitor.httpserver')
+logger = logging.getLogger('siis.monitor.httprestserver')
+error_logger = logging.getLogger('siis.error.monitor.httprestserver')
+traceback_logger = logging.getLogger('siis.traceback.monitor.httprestserver')
 
 
 class IAuthToken(Interface):

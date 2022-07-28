@@ -429,7 +429,7 @@ class StrategyTrade(object):
     def remove(self, trader: Trader, instrument: Instrument) -> bool:
         """
         Remove the trade and related remaining orders.
-        @return True if all orders not longer exists.
+        @return True if all orders no longer exists.
         """
         return True
 

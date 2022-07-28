@@ -6,9 +6,9 @@
 import traceback
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
-traceback_logger = logging.getLogger('siis.traceback.strategy')
+logger = logging.getLogger('siis.strategy.helpers.traderstatedataset')
+error_logger = logging.getLogger('siis.error.strategy.helpers.traderstatedataset')
+traceback_logger = logging.getLogger('siis.traceback.strategy.helpers.traderstatedataset')
 
 
 def get_strategy_trader_state(strategy, market_id: str, report_mode: int = 0):

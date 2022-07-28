@@ -6,8 +6,8 @@
 from common.utils import timeframe_to_str
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.helpers.activetradedataset')
+error_logger = logging.getLogger('siis.error.strategy.helpers.activetradedataset')
 
 
 def get_all_active_trades(strategy):

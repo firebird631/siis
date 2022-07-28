@@ -312,10 +312,10 @@ class IGTrader(Trader):
                 # but API v2 provides that
                 # @todo look with header v=2 in place of v=1
                 if results.get('date'):
-                    order.created_time = datetime.strptime(results.get('date', '1970/01/01 00:00:00:000'),
-                                                           "%Y/%m/%d %H:%M:%S:%f").timestamp()
-                    order.transact_time = datetime.strptime(results.get('date', '1970/01/01 00:00:00:000'),
-                                                            "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                    order.created_time = datetime.strptime(results.get('date', '1970-01-01T00:00:00:000'),
+                                                           "%Y-%m-%dT%H:%M:%S:%f").timestamp()
+                    order.transact_time = datetime.strptime(results.get('date', '1970-01-01T00:00:00:000'),
+                                                            "%Y-%m-%dT%H:%M:%S:%f").timestamp()
                 else:
                     order.created_time = self.timestamp
                     order.transact_time = self.timestamp
@@ -740,10 +740,18 @@ class IGTrader(Trader):
 
             # UTC datetime or local tz (prior to UTC). createdDateUTC exists in API v2 (look at HTTP header v=2)
             if pos.get('createdDateUTC'):
-                position.created_time = datetime.strptime(pos['createdDateUTC'],
-                                                          "%Y/%m/%d %H:%M:%S:%f").replace(tzinfo=UTC()).timestamp()
+                if '-' in pos['createdDateUTC']:
+                    position.created_time = datetime.strptime(
+                        pos['createdDateUTC'], "%Y-%m-%dT%H:%M:%S:%f").replace(tzinfo=UTC()).timestamp()
+                else:
+                    position.created_time = datetime.strptime(
+                        pos['createdDateUTC'], "%Y/%m/%d %H:%M:%S:%f").replace(tzinfo=UTC()).timestamp()
+
             elif pos.get('createdDate'):
-                position.created_time = datetime.strptime(pos['createdDate'], "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                if '-' in pos['createdDate']:
+                    position.created_time = datetime.strptime(pos['createdDate'], "%Y-%m-%dT%H:%M:%S:%f").timestamp()
+                else:
+                    position.created_time = datetime.strptime(pos['createdDate'], "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
             position.entry_price = pos.get('openLevel', 0.0)
             position.stop_loss = pos.get('stopLevel', 0.0)

@@ -8,8 +8,8 @@ from terminal.terminal import Color
 from strategy.helpers.aggtradedataset import get_agg_trades
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.helpers.aggtradetable')
+error_logger = logging.getLogger('siis.error.strategy.helpers.aggtradetable')
 
 
 def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, summ=True,

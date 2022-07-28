@@ -11,8 +11,8 @@ from terminal import charmap
 from strategy.helpers.activetradedataset import get_all_active_trades
 
 import logging
-logger = logging.getLogger('siis.strategy')
-error_logger = logging.getLogger('siis.error.strategy')
+logger = logging.getLogger('siis.strategy.helpers.activetradetable')
+error_logger = logging.getLogger('siis.error.strategy.helpers.activetradetable')
 
 
 def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False,
