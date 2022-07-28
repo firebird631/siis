@@ -117,7 +117,7 @@ class Trader(Runnable):
         self._streamable.add_member(StreamMemberInt('conn'))
 
         # account asset/margin balance streams
-        self._balance_streamer = Streamable(self.service.monitor_service, Streamable.STREAM_STRATEGY_TRADE,
+        self._balance_streamer = Streamable(self.service.monitor_service, Streamable.STREAM_TRADER,
                                             self.name, self.name)
         self._balance_streamer.add_member(StreamMemberTraderBalance('account-balance'))
 
@@ -700,7 +700,7 @@ class Trader(Runnable):
     def on_position_opened(self, market_id: str, position_data: dict, ref_order_id: str):
         market = self._markets.get(market_id)
         if market is None:
-            # not interested by this market
+            # not interested in this market
             return
 
         # insert it, erase the previous if necessary

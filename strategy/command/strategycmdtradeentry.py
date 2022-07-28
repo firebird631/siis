@@ -61,9 +61,10 @@ def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTrader, data: d
         results['messages'].append("User quantity cannot be lesser than zero.")
         results['error'] = True
 
-    if method not in ('market', 'limit', 'limit-percent', 'trigger', 'best-1', 'best+1', 'best-2', 'best+2'):
-        results['messages'].append("Invalid price method (market, limit, limit-percent, trigger, best-1, best+1, "
-                                   "best-1, best+2.")
+    if method not in ('market', 'limit', 'limit-percent', 'limit-pip', 'trigger',
+                      'best-1', 'best+1', 'best-2', 'best+2'):
+        results['messages'].append("Invalid price method (market, limit, limit-percent, limit-pip, trigger, "
+                                   "best-1, best+1, best-1, best+2.")
         results['error'] = True
 
     if method in ('limit', 'limit-percent') and not limit_price:
@@ -90,6 +91,11 @@ def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTrader, data: d
     elif method == 'limit-percent':
         order_type = Order.ORDER_LIMIT
         limit_price = strategy_trader.instrument.open_exec_price(direction) * (1.0 - (limit_price * 0.01 * direction))
+
+    elif method == 'limit-pip':
+        order_type = Order.ORDER_LIMIT
+        limit_price = strategy_trader.instrument.open_exec_price(direction) - (
+                limit_price * strategy_trader.instrument.value_per_pip * direction)
 
     elif method == 'trigger':
         order_type = Order.ORDER_STOP
@@ -245,7 +251,7 @@ def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTrader, data: d
     order_price = strategy_trader.instrument.adjust_price(price)
 
     #
-    # compute stop-loss and take-profit price depending of their respective mode
+    # compute stop-loss and take-profit price depending on their respective mode
     #
 
     if stop_loss_price_mode == "percent":
@@ -329,7 +335,7 @@ def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTrader, data: d
         trade.set_user_trade()
 
         if entry_timeout:
-            # entry timeout expiration defined (could be override by trade context if specified)
+            # entry timeout expiration defined (could be overridden by trade context if specified)
             trade.entry_timeout = entry_timeout
 
         if context is not None:

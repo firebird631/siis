@@ -48,6 +48,9 @@ function on_order_long(elt, extra=null) {
         } else if (entry_price_mode == "limit-percent") {
             limit_price = window.entry_methods[retrieve_entry_method(trader_id)].distance;
             method = "limit-percent";
+        } else if (entry_price_mode == "limit-pip") {
+            limit_price = window.entry_methods[retrieve_entry_method(trader_id)].distance;
+            method = "limit-pip";
         } else if (entry_price_mode == "market") {
             method = "market";
         } else if (entry_price_mode == "best-1") {

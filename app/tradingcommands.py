@@ -420,8 +420,8 @@ class LongCommand(Command):
     SUMMARY = "to manually create to a new trade in LONG direction"
     HELP = (
         "param1: <market-id>",
-        "param2: [l|L][@|+|-|%]<entry-price> Use @ for a limit, + or - for order book depth, % below in percent,"
-        "else enter at market (optional)",
+        "param2: [l|L][@|+|-|%|!]<entry-price> Use @ for a limit, + or - for order book depth, % below in percent,"
+        " ! below in pips, else enter at market (optional)",
         "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent below "
         "market or limit price, ! for distance in pips below market or limit price (optional)",
         "param4: [tp|TP][@|%|!]<take-profit-price> @ for a limit, % for distance in percent above "
@@ -481,6 +481,13 @@ class LongCommand(Command):
 
                     if limit_price <= 0:
                         return False, "Percent must be greater than 0"
+
+                elif value.startswith("L!") or value.startswith("l!"):
+                    method = 'limit-pip'
+                    limit_price = float(value[2:])
+
+                    if limit_price <= 0:
+                        return False, "Pip must be greater than 0"
 
                 elif value.startswith("L+") or value.startswith("l+"):
                     dist = int(value[2:])
@@ -590,8 +597,8 @@ class ShortCommand(Command):
     SUMMARY = "to manually create to a new trade in SHORT direction"
     HELP = (
         "param1: <market-id>",
-        "param2: [l|L][@|+|-|%]<entry-price> Use @ for a limit, + or - for order book depth, % above in percent,"
-        "else enter at market (optional)",
+        "param2: [l|L][@|+|-|%|!]<entry-price> Use @ for a limit, + or - for order book depth, % above in percent,"
+        " ! above in pips, else enter at market (optional)",
         "param3: [sl|SL][@|%|!]<stop-loss-price> @ for a stop, % for distance in percent above market or "
         "limit price, ! for distance in pips above market price (optional)",
         "param4: [tp|TP][@|%|!]<take-profit-price> @ for a limit, % for distance in percent below market or "
@@ -649,6 +656,13 @@ class ShortCommand(Command):
 
                     if limit_price <= 0:
                         return False, "Percent must be greater than 0"
+
+                elif value.startswith("L!") or value.startswith("l!"):
+                    method = 'limit-pip'
+                    limit_price = float(value[2:])
+
+                    if limit_price <= 0:
+                        return False, "Pip must be greater than 0"
 
                 elif value.startswith("L+") or value.startswith("l+"):
                     dist = int(value[2:])
@@ -1002,8 +1016,8 @@ class ModifyStopLossCommand(Command):
     HELP = (
         "param1: <market-id> Market identifier",
         "param2: <trade-id> Trade identifier",
-        "param3: [ep|m|EP|M][+|-]<stop-loss-price><%> EP: relative to entry-price, M to market-price, "
-        "else to last stop price, + or - for relative change, in price or percent",
+        "param3: [ep|m|EP|M][+|-]<stop-loss-price><%><pip(s)> EP: relative to entry-price, M to market-price, "
+        "else to last stop price, + or - for relative change, in price, percent, or pips",
         "param4: [force] to force to realize the order if none (optional)",
     )
 
@@ -1029,28 +1043,46 @@ class ModifyStopLossCommand(Command):
             trade_id = int(args[1])
 
             if args[2].startswith('+') or args[2].startswith('-'):
-                # last value relative delta price or %
+                # last value relative delta price, % or pip(s)
                 if args[2].endswith('%'):
                     method = 'delta-percent'
                     stop_loss = float(args[2][:-1]) * 0.01
+                elif args[2].endswith('pip'):
+                    method = 'delta-pip'
+                    stop_loss = float(args[2][:-3])
+                elif args[2].endswith('pips'):
+                    method = 'delta-pip'
+                    stop_loss = float(args[2][:-4])
                 else:
                     method = 'delta-price'
                     stop_loss = float(args[2])
 
             elif args[2].startswith("EP") or args[2].startswith("ep"):
-                # entry-price relative delta price or %
+                # entry-price relative delta price, % or pip(s)
                 if args[2].endswith('%'):
                     method = 'entry-delta-percent'
                     stop_loss = float(args[2][2:-1]) * 0.01
+                elif args[2].endswith('pip'):
+                    method = 'entry-delta-pip'
+                    stop_loss = float(args[2][2:-3])
+                elif args[2].endswith('pips'):
+                    method = 'entry-delta-pip'
+                    stop_loss = float(args[2][2:-4])
                 else:
                     method = 'entry-delta-price'
                     stop_loss = float(args[2][2:])
 
             elif args[2].startswith("M") or args[2].startswith("m"):
-                # market-price relative delta price or %
+                # market-price relative delta price, % or pip(s)
                 if args[2].endswith('%'):
                     method = 'market-delta-percent'
                     stop_loss = float(args[2][1:-1]) * 0.01
+                elif args[2].endswith('pip'):
+                    method = 'market-delta-pip'
+                    stop_loss = float(args[2][1:-1])
+                elif args[2].endswith('pips'):
+                    method = 'market-delta-pip'
+                    stop_loss = float(args[2][1:-1])
                 else:
                     method = 'market-delta-price'
                     stop_loss = float(args[2][1:])
@@ -1091,7 +1123,7 @@ class ModifyTakeProfitCommand(Command):
     HELP = (
         "param1: <market-id> Market identifier",
         "param2: <trade-id> Trade identifier",
-        "param3: [ep|m|EP|M][+|-]<take-profit-price><%> EP: relative to entry-price, M to market-price, "
+        "param3: [ep|m|EP|M][+|-]<take-profit-price><%><pip(s)> EP: relative to entry-price, M to market-price, "
         "else to last take-profit price, + or - for relative change, in price or percent",
         "param4: [force] to force to realize the order if none (optional)",
     )
@@ -1122,6 +1154,12 @@ class ModifyTakeProfitCommand(Command):
                 if args[2].endswith('%'):
                     method = 'delta-percent'
                     take_profit = float(args[2][:-1]) * 0.01
+                elif args[2].endswith('pip'):
+                    method = 'delta-pip'
+                    take_profit = float(args[2][:-3])
+                elif args[2].endswith('pips'):
+                    method = 'delta-pip'
+                    take_profit = float(args[2][:-4])
                 else:
                     method = 'delta-price'
                     take_profit = float(args[2])
@@ -1131,6 +1169,12 @@ class ModifyTakeProfitCommand(Command):
                 if args[2].endswith('%'):
                     method = 'entry-delta-percent'
                     take_profit = float(args[2][2:-1]) * 0.01
+                elif args[2].endswith('pip'):
+                    method = 'entry-delta-pip'
+                    take_profit = float(args[2][2:-3])
+                elif args[2].endswith('pips'):
+                    method = 'entry-delta-pip'
+                    take_profit = float(args[2][2:-4])
                 else:
                     method = 'entry-delta-price'
                     take_profit = float(args[2][2:])
@@ -1140,6 +1184,12 @@ class ModifyTakeProfitCommand(Command):
                 if args[2].endswith('%'):
                     method = 'market-delta-percent'
                     take_profit = float(args[2][1:-1]) * 0.01
+                elif args[2].endswith('pip'):
+                    method = 'market-delta-pip'
+                    take_profit = float(args[2][1:-1])
+                elif args[2].endswith('pips'):
+                    method = 'market-delta-pip'
+                    take_profit = float(args[2][1:-1])
                 else:
                     method = 'market-delta-price'
                     take_profit = float(args[2][1:])

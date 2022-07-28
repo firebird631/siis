@@ -783,7 +783,7 @@ class StrategyTrader(object):
 
     def save(self):
         """
-        Trader and trades persistence (might occurs only for live mode on real accounts).
+        Trader and trades persistence (might occur only for live mode on real accounts).
         @note Must be called only after terminate.
         """
         trader = self.strategy.trader()
@@ -2244,8 +2244,11 @@ class StrategyTrader(object):
 
     def notify_signal(self, timestamp: float, signal: StrategySignal):
         if signal:
-            # system notification
-            self.strategy.notify_signal(timestamp, signal, self)
+            try:
+                # system notification
+                self.strategy.notify_signal(timestamp, signal, self)
+            except Exception as e:
+                logger.error(repr(e))
 
             # stream
             if self._signal_streamer:
@@ -2257,8 +2260,12 @@ class StrategyTrader(object):
 
     def notify_trade_entry(self, timestamp: float, trade: StrategyTrade):
         if trade:
-            # system notification
-            self.strategy.notify_trade_entry(timestamp, trade, self)
+            try:
+                # system notification
+                self.strategy.notify_trade_entry(timestamp, trade, self)
+            except Exception as e:
+                logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
 
             # stream
             if self._trade_entry_streamer:
@@ -2284,7 +2291,10 @@ class StrategyTrader(object):
     def notify_trade_update(self, timestamp: float, trade: StrategyTrade):
         if trade:
             # system notification
-            self.strategy.notify_trade_update(timestamp, trade, self)
+            try:
+                self.strategy.notify_trade_update(timestamp, trade, self)
+            except Exception as e:
+                logger.error(repr(e))
 
             # stream
             if self._trade_update_streamer:
@@ -2306,7 +2316,10 @@ class StrategyTrader(object):
     def notify_trade_exit(self, timestamp: float, trade: StrategyTrade):
         if trade:
             # system notification
-            self.strategy.notify_trade_exit(timestamp, trade, self)
+            try:
+                self.strategy.notify_trade_exit(timestamp, trade, self)
+            except Exception as e:
+                logger.error(repr(e))
 
             # stream
             if self._trade_exit_streamer:
@@ -2332,14 +2345,20 @@ class StrategyTrader(object):
     def notify_trade_error(self, timestamp: float, trade: StrategyTrade):
         if trade:
             # system notification
-            self.strategy.notify_trade_error(timestamp, trade.id, self)
+            try:
+                self.strategy.notify_trade_error(timestamp, trade.id, self)
+            except Exception as e:
+                logger.error(repr(e))
 
             # @todo could have a stream
 
     def notify_alert(self, timestamp: float, alert: Alert, result: dict):
         if alert and result:
             # system notification
-            self.strategy.notify_alert(timestamp, alert, result, self)
+            try:
+                self.strategy.notify_alert(timestamp, alert, result, self)
+            except Exception as e:
+                logger.error(repr(e))
 
             # stream
             if self._alert_streamer:

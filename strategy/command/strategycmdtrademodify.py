@@ -17,6 +17,7 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
     Modify a trade according data on given strategy_trader.
 
     @note If trade-id is -1 assume the last trade.
+    @todo modify in pips
     """
     results = {
         'messages': [],
@@ -55,9 +56,10 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                 # method, default is a price
                 method = data.get('method', "price")
 
-                # @todo does take care of the trade direction in case of short to negate the value ? see for TP too
-                if method not in ("price", "delta-percent", "delta-price", "entry-delta-percent", "entry-delta-price",
-                                  "market-delta-percent", "market-delta-price"):
+                if method not in ("price",
+                                  "delta-percent", "delta-price", "delta-pip",
+                                  "entry-delta-percent", "entry-delta-price", "entry-delta-pip",
+                                  "market-delta-percent", "market-delta-price", "market-delta-pip"):
 
                     results['error'] = True
                     results['messages'].append("Stop-loss unsupported method for trade %i" % trade.id)
@@ -70,11 +72,17 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                 elif method == "delta-price" and data['stop-loss'] != 0.0:
                     stop_loss_price = trade.sl + data['stop-loss']
 
+                elif method == "delta-pip" and data['stop-loss'] != 0.0:
+                    stop_loss_price = trade.sl + data['stop-loss'] * strategy_trader.instrument.value_per_pip
+
                 elif method == "entry-delta-percent":
                     stop_loss_price = trade.aep * (1.0 + data['stop-loss'])
 
                 elif method == "entry-delta-price":
                     stop_loss_price = trade.aep + data['stop-loss']
+
+                elif method == "entry-delta-pip":
+                    stop_loss_price = trade.aep + data['stop-loss'] * strategy_trader.instrument.value_per_pip
 
                 elif method == "market-delta-percent" and data['stop-loss'] != 0.0:
                     stop_loss_price = strategy_trader.instrument.close_exec_price(
@@ -83,6 +91,10 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                 elif method == "market-delta-price" and data['stop-loss'] != 0.0:
                     stop_loss_price = strategy_trader.instrument.close_exec_price(
                         trade.direction) + data['stop-loss']
+
+                elif method == "market-delta-pip" and data['stop-loss'] != 0.0:
+                    stop_loss_price = strategy_trader.instrument.close_exec_price(
+                        trade.direction) + data['stop-loss'] * strategy_trader.instrument.value_per_pip
 
                 elif method == "price" and data['stop-loss'] >= 0.0:
                     stop_loss_price = data['stop-loss']
@@ -116,8 +128,10 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                 # method, default is a price
                 method = data.get('method', "price")
 
-                if method not in ("price", "delta-percent", "delta-price", "entry-delta-percent", "entry-delta-price",
-                                  "market-delta-percent", "market-delta-price"):
+                if method not in ("price",
+                                  "delta-percent", "delta-price", "delta-pip",
+                                  "entry-delta-percent", "entry-delta-price", "entry-delta-pip",
+                                  "market-delta-percent", "market-delta-price", "market-delta-pip"):
 
                     results['error'] = True
                     results['messages'].append("Take-profit unsupported method for trade %i" % trade.id)
@@ -130,11 +144,17 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                 elif method == "delta-price" and data['take-profit'] != 0.0:
                     take_profit_price = trade.tp + data['take-profit']
 
+                elif method == "delta-pip" and data['take-profit'] != 0.0:
+                    take_profit_price = trade.tp + data['take-profit'] * strategy_trader.instrument.value_per_pip
+
                 elif method == "entry-delta-percent":
                     take_profit_price = trade.aep * (1.0 + data['take-profit'])
 
                 elif method == "entry-delta-price":
                     take_profit_price = trade.aep + data['take-profit']
+
+                elif method == "entry-delta-pip":
+                    take_profit_price = trade.aep + data['take-profit'] * strategy_trader.instrument.value_per_pip
 
                 elif method == "market-delta-percent" and data['take-profit'] != 0.0:
                     take_profit_price = strategy_trader.instrument.close_exec_price(
@@ -143,6 +163,10 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                 elif method == "market-delta-price" and data['take-profit'] != 0.0:
                     take_profit_price = strategy_trader.instrument.close_exec_price(
                         trade.direction) + data['take-profit']
+
+                elif method == "market-delta-pip" and data['take-profit'] != 0.0:
+                    take_profit_price = strategy_trader.instrument.close_exec_price(
+                        trade.direction) + data['take-profit'] * strategy_trader.instrument.value_per_pip
 
                 elif method == "price" and data['take-profit'] >= 0.0:
                     take_profit_price = data['take-profit']
@@ -163,7 +187,7 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                     if take_profit_price == 0.0:
                         results['messages'].append("Remove take-profit for trade %i" % trade.id)
 
-                    # if have a previous hard order it will update it, else it will create the order only if
+                    # if it has a previous hard order it will update it, else it will create the order only if
                     # force is defined. It could eventually remove the stop order on spot market
                     strategy_trader.trade_modify_take_profit(
                         trade, take_profit_price, trade.has_limit_order() or data.get('force', False))

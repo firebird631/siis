@@ -1045,7 +1045,7 @@ class StatusInfoRestAPI(resource.Resource):
 class AllowedIPOnlyFactory(server.Site):
 
     def buildProtocol(self, addr):
-        logger.debug("%s %s %s" % (HttpRestServer.DENIED_IPS, addr.host, HttpRestServer.ALLOWED_IPS))
+
         if HttpRestServer.DENIED_IPS and addr.host in HttpRestServer.DENIED_IPS:
             return None
 
