@@ -39,6 +39,23 @@ search_atrsr = search_std_atrsr
 def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsilon=0.0):
     timeframe = data.take_profit.timeframe
 
+    def compute_distance():
+        if direction > 0:
+            # never larger than distance in percent if defined
+            if data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+                return entry_price * (1.0 + data.take_profit.distance)
+            elif data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+                return entry_price + data.take_profit.distance
+
+        elif direction < 0:
+            # never larger than distance in percent if defined
+            if data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+                return entry_price * (1.0 - data.take_profit.distance)
+            elif data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+                return entry_price - data.take_profit.distance
+
+            return 0.0
+
     if direction > 0:
         min_dist = 1.0 + data.min_profit
 
@@ -51,13 +68,13 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
-                fixed_pct_take_profit = entry_price * (1.0 + data.take_profit.distance)
+                distance_take_profit = compute_distance()
 
                 # if no ATR found return the fixed one, else return the higher
                 if atr_take_profit <= 0.0:
-                    return fixed_pct_take_profit
+                    return distance_take_profit
 
-                return max(atr_take_profit, fixed_pct_take_profit)
+                return max(atr_take_profit, distance_take_profit)
 
             return atr_take_profit
 
@@ -66,13 +83,13 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
-                fixed_pct_take_profit = entry_price * (1.0 + data.take_profit.distance)
+                distance_take_profit = compute_distance()
 
                 # if no current ATR return the fixed one, else return the higher
                 if curatr_take_profit <= 0.0:
-                    return fixed_pct_take_profit
+                    return distance_take_profit
 
-                return max(curatr_take_profit, fixed_pct_take_profit)
+                return max(curatr_take_profit, distance_take_profit)
 
             return curatr_take_profit
 
@@ -132,6 +149,21 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
         elif data.take_profit.type == data.PRICE_FIXED_DIST and data.take_profit.distance > 0.0:
             return entry_price + data.take_profit.distance
 
+        elif data.stop_loss.type == data.PRICE_KIJUN:
+            kijun_stop_loss = data.stop_loss.timeframe.ichimoku.kijuns[-1] if len(data.stop_loss.timeframe.ichimoku.kijuns) else 0.0
+
+            if data.stop_loss.distance > 0.0:
+                # never larger than distance in percent if defined
+                distance_stop_loss = compute_distance()
+
+                # if no current Kijun return the fixed one, else return the higher
+                if kijun_stop_loss <= 0.0:
+                    return distance_stop_loss
+
+                return max(kijun_stop_loss, distance_stop_loss)
+
+            return kijun_stop_loss
+
     elif direction < 0:
         min_dist = 1.0 - data.min_profit
 
@@ -144,13 +176,13 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
-                fixed_pct_take_profit = entry_price * (1.0 - data.take_profit.distance)
+                distance_take_profit = compute_distance()
 
                 if atr_take_profit <= 0.0:
                     # if no ATR found return the fixed one
-                    return fixed_pct_take_profit
+                    return distance_take_profit
 
-                return min(atr_take_profit, fixed_pct_take_profit)
+                return min(atr_take_profit, distance_take_profit)
 
             return atr_take_profit
 
@@ -159,13 +191,13 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
-                fixed_pct_take_profit = entry_price * (1.0 - data.take_profit.distance)
+                distance_take_profit = compute_distance()
 
                 if curatr_take_profit <= 0.0:
                     # if no ATR found return the fixed one
-                    return fixed_pct_take_profit
+                    return distance_take_profit
 
-                return min(curatr_take_profit, fixed_pct_take_profit)
+                return min(curatr_take_profit, distance_take_profit)
 
             return curatr_take_profit
 
@@ -224,6 +256,21 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
 
         elif data.take_profit.type == data.PRICE_FIXED_DIST and data.take_profit.distance > 0.0:
             return entry_price - data.take_profit.distance
+
+        elif data.stop_loss.type == data.PRICE_KIJUN:
+            kijun_stop_loss = data.stop_loss.timeframe.ichimoku.kijuns[-1] if len(data.stop_loss.timeframe.ichimoku.kijuns) else 0.0
+
+            if data.stop_loss.distance > 0.0:
+                # never larger than distance in percent if defined
+                distance_stop_loss = compute_distance()
+
+                if kijun_stop_loss <= 0.0:
+                    # if no current Kijun return the fixed one
+                    return distance_stop_loss
+
+                return min(kijun_stop_loss, distance_stop_loss)
+
+            return kijun_stop_loss
 
     return 0.0
 
@@ -373,9 +420,37 @@ def dynamic_take_profit_volume_sr_short(timeframe, last_price, curr_take_profit_
     return 0.0
 
 
+def dynamic_take_profit_kijun_long(timeframe, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
+    take_profit = 0.0
+
+    if timeframe.ichimoku and timeframe.ichimoku.kijuns is not None and len(timeframe.ichimoku.kijuns) > 0:
+        if 1:  # timeframe.last_closed:
+            p = timeframe.ichimoku.kijuns[-1]
+
+            # if p > last_price + price_epsilon:
+            if curr_take_profit_price > p > last_price + price_epsilon:
+                take_profit = p
+
+    return take_profit
+
+
+def dynamic_take_profit_kijun_short(timeframe, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
+    take_profit = 0.0
+
+    if timeframe.ichimoku and timeframe.ichimoku.kijuns is not None and len(timeframe.ichimoku.kijuns) > 0:
+        if 1:  # timeframe.last_closed:
+            p = timeframe.ichimoku.kijuns[-1]
+
+            # if p < last_price - price_epsilon:
+            if curr_take_profit_price < p < last_price - price_epsilon:
+                take_profit = p
+
+    return take_profit
+
+
 def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, curr_take_profit_price, depth=1,
                         orientation=0, price_epsilon=0.0, distance=0.0):
-    # @todo support distance in fixed dist (not only in decile)
+
     if direction > 0:
         if method == StrategyTraderContext.PRICE_NONE:
             return 0.0
@@ -401,6 +476,9 @@ def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, c
         elif method == StrategyTraderContext.PRICE_VOL_SR:
             return dynamic_take_profit_volume_sr_long(timeframe, last_price, curr_take_profit_price)
 
+        elif method == StrategyTraderContext.PRICE_KIJUN:
+            return dynamic_take_profit_kijun_long(timeframe, last_price, curr_take_profit_price, price_epsilon)
+
     elif direction < 0:
         if method == StrategyTraderContext.PRICE_NONE:
             return 0.0
@@ -425,5 +503,8 @@ def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, c
 
         elif method == StrategyTraderContext.PRICE_VOL_SR:
             return dynamic_take_profit_volume_sr_short(timeframe, last_price, curr_take_profit_price)
+
+        elif method == StrategyTraderContext.PRICE_KIJUN:
+            return dynamic_take_profit_kijun_short(timeframe, last_price, curr_take_profit_price, price_epsilon)
 
     return 0.0

@@ -42,6 +42,23 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
     """
     timeframe = data.stop_loss.timeframe
 
+    def compute_distance():
+        if direction > 0:
+            # never larger than distance in percent if defined
+            if data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+                return entry_price * (1.0 - data.stop_loss.distance)
+            elif data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+                return entry_price - data.stop_loss.distance
+
+        elif direction < 0:
+            # never larger than distance in percent if defined
+            if data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+                return entry_price * (1.0 + data.stop_loss.distance)
+            elif data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+                return entry_price + data.stop_loss.distance
+
+            return 0.0
+
     if direction > 0:
         min_dist = 1.0 - data.min_profit
 
@@ -54,13 +71,13 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
-                fixed_pct_stop_loss = entry_price * (1.0 - data.stop_loss.distance)
+                distance_stop_loss = compute_distance()
 
                 # if no ATR found return the fixed one, else return the higher
                 if atr_stop_loss <= 0.0:
-                    return fixed_pct_stop_loss
+                    return distance_stop_loss
 
-                return max(atr_stop_loss, fixed_pct_stop_loss)
+                return max(atr_stop_loss, distance_stop_loss)
 
             return atr_stop_loss
 
@@ -69,13 +86,13 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
-                fixed_pct_stop_loss = entry_price * (1.0 - data.stop_loss.distance)
+                distance_stop_loss = compute_distance()
 
                 # if no current ATR return the fixed one, else return the higher
                 if curatr_stop_loss <= 0.0:
-                    return fixed_pct_stop_loss
+                    return distance_stop_loss
 
-                return max(curatr_stop_loss, fixed_pct_stop_loss)
+                return max(curatr_stop_loss, distance_stop_loss)
 
             return curatr_stop_loss
 
@@ -99,6 +116,21 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
         elif data.stop_loss.type == data.PRICE_FIXED_DIST and data.stop_loss.distance > 0.0:
             return entry_price - data.stop_loss.distance
 
+        elif data.stop_loss.type == data.PRICE_KIJUN:
+            kijun_stop_loss = data.stop_loss.timeframe.ichimoku.kijuns[-1] if len(data.stop_loss.timeframe.ichimoku.kijuns) else 0.0
+
+            if data.stop_loss.distance > 0.0:
+                # never larger than distance in percent if defined
+                distance_stop_loss = compute_distance()
+
+                # if no current Kijun return the fixed one, else return the higher
+                if kijun_stop_loss <= 0.0:
+                    return distance_stop_loss
+
+                return max(kijun_stop_loss, distance_stop_loss)
+
+            return kijun_stop_loss
+
     elif direction < 0:
         min_dist = 1.0 + data.min_profit
 
@@ -111,13 +143,13 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
-                fixed_pct_stop_loss = entry_price * (1.0 + data.stop_loss.distance)
+                distance_stop_loss = compute_distance()
 
                 if atr_stop_loss <= 0.0:
                     # if no ATR found return the fixed one
-                    return fixed_pct_stop_loss
+                    return distance_stop_loss
 
-                return min(atr_stop_loss, fixed_pct_stop_loss)
+                return min(atr_stop_loss, distance_stop_loss)
 
             return atr_stop_loss
 
@@ -126,13 +158,13 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
-                fixed_pct_stop_loss = entry_price * (1.0 + data.stop_loss.distance)
+                distance_stop_loss = compute_distance()
 
                 if curatr_stop_loss <= 0.0:
                     # if no current ATR return the fixed one
-                    return fixed_pct_stop_loss
+                    return distance_stop_loss
 
-                return min(curatr_stop_loss, fixed_pct_stop_loss)
+                return min(curatr_stop_loss, distance_stop_loss)
 
             return curatr_stop_loss
 
@@ -154,6 +186,21 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
 
         elif data.stop_loss.type == data.PRICE_FIXED_DIST and data.stop_loss.distance > 0.0:
             return entry_price + data.stop_loss.distance
+
+        elif data.stop_loss.type == data.PRICE_KIJUN:
+            kijun_stop_loss = data.stop_loss.timeframe.ichimoku.kijuns[-1] if len(data.stop_loss.timeframe.ichimoku.kijuns) else 0.0
+
+            if data.stop_loss.distance > 0.0:
+                # never larger than distance in percent if defined
+                distance_stop_loss = compute_distance()
+
+                if kijun_stop_loss <= 0.0:
+                    # if no current Kijun return the fixed one
+                    return distance_stop_loss
+
+                return min(kijun_stop_loss, distance_stop_loss)
+
+            return kijun_stop_loss
 
     return 0.0
 
@@ -333,6 +380,32 @@ def dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_pric
     return stop_loss
 
 
+def dynamic_stop_loss_kijun_long(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+    stop_loss = 0.0
+
+    if timeframe.ichimoku and timeframe.ichimoku.kijuns is not None and len(timeframe.ichimoku.kijuns) > 0:
+        if 1:  # timeframe.last_closed:
+            p = timeframe.ichimoku.kijuns[-1]
+
+            if curr_stop_loss_price < p < last_price - price_epsilon:
+                stop_loss = p
+
+    return stop_loss
+
+
+def dynamic_stop_loss_kijun_short(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+    stop_loss = 0.0
+
+    if timeframe.ichimoku and timeframe.ichimoku.kijuns is not None and len(timeframe.ichimoku.kijuns) > 0:
+        if 1:  # timeframe.last_closed:
+            p = timeframe.ichimoku.kijuns[-1]
+
+            if curr_stop_loss_price > p > last_price + price_epsilon:
+                stop_loss = p
+
+    return stop_loss
+
+
 def dynamic_stop_loss_volume_sr_long(timeframe, last_price, curr_stop_loss_price):
     # @todo
     return 0.0
@@ -373,6 +446,9 @@ def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, cur
         elif method == StrategyTraderContext.PRICE_VOL_SR:
             return dynamic_stop_loss_volume_sr_long(timeframe, last_price, curr_stop_loss_price)
 
+        elif method == StrategyTraderContext.PRICE_KIJUN:
+            return dynamic_stop_loss_kijun_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
+
     elif direction < 0:
         if method == StrategyTraderContext.PRICE_NONE:
             return 0.0
@@ -399,5 +475,8 @@ def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, cur
 
         elif method == StrategyTraderContext.PRICE_VOL_SR:
             return dynamic_stop_loss_volume_sr_short(timeframe, last_price, curr_stop_loss_price)
+
+        elif method == StrategyTraderContext.PRICE_KIJUN:
+            return dynamic_stop_loss_kijun_short(timeframe, last_price, curr_stop_loss_price, price_epsilon)
 
     return 0.0

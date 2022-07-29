@@ -16,7 +16,7 @@ class IchimokuIndicator(Indicator):
     https://fr.wikipedia.org/wiki/Ichimoku_Kinko_Hyo
 
     Take care using results than :
-        - Senkou span A and senkou span B are shift in futur by kijun sen length (26)
+        - Senkou span A and senkou span B are shift in future by kijun sen length (26)
         - Chikou span is shift in past by kiju sen length (26)
         - Tenkan sen and kiju sen are aligned to initial data
     """
@@ -182,7 +182,7 @@ class IchimokuIndicator(Indicator):
         # senkou span A - leading span A
         #
 
-        # must be considered as shifted in futur (26)
+        # must be considered as shifted in future (26)
         self._ssas = (self._tenkans + self._kijuns) * 0.5
 
         #
@@ -192,7 +192,7 @@ class IchimokuIndicator(Indicator):
         # IchimokuIndicator.rolling_max(high, self._senkou_span_b_l, self._sbrmax_h)
         # IchimokuIndicator.rolling_min(low, self._senkou_span_b_l, self._sbrmin_l)
 
-        # # must be considered as shifted in futur (26)
+        # # must be considered as shifted in future (26)
         # self._ssbs = (self._sbrmax_h + self._sbrmin_l) * 0.5
         self._ssbs = ta_MIDPRICE(high, low, self._senkou_span_b_l)
 
