@@ -3,6 +3,8 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Active trades view.
 
+import traceback
+
 from view.tableview import TableView
 from terminal.terminal import Terminal
 
@@ -10,6 +12,7 @@ from strategy.helpers.activetradetable import trades_stats_table
 
 import logging
 error_logger = logging.getLogger('siis.view.trade')
+traceback_logger = logging.getLogger('siis.traceback.view.trade')
 
 
 class TradeView(TableView):
@@ -51,6 +54,7 @@ class TradeView(TableView):
                 num = total_size[1]
             except Exception as e:
                 error_logger.error(str(e))
+                traceback_logger.error(traceback.format_exc())
 
             self.set_title("Active trades (%i/%i)%s for strategy %s - %s" % (
                 num_actives_trades, num, self.display_mode_str(), strategy.name, strategy.identifier))

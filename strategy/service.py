@@ -440,7 +440,7 @@ class StrategyService(Service):
                                 self.current += self.timestep  # add one time step
                                 self.service._timestamp = self.current
 
-                                # one more step then we can update trader (limits orders, P/L update...)
+                                # one more step, then we can update trader (limits orders, P/L update...)
                                 trader.update()
 
                                 if trader._ping:

@@ -36,7 +36,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         # and adjust the position quantity (no possible hedging)
         #
 
-        # price difference depending of the direction
+        # price difference depending on the direction
         delta_price = 0
         if current_position.direction == Position.LONG:
             delta_price = close_exec_price - current_position.entry_price

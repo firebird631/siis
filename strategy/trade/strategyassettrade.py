@@ -838,7 +838,7 @@ class StrategyAssetTrade(StrategyTrade):
         elif signal_type == Signal.SIGNAL_ORDER_TRADED:
             # update the trade quantity
             if (data['id'] == self.entry_oid) and ('filled' in data or 'cumulative-filled' in data):
-                # a single order for the entry, then its OK and preferred to uses cumulative-filled and avg-price
+                # a single order for the entry, then it is OK and preferred to use cumulative-filled and avg-price
                 # because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.e  # compute filled qty
@@ -900,13 +900,14 @@ class StrategyAssetTrade(StrategyTrade):
                 #
 
                 if data.get('fully-filled'):
-                    # fully filled, this is ok with single order asset trade, but will need a compute with multi-order
+                    # fully filled, this is ok with single order asset trade, but will need to compute with multi-order
                     self._entry_state = StrategyTrade.STATE_FILLED
 
                     self.entry_oid = None
                     self.entry_ref_oid = None
 
-            elif ((data['id'] == self.limit_oid or data['id'] == self.stop_oid) and
+            elif ((data['id'] == self.limit_oid or data['id'] == self.stop_oid or
+                   ref_order_id == self.limit_ref_oid or ref_order_id == self.stop_ref_oid) and
                   ('filled' in data or 'cumulative-filled' in data)):
                 # @warning on the exit side, normal case will have a single order, but possibly to have a 
                 # partial limit TP, plus remaining in market
@@ -945,7 +946,7 @@ class StrategyAssetTrade(StrategyTrade):
                         # entry fully filled, exit filled the entry qty => exit fully filled
                         self._exit_state = StrategyTrade.STATE_FILLED
                     else:
-                        # some of the entry qty is not filled at this time
+                        # some part of the entry qty is not filled at this time
                         self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
                 else:
                     if self.entry_oid and self.e < self.oq:
@@ -995,11 +996,11 @@ class StrategyAssetTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price or qty modified
-            # but its rarely possible
+            # but it is rarely possible
             pass
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:
-            # order is not longer active
+            # order is no longer active
             if data == self.entry_oid:
                 self.entry_ref_oid = None
                 self.entry_oid = None
@@ -1033,7 +1034,7 @@ class StrategyAssetTrade(StrategyTrade):
                 self.limit_oid = None
 
         elif signal_type == Signal.SIGNAL_ORDER_CANCELED:
-            # order is not longer active
+            # order is no longer active
             if data == self.entry_oid:
                 self.entry_ref_oid = None
                 self.entry_oid = None

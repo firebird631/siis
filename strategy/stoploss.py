@@ -208,9 +208,11 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
 def dynamic_stop_loss_fixed_bollinger_long(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
     stop_loss = 0.0
 
-    if timeframe.bollinger and timeframe.bollinger.bottoms is not None and len(timeframe.bollinger.bottoms) > 0:
+    #if timeframe.bollinger and timeframe.bollinger.bottoms is not None and len(timeframe.bollinger.bottoms) > 0:
+    if timeframe.bollinger and timeframe.bollinger.tops is not None and len(timeframe.bollinger.tops) > 0:
         if 1:  # timeframe.last_closed:
-            p = timeframe.bollinger.bottoms[-1]
+            #p = timeframe.bollinger.bottoms[-1]
+            p = timeframe.bollinger.tops[-1]
 
             if p > curr_stop_loss_price and p < last_price - price_epsilon:
                 stop_loss = p
@@ -221,9 +223,11 @@ def dynamic_stop_loss_fixed_bollinger_long(timeframe, last_price, curr_stop_loss
 def dynamic_stop_loss_fixed_bollinger_short(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
     stop_loss = 0.0
 
-    if timeframe.bollinger and timeframe.bollinger.tops is not None and len(timeframe.bollinger.tops) > 0:
+    #if timeframe.bollinger and timeframe.bollinger.tops is not None and len(timeframe.bollinger.tops) > 0:
+    if timeframe.bollinger and timeframe.bollinger.bottoms is not None and len(timeframe.bollinger.bottoms) > 0:
         if 1:  # timeframe.last_closed:
-            p = timeframe.bollinger.tops[-1]
+            # p = timeframe.bollinger.tops[-1]
+            p = timeframe.bollinger.bottoms[-1]
 
             if p < curr_stop_loss_price and p > last_price + price_epsilon:
                 stop_loss = p
@@ -418,7 +422,7 @@ def dynamic_stop_loss_volume_sr_short(timeframe, last_price, curr_stop_loss_pric
 
 def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, curr_stop_loss_price, depth=1,
                       orientation=0, price_epsilon=0.0, distance=0.0):
-    # @todo support distance in fixed dist (not only in decile)
+
     if direction > 0:
         if method == StrategyTraderContext.PRICE_NONE:
             return 0.0

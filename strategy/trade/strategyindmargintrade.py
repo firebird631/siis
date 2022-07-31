@@ -633,7 +633,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             if data['id'] == self.create_oid:
                 prev_e = self.e
 
-                # a single order for the entry, then its OK and preferred to uses cumulative-filled and avg-price
+                # a single order for the entry, then it is OK and preferred to use cumulative-filled and avg-price
                 # because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     filled = data['cumulative-filled'] - self.e  # compute filled qty
@@ -715,7 +715,9 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
-            elif data['id'] == self.limit_oid or data['id'] == self.stop_oid:
+            elif (data['id'] == self.limit_oid or data['id'] == self.stop_oid or
+                  ref_order_id == self.limit_ref_oid or ref_order_id == self.stop_ref_oid):
+
                 prev_x = self.x
 
                 # either we have 'filled' component (partial qty) or the 'cumulative-filled' or both
@@ -760,7 +762,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                         # entry fully filled, exit filled the entry qty => exit fully filled
                         self._exit_state = StrategyTrade.STATE_FILLED
                     else:
-                        # some of the entry qty is not filled at this time
+                        # some part of the entry qty is not filled at this time
                         self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
                 else:
                     if (self.stop_oid or self.limit_oid) and self.e < self.oq:

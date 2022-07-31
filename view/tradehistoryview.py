@@ -3,6 +3,8 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Historical trades view.
 
+import traceback
+
 from view.tableview import TableView
 
 from common.signal import Signal
@@ -10,6 +12,7 @@ from strategy.helpers.closedtradetable import closed_trades_stats_table
 
 import logging
 error_logger = logging.getLogger('siis.error.view.tradehistory')
+traceback_logger = logging.getLogger('siis.traceback.view.tradehistory')
 
 
 class TradeHistoryView(TableView):
@@ -57,6 +60,7 @@ class TradeHistoryView(TableView):
                 num = total_size[1]
             except Exception as e:
                 error_logger.error(str(e))
+                traceback_logger.error(traceback.format_exc())
 
             self.set_title("Trade history (%i)%s for strategy %s - %s" % (
                 num, self.display_mode_str(), strategy.name, strategy.identifier))

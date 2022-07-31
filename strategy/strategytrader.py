@@ -177,7 +177,11 @@ class StrategyTrader(object):
             'cont-win': 0,     # contiguous win trades
             'cont-loss': 0,    # contiguous loss trades
             'closed': 0,       # num of closed trades
-            'rpnl': 0.0        # realize profit and loss
+            'rpnl': 0.0,       # realize profit and loss
+            'tp-win': 0,       # number of trades closed at TP in profit
+            'tp-loss': 0,      # number of trades closed at TP in loss
+            'sl-win': 0,       # number of trades closed at SL in profit
+            'sl-loss': 0       # number of trades closed at SL in loss
         }
 
         self._trade_context_builder = None
@@ -1357,7 +1361,7 @@ class StrategyTrader(object):
                         worst_pl = (trade.worst_price() - trade.entry_price if trade.direction > 0 else
                                     trade.entry_price - trade.worst_price()) / trade.entry_price
 
-                        # perf summed here it means that its not done during partial closing
+                        # perf summed here it means that it is not done during partial closing
                         if profit_loss != 0.0:
                             self._stats['perf'] += profit_loss  # total profit/loss percent
                             self._stats['best'] = max(self._stats['best'], profit_loss)  # retains the best win
@@ -1366,14 +1370,6 @@ class StrategyTrader(object):
                             self._stats['low'] += worst_pl  # sum if all trades was closed at worst price
                             self._stats['closed'] += 1
                             self._stats['rpnl'] += trade.unrealized_profit_loss
-
-                        if profit_loss <= 0.0:
-                            self._stats['cont-loss'] += 1
-                            self._stats['cont-win'] = 0
-
-                        elif profit_loss > 0.0:
-                            self._stats['cont-loss'] = 0
-                            self._stats['cont-win'] += 1
 
                         # notification exit reason if not reported
                         if not trade.exit_reason:
@@ -1393,12 +1389,30 @@ class StrategyTrader(object):
 
                         record = trade.dumps_notify_exit(timestamp, self)
 
-                        if profit_loss < 0:
+                        if profit_loss < 0.0:
+                            self._stats['cont-loss'] += 1
+                            self._stats['cont-win'] = 0
+
+                            if trade.exit_reason in (trade.REASON_TAKE_PROFIT_LIMIT, trade.REASON_TAKE_PROFIT_MARKET):
+                                self._stats['tp-loss'] += 1
+                            elif trade.exit_reason in (trade.REASON_STOP_LOSS_MARKET, trade.REASON_STOP_LOSS_LIMIT):
+                                self._stats['sl-loss'] += 1
+
+                        elif profit_loss >= 0.0:
+                            self._stats['cont-loss'] = 0
+                            self._stats['cont-win'] += 1
+
+                            if trade.exit_reason in (trade.REASON_TAKE_PROFIT_LIMIT, trade.REASON_TAKE_PROFIT_MARKET):
+                                self._stats['tp-win'] += 1
+                            elif trade.exit_reason in (trade.REASON_STOP_LOSS_MARKET, trade.REASON_STOP_LOSS_LIMIT):
+                                self._stats['sl-win'] += 1
+
+                        if round(profit_loss * 1000) == 0.0:
+                            self._stats['roe'].append(record)
+                        elif profit_loss < 0:
                             self._stats['failed'].append(record)
                         elif profit_loss > 0:
                             self._stats['success'].append(record)
-                        else:
-                            self._stats['roe'].append(record)
 
                         if self._reporting == StrategyTrader.REPORTING_VERBOSE:
                             try:

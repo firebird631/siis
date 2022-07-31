@@ -1049,6 +1049,74 @@ class StrategyTrade(object):
 
         return 0.0
 
+    def profit_loss_delta(self, instrument: Instrument) -> float:
+        """
+        During the trade open, compute an estimation of the unrealized profit/loss delta in price.
+        """
+        # if no entry realised
+        if self.e <= 0.0:
+            return 0.0
+
+        # estimation at close price
+        close_exec_price = instrument.close_exec_price(self.direction)
+
+        # no current price update
+        if not close_exec_price:
+            return 0.0
+
+        if self.direction > 0 and self.entry_price > 0:
+            return close_exec_price - self.entry_price
+        elif self.direction < 0 and self.entry_price > 0:
+            return self.entry_price - close_exec_price
+        else:
+            return 0.0
+
+    def estimate_take_profit(self, instrument: Instrument) -> float:
+        """
+        Estimated take-profit rate.
+        """
+        # if no entry realised
+        if self.e <= 0.0:
+            return 0.0
+
+        if self.direction > 0 and self.entry_price > 0:
+            profit_loss = (self.tp - self.entry_price) / self.entry_price
+        elif self.direction < 0 and self.entry_price > 0:
+            profit_loss = (self.entry_price - self.tp) / self.entry_price
+        else:
+            profit_loss = 0.0
+
+        # minus realized entry fees rate
+        profit_loss -= self.entry_fees_rate()
+
+        # and estimation of the exit fees rate
+        profit_loss -= self.estimate_exit_fees_rate(instrument)
+
+        return profit_loss
+
+    def estimate_stop_loss(self, instrument: Instrument) -> float:
+        """
+        Estimated stop-loss rate.
+        """
+        # if no entry realised
+        if self.e <= 0.0:
+            return 0.0
+
+        if self.direction > 0 and self.entry_price > 0:
+            profit_loss = (self.entry_price - self.sl) / self.entry_price
+        elif self.direction < 0 and self.entry_price > 0:
+            profit_loss = (self.sl - self.entry_price) / self.entry_price
+        else:
+            profit_loss = 0.0
+
+        # minus realized entry fees rate
+        profit_loss -= self.entry_fees_rate()
+
+        # and estimation of the exit fees rate
+        profit_loss -= self.estimate_exit_fees_rate(instrument)
+
+        return profit_loss
+
     def estimate_profit_loss(self, instrument: Instrument) -> float:
         """
         During the trade open, compute an estimation of the unrealized profit/loss rate.

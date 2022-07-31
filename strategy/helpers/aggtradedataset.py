@@ -38,6 +38,11 @@ def get_agg_trades(strategy):
                     low = strategy_trader._stats['low']
                     closed = strategy_trader._stats['closed']
 
+                    tp_win = strategy_trader._stats['tp-win']
+                    tp_loss = strategy_trader._stats['tp-loss']
+                    sl_win = strategy_trader._stats['sl-win']
+                    sl_loss = strategy_trader._stats['sl-loss']
+
                     rpnl = strategy_trader.instrument.adjust_quote(strategy_trader._stats['rpnl'])
 
                     success = len(strategy_trader._stats['success'])
@@ -74,7 +79,11 @@ def get_agg_trades(strategy):
                         'num-closed-trades': closed,
                         'rpnl': rpnl,
                         'rpnl-currency': strategy_trader.instrument.quote,
-                        'num-actives-trades': num_actives_trades
+                        'num-actives-trades': num_actives_trades,
+                        'tp-win': tp_win,
+                        'tp-loss': tp_loss,
+                        'sl-loss': sl_loss,
+                        'sl-win': sl_win
                     })
         except Exception as e:
             error_logger.error(repr(e))

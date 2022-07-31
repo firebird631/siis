@@ -96,7 +96,7 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
             results['messages'].append(repr(e))
             results['error'] = True
 
-        data_dumps.sort(key=lambda x: x['stats']['last-realized-exit-datetime'])
+        data_dumps.sort(key=lambda x: str(x['stats']['last-realized-exit-datetime']))
 
     elif dataset == "active":
         if not filename:

@@ -58,10 +58,10 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
 
         if group:
             # in alpha order + last realized exit datetime
-            closed_trades.sort(key=lambda x: x['symbol']+x['stats']['last-realized-exit-datetime'],
+            closed_trades.sort(key=lambda x: x['symbol']+str(x['stats']['last-realized-exit-datetime']),
                                reverse=True if ordering else False)
         else:
-            closed_trades.sort(key=lambda x: x['stats']['last-realized-exit-datetime'],
+            closed_trades.sort(key=lambda x: str(x['stats']['last-realized-exit-datetime']),
                                reverse=True if ordering else False)
 
         closed_trades = closed_trades[offset:limit]
@@ -78,7 +78,11 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             tp = float(t['take-profit-price'])
 
             # colorize profit or loss percent
-            if t['profit-loss-pct'] < 0:  # loss
+            if round(t['profit-loss-pct'] * 10) == 0.0:  # equity
+                cr = "%.2f" % t['profit-loss-pct']
+                exit_color = None
+
+            elif t['profit-loss-pct'] < 0:  # loss
                 if (t['direction'] == 'long' and best > aep) or (t['direction'] == 'short' and best < aep):
                     # but was profitable during a time
                     cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.ORANGE, style=style)
@@ -96,7 +100,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                     cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.GREEN, style=style)
                     exit_color = Color.GREEN
 
-            else:  # equity
+            else:
                 cr = "0.0" if aep else "-"
                 exit_color = None
 

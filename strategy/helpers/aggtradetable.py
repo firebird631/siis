@@ -18,7 +18,7 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
     Returns a table of any aggregated active and closes trades.
     """
     columns = ('Symbol', 'P/L(%)', 'Total(%)', 'RPNL', 'Open', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE',
-               'Closed', 'High(%)', 'Low(%)')
+               'Closed', 'High(%)', 'Low(%)', 'SL Win/Loss', 'TP Win/Loss')
     total_size = (len(columns), 0)
     data = []
 
@@ -49,6 +49,11 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
         num_open_trades_sum = 0
         num_actives_trades_sum = 0
 
+        sl_loss = 0
+        sl_win = 0
+        tp_loss = 0
+        tp_win = 0
+
         # total sum before offset:limit
         if summ:
             for t in agg_trades:
@@ -61,6 +66,10 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 roe_sum += t['roe']
                 num_open_trades_sum += t['num-open-trades']
                 num_actives_trades_sum += t['num-actives-trades']
+                sl_loss += t['sl-loss']
+                tp_loss += t['tp-loss']
+                sl_win += t['sl-win']
+                tp_win += t['tp-win']
 
         agg_trades = agg_trades[offset:limit]
 
@@ -83,6 +92,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 t['num-closed-trades'],
                 "%.2f" % (t['high']*100.0),
                 "%.2f" % (t['low']*100.0),
+                "%s/%s" % (t['sl-win'], t['sl-loss']),
+                "%s/%s" % (t['tp-win'], t['tp-loss']),
             )
 
             data.append(row[0:3] + row[3 + col_ofs:])
@@ -106,6 +117,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 '------',
                 '-------',
                 '------',
+                '-----------',
+                '-----------',
             )
 
             data.append(row[0:3] + row[3+col_ofs:])
@@ -127,7 +140,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 success_sum + failed_sum + roe_sum,
                 '-',
                 '-',
-                '-',
+                "%s/%s" % (sl_win, sl_loss),
+                "%s/%s" % (tp_win, tp_loss),
             )
 
             data.append(row[0:3] + row[3+col_ofs:])
