@@ -220,8 +220,10 @@ class StrategyTrade(object):
         """
         if self.is_active():
             return (self.e - self.x) * self.aep
-        else:
+        elif self.op:
             return self.oq * self.op
+        else:
+            return 0.0
 
     @property  
     def order_price(self) -> float:

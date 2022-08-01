@@ -23,7 +23,7 @@ class Command(object):
         @param command_name Advanced command identifier (must be unique)
         @param command_alias Short or alias for the command identifier (must be unique)
         @param accelerator Simple key for direct command (must be unique)
-        @param is_user True mean its a user contextual command
+        @param is_user True mean it is a user contextual command
 
         If a command_name start with _ it will be only accepted using its accelerator,
         and not display in the cli help.

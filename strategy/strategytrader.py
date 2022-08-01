@@ -1413,6 +1413,8 @@ class StrategyTrader(object):
                             self._stats['failed'].append(record)
                         elif profit_loss > 0:
                             self._stats['success'].append(record)
+                        else:
+                            self._stats['roe'].append(record)
 
                         if self._reporting == StrategyTrader.REPORTING_VERBOSE:
                             try:

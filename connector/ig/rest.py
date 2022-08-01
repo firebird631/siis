@@ -78,7 +78,7 @@ class IGSessionCRUD(object):
         """
         return self.BASE_URL + endpoint
 
-    def _create_first(self, endpoint, params, session):
+    def _create_first(self, endpoint, params, session, version):
         """
         Create first = POST with headers=BASIC_HEADERS
         """
@@ -100,43 +100,47 @@ class IGSessionCRUD(object):
 
         return response
 
-    def _create_logged_in(self, endpoint, params, session):
+    def _create_logged_in(self, endpoint, params, session, version):
         """
         Create when logged in = POST with headers=LOGGED_IN_HEADERS
         """
         url = self._url(endpoint)
         session = self._get_session(session)
+        # session.headers.update({'VERSION': version})
         response = session.post(url, data=json.dumps(params), headers=self.HEADERS['LOGGED_IN'])
         return response
 
-    def read(self, endpoint, params, session):
+    def read(self, endpoint, params, session, version):
         """
         Read = GET with headers=LOGGED_IN_HEADERS
         """
         url = self._url(endpoint)
         session = self._get_session(session)
+        #session.headers.update({'VERSION': version})
         response = session.get(url, params=params, headers=self.HEADERS['LOGGED_IN'])
         return response
 
-    def update(self, endpoint, params, session):
+    def update(self, endpoint, params, session, version):
         """
         Update = PUT with headers=LOGGED_IN_HEADERS
         """
         url = self._url(endpoint)
         session = self._get_session(session)
+        # session.headers.update({'VERSION': version})
         response = session.put(url, data=json.dumps(params), headers=self.HEADERS['LOGGED_IN'])
         return response
 
-    def delete(self, endpoint, params, session):
+    def delete(self, endpoint, params, session, version):
         """
         Delete = POST with DELETE_HEADERS
         """
         url = self._url(endpoint)
         session = self._get_session(session)
+        # session.headers.update({'VERSION': version})
         response = session.post(url, data=json.dumps(params), headers=self.HEADERS['DELETE'])
         return response
 
-    def req(self, action, endpoint, params, session):
+    def req(self, action, endpoint, params, session, version):
         """
         Send a request (CREATE READ UPDATE or DELETE)
         """
@@ -146,7 +150,7 @@ class IGSessionCRUD(object):
             'update': self.update,
             'delete': self.delete
         }
-        return d_actions[action](endpoint, params, session)
+        return d_actions[action](endpoint, params, session, version)
 
     def _set_headers(self, response_headers, update_cst):
         """
@@ -225,15 +229,15 @@ class IGService:
             session = session
         return session
 
-    def _req(self, action, endpoint, params, session):
+    def _req(self, action, endpoint, params, session, version='1', check=True):
         """
         Creates a CRUD request and returns response
         """
         session = self._get_session(session)
-        response = self.crud_session.req(action, endpoint, params, session)
+        response = self.crud_session.req(action, endpoint, params, session, version)
         return response
 
-    def _public_req(self, action, endpoint, params, session):
+    def _public_req(self, action, endpoint, params, session, version='1', check=True):
         """
         Creates a CRUD request and returns response for public endpoints.
         Retry after a dynamic delay between 2s to 8s if exceeded api key allowance.
@@ -242,7 +246,7 @@ class IGService:
         retry = 1
 
         while 1:
-            response = self.crud_session.req(action, endpoint, params, session)
+            response = self.crud_session.req(action, endpoint, params, session, version)
             data = json.loads(response.text)
 
             if 'errorCode' in data:
@@ -441,13 +445,14 @@ class IGService:
         """
         Creates an OTC position
         """
+        version = "2"
         params = {
             'currencyCode': currency_code,
             'direction': direction,
             'epic': epic,
             'expiry': expiry,
-            'forceOpen': force_open,
-            'guaranteedStop': guaranteed_stop,
+            'forceOpen': "true" if force_open else "false",
+            'guaranteedStop': "true" if guaranteed_stop else "false",
             'level': level,
             'limitDistance': limit_distance,
             'limitLevel': limit_level,
@@ -455,15 +460,21 @@ class IGService:
             'quoteId': quote_id,
             'size': size,
             'stopDistance': stop_distance,
-            'stopLevel': stop_level
+            'stopLevel': stop_level,
+            # 'timeInForce': time_in_force,
+            # 'trailingStop': "false",
+            # 'trailingStopIncrement': None
         }
 
         if deal_reference:
             params['dealReference'] = deal_reference
-
+        logger.debug(params)
         endpoint = '/positions/otc'
         action = 'create'
-        response = self._req(action, endpoint, params, session)
+
+        # self.crud_session.HEADERS['LOGGED_IN']['Version'] = "2"
+        response = self._req(action, endpoint, params, session, version)
+        # del (self.crud_session.HEADERS['LOGGED_IN']['Version'])
 
         if response.status_code == 200:
             res_deal_reference = json.loads(response.text)['dealReference']

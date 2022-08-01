@@ -48,7 +48,7 @@ class Order(Keyed):
     TIME_IN_FORCE_GTC = 0  # Good till cancelled
     TIME_IN_FORCE_IOC = 1  # Immediate or cancel
     TIME_IN_FORCE_FOK = 2  # Fill or kill
-    TIME_IN_FORCE_GTD = 3  # Good til date
+    TIME_IN_FORCE_GTD = 3  # Good till date
 
     REASON_OK = 1                     # Order successfully open
     REASON_UNDEFINED = 0              # Undefined

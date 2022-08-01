@@ -800,6 +800,7 @@ class IGWatcher(Watcher):
                         limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
                         profit_loss = float(data['profit']) if data.get('profit') is not None else None
                         profit_currency = data.get('profitCurrency', "")
+                        otc = data.get('channel', "") == "PublicRestOTC"
 
                         # 'expiry', 'guaranteedStop'
 
@@ -911,7 +912,7 @@ class IGWatcher(Watcher):
 
                             self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order, ref_order_id))
 
-                            if quantity > 0.0:
+                            if quantity > 0.0:  # and not otc:
                                 self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
 
                         elif status == "PARTIALLY_CLOSED":
@@ -945,7 +946,8 @@ class IGWatcher(Watcher):
                     ref_order_id = data['dealReference']
 
                     epic = data.get('epic')
-                    # "channel": "WTP", "expiry": "-"
+                    # "expiry": "-"
+                    otc = data.get('channel', "") == "PublicRestOTC"  # or "WTP"
 
                     # date of the event 2018-09-13T20:36:01.096 without Z
                     event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').replace(
@@ -992,8 +994,9 @@ class IGWatcher(Watcher):
                                 'liquidation-price': None
                             }
 
-                            self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (
-                                epic, position_data, ref_order_id))
+                            if 1: # not otc:
+                                self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (
+                                    epic, position_data, ref_order_id))
 
                         elif status == "UPDATED":
                             # signal of updated position

@@ -29,6 +29,8 @@ class StrategyPositionTrade(StrategyTrade):
 
     This type of trade is related to margin trading market, allowing hedging.
     Works with CFD brokers (ig...).
+
+    Hedging must be true by to manage position into the two direction at the same time.
     """
 
     __slots__ = 'create_ref_oid', 'create_oid', 'position_id', 'position_stop', 'position_limit', \
@@ -573,9 +575,9 @@ class StrategyPositionTrade(StrategyTrade):
         # average entry/exit prices
         #
 
-        if data.get('avg-entry-price'):
+        if data.get('avg-entry-price') is not None:
             self.aep = data['avg-entry-price']
-        if data.get('avg-exit-price'):
+        if data.get('avg-exit-price') is not None:
             self.axp = data['avg-exit-price']
 
         #

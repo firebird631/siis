@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy helper to get dataset
+import traceback
 
 from common.utils import timeframe_to_str
 
@@ -87,5 +88,6 @@ def get_all_active_trades(strategy):
                         })
         except Exception as e:
             error_logger.error(repr(e))
+            error_logger.error(traceback.format_exc())
 
     return results

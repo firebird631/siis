@@ -98,7 +98,9 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
         for trade_dump in data_dumps:
             try:
                 with strategy_trader._mutex:
-                    if trade_dump['profit-loss-pct'] > 0:
+                    if round(trade_dump['profit-loss-pct'] * 10) == 0.0:
+                        strategy_trader._stats['roe'].append(trade_dump)
+                    elif trade_dump['profit-loss-pct'] > 0:
                         strategy_trader._stats['success'].append(trade_dump)
                     elif trade_dump['profit-loss-pct'] < 0:
                         strategy_trader._stats['failed'].append(trade_dump)

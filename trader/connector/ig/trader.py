@@ -228,7 +228,7 @@ class IGTrader(Trader):
 
         if order.order_type == Order.ORDER_LIMIT:
             order_type = 'LIMIT'
-            level = order.price
+            level = market_or_instrument.format_price(order.price)
 
             if order.hedging:
                 force_open = True
@@ -255,7 +255,7 @@ class IGTrader(Trader):
         limit_level = None
 
         if order.take_profit:
-            limit_level = order.take_profit
+            limit_level = market_or_instrument.format_price(order.take_profit)
             force_open = True
 
         # stop-loss
@@ -267,10 +267,10 @@ class IGTrader(Trader):
             if self._account.guaranteed_stop:
                 # @todo depends of the account setting and look at "dealingRules" to adjust to min stop level
                 guaranteed_stop = True
-                stop_level = order.stop_loss
+                stop_level = market_or_instrument.format_price(order.stop_loss)
                 force_open = True
             else:
-                stop_level = order.stop_loss
+                stop_level = market_or_instrument.format_price(order.stop_loss)
                 force_open = True
    
         # trailing-stop
@@ -282,9 +282,12 @@ class IGTrader(Trader):
         time_in_force = 'EXECUTE_AND_ELIMINATE'
 
         if order.time_in_force == Order.TIME_IN_FORCE_GTC:
-            time_in_force = 'EXECUTE_AND_ELIMINATE'
+            if order.order_type == Order.ORDER_MARKET:
+                time_in_force = 'EXECUTE_AND_ELIMINATE'
+            else:
+                time_in_force = 'GOOD_TILL_CANCELLED'
         elif order.time_in_force == Order.TIME_IN_FORCE_IOC:
-            time_in_force = 'IMMEDIATE_OR_CANCEL'  # @todo is that correct ?
+            time_in_force = 'IMMEDIATE_OR_CANCEL'
         elif order.time_in_force == Order.TIME_IN_FORCE_FOK:
             time_in_force = 'FILL_OR_KILL'
 
@@ -293,29 +296,40 @@ class IGTrader(Trader):
         logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), epic, limit_level, size))
 
         try:
-            results = self._watcher.connector.ig.create_open_position(
-                currency_code, direction, epic, expiry,
-                force_open, guaranteed_stop, level,
-                limit_distance, limit_level, order_type,
-                quote_id, size, stop_distance, stop_level, time_in_force,
-                deal_reference)
+            if order.order_type == Order.ORDER_MARKET:
+                results = self._watcher.connector.ig.create_open_position(
+                    currency_code, direction, epic, expiry,
+                    force_open, guaranteed_stop, level,
+                    limit_distance, limit_level, order_type,
+                    quote_id, size, stop_distance, stop_level, time_in_force,
+                    deal_reference)
+            else:
+                results = self._watcher.connector.ig.create_working_order(
+                    currency_code, direction, epic, expiry,
+                    guaranteed_stop, level, size,
+                    time_in_force, order_type,
+                    limit_distance, limit_level,
+                    stop_distance, stop_level,
+                    good_till_date=None, deal_reference=deal_reference,
+                    force_open=force_open)
 
             order_logger.info(results)
 
             if results.get('dealStatus', '') == 'ACCEPTED':
                 # dealId is the IG given unique id, dealReference is the query dealId that have given its
                 # order creation dealRef can be specified to have in return its ref (as signature for us)
-                order.set_order_id(results['dealReference'])
+                order.set_order_id(results['dealId'])
+                # ref_order_id results['dealReference']
                 order.set_position_id(results['dealId'])
 
                 # but it's in local account timezone, not createdDateUTC...
                 # but API v2 provides that
                 # @todo look with header v=2 in place of v=1
                 if results.get('date'):
-                    order.created_time = datetime.strptime(results.get('date', '1970-01-01T00:00:00:000'),
-                                                           "%Y-%m-%dT%H:%M:%S:%f").timestamp()
-                    order.transact_time = datetime.strptime(results.get('date', '1970-01-01T00:00:00:000'),
-                                                            "%Y-%m-%dT%H:%M:%S:%f").timestamp()
+                    order.created_time = datetime.strptime(results.get('date', '1970-01-01T00:00:00.000'),
+                                                           "%Y-%m-%dT%H:%M:%S.%f").timestamp()
+                    order.transact_time = datetime.strptime(results.get('date', '1970-01-01T00:00:00.000'),
+                                                            "%Y-%m-%dT%H:%M:%S.%f").timestamp()
                 else:
                     order.created_time = self.timestamp
                     order.transact_time = self.timestamp
@@ -742,16 +756,16 @@ class IGTrader(Trader):
             if pos.get('createdDateUTC'):
                 if '-' in pos['createdDateUTC']:
                     position.created_time = datetime.strptime(
-                        pos['createdDateUTC'], "%Y-%m-%dT%H:%M:%S:%f").replace(tzinfo=UTC()).timestamp()
+                        pos['createdDateUTC'], "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo=UTC()).timestamp()
                 else:
                     position.created_time = datetime.strptime(
-                        pos['createdDateUTC'], "%Y/%m/%d %H:%M:%S:%f").replace(tzinfo=UTC()).timestamp()
+                        pos['createdDateUTC'], "%Y/%m/%d %H:%M:%S.%f").replace(tzinfo=UTC()).timestamp()
 
             elif pos.get('createdDate'):
                 if '-' in pos['createdDate']:
-                    position.created_time = datetime.strptime(pos['createdDate'], "%Y-%m-%dT%H:%M:%S:%f").timestamp()
+                    position.created_time = datetime.strptime(pos['createdDate'], "%Y-%m-%dT%H:%M:%S.%f").timestamp()
                 else:
-                    position.created_time = datetime.strptime(pos['createdDate'], "%Y/%m/%d %H:%M:%S:%f").timestamp()
+                    position.created_time = datetime.strptime(pos['createdDate'], "%Y/%m/%d %H:%M:%S.%f").timestamp()
 
             position.entry_price = pos.get('openLevel', 0.0)
             position.stop_loss = pos.get('stopLevel', 0.0)
