@@ -34,7 +34,7 @@ traceback_logger = logging.getLogger('siis.traceback.watcher.ig')
 
 class IGWatcher(Watcher):
     """
-    IG watcher get price and volumes of instruments in live mode throught websocket API.
+    IG watcher get price and volumes of instruments in live mode through websocket API.
 
     Search Markets: https://demo-api.ig.com/gateway/deal/markets?searchTerm=USDJPY
 
@@ -800,7 +800,6 @@ class IGWatcher(Watcher):
                         limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
                         profit_loss = float(data['profit']) if data.get('profit') is not None else None
                         profit_currency = data.get('profitCurrency', "")
-                        otc = data.get('channel', "") == "PublicRestOTC"
 
                         # 'expiry', 'guaranteedStop'
 
@@ -895,6 +894,8 @@ class IGWatcher(Watcher):
                                 'info': 'open'
                             }
 
+                            traded = False
+
                             if data.get('limitLevel') and data.get('stopLevel'):
                                 order['type'] = Order.ORDER_STOP_LIMIT
                                 order['price'] = float(data.get('limitLevel'))
@@ -907,12 +908,13 @@ class IGWatcher(Watcher):
                                 order['stop-price'] = float(data.get('stopLevel'))
                             else:
                                 order['type'] = Order.ORDER_MARKET
+                                traded = quantity > 0.0
 
                             # @todo 'limitDistance' 'stopDistance' 'trailingStop'
 
                             self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order, ref_order_id))
 
-                            if quantity > 0.0:  # and not otc:
+                            if traded:
                                 self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
 
                         elif status == "PARTIALLY_CLOSED":
@@ -947,7 +949,6 @@ class IGWatcher(Watcher):
 
                     epic = data.get('epic')
                     # "expiry": "-"
-                    otc = data.get('channel', "") == "PublicRestOTC"  # or "WTP"
 
                     # date of the event 2018-09-13T20:36:01.096 without Z
                     event_time = datetime.strptime(data['timestamp'], '%Y-%m-%dT%H:%M:%S.%f').replace(
@@ -994,9 +995,8 @@ class IGWatcher(Watcher):
                                 'liquidation-price': None
                             }
 
-                            if 1: # not otc:
-                                self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (
-                                    epic, position_data, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (
+                                epic, position_data, ref_order_id))
 
                         elif status == "UPDATED":
                             # signal of updated position
@@ -1040,6 +1040,7 @@ class IGWatcher(Watcher):
                                 'filled': None,
                                 'liquidation-price': None
                             }
+
                             self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (
                                 epic, position_data, ref_order_id))
 

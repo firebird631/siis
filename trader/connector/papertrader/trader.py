@@ -738,6 +738,27 @@ class PaperTrader(Trader):
                     if take_profit_price:
                         position.take_profit = take_profit_price
 
+                    position_data = {
+                        'id': position_id,
+                        'symbol': market_or_instrument.market_id,
+                        'direction': position.direction,
+                        'timestamp': self.timestamp,
+                        'quantity': position.quantity,
+                        'exec-price': None,
+                        'avg-entry-price': None,
+                        'avg-price': None,
+                        'stop-loss': stop_loss_price,
+                        'take-profit': take_profit_price,
+                        'profit-loss': None,
+                        'profit-currency': None,
+                        'cumulative-filled': None,
+                        'filled': None,
+                        'liquidation-price': None
+                    }
+
+                    self.service.watcher_service.notify(Signal.SIGNAL_POSITION_AMENDED, self.name, (
+                        market_or_instrument.market_id, position_data, None))
+
                 result = True
 
         return result

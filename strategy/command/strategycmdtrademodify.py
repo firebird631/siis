@@ -115,7 +115,7 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                     if stop_loss_price == 0.0:
                         results['messages'].append("Remove stop-loss for trade %i" % trade.id)
 
-                    # if have a previous hard order it will update it, else it will create the order only if
+                    # if it has a previous hard order it will update it, else it will create the order only if
                     # force is defined. It could eventually remove the take-profit order on spot market
                     strategy_trader.trade_modify_stop_loss(
                         trade, stop_loss_price, trade.has_stop_order() or data.get('force', False))

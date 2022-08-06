@@ -159,6 +159,7 @@ class TelegramNotifier(Notifier):
 
         trade_id = t['id']
         symbol = t['symbol']
+        alias = t['alias']
 
         open_dt = Notifier.parse_utc_datetime(t['entry-open-time'])
 
@@ -168,7 +169,7 @@ class TelegramNotifier(Notifier):
         order_type = t['stats']['entry-order-type']
 
         if self._template in ("default", "verbose"):
-            messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), symbol, trade_id))
+            messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), alias or symbol, trade_id))
             messages.append("- %s: %s" % (order_type.title(), TelegramNotifier.format_datetime(open_dt, locale)))
 
             if aep:
@@ -195,7 +196,7 @@ class TelegramNotifier(Notifier):
                 messages.append("- Close expiry after : %s" % TelegramNotifier.format_datetime(expiry_dt))
 
         elif self._template == "light":
-            messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), symbol, trade_id))
+            messages.append("%s %s:%s [ NEW ]" % (t['direction'].capitalize(), alias or symbol, trade_id))
 
             if aep:
                 messages.append("- Entry-Price: %s" % t['avg-entry-price'])
@@ -217,6 +218,7 @@ class TelegramNotifier(Notifier):
 
         trade_id = t['id']
         symbol = t['symbol']
+        alias = t['alias']
 
         # filter only if a change occurs on targets or from entry execution state
         pt = self._opened_trades.get(symbol, {}).get(trade_id)
@@ -256,7 +258,7 @@ class TelegramNotifier(Notifier):
 
             if messages:
                 # prepend update message if there is some content to publish
-                messages.insert(0, "%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), symbol, trade_id))
+                messages.insert(0, "%s %s:%s [ UPDATE ]" % (t['direction'].capitalize(), alias or symbol, trade_id))
 
         return messages
 
@@ -265,10 +267,11 @@ class TelegramNotifier(Notifier):
 
         trade_id = t['id']
         symbol = t['symbol']
+        alias = t['alias']
 
         axp = float(t.get('avg-exit-price', "0"))
 
-        messages.append("%s %s:%s [ CLOSE ]" % (t['direction'].capitalize(), symbol, trade_id))
+        messages.append("%s %s:%s [ CLOSE ]" % (t['direction'].capitalize(), alias or symbol, trade_id))
 
         if axp:
             messages.append("- Exit-Price: %s" % t['avg-exit-price'])

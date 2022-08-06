@@ -200,6 +200,7 @@ class BuySellSignal(object):
 class TradingSession:
     """
     Instrument trading session dataclass.
+    Times are related to the configured instrument timezone.
     """
 
     day_of_week: int = 0
@@ -1392,7 +1393,7 @@ class Instrument(object):
         return 0.0
 
     @staticmethod
-    def duration_from_str(duration: str, timezone: float = 0.0) -> Union[float, None]:
+    def duration_from_str(duration: str) -> Union[float, None]:
         if not duration or type(duration) is not str:
             return None
 
@@ -1406,7 +1407,7 @@ class Instrument(object):
         except ValueError:
             return None
 
-        return hours * 3600.0 + minutes * 60.0 - timezone * 3600.0
+        return hours * 3600.0 + minutes * 60.0
 
     def sessions_from_str(self, moment: str) -> Union[List[TradingSession], None]:
         # mon tue wed thu fri sat sun
@@ -1436,8 +1437,8 @@ class Instrument(object):
         if parts[0] not in days_of_week:
             return None
 
-        fd = Instrument.duration_from_str(times[0], self._timezone)
-        td = Instrument.duration_from_str(times[1], self._timezone)
+        fd = Instrument.duration_from_str(times[0])
+        td = Instrument.duration_from_str(times[1])
 
         results = []
 

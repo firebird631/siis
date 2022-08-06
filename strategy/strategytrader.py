@@ -21,7 +21,7 @@ import threading
 import time
 import traceback
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from instrument.instrument import Instrument
 
@@ -1513,7 +1513,7 @@ class StrategyTrader(object):
         Modify the stop-loss (or in profit) stop or market price of a trade.
         @param trade: Valid trade model
         @param stop_price: Stop market price if hard else market price once reached
-        @param hard: True create an order if possible depending of the market type else software order at market
+        @param hard: True create an order if possible depending on the market type else software order at market
             with possible slippage and at market price
         @return: A StrategyTrade status code.
 
@@ -2232,7 +2232,8 @@ class StrategyTrader(object):
 
         if self.instrument.has_trading_sessions():
             # compute daily offset in seconds
-            today = datetime.utcfromtimestamp(timestamp).replace(tzinfo=UTC())
+            today = datetime.utcfromtimestamp(timestamp).replace(tzinfo=UTC()) + timedelta(
+                hours=self.instrument.timezone)
             day_of_week = today.isoweekday()
             today_time = today.hour * 3600 + today.minute * 60 + today.second
 

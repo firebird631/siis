@@ -101,7 +101,7 @@ class Notifier(Runnable):
 
     def process_signal(self, signal):
         """
-        To be override
+        To override
         """
         pass
 
