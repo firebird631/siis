@@ -95,11 +95,13 @@ class IGFetcher(Fetcher):
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None, fetch_option=""):
         # query must be done in Paris timezone
         if from_date:
-            from_date = from_date.astimezone(pytz.timezone('Europe/Paris')) 
-        
-        if to_date:
-            to_date = to_date.astimezone(pytz.timezone('Europe/Paris'))
+            # from_date = from_date.astimezone(pytz.timezone('Europe/Paris'))
+            from_date = from_date.replace(tzinfo=pytz.UTC)
 
+        if to_date:
+            # to_date = to_date.astimezone(pytz.timezone('Europe/Paris'))
+            to_date = to_date.replace(tzinfo=pytz.UTC)
+        #logger.info(from_date)
         try:
             if n_last:
                 data = self._connector.history_last_n(market_id, timeframe, n_last)
@@ -120,6 +122,7 @@ class IGFetcher(Fetcher):
         for price in prices:
             dt = datetime.strptime(price['snapshotTimeUTC'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())
             # ldt = datetime.strptime(price['snapshotTime'], '%Y/%m/%d %H:%M:%S')
+            #logger.info(dt)
 
             # timezone + DST aware conversion
             # print("<", dt, ldt)
