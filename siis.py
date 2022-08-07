@@ -84,9 +84,10 @@ def application(argv):
         'reports-path': './user/reports',
         'markets-path': './user/markets',
         'log-name': 'siis.log',
-        'monitor': False,
-        'monitor-port': None,
-        'verbose': False
+        'monitor': False,      # startup HTTP/WS monitor service
+        'monitor-port': None,  # monitoring HTTP port (WS is HTTP+1
+        'verbose': False,      # verbose mode for tools
+        'load': False          # load user data at startup from database
     }
 
     # create initial siis data structure if necessary
@@ -110,6 +111,10 @@ def application(argv):
                 elif arg == '--verbose':
                     # verbose display for tools
                     options['verbose'] = True
+
+                elif arg == '--load':
+                    # load trader and trade user data at startup
+                    options['load'] = True
 
                 elif arg == '--fetch':
                     # use the fetcher
@@ -622,8 +627,14 @@ def application(argv):
 
                             if not result:
                                 # maybe an application level command
-                                if value == ':quit':
-                                    running = False
+                                if value.startswith(':quit'):
+                                    opts = value.split(' ')
+
+                                    if opts[0] == ':quit':
+                                        strategy_service.set_save_on_exit('save' in opts)
+                                        strategy_service.set_terminate_on_exit('term' in opts)
+
+                                        running = False
 
                             # clear command value
                             value_changed = True

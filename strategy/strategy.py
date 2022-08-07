@@ -608,6 +608,17 @@ class Strategy(Runnable):
                 for k, strategy_trader in self._strategy_traders.items():
                     strategy_trader.save()
 
+    def load(self):
+        """
+        Load from database user strategy trader state and user trades.
+        @return:
+        """
+        trader = self.trader()
+
+        if trader:
+            Database.inst().load_user_traders(self.service, self, trader.name,  trader.account.name, self.identifier)
+            Database.inst().load_user_trades(self.service, self, trader.name, trader.account.name, self.identifier)
+
     def indicator(self, name: str) -> Union[Type[Indicator], None]:
         """
         Get an indicator by its name
@@ -637,7 +648,7 @@ class Strategy(Runnable):
 
     def trader(self):
         """
-        Return the instance of the trader. In paper mode and backtesting might returns a paper trader.
+        Return the instance of the trader. In paper mode and backtesting might return a paper trader.
         """
         return self._trader
 

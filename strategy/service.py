@@ -92,6 +92,10 @@ class StrategyService(Service):
 
         self._strategy = None
 
+        self._load_on_startup = options.get('load', False)
+        self._terminate_on_exit = False
+        self._save_on_exit = False
+
         # cannot be more recent than now
         from common.utils import UTC
         today = datetime.now().astimezone(UTC())
@@ -150,6 +154,18 @@ class StrategyService(Service):
     def alerts(self) -> Dict[str, Type[Alert]]:
         return self._alerts
 
+    @property
+    def load_on_startup(self) -> bool:
+        return self._load_on_startup
+
+    @property
+    def save_on_exit(self) -> bool:
+        return self._save_on_exit
+
+    @property
+    def terminate_on_exit(self) -> bool:
+        return self._terminate_on_exit
+
     def set_activity(self, status: bool):
         """
         Enable/disable execution of orders on strategy
@@ -166,6 +182,12 @@ class StrategyService(Service):
             self._backtesting_play = not self._backtesting_play
 
         return self._backtesting_play
+
+    def set_save_on_exit(self, status):
+        self._save_on_exit = status
+
+    def set_terminate_on_exit(self, status):
+        self._terminate_on_exit = status
 
     def start(self, options: dict):
         # indicators
@@ -355,11 +377,14 @@ class StrategyService(Service):
             # and save state to database
             if not self.backtesting and (strategy.trader() and not strategy.trader().paper_mode):
                 try:
-                    Terminal.inst().info("Terminate strategy...")
-                    strategy.terminate()
+                    if self._terminate_on_exit:
+                        Terminal.inst().info("Terminate strategy...")
+                        strategy.terminate()
 
-                    Terminal.inst().info("Save strategy...")
-                    strategy.save()
+                    if self._save_on_exit:
+                        Terminal.inst().info("Save strategy...")
+                        strategy.save()
+
                 except Exception as e:
                     error_logger.error(repr(e))
                     error_logger.error(traceback.format_exc())

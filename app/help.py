@@ -57,7 +57,7 @@ def display_help(commands_handler, user_context=False):
 
         Terminal.inst().message("", view='content')
         Terminal.inst().message("Advanced commands have to be completed by <ENTER> key else <ESC> to cancel. Command typing are avoided after fews seconds.", view='content')
-        Terminal.inst().message(" - ':quit' or ':q' exit", view='content')
+        Terminal.inst().message(" - ':quit' <save> <term> to exit", view='content')
 
         for entry in commands_handler.get_cli_summary():
             if entry[2]:
@@ -92,6 +92,7 @@ def display_cli_help():
     Terminal.inst().message("Profiles are defined in config/identities.json located at .siis local data.")
     Terminal.inst().message("")
     Terminal.inst().message("  --help display command line help.")
+    Terminal.inst().message("  --quit <save> <term>. Optional save to database option. Optional terminate strategy before exit.")
     Terminal.inst().message("  --version display the version number.")
     Terminal.inst().message("  --profile=<profile> Profile to instantiate.")
     Terminal.inst().message("  --paper-mode instantiate paper mode trader and simulate as best as possible.")

@@ -1451,7 +1451,7 @@ class UserSaveCommand(Command):
     SUMMARY = "to save user data now (strategy traders states, options, regions, trades)"
 
     def __init__(self, strategy_service):
-        super().__init__('save', 'SA')
+        super().__init__('save', 'SAVE')
 
         self._strategy_service = strategy_service
 
@@ -1462,6 +1462,24 @@ class UserSaveCommand(Command):
             return False, repr(e)
 
         return True, "Successfully saved strategy data for %s - %s" % (
+            self._strategy_service.strategy().name, self._strategy_service.strategy().identifier)
+
+
+class UserLoadCommand(Command):
+    SUMMARY = "to load user data now (strategy traders states, options, regions, trades)"
+
+    def __init__(self, strategy_service):
+        super().__init__('load', 'LOAD')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        try:
+            self._strategy_service.strategy().load()
+        except Exception as e:
+            return False, repr(e)
+
+        return True, "Successfully loaded strategy data for %s - %s (checking trades can take more time)" % (
             self._strategy_service.strategy().name, self._strategy_service.strategy().identifier)
 
 
@@ -2257,6 +2275,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(PauseCommand(strategy_service, notifier_service))
     commands_handler.register(InfoCommand(strategy_service, notifier_service))
     commands_handler.register(UserSaveCommand(strategy_service))
+    commands_handler.register(UserLoadCommand(strategy_service))
     commands_handler.register(UserExportCommand(strategy_service, trader_service))
     commands_handler.register(UserImportCommand(strategy_service, trader_service))
     commands_handler.register(SetQuantityCommand(strategy_service))
