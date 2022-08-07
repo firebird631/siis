@@ -2232,7 +2232,7 @@ class StrategyTrader(object):
 
         if self.instrument.has_trading_sessions():
             # compute daily offset in seconds
-            today = datetime.utcfromtimestamp(timestamp).replace(tzinfo=UTC()) + timedelta(
+            today = datetime.utcfromtimestamp(timestamp).replace(tzinfo=UTC()) - timedelta(
                 hours=self.instrument.timezone)
             day_of_week = today.isoweekday()
             today_time = today.hour * 3600 + today.minute * 60 + today.second

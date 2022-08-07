@@ -150,6 +150,6 @@ class View(object):
 
     def toggle_table(self):
         self._table_mode += 1
-        if self._table_mode > 4:
+        if self._table_mode > 3:
             self._table_mode = 0
         self._refresh = 0  # force refresh
