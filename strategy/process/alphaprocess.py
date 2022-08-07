@@ -376,10 +376,6 @@ def alpha_setup_live(strategy):
         strategy.send_initialize_strategy_trader(market_id)
 
     if strategy.service.load_on_startup:
-        Database.inst().load_user_traders(strategy.service, strategy, trader.name,
-                                          trader.account.name, strategy.identifier)
-
-        Database.inst().load_user_trades(strategy.service, strategy, trader.name,
-                                         trader.account.name, strategy.identifier)
+        strategy.load()
 
     logger.info("Strategy %s data retrieved" % strategy.name)
