@@ -14,6 +14,8 @@ class TableView(View):
     Table view base class.
     """
 
+    TABLE_FORMAT = ('psql', 'fancy_grid', 'rst', 'plain')
+
     def __init__(self, _id, service):
         super().__init__(_id, service)
 
@@ -84,7 +86,10 @@ class TableView(View):
 
         self._table = total_size if total_size else (len(columns), len(table))
 
-        table_data = tabulate(table, headers=columns, tablefmt='psql', showindex=False,
+        tablefmt = TableView.TABLE_FORMAT[self._table_mode] if 0 <= self._table_mode < len(
+            TableView.TABLE_FORMAT) else 'psql'
+
+        table_data = tabulate(table, headers=columns, tablefmt=tablefmt, showindex=False,
                               floatfmt=".2f", disable_numparse=True)
 
         # replace color space code before drawing

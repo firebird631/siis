@@ -152,6 +152,18 @@ class ViewService(BaseService):
                 for k, view in self._views.items():
                     view.toggle_percent()
 
+    def toggle_table(self, active=True):
+        if active:
+            vt = Terminal.inst().active_content()
+            if vt:
+                view = self._views.get(vt.name)
+                if view:
+                    view.toggle_table()
+        else:
+            with self._mutex:
+                for k, view in self._views.items():
+                    view.toggle_table()
+
     def toggle_group(self, active=True):
         if active:
             vt = Terminal.inst().active_content()

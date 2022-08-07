@@ -30,11 +30,12 @@ class View(object):
         self._item = 0  # in case of multiple item like more than a single strategy or trader
         self._refresh = 0
         self._percent = False   # display percent for tables
-        self._group = False     # group by (depending of the view)
+        self._group = False     # group by (depending on the view)
         self._ordering = False  # default ordering, true alt ordering
         self._datetime_format = View.DATETIME_FORMATS[0]
-        self._opt1 = False
-        self._opt2 = False
+        self._opt1 = False      # view specific toggle 1
+        self._opt2 = False      # view specific toggle 2
+        self._table_mode = 0    # table display format
 
     @property
     def id(self):
@@ -145,4 +146,10 @@ class View(object):
 
     def toggle_opt2(self):
         self._opt2 = not self._opt2
+        self._refresh = 0  # force refresh
+
+    def toggle_table(self):
+        self._table_mode += 1
+        if self._table_mode > 4:
+            self._table_mode = 0
         self._refresh = 0  # force refresh
