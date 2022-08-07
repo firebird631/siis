@@ -1239,7 +1239,7 @@ class IGWatcher(Watcher):
 
         prices = data.get('prices', [])
 
-        # get local timezone, assume its the same of the account, or override by account detail
+        # get local timezone, assume it is the same of the account, or override by account detail
         tzname = self._tzname or time.tzname[0]
         pst = pytz.timezone(tzname)
 

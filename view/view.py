@@ -33,6 +33,8 @@ class View(object):
         self._group = False     # group by (depending of the view)
         self._ordering = False  # default ordering, true alt ordering
         self._datetime_format = View.DATETIME_FORMATS[0]
+        self._opt1 = False
+        self._opt2 = False
 
     @property
     def id(self):
@@ -135,4 +137,12 @@ class View(object):
         else:
             self._datetime_format = View.DATETIME_FORMATS[idx]
 
+        self._refresh = 0  # force refresh
+
+    def toggle_opt1(self):
+        self._opt1 = not self._opt1
+        self._refresh = 0  # force refresh
+
+    def toggle_opt2(self):
+        self._opt2 = not self._opt2
         self._refresh = 0  # force refresh

@@ -11,9 +11,11 @@ logger = logging.getLogger('siis.trader')
 error_logger = logging.getLogger('siis.error.trader')
 
 
-def assets_table(trader, style='', offset=None, limit=None, col_ofs=None, filter_low=True, group=None, ordering=None):
+def assets_table(trader, style='', offset=None, limit=None, col_ofs=None,
+                 filter_low=True, compute_qty=False,
+                 group=None, ordering=None):
     """
-    Returns a table of any non empty assets.
+    Returns a table of any non-empty assets.
     """
     columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %', 'P/L', 'Quote', 'Pref Market')
 
@@ -38,6 +40,29 @@ def assets_table(trader, style='', offset=None, limit=None, col_ofs=None, filter
             assets.sort(key=lambda x: x.symbol, reverse=True if ordering else False)
 
         assets = assets[offset:limit]
+        computed_qty = {}
+
+        if compute_qty:
+            for order_id, order in trader._orders.items():
+                market = trader._markets.get(order.symbol)
+
+                if market.has_spot:
+                    if order.direction == order.SHORT:
+                        # locked asset
+                        asset_qty = order.quantity - order.executed
+
+                        if market.base not in computed_qty:
+                            computed_qty[market.base] = 0.0
+
+                        computed_qty[market.base] = computed_qty[market.base] + asset_qty
+                    else:
+                        # locked quote
+                        quote_qty = market.effective_cost(order.quantity - order.executed, market.market_price)
+
+                        if market.quote not in computed_qty:
+                            computed_qty[market.quote] = 0.0
+
+                        computed_qty[market.quote] = computed_qty[market.quote] + quote_qty
 
         for asset in assets:
             # use the most appropriate market
@@ -49,9 +74,16 @@ def assets_table(trader, style='', offset=None, limit=None, col_ofs=None, filter
             profit_loss = ""
 
             if market:
-                locked = market.format_quantity(asset.locked)
-                free = market.format_quantity(asset.free)
-                quantity = market.format_quantity(asset.quantity)
+                if compute_qty and market.has_spot:
+                    locked_qty = computed_qty.get(asset.symbol, 0.0)
+
+                    locked = market.format_quantity(locked_qty)
+                    free = market.format_quantity(asset.quantity - locked_qty)
+                    quantity = market.format_quantity(asset.quantity)
+                else:
+                    locked = market.format_quantity(asset.locked)
+                    free = market.format_quantity(asset.free)
+                    quantity = market.format_quantity(asset.quantity)
 
                 if market.bid and asset.price:
                     change = market.format_price(market.bid - asset.price) + market.quote_display or market.quote
@@ -76,9 +108,9 @@ def assets_table(trader, style='', offset=None, limit=None, col_ofs=None, filter
 
                     profit_loss += market.quote_display or market.quote
             else:
-                locked = "%.8f" % asset.locked
-                free = "%.8f" % asset.free
-                quantity = "%.8f" % asset.quantity
+                locked = ("%.8f" % asset.locked).rstrip('0').rstrip('.')
+                free = ("%.8f" % asset.free).rstrip('0').rstrip('.')
+                quantity = ("%.8f" % asset.quantity).rstrip('0').rstrip('.')
 
             row = (
                 asset.symbol,

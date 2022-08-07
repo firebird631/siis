@@ -188,6 +188,30 @@ class ViewService(BaseService):
                 for k, view in self._views.items():
                     view.toggle_datetime_format()
 
+    def toggle_opt1(self, active=True):
+        if active:
+            vt = Terminal.inst().active_content()
+            if vt:
+                view = self._views.get(vt.name)
+                if view:
+                    view.toggle_opt1()
+        else:
+            with self._mutex:
+                for k, view in self._views.items():
+                    view.toggle_opt1()
+
+    def toggle_opt2(self, active=True):
+        if active:
+            vt = Terminal.inst().active_content()
+            if vt:
+                view = self._views.get(vt.name)
+                if view:
+                    view.toggle_opt2()
+        else:
+            with self._mutex:
+                for k, view in self._views.items():
+                    view.toggle_opt2()
+
     #
     # history API
     #

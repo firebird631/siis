@@ -717,6 +717,12 @@ def application(argv):
                                         if results and not results.get('error'):
                                             Terminal.inst().notice(results['messages'], view='status')
 
+                                elif value == '*':
+                                    if view_service:
+                                        view_service.toggle_opt1()
+                                elif value == '$':
+                                    if view_service:
+                                        view_service.toggle_opt2()
                                 elif value == '%':
                                     if view_service:
                                         view_service.toggle_percent()
