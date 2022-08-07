@@ -126,6 +126,7 @@ class Strategy(Runnable):
 
     _preset: bool
     _prefetched: bool
+    _loaded: bool
 
     _watchers_conf: Union[Dict, None]
     _trader_conf: Union[Dict, None]
@@ -184,7 +185,8 @@ class Strategy(Runnable):
         #
 
         self._preset = False       # True once instrument are setup in both modes
-        self._prefetched = False   # True once strategies are ready in backtesting mode
+        self._prefetched = False   # True once strategy trader are ready in backtesting mode
+        self._loaded = False       # True once strategy trader user data are loaded (can be done once)
 
         self._watchers_conf = {}   # name of the followed watchers
         self._trader_conf = None   # name of the followed trader
@@ -613,11 +615,19 @@ class Strategy(Runnable):
         Load from database user strategy trader state and user trades.
         @return:
         """
+        if self._loaded:
+            return False
+
         trader = self.trader()
 
         if trader:
             Database.inst().load_user_traders(self.service, self, trader.name,  trader.account.name, self.identifier)
             Database.inst().load_user_trades(self.service, self, trader.name, trader.account.name, self.identifier)
+
+            self._loaded = True
+            return True
+
+        return False
 
     def indicator(self, name: str) -> Union[Type[Indicator], None]:
         """

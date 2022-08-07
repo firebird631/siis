@@ -1475,11 +1475,15 @@ class UserLoadCommand(Command):
 
     def execute(self, args):
         try:
-            self._strategy_service.strategy().load()
+            if not self._strategy_service.strategy().load():
+                return True, "Unable to load strategy user data for %s - %s (can be done once trader is loaded and " \
+                             "only once)" % (self._strategy_service.strategy().name,
+                                             self._strategy_service.strategy().identifier)
+
         except Exception as e:
             return False, repr(e)
 
-        return True, "Successfully loaded strategy data for %s - %s (checking trades can take more time)" % (
+        return True, "Successfully loaded strategy user data for %s - %s (checking trades can take more time)" % (
             self._strategy_service.strategy().name, self._strategy_service.strategy().identifier)
 
 
