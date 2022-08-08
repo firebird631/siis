@@ -92,9 +92,9 @@ class StrategyPositionTrade(StrategyTrade):
         self._stats['entry-order-type'] = order.order_type
 
         if trader.create_order(order, instrument) > 0:
-            # keep the related create position identifier if available
+            # keep the related position identifier if available (maybe be even if pending)
             self.create_oid = order.order_id
-            self.position_id = order.position_id
+            self.position_id = order.position_id  # mostly the same id as order-id
 
             if not self.eot and order.created_time:
                 # only at the first open
@@ -111,7 +111,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         # reset
         self._entry_state = StrategyTrade.STATE_NEW
-        self.eot = 0
+        self.eot = 0.0
 
         order = Order(trader, instrument.market_id)
         order.direction = self.dir
@@ -135,7 +135,7 @@ class StrategyPositionTrade(StrategyTrade):
 
         if trader.create_order(order, instrument) > 0:
             self.create_oid = order.order_id
-            self.position_id = order.position_id  # might be market-id
+            self.position_id = order.position_id
 
             if not self.eot and order.created_time:
                 # only at the first open
@@ -319,12 +319,11 @@ class StrategyPositionTrade(StrategyTrade):
                 if data.get('take-profit'):
                     self.tp = data['take-profit']
 
-                if self.e == 0:
-                    # because could occur after position open signal
+                if self.e == 0:  # in case it occurs after position open signal
                     self._entry_state = StrategyTrade.STATE_OPENED
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:
-            # order is no longer active
+            # create order is no longer active
             if data == self.create_oid:
                 self.create_ref_oid = None                
                 self.create_oid = None
@@ -333,7 +332,7 @@ class StrategyPositionTrade(StrategyTrade):
                     self._entry_state = StrategyTrade.STATE_DELETED
 
         elif signal_type == Signal.SIGNAL_ORDER_CANCELED:
-            # order is no longer active
+            # create order is no longer active
             if data == self.create_oid:
                 self.create_ref_oid = None                
                 self.create_oid = None
@@ -345,76 +344,77 @@ class StrategyPositionTrade(StrategyTrade):
             # order price/qty modified, cannot really be used because the strategy might
             # cancel the trade or create another one.
             # for the qty we could have a remaining_qty member, then comparing
-            pass
+            pass  # others updates are done at position signals
 
         elif signal_type == Signal.SIGNAL_ORDER_TRADED:
+            pass  # done at position signals
             # order fully or partially filled
-            filled = 0
+            # filled = 0
+            #
+            # if data['id'] == self.create_oid or data['id'] == self.position_id:
+            #     info = data.get('info', "")
+            #
+            #     # if info == "closed" or info == "partially-closed":
+            #     #     print(data)
+            #
+            #     if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+            #         filled = data['cumulative-filled'] - self.e  # compute filled qty
+            #     elif data.get('filled') is not None and data['filled'] > 0:
+            #         filled = data['filled']
+            #     else:
+            #         filled = 0
+            #
+            #     # if data.get('avg-price') is not None and data['avg-price'] > 0:
+            #     #     # in that case we have avg-price already computed
+            #     #     self.aep = data['avg-price']
+            #
+            #     # elif data.get('exec-price') is not None and data['exec-price'] > 0:
+            #     #     # compute the average price
+            #     #     self.aep = ((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
+            #     # else:
+            #     #     # no have uses order price
+            #     #     self.aep = self.op
+            #
+            #     # cumulative filled entry qty
+            #     # if data.get('cumulative-filled') is not None:
+            #     #     self.e = data.get('cumulative-filled')
+            #     # elif filled > 0:
+            #     #     self.e = instrument.adjust_quantity(self.e + filled)
+            #
+            #     # if filled > 0:
+            #     #     # probably need to update exit orders
+            #     #     self._dirty = True
+            #
+            #     # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
+            #
+            #     # if self.e >= self.oq:
+            #     #     self._entry_state = StrategyTrade.STATE_FILLED
+            #
+            #     #     # bitmex does not send ORDER_DELETED signal, cleanup here
+            #     #     self.create_oid = None
+            #     #     self.create_ref_oid = None
+            #     # else:
+            #     #     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+            #
+            #     # # retains the trade timestamp
+            #     # if not self._stats['first-realized-entry-timestamp']:
+            #     #     self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+            #
+            #     # self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
-            if data['id'] == self.create_oid or data['id'] == self.position_id:
-                info = data.get('info', "")
-
-                # if info == "closed" or info == "partially-closed":
-                #     print(data)
-
-                if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                    filled = data['cumulative-filled'] - self.e  # compute filled qty
-                elif data.get('filled') is not None and data['filled'] > 0:
-                    filled = data['filled']
-                else:
-                    filled = 0
-
-                # if data.get('avg-price') is not None and data['avg-price'] > 0:
-                #     # in that case we have avg-price already computed
-                #     self.aep = data['avg-price']
-
-                # elif data.get('exec-price') is not None and data['exec-price'] > 0:
-                #     # compute the average price
-                #     self.aep = ((self.aep * self.e) + (data['exec-price'] * filled)) / (self.e + filled)
-                # else:
-                #     # no have uses order price
-                #     self.aep = self.op
-
-                # cumulative filled entry qty
-                # if data.get('cumulative-filled') is not None:
-                #     self.e = data.get('cumulative-filled')
-                # elif filled > 0:
-                #     self.e = instrument.adjust_quantity(self.e + filled)
-
-                # if filled > 0:
-                #     # probably need to update exit orders
-                #     self._dirty = True
-
-                # logger.info("Entry avg-price=%s cum-filled=%s" % (self.aep, self.e))
-
-                # if self.e >= self.oq:
-                #     self._entry_state = StrategyTrade.STATE_FILLED
-
-                #     # bitmex does not send ORDER_DELETED signal, cleanup here
-                #     self.create_oid = None
-                #     self.create_ref_oid = None
-                # else:
-                #     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-
-                # # retains the trade timestamp
-                # if not self._stats['first-realized-entry-timestamp']:
-                #     self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
-
-                # self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
-
-            if data.get('profit-loss') is not None:
-                self._stats['unrealized-profit-loss'] = data['profit-loss']
-            if data.get('profit-currency'):
-                self._stats['profit-loss-currency'] = data['profit-currency']
+            # done on position signal
+            # if data.get('profit-loss') is not None:
+            #     self._stats['unrealized-profit-loss'] = data['profit-loss']
+            # if data.get('profit-currency'):
+            #     self._stats['profit-loss-currency'] = data['profit-currency']
 
     def position_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
-            self.position_id = data['id']
+            self.position_id = data['id']  # already defined at open
 
-            if data.get('profit-loss') is not None:
-                self._stats['unrealized-profit-loss'] = data['profit-loss']
-            if data.get('profit-currency'):
-                self._stats['profit-loss-currency'] = data['profit-currency']
+            # init created timestamp when create order open if not defined at open
+            if not self.eot:
+                self.eot = data.get('timestamp', 0.0)
 
             if data.get('take-profit'):
                 self.position_limit = data['take-profit']
@@ -423,47 +423,57 @@ class StrategyPositionTrade(StrategyTrade):
                 self.position_limit = data['stop-loss']
 
             if not self.xot and (data.get('take-profit') or data.get('stop-loss')):
+                # determine exit order timestamp only if tp or sl defined at open
                 self.xot = data['timestamp']
 
-            last_qty = data.get('quantity', 0.0)
+            # current quantity
+            if data.get('cumulative-filled') is not None:
+                last_qty = data.get('cumulative-filled', 0.0)
+            elif data.get('filled') is not None:
+                last_qty = data.get('filled', 0.0)
+            else:
+                last_qty = 0.0
 
             if last_qty > 0.0:
                 # increase entry
+                if not self._stats['first-realized-entry-timestamp']:
+                    self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
-                # filled entry quantity from the diff with the previous one
+                # filled entry quantity from the diff with the previous one (position_quantity might be 0)
                 self.e += last_qty - self.position_quantity
 
-                if last_qty < self.oq:
-                    self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                elif last_qty >= self.oq:
+                if self.e >= self.oq:
                     self._entry_state = StrategyTrade.STATE_FILLED
 
                     # entry cannot longer be canceled once fully filled
                     self.create_oid = None
                     self.create_ref_oid = None
+                else:
+                    self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-            # retains the trade timestamp
-            self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
-
-            # keep for close and for delta computation on update
-            self.position_quantity = last_qty
+                # keep for close and for delta computation on update
+                self.position_quantity = last_qty
+            else:
+                # in case of a limit order
+                self._entry_state = StrategyTrade.STATE_OPENED
 
         elif signal_type == Signal.SIGNAL_POSITION_UPDATED:
-            # update the unrealized profit-loss in currency
-            if data.get('profit-loss') is not None:
-                self._stats['unrealized-profit-loss'] = data['profit-loss']
-            if data.get('profit-currency'):
-                self._stats['profit-loss-currency'] = data['profit-currency']
-
+            # update stop_loss/take_profit
             if data.get('take-profit'):
                 self.position_limit = data['take-profit']
 
             if data.get('stop-loss'):
                 self.position_stop = data['stop-loss']
 
-            # current position quantity
-            last_qty = data.get('quantity', self.position_quantity)
+            # current quantity
+            if data.get('cumulative-filled') is not None:
+                last_qty = data.get('cumulative-filled', self.position_quantity)
+            elif data.get('filled') is not None:
+                last_qty = data.get('filled', 0) + self.position_quantity
+            else:
+                last_qty = self.position_quantity
 
             if self.position_quantity != last_qty:
                 if last_qty < self.position_quantity:
@@ -476,38 +486,40 @@ class StrategyPositionTrade(StrategyTrade):
                     # filled entry quantity from the diff with the previous one
                     self.x += self.position_quantity - last_qty
 
-                    if last_qty > 0.0:
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    elif last_qty <= 0.0:
+                    if self.x >= self.e:
                         self._exit_state = StrategyTrade.STATE_FILLED
+                    else:
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
                 elif last_qty > self.position_quantity:
                     # increase mean entry
+                    if not self._stats['first-realized-entry-timestamp']:
+                        self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
+
                     self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
                     # filled entry quantity from the diff with the previous one
                     self.e += last_qty - self.position_quantity
 
-                    if last_qty < self.oq:
-                        self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    elif last_qty >= self.oq:
+                    if self.e >= self.oq:
                         self._entry_state = StrategyTrade.STATE_FILLED
 
                         # entry cannot longer be canceled once fully filled
                         self.create_oid = None
                         self.create_ref_oid = None
+                    else:
+                        self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
-            # keep for close and for delta computation on update
-            self.position_quantity = last_qty
+                # keep for close and for delta computation on update
+                self.position_quantity = last_qty
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # no longer related position
             self.position_id = None
 
-            if data.get('profit-loss') is not None:
-                self._stats['unrealized-profit-loss'] = data['profit-loss']
-            if data.get('profit-currency'):
-                self._stats['profit-loss-currency'] = data['profit-currency']
+            # related create order is no longer valid
+            self.create_oid = None
+            self.create_ref_oid = None
 
             # filled exit quantity equal to the entry
             if self.x < self.e:
@@ -521,55 +533,17 @@ class StrategyPositionTrade(StrategyTrade):
             # logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
 
         elif signal_type == Signal.SIGNAL_POSITION_AMENDED:
-            # update stop_loss/take_profit from outside
-            if data.get('profit-loss') is not None:
-                self._stats['unrealized-profit-loss'] = data['profit-loss']
-            if data.get('profit-currency'):
-                self._stats['profit-loss-currency'] = data['profit-currency']
-
+            # update stop_loss/take_profit
             if data.get('take-profit'):
                 self.position_limit = data['take-profit']
 
             if data.get('stop-loss'):
                 self.position_stop = data['stop-loss']
 
-            # current position quantity
-            # last_qty = data.get('quantity', self.position_quantity)
-
-            # if self.position_quantity != last_qty:
-            #     if last_qty < self.position_quantity:
-            #         # decrease mean exit
-            #         if not self._stats['first-realized-exit-timestamp']:
-            #             self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
-
-            #         self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
-
-            #         # filled entry quantity from the diff with the previous one
-            #         self.x += self.position_quantity - last_qty
-
-            #         if last_qty > 0.0:
-            #             self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-            #         if last_qty <= 0.0:
-            #             self._exit_state = StrategyTrade.STATE_FILLED
-
-            #     elif last_qty > self.position_quantity:
-            #         # increase mean entry
-            #         self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
-
-            #         # filled entry quantity from the diff with the previous one
-            #         self.e += last_qty - self.position_quantity
-
-            #         if last_qty < self.oq:
-            #             self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-            #         if last_qty >= self.oq:
-            #             self._entry_state = StrategyTrade.STATE_FILLED
-
-            #     self.position_quantity = last_qty
-
-        # if data.get('profit-loss') is not None:
-        #     self._stats['unrealized-profit-loss'] = data['profit']
-        # if data.get('profit-currency'):
-        #     self._stats['profit-loss-currency'] = data['profit-currency']
+        if data.get('profit-loss') is not None:
+            self._stats['unrealized-profit-loss'] = data['profit-loss']
+        if data.get('profit-currency'):
+            self._stats['profit-loss-currency'] = data['profit-currency']
 
         #
         # average entry/exit prices
@@ -581,7 +555,7 @@ class StrategyPositionTrade(StrategyTrade):
             self.axp = data['avg-exit-price']
 
         #
-        # profit/loss rate
+        # gross profit/loss rate
         #
 
         if self.direction > 0:
@@ -710,6 +684,29 @@ class StrategyPositionTrade(StrategyTrade):
     #
     # stats
     #
+
+    def update_stats(self, instrument: Instrument, timestamp: float):
+        super().update_stats(instrument, timestamp)
+
+        if self.is_active():
+            # non realized quantity
+            nrq = self.e - self.x
+
+            delta_price = 0.0
+
+            if self.dir > 0:
+                delta_price = instrument.market_bid - self.aep
+            elif self.dir < 0:
+                delta_price = self.aep - instrument.market_ask
+
+            upnl = nrq * (delta_price / (instrument.one_pip_means or 1.0)) * instrument.value_per_pip
+            rpnl = self.x * (delta_price / (instrument.one_pip_means or 1.0)) * instrument.value_per_pip
+            # upnl = nrq * delta_price * instrument.contract_size  # no have contract size on instrument
+            # rpnl = self.x * delta_price * instrument.contract_size
+
+            # including fees and realized profit and loss
+            self._stats['unrealized-profit-loss'] = instrument.adjust_quote(
+                upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
 
     def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
         data = list(super().info_report(strategy_trader))

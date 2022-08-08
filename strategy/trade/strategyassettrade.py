@@ -120,7 +120,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         # reset
         self._entry_state = StrategyTrade.STATE_NEW
-        self.eot = 0
+        self.eot = 0.0
 
         order = Order(trader, instrument.market_id)
         order.direction = self.dir

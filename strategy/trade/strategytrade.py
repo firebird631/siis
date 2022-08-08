@@ -115,8 +115,8 @@ class StrategyTrade(object):
         self.aep = 0.0   # average entry price
         self.axp = 0.0   # average exit price
 
-        self.eot = 0     # entry order opened timestamp
-        self.xot = 0     # exit order opened timestamp
+        self.eot = 0.0   # entry order opened timestamp
+        self.xot = 0.0   # exit order opened timestamp
 
         # a correctly closed trade must have x == f with f <= q and q > 0
         self.e = 0.0     # current filled entry quantity
@@ -741,7 +741,7 @@ class StrategyTrade(object):
             # order entry or exit error
             return 'error'
         else:
-            # any others case meaning pending state
+            # any other's case meaning pending state
             return 'waiting'
 
     def timeframe_to_str(self) -> str:

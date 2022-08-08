@@ -386,7 +386,7 @@ class IGService:
             if response.status_code == 404:
                 # 404 error.confirms.deal-not-found Deal confirmation not found
                 err_code = json.loads(response.text).get('errorCode', "")
-                logger.debug(response.text)
+                # logger.debug(response.text)
 
                 if err_code == "error.confirms.deal-not-found" and not retry:
                     return {}
@@ -468,7 +468,7 @@ class IGService:
 
         if deal_reference:
             params['dealReference'] = deal_reference
-        logger.debug(params)
+        # logger.debug(params)
         endpoint = '/positions/otc'
         action = 'create'
 

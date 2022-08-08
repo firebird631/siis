@@ -321,7 +321,7 @@ class Position(Keyed):
     def close_direction(self) -> int:
         """
         Return the inverse of the direction of the position that is needed to close or revert this position.
-        It does not invert the position ! Its just a syntax sugar.
+        It does not invert the position ! It is just a syntax sugar.
         """
         return Position.LONG if self.direction == Position.SHORT else Position.SHORT
 

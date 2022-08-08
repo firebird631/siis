@@ -334,9 +334,9 @@ class IGTrader(Trader):
                     order.created_time = self.timestamp
                     order.transact_time = self.timestamp
 
-                # executed price (no change in limit, but useful when market order)
-                order.set_executed(order.quantity, True, results.get('level'))
-
+                # executed price on market order
+                if order.order_type == Order.ORDER_MARKET:
+                    order.set_executed(order.quantity, True, results.get('level'))
             else:
                 error_logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (
                     self.name, order.direction_to_str(), size, epic, results.get('reason')))

@@ -707,6 +707,7 @@ class Trader(Runnable):
         position = Position(self)
         position.set_position_id(position_data['id'])
         position.set_key(self.service.gen_key())
+        position.created_time = position_data.get('timestamp', 0.0)
 
         position.entry(
             position_data['direction'],
@@ -742,7 +743,7 @@ class Trader(Runnable):
     def on_position_updated(self, market_id: str, position_data: dict, ref_order_id: str):
         market = self._markets.get(market_id)
         if market is None:
-            # not interested by this market
+            # not interested in this market
             return
 
         position = self._positions.get(position_data['id'])
@@ -827,6 +828,7 @@ class Trader(Runnable):
     def on_position_deleted(self, market_id: str, position_data: dict, ref_order_id: str):
         # delete the position from the dict
         if self._positions.get(position_data['id']):
+            # position.closed_time = position_data.get('timestamp', 0.0)
             del self._positions[position_data['id']]
 
     #
@@ -842,7 +844,7 @@ class Trader(Runnable):
         """
         market = self._markets.get(market_id)
         if market is None:
-            # not interested by this market
+            # not interested in this market
             return
 
         if order_data['id'] not in self._orders:
@@ -861,7 +863,7 @@ class Trader(Runnable):
 
             order.quantity = order_data['quantity']
 
-            # depending of the type
+            # depending on the type
             order.price = order_data.get('price')
             order.stop_price = order_data.get('stop-price')
             order.time_in_force = order_data.get('time-in-force', Order.TIME_IN_FORCE_GTC)

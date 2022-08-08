@@ -115,7 +115,7 @@ class StrategyMarginTrade(StrategyTrade):
 
         # reset
         self._entry_state = StrategyTrade.STATE_NEW
-        self.eot = 0
+        self.eot = 0.0
 
         order = Order(trader, instrument.market_id)
         order.direction = self.dir
@@ -551,7 +551,8 @@ class StrategyMarginTrade(StrategyTrade):
                 if data.get('take-profit'):
                     self.tp = data['take-profit']
 
-                self._entry_state = StrategyTrade.STATE_OPENED
+                if self.e == 0:  # in case it occurs after position open signal
+                    self._entry_state = StrategyTrade.STATE_OPENED
 
             elif ref_order_id == self.stop_ref_oid:
                 self.stop_oid = data['id']
