@@ -2232,8 +2232,6 @@ function on_update_performances() {
 }
 
 function on_update_balances(symbol, asset, timestamp, data) {
-    console.log(data)
-
     if ($('div.performance-list-entries').css('display') != 'none') {
         if (window.account_balances[asset]) {
             // update the related asset

@@ -672,7 +672,7 @@ function add_active_trade(market_id, trade) {
     let trade_percent = $('<span class="trade-percent"></span>');
     let trade_upnl = $('<span class="trade-upnl"></span>');
 
-    if (parseFloat(trade['filled-entry-qty']) > 0.0) {
+    if (parseFloat(trade['filled-entry-qty']) > 0.0 && trade.stats['profit-loss'] != undefined) {
         trade_percent.text(trade['profit-loss-pct'] + '%');
         trade_upnl.text(format_quote_price(market_id, trade.stats['profit-loss']) + currency_display);
     } else {
@@ -824,7 +824,7 @@ function update_active_trade(market_id, trade) {
     let trade_percent = $('<span class="trade-percent"></span>');
     let trade_upnl = $('<span class="trade-upnl"></span>');
 
-    if (parseFloat(trade['filled-entry-qty']) > 0.0) {
+    if (parseFloat(trade['filled-entry-qty']) > 0.0 && trade.stats['profit-loss'] != undefined) {
         trade_percent.text(trade['profit-loss-pct'] + '%');
         trade_upnl.text(format_quote_price(market_id, trade.stats['profit-loss']) + currency_display);
     } else {
@@ -909,6 +909,10 @@ function format_price(market_id, price) {
 }
 
 function format_quote_price(market_id, price) {
+    if (price == undefined) {
+        return "0.0";
+    }
+
     let market = window.markets[market_id];
     if (market) {
         if (typeof(price) === "string") {
