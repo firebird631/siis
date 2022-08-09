@@ -35,8 +35,11 @@ def open_position(trader, order, market, open_exec_price):
         # and then rejected order
         trader.unlock()
 
-        logger.error("Not enought free margin for %s need %s but have %s!" % (order.symbol, margin_cost, trader.account.margin_balance))
-        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (order.symbol, order.ref_order_id))
+        logger.error("Not enough free margin for %s need %s but have %s!" % (
+            order.symbol, margin_cost, trader.account.margin_balance))
+
+        trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_REJECTED, trader.name, (
+            order.symbol, order.ref_order_id))
 
         return False
 

@@ -265,7 +265,7 @@ class PaperTrader(Trader):
                     for k, position in self._positions.items():
                         market = self._markets.get(position.symbol)
 
-                        # only for non empty positions
+                        # only for non-empty positions
                         if market and position.quantity > 0.0:
                             # manually compute here because of paper trader
                             profit_loss += position.raw_profit_loss / market.base_exchange_rate

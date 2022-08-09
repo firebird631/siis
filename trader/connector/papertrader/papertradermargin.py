@@ -50,7 +50,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
         # and adjust the position quantity (no hedging)
         #
 
-        # price difference depending of the direction
+        # price difference depending on the direction
         delta_price = 0
         if current_position.direction == Position.LONG:
             delta_price = close_exec_price - current_position.entry_price
@@ -274,6 +274,8 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
                 'avg-entry-price': current_position.entry_price,
                 'avg-exit-price': current_position.exit_price,
                 'exec-price': exec_price,
+                'filled': order.executed,
+                'cumulative-filled': order.executed,
                 'stop-loss': None,
                 'take-profit': None,
                 'profit-loss': current_position.profit_loss,
@@ -293,6 +295,8 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
                 'avg-entry-price': current_position.entry_price,
                 'avg-exit-price': current_position.exit_price,
                 'exec-price': exec_price,
+                'filled': order.executed,
+                'cumulative-filled': order.executed,
                 'stop-loss': current_position.stop_loss,
                 'take-profit': current_position.take_profit,
                 'profit-loss': current_position.profit_loss,
@@ -441,6 +445,8 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
             'stop-loss': position.stop_loss,
             'take-profit': position.take_profit,
             'avg-entry-price': position.entry_price,
+            'filled': order.executed,
+            'cumulative-filled': order.executed,
             'profit-loss': 0.0,
             'profit-loss-currency': market.quote
         }

@@ -740,7 +740,7 @@ class StrategyMarginTrade(StrategyTrade):
                 self._stats['profit-loss-currency'] = data['profit-currency']
 
         elif signal_type == Signal.SIGNAL_POSITION_AMENDED:
-            # might not occurs
+            # might not occur
             pass
 
     def is_target_order(self, order_id: str, ref_order_id: str) -> bool:
