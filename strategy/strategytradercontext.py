@@ -626,3 +626,27 @@ class StrategyTraderContext(StrategyTraderContextBase):
                 return True
 
         return False
+
+    def load_dynamic_take_profit(self, strategy_trader, params):
+        if 'dynamic-take-profit' in params:
+            dynamic_take_profit = EXTakeProfit()
+            dynamic_take_profit.loads(strategy_trader, params['dynamic-take-profit'])
+
+            if dynamic_take_profit.timeframe:
+                return dynamic_take_profit
+
+    def load_dynamic_stop_loss(self, strategy_trader, params):
+        if 'dynamic-stop-loss' in params:
+            dynamic_stop_loss = EXStopLoss()
+            dynamic_stop_loss.loads(strategy_trader, params['dynamic-stop-loss'])
+
+            if dynamic_stop_loss.timeframe:
+                return dynamic_stop_loss
+
+    def load_breakeven(self, strategy_trader, params):
+        if 'breakeven' in params:
+            breakeven = EXBreakeven()
+            breakeven.loads(strategy_trader, params['breakeven'])
+
+            if breakeven.timeframe:
+                return breakeven

@@ -155,7 +155,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 direction,
                 cr,
                 "%.2f%%" % t['stats']['fees-pct'],  # total fees in percent
-                t['order-price'],
+                t['order-price'] if t['order-price'] != "0" else "-",
                 format_with_percent(_sl, sl, slpct),
                 format_with_percent(_tp, tp, tppct),
                 format_with_percent(t['stats']['best-price'], best, bpct),
