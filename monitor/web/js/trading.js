@@ -639,9 +639,13 @@ function add_active_trade(market_id, trade) {
     trade_datetime.attr('data-placement', "top");
     trade_datetime.attr('title', timestamp_to_datetime_str(trade['stats']['first-realized-entry-datetime']));
 
-    let trade_order = $('<span class="trade-order"></span>').text(
-        trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
- 
+    let trade_order = $('<span class="trade-order"></span>');
+    if (trade['stats']['entry-order-type'] == 'market') {
+        trade_order.text(trade['stats']['entry-order-type'] + ' @' + trade['avg-entry-price'] + ' (' + trade['order-qty'] + ')');
+    } else {
+        trade_order.text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
+    }
+
     // entry
     let trade_entry = $('<span class="trade-entry"></span>').text(
         trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
@@ -789,8 +793,12 @@ function update_active_trade(market_id, trade) {
 
     let currency_display = get_currency_display(trade.stats['profit-loss-currency']);
 
-    let trade_order = $('<span class="trade-order"></span>').text(
-        trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
+    let trade_order = $('<span class="trade-order"></span>');
+    if (trade['stats']['entry-order-type'] == 'market') {
+        trade_order.text(trade['stats']['entry-order-type'] + ' @' + trade['avg-entry-price'] + ' (' + trade['order-qty'] + ')');
+    } else {
+        trade_order.text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
+    }
 
     // order date, first trade date
     let trade_datetime = $('<span class="trade-datetime"></span>').text(
@@ -946,8 +954,12 @@ function add_historical_trade(market_id, trade) {
     trade_datetime.attr('data-placement', "top");
     trade_datetime.attr('title', timestamp_to_datetime_str(trade['stats']['last-realized-exit-datetime']));
 
-    let trade_order = $('<span class="trade-order"></span>').text(
-        trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
+    let trade_order = $('<span class="trade-order"></span>');
+    if (trade['stats']['entry-order-type'] == 'market') {
+        trade_order.text(trade['stats']['entry-order-type'] + ' @' + trade['avg-entry-price'] + ' (' + trade['order-qty'] + ')');
+    } else {
+        trade_order.text(trade['stats']['entry-order-type'] + ' @' + trade['order-price'] + ' (' + trade['order-qty'] + ')');
+    }
  
     let trade_entry = $('<span class="trade-entry"></span>').text(
         trade['avg-entry-price'] + ' (' + trade['filled-entry-qty'] + ')');
