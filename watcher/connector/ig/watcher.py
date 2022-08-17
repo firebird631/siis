@@ -1139,7 +1139,7 @@ class IGWatcher(Watcher):
         market.contract_size = float(instrument['contractSize'])
         market.lot_size = float(instrument['lotSize'])
 
-        # "forceOpenAllowed": true,
+        market.hedging = instrument.get('forceOpenAllowed', False)
         # "stopsLimitsAllowed": true,
         # "controlledRiskAllowed": true,
         # "streamingPricesAvailable": true,

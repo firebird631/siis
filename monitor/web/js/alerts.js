@@ -12,10 +12,12 @@ function on_strategy_signal_alert(market_id, alert_id, timestamp, alert, do_noti
     let key = market_id + ':' + alert.id;
     alert_elt.attr('alert-key', key);
 
+    let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
+
     let lalert_id = $('<span class="alert-id"></span>').text(alert.id);
-    let alert_symbol = $('<span class="alert-symbol"></span>').text(market_id);
-    let alert_direction = $('<span class="alert-direction fa"></span>')
-        .addClass(alert.trigger > 0 ? 'trade-long' : 'trade-short')
+    let alert_symbol = $('<span class="alert-symbol"></span>').text(symbol).attr('title', market_id);
+    let alert_direction = $('<span class="alert-direction fa"></span>');
+        .addClass(alert.trigger > 0 ? 'trade-long' : 'trade-short');
         .addClass(alert.trigger > 0 ? 'fa-arrow-up' : 'fa-arrow-down');
 
     let alert_label = $('<span class="alert-label"></span>').text(alert.name);
@@ -23,7 +25,7 @@ function on_strategy_signal_alert(market_id, alert_id, timestamp, alert, do_noti
     let alert_datetime = $('<span class="alert-datetime"></span>').text(timestamp_to_datetime_str(alert.timestamp));
 
     // timeframe is formatted
-    let timeframe = alert.timeframe == 't' ? "trade/tick" : alert.timeframe
+    let timeframe = alert.timeframe == 't' ? "trade/tick" : alert.timeframe;
 
     let alert_timeframe = $('<span class="alert-timeframe"></span>').text(timeframe);
     let alert_lastprice = $('<span class="alert-last-price"></span>').text(alert['last-price']);
@@ -100,8 +102,10 @@ function on_strategy_create_alert(market_id, alert_id, timestamp, alert, do_noti
         }
     }
 
+    let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
+
     let lalert_id = $('<span class="alert-id"></span>').text(alert.id);
-    let alert_symbol = $('<span class="alert-symbol"></span>').text(market_id);
+    let alert_symbol = $('<span class="alert-symbol"></span>').text(symbol).attr('title', market_id);
 
     let alert_label = $('<span class="alert-label"></span>').text(alert.name);
     let alert_datetime = $('<span class="alert-datetime"></span>').text(timestamp_to_datetime_str(alert.created));

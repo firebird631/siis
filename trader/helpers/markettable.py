@@ -17,7 +17,7 @@ def markets_table(trader, style='', offset=None, limit=None, col_ofs=None, group
     """
     columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip',
                'Lot', 'Contract', 'Min Size', 'Max Size', 'Step Size', 'Min Price', 'Max Price', 'Step Price',
-               'Min Notional', 'Max Notional', 'Step Notional', 'Leverage', 'Base ER')
+               'Min Notional', 'Max Notional', 'Step Notional', 'Leverage', 'Base ER', 'Hedge')
 
     total_size = (len(columns), 0)
     data = []
@@ -64,7 +64,8 @@ def markets_table(trader, style='', offset=None, limit=None, col_ofs=None, group
                 market.max_notional or '-',
                 market.step_notional or '-',
                 "%.2f" % (1.0 / market.margin_factor if market.margin_factor > 0.0 else 1.0),
-                "%.g" % market.base_exchange_rate
+                "%.g" % market.base_exchange_rate,
+                'Yes' if market.hedging else 'No'
             )
 
             data.append(row[0:2] + row[2+col_ofs:])
