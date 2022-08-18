@@ -1757,10 +1757,22 @@ function on_details_historical_trade(elt) {
         $('<td class="data-value">' + format_price(market_id, trade['order-price']) + '</td>'));
     let order_qty = $('<tr></tr>').append($('<td class="data-name">Order qty</td>')).append(
         $('<td class="data-value">' + trade['order-qty'] + '</td>'));
-    let stop_loss_price = $('<tr></tr>').append($('<td class="data-name">Take-Profit</td>')).append(
-        $('<td class="data-value">' + format_price(market_id, trade['stop-loss-price']) + '</td>'));
-    let take_profit_price = $('<tr></tr>').append($('<td class="data-name">Stop-Loss</td>')).append(
-        $('<td class="data-value">' + format_price(market_id, trade['take-profit-price']) + '</td>'));
+
+    let stop_loss_price_rate = compute_price_pct(trade['stop-loss-price'],
+        trade['avg-entry-price'] || trade['order-price'],
+        trade.direction == "long" ? 1 : -1);
+    let trade_stop_loss_pct = (stop_loss_price_rate * 100).toFixed(2) + '%';
+    let stop_loss_price = $('<tr></tr>').append($('<td class="data-name">Stop-Loss</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['stop-loss-price']) + ' (' +
+        trade_stop_loss_pct + ')</td>'));
+
+    let take_profit_price_rate = compute_price_pct(trade['take-profit-price'],
+        trade['avg-entry-price'] || trade['order-price'],
+        trade.direction == "long" ? 1 : -1);
+    let trade_take_profit_pct = (take_profit_price_rate * 100).toFixed(2) + '%';
+    let take_profit_price = $('<tr></tr>').append($('<td class="data-name">Take-Profit</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, trade['take-profit-price']) + ' (' +
+        trade_take_profit_pct + ')</td>'));
 
     let avg_entry_price = $('<tr></tr>').append($('<td class="data-name">Avg entry price</td>')).append(
         $('<td class="data-value">' + format_price(market_id, trade['avg-entry-price']) + '</td>'));
