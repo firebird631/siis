@@ -213,6 +213,7 @@ class StrategyInfoRestAPI(resource.Resource):
                 'currency': instr.currency,
                 'tradeable': instr.tradeable,
                 'value-per-pip': instr.value_per_pip,
+                'one-pip-means': instr.one_pip_means,
                 'price-limits': instr.price_limits,
                 'notional-limits': instr.notional_limits,
                 'size-limits': instr.size_limits,

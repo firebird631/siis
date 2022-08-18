@@ -1068,7 +1068,7 @@ function on_change_take_profit_step() {
         $('#modified_take_profit_range_relative').text((range*100).toFixed(2) + "%");
     } else if (mode == 'pip') {
         range = (range - 50);
-        let value_per_pip = window.markets[trade['market-id']]['value-per-pip'];
+        let value_per_pip = window.markets[trade['market-id']]['one-pip-means'];
 
         take_profit_price = format_price(trade['market-id'],
             parseFloat(trade['take-profit-price']) + value_per_pip * range);
@@ -1097,7 +1097,7 @@ function on_change_stop_loss_step() {
         $('#modified_stop_loss_range_relative').text((range*100).toFixed(2) + "%");
     } else if (mode == 'pip') {
         range = (range - 50);
-        let value_per_pip = window.markets[trade['market-id']]['value-per-pip'];
+        let value_per_pip = window.markets[trade['market-id']]['one-pip-means'];
 
         stop_loss_price = format_price(trade['market-id'],
             parseFloat(trade['stop-loss-price']) + value_per_pip * range);
