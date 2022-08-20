@@ -55,7 +55,7 @@ class IGFetcher(Fetcher):
                     identity.get('api-key'),
                     identity.get('host'))
 
-                self._tzname = identity.get('tzname')
+                self._tzname = identity.get('timezone')
                 self._connector.connect(encryption=identity.get('encryption', False))
 
                 self._available_instruments = set()
