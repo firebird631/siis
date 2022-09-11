@@ -1,0 +1,5 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.bybitfutures.watcher.ByBitFuturesWatcher",
+    "symbols": []
+}

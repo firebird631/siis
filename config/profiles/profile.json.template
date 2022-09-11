@@ -1,48 +1,66 @@
 {
-	"default": {
-        "appliances": [],
-        "watchers":  {},
-        "traders": {}
+    "author": "firebird",
+    "created": "2020-06-22T20:17:00",
+    "modified": "2020-06-22T20:17:00",
+    "revision": 1,
+    "watchers":  {
+        "ig.com": {
+            "status": "enabled",
+            "symbols": ["CS.D.EURUSD.MINI.IP"]
+        }
     },
-    "binance-all": {
-        "appliances": ["binance-altbtc", "binance-baseusdt"],
-        "watchers": {
-            "binance.com": {
-                "status": "enabled"
-            }
+    "trader": {
+        "name": "ig.com",
+        "symbols": ["CS.D.EURUSD.MINI.IP"],
+        "preference": {
+            "currency": "EUR",
+            "currency-symbol": "€",
+            "alt-currency": "USD",
+            "alt-currency-symbol": "$"
         },
-        "traders": {
-            "binance.com": {
-                "paper-mode": {
-                    "type": "asset",
-                    "currency": "BTC",
-                    "currency-symbol": "₿",
-                    "alt-currency": "USDT",
-                    "alt-currency-symbol": "Ť",
-                    "assets": [{
-	                        "base": "USDT",
-	                        "quote": "USDT",
-	                        "initial": 10000.0
-	                    }, {
-	                        "base": "BTC",
-	                        "quote": "USDT",
-	                        "initial": 10.0
-	                    }
-	                ]
-                }
+        "paper-mode": {
+            "type": "margin",
+            "currency": "EUR",
+            "currency-symbol": "€",
+            "alt-currency": "USD",
+            "alt-currency-symbol": "$",
+            "initial": 100000.0,
+            "unlimited": true
+        },
+        "instruments": {
+            "CS.D.EURUSD.MINI.IP": {
+                "market-id": "CS.D.EURUSD.MINI.IP",
+                "size": 1.0
             }
         }
     },
-    "binance-signal": {
-        "appliances": ["binance-signal"],
-        "watchers":  {
-            "binance.com": {
-                "status": "enabled"
-            }
-        },
-        "traders": {
-            "binance.com": {
-                "status": "enabled"
+    "strategy": {
+        "name": "my-strategy",
+        "id": "testing-v01",
+        "parameters": {
+            "region-allow": true,
+            "market-type": "position",
+            "min-vol24h": 0,
+            "min-price": 0.0,
+            "timeout-profit-loss": 0.1,
+            "pullback-min-profit": 0,
+            "ma-bb-min-profit": 0,
+            "price-epsilon-timeframe": "5m",
+            "price-epsilon-factor": 0.05,
+            "max-trades": 7,
+            "sessions": {
+                "timezone": 2,
+                "offset": "00:00",
+                "duration": "11:30",
+                "trading": "dow/09:30-21:00"
+            },
+            "markets": {
+                "CS.D.EURUSD.MINI.IP": {
+                    <per-market-specific>
+                }
+            },
+            "timeframes": {
+                <timeframes-heres>
             }
         }
     }

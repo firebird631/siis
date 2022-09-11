@@ -47,3 +47,7 @@ it works with less than 100 markets, trying to go above could be a problem.
 
 **IG candle limit 10k reached** : Do the maths, how many markets do you want to initiate, to fetch, how many candles history you will need,
 find your way, or try to ask if they can increase your limitations. I have no solution for this problem because it is out of my possibility.
+
+**siis.error.watcher.ig AttributeError("module 'time' has no attribute 'clock'")** : Since Python 3.9 the Crypto package is not maintained. 
+Two solutions : replace by its alternative (remove the current, install its replacement) or manually fix the file lib/python3.<9|10>/site-packages/Crypto/Random/_UserFriendlyRNG.py
+at line 77 with t = time.process_time(). clock() function is deprecated and definitively removed since Python 3.9.

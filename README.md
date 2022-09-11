@@ -48,6 +48,10 @@ Features
     * [x] IG CFD (forex, indices, commodities)
     * [x] Kraken Spot
     * [x] Kraken Margin (partial)
+    * [ ] ByBit Spot (not planned for now)
+    * [ ] ByBit Futures (planned)
+    * [ ] FTX Spot (not planned for now)
+    * [ ] FTX Futures (planned)
 * Some others source of prices/volumes data fetchers
     * [x] HistData (only to import downloaded files)
     * [ ] AlphaVantage (planned)

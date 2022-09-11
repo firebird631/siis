@@ -1,0 +1,5 @@
+{
+    "status": "load",
+    "classpath": "trader.connector.ftx.trader.FTXTrader",
+    "symbols": []
+}

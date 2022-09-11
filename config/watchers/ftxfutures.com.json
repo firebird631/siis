@@ -1,0 +1,5 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.ftxfutures.watcher.FTXFuturesWatcher",
+    "symbols": []
+}
