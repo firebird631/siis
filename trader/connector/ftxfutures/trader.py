@@ -1,0 +1,3 @@
+
+class FTXFuturesTrader:
+    pass

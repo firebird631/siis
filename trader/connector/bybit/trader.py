@@ -1,0 +1,4 @@
+
+
+class ByBitTrader:
+    pass

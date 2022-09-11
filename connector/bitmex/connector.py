@@ -39,11 +39,11 @@ class Connector(object):
         self._host = host or "www.bitmex.com"
 
         self._base_url = "/api/v1/"
-        self._timeout = 7   
+        self._timeout = 7
         self._retries = 0  # initialize counter
 
         self._watched_symbols = symbols or set()  # followed instruments
-        self._all_instruments = []   # availables listed instruments
+        self._all_instruments = []   # available listed instruments
 
         # always XBTUSD as needed for others pairs or computing
         if 'XBTUSD' not in self._watched_symbols:
@@ -161,7 +161,7 @@ class Connector(object):
             if response.status_code == 401:
                 logger.error("API Key or Secret incorrect, please check and restart.")
                 logger.error("Error: " + response.text, True)
-            
+
                 if postdict:
                     # fatal error...
                     return False
@@ -180,7 +180,7 @@ class Connector(object):
             elif response.status_code == 429:
                 # logger.error("Ratelimited on current request (contact support@bitmex.com to raise your limits). ")
                 # logger.error("Request: %s \n %s" % (url, json.dumps(postdict)))
-                
+
                 # Figure out how long we need to wait.
                 ratelimit_reset = response.headers['X-RateLimit-Reset']
                 to_sleep = int(ratelimit_reset) - int(time.time()) + 1.0  # add 1.0 more second be we still have issues
@@ -214,7 +214,7 @@ class Connector(object):
                 error = response.json()['error']
                 message = error['message'].lower() if error else ''
 
-                # Duplicate clOrdID: that's fine, probably a deploy, go get the order(s) and return it
+                # Duplicate clOrdID: that's fine, probably a deployment, go get the order(s) and return it
                 if 'duplicate clordid' in message:
                     orders = postdict['orders'] if 'orders' in postdict else postdict
 
@@ -222,14 +222,14 @@ class Connector(object):
                     order_results = self.request('/order', query={'filter': IDs}, verb='GET')
 
                     for i, order in enumerate(order_results):
-                        if (
-                            order['orderQty'] != abs(postdict['orderQty']) or
+                        if (order['orderQty'] != abs(postdict['orderQty']) or
                             order['side'] != ('Buy' if postdict['orderQty'] > 0 else 'Sell') or
                             order['price'] != postdict['price'] or
                             order['symbol'] != postdict['symbol']):
 
                             raise Exception('Attempted to recover from duplicate clOrdID, but order returned from API ' +
-                                        'did not match POST.\nPOST data: %s\nReturned order: %s' % (json.dumps(orders[i]), json.dumps(order)))
+                                        'did not match POST.\nPOST data: %s\nReturned order: %s' % (
+                                                json.dumps(orders[i]), json.dumps(order)))
 
                     # All good
                     return order_results

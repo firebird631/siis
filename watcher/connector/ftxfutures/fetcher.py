@@ -1,24 +1,24 @@
 # @date 2022-09-12
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2022 Dream Overflow
-# www.ftx.com data fetcher
+# www.bybit.com futures data fetcher
 
 import traceback
 
 from common.utils import timeframe_to_str
 from watcher.fetcher import Fetcher
 
-# from connector.ftx.connector import Connector
+# from connector.bybit.connector import Connector
 
 import logging
 
-logger = logging.getLogger('siis.fetcher.ftx')
-error_logger = logging.getLogger('siis.error.fetcher.ftx')
+logger = logging.getLogger('siis.fetcher.ftxfutures')
+error_logger = logging.getLogger('siis.error.fetcher.ftxfutures')
 
 
-class FTXFetcher(Fetcher):
+class FTXFuturesFetcher(Fetcher):
     """
-    FTX market data fetcher.
+    ByBit futures market data fetcher.
     """
 
     TF_MAP = {
@@ -40,7 +40,7 @@ class FTXFetcher(Fetcher):
     }
 
     def __init__(self, service):
-        super().__init__("bybit.com", service)
+        super().__init__("ftxfutures.com", service)
 
         self._connector = None
 

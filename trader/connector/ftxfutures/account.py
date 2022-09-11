@@ -8,20 +8,20 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .trader import ByBitTrader
+    from .trader import FTXFuturesTrader
 
 import time
 
 from trader.account import Account
 
 import logging
-logger = logging.getLogger('siis.trader.account.bybit')
-error_logger = logging.getLogger('siis.error.trader.account.bybit')
+logger = logging.getLogger('siis.trader.account.ftxfutures')
+error_logger = logging.getLogger('siis.error.trader.account.ftxfutures')
 
 
-class ByBitAccount(Account):
+class FTXFuturesAccount(Account):
     """
-    Bybit trader related account.
+    FTX futures trader related account.
     Account currency is USDT and alternative currency is BTC.
     """
 
@@ -30,17 +30,17 @@ class ByBitAccount(Account):
     ALT_CURRENCY = "BTC"
     ALT_CURRENCY_SYMBOL = "₿"
 
-    _parent: ByBitTrader
+    _parent: FTXFuturesTrader
 
     def __init__(self, parent):
         super().__init__(parent)
 
         self._account_type = Account.TYPE_ASSET
 
-        self._currency = ByBitAccount.CURRENCY
-        self._currency_display = ByBitAccount.CURRENCY_SYMBOL
-        self._alt_currency = ByBitAccount.ALT_CURRENCY
-        self._alt_currency_display = ByBitAccount.ALT_CURRENCY_SYMBOL
+        self._currency = FTXFuturesAccount.CURRENCY
+        self._currency_display = FTXFuturesAccount.CURRENCY_SYMBOL
+        self._alt_currency = FTXFuturesAccount.ALT_CURRENCY
+        self._alt_currency_display = FTXFuturesAccount.ALT_CURRENCY_SYMBOL
 
         self._currency_precision = 2
         self._alt_currency_precision = 8
@@ -48,7 +48,7 @@ class ByBitAccount(Account):
         self._last_update = 0.0
 
     @property
-    def parent(self) -> ByBitTrader:
+    def parent(self) -> FTXFuturesTrader:
         return self._parent
 
     def update(self, connector):

@@ -1,20 +1,27 @@
-# python-prctl>=1.7  # only for named threads, look at https://pythonhosted.org/python-prctl/
 colorama>=0.3.9
-websocket-client>=0.44.0
-requests>=2.20.0
-# pandas>=0.23.4
+tabulate>=0.8.3
+dateparser>=0.7.0
+pytz>=1.5.1
 numpy>=1.15.1
 scipy>=1.5.3
 statistics>=1.0.3.5
-dateparser>=0.7.0
-pytz>=1.5.1
+# pandas>=0.23.4
+TA-Lib>=0.4.17
+websocket-client>=0.44.0
+requests>=2.20.0
 autobahn>=18.9.2
 twisted>=18.7.0
 pyOpenSSL>=18.0.0
 service_identity>=17.0.0
-mpl_finance>=0.10.0  # only for the simple charting client
-tabulate>=0.8.3
-TA-Lib>=0.4.17
 pycrypto>=2.6.1
 
+# only for named threads, look at https://pythonhosted.org/python-prctl/
+# python-prctl>=1.7
+
+# for deprecated charting client
 matplotlib>=3.5.1
+mpl_finance>=0.10.0
+
+# for FTX client
+websockets>=10.3
+gevent>=21.12.0
