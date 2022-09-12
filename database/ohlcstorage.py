@@ -50,7 +50,7 @@ class OhlcStorage(object):
         self._thread_id = -1
 
         self._broker_id = broker_id
-        self._market_id = market_id
+        self._market_id = market_id.replace('/', '')
 
         self._ohlcs = []
         self._mutex = threading.RLock()
@@ -273,7 +273,7 @@ class OhlcStreamer(object):
         self._db = db
 
         self._broker_id = broker_id
-        self._market_id = market_id
+        self._market_id = market_id.replace('/', '')
 
         self._timeframe = timeframe
 

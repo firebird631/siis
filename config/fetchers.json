@@ -19,5 +19,17 @@
     },
     "kraken.com": {
         "classpath": "watcher.connector.kraken.fetcher.KrakenFetcher"
+    },
+    "ftx.com": {
+        "classpath": "watcher.connector.ftx.fetcher.FTXFetcher"
+    },
+    "ftxfutures.com": {
+        "classpath": "watcher.connector.ftx.fetcher.FTXFuturesFetcher"
+    },
+    "bybit.com": {
+        "classpath": "watcher.connector.bybit.fetcher.ByBitFetcher"
+    },
+    "bybitfutures.com": {
+        "classpath": "watcher.connector.bybitfutures.fetcher.ByBitFuturesFetcher"
     }
 }

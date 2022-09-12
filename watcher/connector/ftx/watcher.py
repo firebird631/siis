@@ -38,29 +38,12 @@ class FTXWatcher(Watcher):
     """
     FTX market watcher using REST + WS.
 
-    @todo Implement
+    @todo Implement order, account data, user WS
+    @todo Implement unsubscribe method
     """
 
-    BASE_QUOTE = 'USDT'
+    BASE_QUOTE = 'USD'
     USE_DEPTH_AS_TRADE = False  # Use depth best bid/ask in place of aggregated trade data (use a single stream)
-
-    REV_TF_MAP = {
-        '1m': 60,
-        '3m': 180,
-        '5m': 300,
-        '15m': 900,
-        '30m': 1800,
-        '1h': 3600,
-        '2h': 7200,
-        '4h': 14400,
-        '6h': 21600,
-        '8h': 28800,
-        '12h': 43200,
-        '1d': 86400,
-        '3d': 259200,
-        '1w': 604800,
-        '1M': 2592000
-    }
 
     def __init__(self, service):
         super().__init__("ftx.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
@@ -165,14 +148,14 @@ class FTXWatcher(Watcher):
                                 if market_id in self._available_instruments:
                                     pairs.append(market_id)
 
-                            try:
-                                self._connector.ws.get_ticker(pairs, callback=self.__on_ticker_data)
-                                self._connector.ws.get_trades(pairs, callback=self.__on_trade_data)
-                                # @todo order book
+                                    try:
+                                        self._connector.ws.get_ticker(market_id, callback=self.__on_ticker_data)
+                                        self._connector.ws.get_trades(market_id, callback=self.__on_trade_data)
+                                        # @todo order book
 
-                            except Exception as e:
-                                error_logger.error(repr(e))
-                                traceback_logger.error(traceback.format_exc())
+                                    except Exception as e:
+                                        error_logger.error(repr(e))
+                                        traceback_logger.error(traceback.format_exc())
 
                         # and start ws manager if necessary
                         try:
@@ -354,6 +337,7 @@ class FTXWatcher(Watcher):
                 if market_id in instruments:
                     pair = [market_id.lower()]
 
+                    # @todo
                     # # self._connector.ws.unsubscribe_public('miniTicker', pair)
                     # self._connector.ws.unsubscribe_public('aggTrade', pair)
                     # # self._connector.ws.unsubscribe_public('depth', pair)
@@ -971,8 +955,8 @@ class FTXWatcher(Watcher):
         trades = []
 
         try:
-            trades = self._connector.client.get_all_trades(market_id, start_str=from_date.timestamp(),
-                                                           end_str=to_date.timestamp())
+            trades = self._connector.client.get_all_trades(market_id, start_time=from_date.timestamp(),
+                                                           end_time=to_date.timestamp())
         except Exception as e:
             logger.error("Watcher %s cannot retrieve aggregated trades on market %s" % (self.name, market_id))
 
@@ -982,7 +966,8 @@ class FTXWatcher(Watcher):
             count += 1
             # timestamp, bid, ask, last, volume, direction
             t = datetime.strptime(trade['time'], '%Y-%m-%dT%H:%M:%S.%f+00:00').replace(tzinfo=UTC()).timestamp()
-            yield t, trade['price'], trade['price'], trade['price'], trade['size'], -1 if trade['side'] == "sell" else 1
+            yield (int(t * 1000.0), trade['price'], trade['price'], trade['price'], trade['size'],
+                   -1 if trade['side'] == "sell" else 1)
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         TF_LIST = [15, 60, 300, 900, 3600, 14400, 86400, 259200, 604800, 2592000]
@@ -1005,5 +990,5 @@ class FTXWatcher(Watcher):
 
         for candle in candles:
             count += 1
-            yield int(candle['time']), candle['open'], candle['high'], candle['low'], candle['close'], 0.0, \
-                  candle['volume']
+            yield (int(candle['time']), candle['open'], candle['high'], candle['low'], candle['close'], 0.0,
+                   candle['volume'])

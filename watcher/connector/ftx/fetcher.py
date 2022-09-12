@@ -23,24 +23,6 @@ class FTXFetcher(Fetcher):
     FTX market data fetcher.
     """
 
-    TF_MAP = {
-        60: '1m',
-        180: '3m',
-        300: '5m',
-        900: '15m',
-        1800: '30m',
-        3600: '1h',
-        7200: '2h',
-        14400: '4h',
-        21600: '6h',
-        28800: '8h',
-        43200: '12h',
-        86400: '1d',
-        259200: '3d',
-        604800: '1w',
-        2592000: '1M'
-    }
-
     def __init__(self, service):
         super().__init__("ftx.com", service)
 
@@ -107,8 +89,8 @@ class FTXFetcher(Fetcher):
         trades = []
 
         try:
-            trades = self._connector.client.aggregate_trade_iter(market_id, start_str=from_date.timestamp(),
-                                                                 end_str=to_date.timestamp())
+            trades = self._connector.client.get_all_trades(market_id, start_time=from_date.timestamp(),
+                                                           end_time=to_date.timestamp())
         except Exception as e:
             logger.error("Fetcher %s cannot retrieve aggregated trades on market %s" % (self.name, market_id))
 
@@ -118,7 +100,8 @@ class FTXFetcher(Fetcher):
             count += 1
             # timestamp, bid, ask, last, volume, direction
             t = datetime.strptime(trade['time'], '%Y-%m-%dT%H:%M:%S.%f+00:00').replace(tzinfo=UTC()).timestamp()
-            yield t, trade['price'], trade['price'], trade['price'], trade['size'], -1 if trade['side'] == "sell" else 1
+            yield (int(t * 1000.0), trade['price'], trade['price'], trade['price'], trade['size'],
+                   -1 if trade['side'] == "sell" else 1)
 
         logger.info("Fetcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
 
@@ -144,5 +127,5 @@ class FTXFetcher(Fetcher):
         for candle in candles:
             count += 1
             # (timestamp, open, high, low, close, spread, volume)
-            yield int(candle['time']), candle['open'], candle['high'], candle['low'], candle['close'], 0.0, \
-                  candle['volume']
+            yield (int(candle['time']), candle['open'], candle['high'], candle['low'], candle['close'], 0.0,
+                   candle['volume'])

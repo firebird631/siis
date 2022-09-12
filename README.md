@@ -50,8 +50,8 @@ Features
     * [x] Kraken Margin (partial)
     * [ ] ByBit Spot (not planned for now)
     * [ ] ByBit Futures (planned)
-    * [ ] FTX Spot (not planned for now)
-    * [ ] FTX Futures (planned)
+    * [x] FTX Spot (WIP, partial only paper-mode)
+    * [x] FTX Futures (WIP, partial only paper-mode)
 * Some others source of prices/volumes data fetchers
     * [x] HistData (only to import downloaded files)
     * [ ] AlphaVantage (planned)

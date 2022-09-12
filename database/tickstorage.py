@@ -38,7 +38,7 @@ class TickStorage(object):
         self._mutex = threading.RLock()
 
         self._broker_id = broker_id
-        self._market_id = market_id
+        self._market_id = market_id.replace('/', '')
 
         self._last_save = 0
 
@@ -178,7 +178,7 @@ class TickStreamer(object):
         """
         self._markets_path = markets_path
         self._broker_id = broker_id
-        self._market_id = market_id
+        self._market_id = market_id.replace('/', '')
 
         self._from_date = copy.copy(from_date)
         self._to_date = copy.copy(to_date)
@@ -425,7 +425,7 @@ class TextToBinary(object):
 
         self._markets_path = markets_path
         self._broker_id = broker_id
-        self._market_id = market_id
+        self._market_id = market_id.replace('/', '')
 
         self._from_date = copy.copy(from_date)
         self._to_date = copy.copy(to_date)
@@ -514,7 +514,7 @@ class LastTickFinder(object):
     def __init__(self, markets_path, broker_id, market_id, buffer_size=1000, binary=True):
         self._markets_path = markets_path
         self._broker_id = broker_id
-        self._market_id = market_id
+        self._market_id = market_id.replace('/', '')
 
         self._curr_date = datetime.now()
 
@@ -615,7 +615,7 @@ class FirstTickFinder(object):
     def __init__(self, markets_path, broker_id, market_id, buffer_size=1000, binary=True):
         self._markets_path = markets_path
         self._broker_id = broker_id
-        self._market_id = market_id
+        self._market_id = market_id.replace('/', '')
 
         self._curr_date = datetime(year=2000, month=1, day=1, tzinfo=UTC())
 
