@@ -5,10 +5,12 @@
 
 import traceback
 
-from common.utils import timeframe_to_str
+from datetime import datetime
+
+from common.utils import timeframe_to_str, UTC
 from watcher.fetcher import Fetcher
 
-# from connector.ftx.connector import Connector
+from connector.ftx.connector import Connector
 
 import logging
 
@@ -40,7 +42,7 @@ class FTXFetcher(Fetcher):
     }
 
     def __init__(self, service):
-        super().__init__("bybit.com", service)
+        super().__init__("ftx.com", service)
 
         self._connector = None
 
@@ -52,12 +54,12 @@ class FTXFetcher(Fetcher):
 
             if identity:
                 if not self._connector:
-                    pass
-                    # self._connector = Connector(
-                    #     self.service,
-                    #     identity.get('api-key'),
-                    #     identity.get('api-secret'),
-                    #     identity.get('host'))
+                    self._connector = Connector(
+                        self.service,
+                        identity.get('account-id', ""),
+                        identity.get('api-key'),
+                        identity.get('api-secret'),
+                        identity.get('host'))
 
                 if not self._connector.connected:
                     self._connector.connect(use_ws=False)
@@ -69,10 +71,10 @@ class FTXFetcher(Fetcher):
                 # get all products symbols
                 self._available_instruments = set()
 
-                instruments = self._connector.client.get_exchange_info().get('symbols', [])
+                instruments = self._connector.client.get_markets()
 
                 for instrument in instruments:
-                    self._available_instruments.add(instrument['symbol'])
+                    self._available_instruments.add(instrument['name'])
 
         except Exception as e:
             logger.error(repr(e))
@@ -105,8 +107,8 @@ class FTXFetcher(Fetcher):
         trades = []
 
         try:
-            trades = self._connector.client.aggregate_trade_iter(market_id, start_str=int(from_date.timestamp() * 1000),
-                                                                 end_str=int(to_date.timestamp() * 1000))
+            trades = self._connector.client.aggregate_trade_iter(market_id, start_str=from_date.timestamp(),
+                                                                 end_str=to_date.timestamp())
         except Exception as e:
             logger.error("Fetcher %s cannot retrieve aggregated trades on market %s" % (self.name, market_id))
 
@@ -115,31 +117,32 @@ class FTXFetcher(Fetcher):
         for trade in trades:
             count += 1
             # timestamp, bid, ask, last, volume, direction
-            yield trade['T'], trade['p'], trade['p'], trade['p'], trade['q'], -1 if trade['m'] else 1
+            t = datetime.strptime(trade['time'], '%Y-%m-%dT%H:%M:%S.%f+00:00').replace(tzinfo=UTC()).timestamp()
+            yield t, trade['price'], trade['price'], trade['price'], trade['size'], -1 if trade['side'] == "sell" else 1
 
         logger.info("Fetcher %s has retrieved on market %s %s aggregated trades" % (self.name, market_id, count))
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
-        if timeframe not in self.TF_MAP:
-            logger.error("Fetcher %s does not support timeframe %s" % (self.name, timeframe_to_str(timeframe)))
+        TF_LIST = [15, 60, 300, 900, 3600, 14400, 86400, 259200, 604800, 2592000]
+
+        if timeframe not in TF_LIST:
+            logger.error("Fetcher %s does not support timeframe %s" % (self.name, timeframe))
             return
 
         candles = []
 
-        tf = self.TF_MAP[timeframe]
+        tf = timeframe
 
         try:
-            candles = self._connector.client.get_historical_klines(market_id, tf, int(from_date.timestamp() * 1000),
-                                                                   int(to_date.timestamp() * 1000))
-        except:
-            logger.error("Fetcher %s cannot retrieve candles %s on market %s" % (self.name, tf, market_id))
+            candles = self._connector.client.get_historical_prices(market_id, tf,
+                                                                   from_date.timestamp(), to_date.timestamp())
+        except Exception as e:
+            logger.error("Fetcher %s cannot retrieve candles %s on market %s (%s)" % (self.name, tf, market_id, str(e)))
 
         count = 0
 
         for candle in candles:
             count += 1
             # (timestamp, open, high, low, close, spread, volume)
-            yield candle[0], candle[1], candle[2], candle[3], candle[4], 0.0, candle[5]
-
-        logger.info("Fetcher %s has retrieved on market %s %s candles for timeframe %s" % (
-            self.name, market_id, count, timeframe_to_str(timeframe)))
+            yield int(candle['time']), candle['open'], candle['high'], candle['low'], candle['close'], 0.0, \
+                  candle['volume']

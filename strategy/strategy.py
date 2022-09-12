@@ -487,6 +487,7 @@ class Strategy(Runnable):
 
             # create an instrument per mapped symbol where to locally store received data
             for symbol in strategy_symbols:
+
                 # mapped name into the instrument as market_id
                 mapped_instrument = self.mapped_instrument(symbol)
 

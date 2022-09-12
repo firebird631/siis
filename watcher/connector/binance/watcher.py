@@ -282,16 +282,16 @@ class BinanceWatcher(Watcher):
                             self.fetch_and_generate(market_id, Instrument.TF_1M, depth, None)
 
                         elif timeframe == Instrument.TF_2M:
-                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth*2, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth*2, Instrument.TF_2M)
 
                         elif timeframe == Instrument.TF_3M:
-                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth*3, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth*3, Instrument.TF_3M)
 
                         elif timeframe == Instrument.TF_5M:
                             self.fetch_and_generate(market_id, Instrument.TF_5M, depth, None)
 
                         elif timeframe == Instrument.TF_10M:
-                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth*2, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth*2, Instrument.TF_10M)
 
                         elif timeframe == Instrument.TF_15M:
                             self.fetch_and_generate(market_id, Instrument.TF_15M, depth, None)
@@ -306,28 +306,28 @@ class BinanceWatcher(Watcher):
                             self.fetch_and_generate(market_id, Instrument.TF_1H, depth*2, Instrument.TF_2H)
 
                         elif timeframe == Instrument.TF_3H:
-                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*3, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*3, Instrument.TF_3H)
 
                         elif timeframe == Instrument.TF_4H:
                             self.fetch_and_generate(market_id, Instrument.TF_4H, depth, None)
 
                         elif timeframe == Instrument.TF_6H:
-                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*6, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth*6, Instrument.TF_6H)
 
                         elif timeframe == Instrument.TF_8H:
-                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth*2, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth*2, Instrument.TF_8H)
 
                         elif timeframe == Instrument.TF_12H:
-                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth*3, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth*3, Instrument.TF_12H)
 
                         elif timeframe == Instrument.TF_1D:
                             self.fetch_and_generate(market_id, Instrument.TF_1D, depth, None)
 
                         elif timeframe == Instrument.TF_2D:
-                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth*2, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth*2, Instrument.TF_2D)
 
                         elif timeframe == Instrument.TF_3D:
-                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth*3, None)
+                            self.fetch_and_generate(market_id, Instrument.TF_1D, depth*3, Instrument.TF_3D)
 
                         elif timeframe == Instrument.TF_1W:
                             self.fetch_and_generate(market_id, Instrument.TF_1W, depth, None)
@@ -344,43 +344,43 @@ class BinanceWatcher(Watcher):
                 except Exception as e:
                     error_logger.error(repr(e))
 
-            with self._mutex:
-                # one more watched instrument
-                self.insert_watched_instrument(market_id, [0])
+        with self._mutex:
+            # one more watched instrument
+            self.insert_watched_instrument(market_id, [0])
 
-                # and start listening for this symbol (trade+depth)
+            # and start listening for this symbol (trade+depth)
 
-                self._connector.ws.subscribe_public(
-                    subscription='ticker',  # 'miniTicker'
-                    pair=[symbol],
-                    callback=self.__on_ticker_data
-                )
+            self._connector.ws.subscribe_public(
+                subscription='ticker',  # 'miniTicker'
+                pair=[symbol],
+                callback=self.__on_ticker_data
+            )
 
-                # ticker data gives best bid and ask price
-                # self._connector.ws.subscribe_public(
-                #     subscription='bookTicker',
-                #     pair=[symbol],
-                #     callback=self.__on_book_ticker_data
-                # )
+            # ticker data gives best bid and ask price
+            # self._connector.ws.subscribe_public(
+            #     subscription='bookTicker',
+            #     pair=[symbol],
+            #     callback=self.__on_book_ticker_data
+            # )
 
-                # not used : ohlc (1m, 5m, 1h), prefer rebuild ourselves using aggregated trades
-                # kline_data = ['{}@kline_{}'.format(symbol, '1m')]  # '5m' '1h'...
+            # not used : ohlc (1m, 5m, 1h), prefer rebuild ourselves using aggregated trades
+            # kline_data = ['{}@kline_{}'.format(symbol, '1m')]  # '5m' '1h'...
 
-                self._connector.ws.subscribe_public(
-                    subscription='aggTrade',
-                    pair=[symbol],
-                    callback=self.__on_trade_data
-                )
+            self._connector.ws.subscribe_public(
+                subscription='aggTrade',
+                pair=[symbol],
+                callback=self.__on_trade_data
+            )
 
-                # if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
-                #     self._connector.ws.subscribe_public(
-                #         subscription='depth',
-                #         pair=[symbol],
-                #         callback=self.__on_book_ticker_data
-                #     )
+            # if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
+            #     self._connector.ws.subscribe_public(
+            #         subscription='depth',
+            #         pair=[symbol],
+            #         callback=self.__on_book_ticker_data
+            #     )
 
-                # no more than 10 messages per seconds on websocket
-                time.sleep(0.1)
+            # no more than 10 messages per seconds on websocket
+            time.sleep(0.1)
 
         return True
 
