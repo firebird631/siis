@@ -646,6 +646,13 @@ class FTXFuturesWatcher(Watcher):
     #     #
     #     # # self.service.notify(Signal.SIGNAL_ORDER_BOOK, self.name, (symbol, depth[1], depth[2]))
 
+    @staticmethod
+    def parse_datetime(date_str):
+        if '.' in date_str:
+            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S.%f+00:00').replace(tzinfo=UTC()).timestamp()
+        else:
+            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S+00:00').replace(tzinfo=UTC()).timestamp()
+
     def __on_trade_data(self, message):
         # market data instrument by symbol
         if type(message) is not dict:
@@ -661,7 +668,7 @@ class FTXFuturesWatcher(Watcher):
             return
 
         for d in data:
-            trade_time = datetime.strptime(d['time'], '%Y-%m-%dT%H:%M:%S.%f+00:00').replace(tzinfo=UTC()).timestamp()
+            trade_time = FTXFuturesWatcher.parse_datetime(d['time'])
             last_trade_id = d['id']
 
             if last_trade_id != self._last_trade_id.get(symbol, 0):
@@ -950,7 +957,7 @@ class FTXFuturesWatcher(Watcher):
         for trade in trades:
             count += 1
             # timestamp, bid, ask, last, volume, direction
-            t = datetime.strptime(trade['time'], '%Y-%m-%dT%H:%M:%S.%f+00:00').replace(tzinfo=UTC()).timestamp()
+            t = FTXFuturesWatcher.parse_datetime(trade['time'])
             yield (int(t * 1000.0), trade['price'], trade['price'], trade['price'], trade['size'],
                    -1 if trade['side'] == "sell" else 1)
 
