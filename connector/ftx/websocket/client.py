@@ -15,8 +15,8 @@ class FtxWebsocketClient(WebsocketManager):
 
     def __init__(self, api_key=None, api_secret=None) -> None:
         super().__init__()
-        self._trades: DefaultDict[str, Deque] = defaultdict(lambda: deque([], maxlen=10000))
-        self._fills: Deque = deque([], maxlen=10000)
+        # self._trades: DefaultDict[str, Deque] = defaultdict(lambda: deque([], maxlen=10000))
+        # self._fills: Deque = deque([], maxlen=10000)
         self._api_key = api_key
         self._api_secret = api_secret
         self._orderbook_update_events: DefaultDict[str, Event] = defaultdict(Event)
@@ -31,8 +31,8 @@ class FtxWebsocketClient(WebsocketManager):
 
     def _reset_data(self) -> None:
         self._subscriptions: List[Dict] = []
-        self._orders: DefaultDict[int, Dict] = defaultdict(dict)
-        self._tickers: DefaultDict[str, Dict] = defaultdict(dict)
+        # self._orders: DefaultDict[int, Dict] = defaultdict(dict)
+        # self._tickers: DefaultDict[str, Dict] = defaultdict(dict)
         self._orderbook_timestamps: DefaultDict[str, float] = defaultdict(float)
         self._orderbook_update_events.clear()
         self._orderbooks: DefaultDict[str, Dict[str, DefaultDict[float, float]]] = defaultdict(
@@ -69,29 +69,32 @@ class FtxWebsocketClient(WebsocketManager):
         while subscription in self._subscriptions:
             self._subscriptions.remove(subscription)
 
-    def get_fills(self) -> List[Dict]:
+    def get_fills(self):  # -> List[Dict]:
         if not self._logged_in:
             self._login()
         subscription = {'channel': 'fills'}
         if subscription not in self._subscriptions:
             self._subscribe(subscription)
-        return list(self._fills.copy())
+        # return list(self._fills.copy())
 
-    def get_orders(self) -> Dict[int, Dict]:
+    def get_orders(self):  # -> Dict[int, Dict]:
         if not self._logged_in:
             self._login()
         subscription = {'channel': 'orders'}
         if subscription not in self._subscriptions:
             self._subscribe(subscription)
-        return dict(self._orders.copy())
+        # return dict(self._orders.copy())
 
-    def get_trades(self, market: str, callback: callable) -> List[Dict]:
+    def subscribe_trades(self, market: str, callback: callable):
         subscription = {'channel': 'trades', 'market': market}
         if subscription not in self._subscriptions:
             self._subscribe(subscription)
             self._trades_callback = callback
 
-        return list(self._trades[market].copy())
+    def unsubscribe_trades(self, market: str):
+        subscription = {'channel': 'trades', 'market': market}
+        if subscription in self._subscriptions:
+            self._unsubscribe(subscription)
 
     def get_orderbook(self, market: str) -> Dict[str, List[Tuple[float, float]]]:
         subscription = {'channel': 'orderbook', 'market': market}
@@ -117,13 +120,16 @@ class FtxWebsocketClient(WebsocketManager):
             self._subscribe(subscription)
         self._orderbook_update_events[market].wait(timeout)
 
-    def get_ticker(self, market: str, callback: callable) -> Dict:
+    def subscribe_ticker(self, market: str, callback: callable):  # -> Dict:
         subscription = {'channel': 'ticker', 'market': market}
         if subscription not in self._subscriptions:
             self._subscribe(subscription)
             self._tickers_callback = callback
 
-        return self._tickers[market]
+    def unsubscribe_ticker(self, market: str):
+        subscription = {'channel': 'ticker', 'market': market}
+        if subscription in self._subscriptions:
+            self._unsubscribe(subscription)
 
     def _handle_orderbook_message(self, message: Dict) -> None:
         market = message['market']
@@ -159,21 +165,23 @@ class FtxWebsocketClient(WebsocketManager):
             self._orderbook_update_events[market].clear()
 
     def _handle_trades_message(self, message: Dict) -> None:
-        self._trades[message['market']].append(message['data'])
+        # self._trades[message['market']].append(message['data'])
         if self._trades_callback:
             self._trades_callback(message)
 
     def _handle_ticker_message(self, message: Dict) -> None:
-        self._tickers[message['market']] = message['data']
+        # self._tickers[message['market']] = message['data']
         if self._tickers_callback:
             self._tickers_callback(message)
 
     def _handle_fills_message(self, message: Dict) -> None:
-        self._fills.append(message['data'])
+        # self._fills.append(message['data'])
+        pass
 
     def _handle_orders_message(self, message: Dict) -> None:
-        data = message['data']
-        self._orders.update({data['id']: data})
+        # data = message['data']
+        # self._orders.update({data['id']: data})
+        pass
 
     def _on_message(self, ws, raw_message: str) -> None:
         message = json.loads(raw_message)

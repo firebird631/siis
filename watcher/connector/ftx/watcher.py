@@ -148,8 +148,8 @@ class FTXWatcher(Watcher):
                                     pairs.append(market_id)
 
                                     try:
-                                        self._connector.ws.get_ticker(market_id, callback=self.__on_ticker_data)
-                                        self._connector.ws.get_trades(market_id, callback=self.__on_trade_data)
+                                        self._connector.ws.subscribe_ticker(market_id, callback=self.__on_ticker_data)
+                                        self._connector.ws.subscribe_trades(market_id, callback=self.__on_trade_data)
                                         # @todo order book
 
                                     except Exception as e:
@@ -309,6 +309,8 @@ class FTXWatcher(Watcher):
                     except Exception as e:
                         error_logger.error(repr(e))
 
+                    time.sleep(0.5)  # no more than 2 call per second
+
             if tick_depth:
                 try:
                     self.fetch_ticks(market_id, tick_depth)
@@ -320,8 +322,8 @@ class FTXWatcher(Watcher):
             self.insert_watched_instrument(market_id, [0])
 
             # and start listening for this symbol (trade+depth)
-            self._connector.ws.get_ticker(market_id, callback=self.__on_ticker_data)
-            self._connector.ws.get_trades(market_id, callback=self.__on_trade_data)
+            self._connector.ws.subscribe_ticker(market_id, callback=self.__on_ticker_data)
+            self._connector.ws.subscribe_trades(market_id, callback=self.__on_trade_data)
 
             # no more than 10 messages per seconds on websocket
             time.sleep(0.1)
@@ -334,12 +336,8 @@ class FTXWatcher(Watcher):
                 instruments = self._available_instruments
 
                 if market_id in instruments:
-                    pair = [market_id.lower()]
-
-                    # @todo
-                    # # self._connector.ws.unsubscribe_public('miniTicker', pair)
-                    # self._connector.ws.unsubscribe_public('aggTrade', pair)
-                    # # self._connector.ws.unsubscribe_public('depth', pair)
+                    self._connector.ws.unsubscribe_ticker(market_id)
+                    self._connector.ws.unsubscribe_trades(market_id)
 
                     self._watched_instruments.remove(market_id)
 
@@ -508,6 +506,13 @@ class FTXWatcher(Watcher):
     # protected
     #
 
+    @staticmethod
+    def parse_datetime(date_str):
+        if '.' in date_str:
+            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S.%f+00:00').replace(tzinfo=UTC()).timestamp()
+        else:
+            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S+00:00').replace(tzinfo=UTC()).timestamp()
+
     def __prefetch_markets(self):
         symbols = self._connector.client.get_markets()
 
@@ -580,7 +585,8 @@ class FTXWatcher(Watcher):
     #     market_data = (symbol, None, None, bid, ask, None, None, None, None, None)
     #     self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
-    # def __on_depth_data(self, data):
+    def __on_depth_data(self, data):
+        pass
     #     if type(data) is not dict:
     #         return
     #
@@ -654,13 +660,6 @@ class FTXWatcher(Watcher):
     #     # depth[0] = data['u']
     #     #
     #     # # self.service.notify(Signal.SIGNAL_ORDER_BOOK, self.name, (symbol, depth[1], depth[2]))
-
-    @staticmethod
-    def parse_datetime(date_str):
-        if '.' in date_str:
-            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S.%f+00:00').replace(tzinfo=UTC()).timestamp()
-        else:
-            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S+00:00').replace(tzinfo=UTC()).timestamp()
 
     def __on_trade_data(self, message):
         # market data instrument by symbol
