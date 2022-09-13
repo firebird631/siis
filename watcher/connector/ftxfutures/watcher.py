@@ -36,13 +36,15 @@ traceback_logger = logging.getLogger('siis.traceback.watcher.ftxfutures')
 
 class FTXFuturesWatcher(Watcher):
     """
-    FTX market watcher using REST + WS.
+    FTX perpetual futures market watcher using REST + WS.
+    It is possible to adapt to support for inverse perpetuals.
 
     @todo Implement order, account data, user WS
     @todo Implement unsubscribe method
     """
 
-    BASE_QUOTE = 'USD'
+    SYMBOL_SUFFIX = "PERP"  # ...
+    BASE_QUOTE = 'USD'  # BTC
     USE_DEPTH_AS_TRADE = False  # Use depth best bid/ask in place of aggregated trade data (use a single stream)
 
     def __init__(self, service):
@@ -53,7 +55,6 @@ class FTXFuturesWatcher(Watcher):
 
         self._account_data = {}
         self._symbols_data = {}
-        self._tickers_data = {}
 
         self._last_trade_id = {}
 
@@ -105,9 +106,11 @@ class FTXFuturesWatcher(Watcher):
                             # only standard spot markets
                             if instrument.get('type') != 'future':
                                 continue
-                            # 'futureType': 'perpetual'
 
-                            if 'PERP' in instrument.get('name', ""):
+                            # if instrument.get('futureType') != 'perpetual':
+                            #     continue
+
+                            if self.SYMBOL_SUFFIX in instrument.get('name', ""):
                                 continue
 
                             filtered_instr.append(instrument)
@@ -407,8 +410,7 @@ class FTXFuturesWatcher(Watcher):
             market.contract_size = 1.0
             market.lot_size = 1.0
 
-            # @todo add margin support
-            market.margin_factor = 1.0
+            market.margin_factor = 1.0 / account.get('leverage', 10.0)
 
             size_limits = ["1.0", "0.0", "1.0"]
             notional_limits = ["1.0", "0.0", "0.0"]
@@ -446,12 +448,12 @@ class FTXFuturesWatcher(Watcher):
             mid_price = float(symbol['price'])  # or last
 
             if quote_asset != self.BASE_QUOTE:
-                if self._symbols_data.get(quote_asset + '_PERP'):
+                if self._symbols_data.get("%s_%s" % (quote_asset, self.SYMBOL_SUFFIX)):
                     market.base_exchange_rate = float(self._symbols_data.get(
-                        quote_asset + '_PERP', {'price', '1.0'})['price'])
-                elif self._symbols_data.get(self.BASE_QUOTE + '_PERP'):
+                        "%s_%s" % (quote_asset, self.SYMBOL_SUFFIX), {'price', '1.0'})['price'])
+                elif self._symbols_data.get("%s_%s" % (self.BASE_QUOTE, self.SYMBOL_SUFFIX)):
                     market.base_exchange_rate = 1.0 / float(self._symbols_data.get(
-                        self.BASE_QUOTE + '_PERP', {'price', '1.0'})['price'])
+                        "%s_%s" % (self.BASE_QUOTE, self.SYMBOL_SUFFIX), {'price', '1.0'})['price'])
                 else:
                     market.base_exchange_rate = 1.0
             else:
@@ -499,17 +501,12 @@ class FTXFuturesWatcher(Watcher):
 
     def __prefetch_markets(self):
         symbols = self._connector.client.get_markets()
-        # tickers = self._connector.client.get_all_tickers()
 
         self._account_data = self._connector.client.get_account_info()
         self._symbols_data = {}
-        self._tickers_data = {}
 
         for symbol in symbols:
             self._symbols_data[symbol['name']] = symbol
-
-        # for ticker in tickers:
-        #     self._tickers_data[ticker['name']] = ticker
 
     def __on_ticker_data(self, message):
         # market data instrument by symbol
@@ -537,12 +534,12 @@ class FTXFuturesWatcher(Watcher):
 
         # @todo compute base_exchange_rate
         # if quote_asset != self.BASE_QUOTE:
-        #     if self._symbols_data.get(quote_asset + '_PERP'):
-        #         market.base_exchange_rate = float(self._tickers_data.get(
-        #             quote_asset + '_PERP', {'price', '1.0'})['price'])
-        #     elif self._symbols_data.get(self.BASE_QUOTE+'/'+quote_asset):
-        #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(
-        #             self.BASE_QUOTE + '_PERP', {'price', '1.0'})['price'])
+        #     if self._symbols_data.get("%s_%s" % (quote_asset, self.SYMBOL_SUFFIX)):
+        #         market.base_exchange_rate = float(self._symbols_data.get(
+        #             "%s_%s" % (quote_asset, self.SYMBOL_SUFFIX), {'price', '1.0'})['price'])
+        #     elif self._symbols_data.get(self.BASE_QUOTE, self.SYMBOL_SUFFIX)):
+        #         market.base_exchange_rate = 1.0 / float(self._symbols_data.get(
+        #             self.BASE_QUOTE, self.SYMBOL_SUFFIX), {'price', '1.0'})['price'])
         #     else:
         #         market.base_exchange_rate = 1.0
         # else:

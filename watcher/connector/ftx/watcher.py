@@ -53,7 +53,6 @@ class FTXWatcher(Watcher):
 
         self._account_data = {}
         self._symbols_data = {}
-        self._tickers_data = {}
 
         self._last_trade_id = {}
 
@@ -511,17 +510,12 @@ class FTXWatcher(Watcher):
 
     def __prefetch_markets(self):
         symbols = self._connector.client.get_markets()
-        # tickers = self._connector.client.get_all_tickers()
 
         self._account_data = self._connector.client.get_account_info()
         self._symbols_data = {}
-        self._tickers_data = {}
 
         for symbol in symbols:
             self._symbols_data[symbol['name']] = symbol
-
-        # for ticker in tickers:
-        #     self._tickers_data[ticker['name']] = ticker
 
     def __on_ticker_data(self, message):
         # market data instrument by symbol
@@ -550,10 +544,10 @@ class FTXWatcher(Watcher):
         # @todo compute base_exchange_rate
         # if quote_asset != self.BASE_QUOTE:
         #     if self._symbols_data.get(quote_asset + '/' + self.BASE_QUOTE):
-        #         market.base_exchange_rate = float(self._tickers_data.get(
+        #         market.base_exchange_rate = float(self._symbols_data.get(
         #             quote_asset + '/' + self.BASE_QUOTE, {'price', '1.0'})['price'])
         #     elif self._symbols_data.get(self.BASE_QUOTE+'/'+quote_asset):
-        #         market.base_exchange_rate = 1.0 / float(self._tickers_data.get(
+        #         market.base_exchange_rate = 1.0 / float(self._symbols_data.get(
         #             self.BASE_QUOTE + '/' + quote_asset, {'price', '1.0'})['price'])
         #     else:
         #         market.base_exchange_rate = 1.0
