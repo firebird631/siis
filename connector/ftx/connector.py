@@ -3,6 +3,8 @@
 # @license Copyright (c) 2022 Dream Overflow
 # HTTPS+WS connector for ftx.com
 
+# from connector.ftx.client import Client
+# from connector.ftx.streams import ThreadedWebsocketManager
 from connector.ftx.rest.client import FtxClient
 from connector.ftx.websocket.client import FtxWebsocketClient
 
@@ -14,23 +16,6 @@ class Connector(object):
     """
     FTX adapter to REST and WS API.
     """
-
-    TF_MAP = {
-        60: '1m',
-        180: '3m',
-        300: '5m',
-        900: '15m',
-        1800: '30m',
-        3600: '1h',
-        7200: '2h',
-        14400: '4h',
-        21600: '6h',
-        28800: '8h',
-        43200: '12h',
-        86400: '1d',
-        604800: '1w',
-        2592000: '1M'
-    }
 
     def __init__(self, service, account_id, api_key, api_secret, host="ftx.com", callback=None):
         self._protocol = "https://"
@@ -50,9 +35,11 @@ class Connector(object):
         if self._session is None:
             # Create HTTPS session
             self._session = FtxClient(self.__api_key, self.__api_secret, None)
+            # self._session = Client(self.__api_key, self.__api_secret, None)
 
         if self._ws is None and use_ws:
             self._ws = FtxWebsocketClient(self.__api_key, self.__api_secret)
+            # self._ws = ThreadedWebsocketManager(self.__api_key, self.__api_secret)
 
     def disconnect(self):
         if self._ws:

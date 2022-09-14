@@ -58,7 +58,7 @@ class WebsocketManager:
 
     def _run_websocket(self, ws):
         try:
-            ws.run_forever()
+            ws.run_forever(ping_interval=15, ping_payload='{"op": "ping"}')
         except Exception as e:
             raise Exception(f'Unexpected error while running websocket: {e}')
         finally:
@@ -85,7 +85,7 @@ class WebsocketManager:
             self.ws.close()
             self.ws = None
 
-    def _on_close(self, ws, a=None, b=None):
+    def _on_close(self, ws, close_status_code, close_msg):
         self._reconnect(ws)
 
     def _on_error(self, ws, error):

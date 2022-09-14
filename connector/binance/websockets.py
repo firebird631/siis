@@ -8,7 +8,7 @@ import threading
 import traceback
 
 from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
-from twisted.internet import ssl, reactor  # , reactor
+from twisted.internet import ssl, reactor
 from twisted.internet.protocol import ReconnectingClientFactory
 
 from connector.binance.client import Client
