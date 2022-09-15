@@ -121,8 +121,7 @@ class KrakenWatcher(Watcher):
                 self._connector.ws.subscribe_public(
                     subscription=name,
                     pair=pairs,
-                    callback=callback
-                )
+                    callback=callback)
 
                 logger.debug("%s subscribe %s to markets data stream..." % (self.name, name))
             except Exception as e:
@@ -153,14 +152,12 @@ class KrakenWatcher(Watcher):
                     self._connector.ws.subscribe_private(
                         token=ws_token['token'],
                         subscription='ownTrades',
-                        callback=self.__on_own_trades
-                    )
+                        callback=self.__on_own_trades)
 
                     self._connector.ws.subscribe_private(
                         token=ws_token['token'],
                         subscription='openOrders',
-                        callback=self.__on_open_orders
-                    )
+                        callback=self.__on_open_orders)
 
                     logger.debug("%s subscribe to user data stream..." % self.name)
             except Exception as e:
@@ -289,16 +286,13 @@ class KrakenWatcher(Watcher):
                                 self._connector.ws.subscribe_private(
                                     token=ws_token['token'],
                                     subscription='ownTrades',
-                                    callback=self.__on_own_trades
-                                )
+                                    callback=self.__on_own_trades)
 
                                 self._connector.ws.subscribe_private(
                                     token=ws_token['token'],
                                     subscription='openOrders',
-                                    callback=self.__on_open_orders
-                                )
+                                    callback=self.__on_open_orders)
                         else:
-                            # error retrieving the token, retry
                             self._ws_own_trades['timestamp'] = time.time()
                             self._ws_open_orders['timestamp'] = time.time()
 
@@ -316,22 +310,19 @@ class KrakenWatcher(Watcher):
                                 self._connector.ws.subscribe_public(
                                     subscription='ticker',
                                     pair=pairs,
-                                    callback=self.__on_ticker_data
-                                )
+                                    callback=self.__on_ticker_data)
 
                                 self._connector.ws.subscribe_public(
                                     subscription='trade',
                                     pair=pairs,
-                                    callback=self.__on_trade_data
-                                )
+                                    callback=self.__on_trade_data)
 
                                 # market spread (order book of first level)
                                 if KrakenWatcher.USE_SPREAD:
                                     self._connector.ws.subscribe_public(
                                         subscription='spread',
                                         pair=pairs,
-                                        callback=self.__on_spread_data
-                                    )
+                                        callback=self.__on_spread_data)
 
                                 # @todo order book
 
@@ -488,30 +479,26 @@ class KrakenWatcher(Watcher):
             self._connector.ws.subscribe_public(
                 subscription='ticker',
                 pair=pairs,
-                callback=self.__on_ticker_data
-            )
+                callback=self.__on_ticker_data)
 
             self._connector.ws.subscribe_public(
                 subscription='trade',
                 pair=pairs,
-                callback=self.__on_trade_data
-            )
+                callback=self.__on_trade_data)
 
             # market spread (order book of first level)
             if KrakenWatcher.USE_SPREAD:
                 self._connector.ws.subscribe_public(
                     subscription='spread',
                     pair=pairs,
-                    callback=self.__on_spread_data
-                )
+                    callback=self.__on_spread_data)
 
             if order_book_depth and order_book_depth in (10, 25, 100, 500, 1000):
                 self._connector.ws.subscribe_public(
                     subscription='book',
                     pair=pairs,
                     depth=order_book_depth,
-                    callback=self.__on_depth_data
-                )
+                    callback=self.__on_depth_data)
 
         return True
 

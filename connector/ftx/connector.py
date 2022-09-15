@@ -5,8 +5,12 @@
 
 # from connector.ftx.client import Client
 # from connector.ftx.streams import ThreadedWebsocketManager
+import hmac
+import time
+
 from connector.ftx.rest.client import FtxClient
 from connector.ftx.websocket.client import FtxWebsocketClient
+from connector.ftx.ws import WssClient
 
 import logging
 logger = logging.getLogger('siis.connector.ftx')
@@ -38,12 +42,14 @@ class Connector(object):
             # self._session = Client(self.__api_key, self.__api_secret, None)
 
         if self._ws is None and use_ws:
-            self._ws = FtxWebsocketClient(self.__api_key, self.__api_secret)
+            self._ws = WssClient(self.__api_key, self.__api_secret)
+            # self._ws = FtxWebsocketClient(self.__api_key, self.__api_secret)
             # self._ws = ThreadedWebsocketManager(self.__api_key, self.__api_secret)
 
     def disconnect(self):
         if self._ws:
-            self._ws.close()
+            # self._ws.close()
+            self._ws.stop()
             self._ws = None
 
         if self._session:
@@ -72,3 +78,14 @@ class Connector(object):
     @property
     def account_id(self):
         return self._account_id
+
+    def get_ws_token(self):
+        ts = int(time.time() * 1000)
+        data = ({'op': 'login', 'args': {
+            'key': self.__api_key,
+            'sign': hmac.new(
+                self.__api_secret.encode(), f'{ts}websocket_login'.encode(), 'sha256').hexdigest(),
+            'time': ts
+        }})
+
+        return data
