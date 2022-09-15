@@ -156,7 +156,27 @@ class IGWatcher(Watcher):
                     self.__configured_symbols = configured_symbols
                     self.__matching_symbols = matching_symbols
 
-                    # @todo reconnect subscribed markets on lost
+                    # retry the previous subscriptions
+                    if self._watched_instruments:
+                        logger.debug("%s subscribe to markets data stream..." % self.name)
+
+                        pairs = []
+
+                        for market_id in self._watched_instruments:
+                            if market_id in self._available_instruments:
+                                pairs.append(market_id)
+
+                        for pair in pairs:
+                            try:
+                                self.subscribe_market(pair)
+                                self.subscribe_tick(pair)
+
+                                # no more than 10 messages per seconds on websocket
+                                time.sleep(0.2)
+
+                            except Exception as e:
+                                error_logger.error(repr(e))
+                                traceback_logger.error(traceback.format_exc())
 
                 self._ready = True
                 self._connecting = False
@@ -344,6 +364,9 @@ class IGWatcher(Watcher):
 
     def unsubscribe(self, market_id, timeframe):
         with self._mutex:
+            if market_id in self._watched_instruments:
+                self._watched_instruments.remove(market_id)
+
             if market_id in self._subscribed_markets:
                 sub = self._subscribed_markets[market_id]
                 self.unsubscribe_ws(sub)
