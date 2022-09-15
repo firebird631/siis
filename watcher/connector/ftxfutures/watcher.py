@@ -9,7 +9,6 @@ from typing import Optional, List, Tuple
 
 import time
 import traceback
-import math
 
 from datetime import datetime
 
@@ -22,7 +21,7 @@ from connector.ftx.connector import Connector
 from trader.order import Order
 from trader.market import Market
 
-from instrument.instrument import Instrument, Candle
+from instrument.instrument import Instrument
 
 from database.database import Database
 
@@ -50,7 +49,6 @@ class FTXFuturesWatcher(Watcher):
     def __setup_ws_state(self):
         return {
             'status': "offline",
-            'version': "0",
             'timestamp': 0.0,
             'subscribed': False,
             'lost': False,
@@ -60,7 +58,6 @@ class FTXFuturesWatcher(Watcher):
     def __reset_ws_state(self, ws):
         """Reset the states of a WS connection watcher."""
         ws['status'] = "offline"
-        ws['version'] = "0"
         ws['timestamp'] = 0.0
         ws['subscribed'] = False
         ws['lost'] = False
@@ -103,11 +100,15 @@ class FTXFuturesWatcher(Watcher):
                     if market_id in instruments:
                         pairs.append(market_id)
 
-                # if pairs:
-                self._connector.ws.subscribe_public(
-                    subscription=name,
-                    pair=pairs,
-                    callback=callback)
+                for pair in pairs:
+                    try:
+                        self._connector.ws.subscribe_public(
+                            subscription=name,
+                            pair=[pair],
+                            callback=callback)
+                    except Exception as e:
+                        error_logger.error(repr(e))
+                        traceback_logger.error(traceback.format_exc())
 
                 logger.debug("%s subscribe %s to markets data stream..." % (self.name, name))
             except Exception as e:
@@ -115,9 +116,9 @@ class FTXFuturesWatcher(Watcher):
                 traceback_logger.error(traceback.format_exc())
 
     def __reconnect_user_ws(self):
-        # if self._ws_fills['retry'] > 0.0 and time.time() < self._ws_fills['retry']:
+        # if self._ws_fills_data['retry'] > 0.0 and time.time() < self._ws_fills_data['retry']:
         #     return
-        # if self._ws_orders['retry'] > 0.0 and time.time() < self._ws_orders['retry']:
+        # if self._ws_orders_data['retry'] > 0.0 and time.time() < self._ws_orders_data['retry']:
         #     return
 
         with self._mutex:
@@ -126,24 +127,24 @@ class FTXFuturesWatcher(Watcher):
                 self._connector.ws.stop_private_socket('orders')
 
                 # error retrieving the token, retry later
-                self._ws_fills['timestamp'] = time.time()
-                self._ws_orders['timestamp'] = time.time()
+                self._ws_fills_data['timestamp'] = time.time()
+                self._ws_orders_data['timestamp'] = time.time()
 
                 ws_token = self._connector.get_ws_token()
 
                 if ws_token:
-                    self.__reset_ws_state(self._ws_fills)
-                    self.__reset_ws_state(self._ws_orders)
+                    self.__reset_ws_state(self._ws_fills_data)
+                    self.__reset_ws_state(self._ws_orders_data)
 
                     self._connector.ws.subscribe_private(
                         token=ws_token,
                         subscription='fills',
-                        callback=self._ws_fills)
+                        callback=self.__on_fills_data)
 
                     self._connector.ws.subscribe_private(
                         token=ws_token,
                         subscription='orders',
-                        callback=self._ws_orders)
+                        callback=self.__on_orders_data)
 
                     logger.debug("%s subscribe to user data stream..." % self.name)
             except Exception as e:
@@ -165,12 +166,13 @@ class FTXFuturesWatcher(Watcher):
         self.__matching_symbols = set()  # cache for matching symbols
 
         # user WS
-        self._ws_fills = self.__setup_ws_state()
-        self._ws_orders = self.__setup_ws_state()
+        self._ws_fills_data = self.__setup_ws_state()
+        self._ws_orders_data = self.__setup_ws_state()
 
         # public WS
         self._ws_ticker_data = self.__setup_ws_state()
         self._ws_trade_data = self.__setup_ws_state()
+        self._ws_orderbook_data = self.__setup_ws_state()
 
     def connect(self):
         super().connect()
@@ -183,12 +185,13 @@ class FTXFuturesWatcher(Watcher):
                 identity = self.service.identity(self._name)
 
                 # user WS
-                self.__reset_ws_state(self._ws_fills)
-                self.__reset_ws_state(self._ws_orders)
+                self.__reset_ws_state(self._ws_fills_data)
+                self.__reset_ws_state(self._ws_orders_data)
 
                 # public WS
                 self.__reset_ws_state(self._ws_ticker_data)
                 self.__reset_ws_state(self._ws_trade_data)
+                self.__reset_ws_state(self._ws_orderbook_data)
 
                 if identity:
                     if not self._connector:
@@ -206,10 +209,6 @@ class FTXFuturesWatcher(Watcher):
                         self._connector.connect()
 
                     if self._connector and self._connector.connected:
-                        #
-                        # instruments
-                        #
-
                         # get all products symbols
                         self._available_instruments = set()
 
@@ -261,15 +260,15 @@ class FTXFuturesWatcher(Watcher):
                                 self._connector.ws.subscribe_private(
                                     token=ws_token,
                                     subscription='fills',
-                                    callback=self.__on_fills)
+                                    callback=self.__on_fills_data)
 
                                 self._connector.ws.subscribe_private(
                                     token=ws_token,
                                     subscription='orders',
-                                    callback=self.__on_orders)
+                                    callback=self.__on_orders_data)
                         else:
-                            self._ws_fills['timestamp'] = time.time()
-                            self._ws_orders['timestamp'] = time.time()
+                            self._ws_fills_data['timestamp'] = time.time()
+                            self._ws_orders_data['timestamp'] = time.time()
 
                         # retry the previous subscriptions
                         if self._watched_instruments:
@@ -281,22 +280,23 @@ class FTXFuturesWatcher(Watcher):
                                 if market_id in self._available_instruments:
                                     pairs.append(market_id)
 
-                                    try:
-                                        self._connector.ws.subscribe_public(
-                                            subscription='ticker',
-                                            pair=[market_id],
-                                            callback=self.__on_ticker_data)
+                            for pair in pairs:
+                                try:
+                                    self._connector.ws.subscribe_public(
+                                        subscription='ticker',
+                                        pair=[pair],
+                                        callback=self.__on_ticker_data)
 
-                                        self._connector.ws.subscribe_public(
-                                            subscription='trades',
-                                            pair=[market_id],
-                                            callback=self.__on_trade_data)
+                                    self._connector.ws.subscribe_public(
+                                        subscription='trades',
+                                        pair=[pair],
+                                        callback=self.__on_trade_data)
 
-                                        # @todo order book
+                                    # @todo order book
 
-                                    except Exception as e:
-                                        error_logger.error(repr(e))
-                                        traceback_logger.error(traceback.format_exc())
+                                except Exception as e:
+                                    error_logger.error(repr(e))
+                                    traceback_logger.error(traceback.format_exc())
 
                         # once market are init
                         self._ready = True
@@ -459,17 +459,17 @@ class FTXFuturesWatcher(Watcher):
             self.insert_watched_instrument(market_id, [0])
 
             # live data
-            pairs = [market_id]
+            pair = [market_id]
 
             # and start listening for this symbol (trade+depth)
             self._connector.ws.subscribe_public(
                 subscription='ticker',
-                pair=pairs,
+                pair=pair,
                 callback=self.__on_ticker_data)
 
             self._connector.ws.subscribe_public(
                 subscription='trades',
-                pair=pairs,
+                pair=pair,
                 callback=self.__on_trade_data)
 
             # no more than 10 messages per seconds on websocket
@@ -507,7 +507,7 @@ class FTXFuturesWatcher(Watcher):
 
         # disconnected for user socket in real mode, and auto-reconnect failed
         if not self.service.paper_mode:
-            if self.__check_reconnect(self._ws_fills) or self.__check_reconnect(self._ws_orders):
+            if self.__check_reconnect(self._ws_fills_data) or self.__check_reconnect(self._ws_orders_data):
                 # logger.debug("%s reconnecting to user trades and user orders data stream..." % self.name)
                 self.__reconnect_user_ws()
 
@@ -519,6 +519,10 @@ class FTXFuturesWatcher(Watcher):
         if self.__check_reconnect(self._ws_trade_data):
             # logger.debug("%s reconnecting to trades data stream..." % self.name)
             self.__reconnect_ws(self._ws_trade_data, self.__on_trade_data, 'trade')
+
+        # if self.__check_reconnect(self._ws_orderbook_data):
+        #     # logger.debug("%s reconnecting to order book data stream..." % self.name)
+        #     self.__reconnect_ws(self._ws_orderbook_data, self.__on_book_ticker_data, 'orderbook')
 
         #
         # ohlc close/open
@@ -682,10 +686,36 @@ class FTXFuturesWatcher(Watcher):
 
     def __on_ticker_data(self, message):
         # market data instrument by symbol
-        if type(message) is not dict:
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_ticker_data['timestamp'] = time.time()
+            self._ws_ticker_data['subscribed'] = True
+            logger.debug("ticker data subscriptionStatus : subscribed to %s" % message.get('market'))
+
             return
 
-        # @todo subscription result
+        elif msg_type == 'unsubscribed':
+            self._ws_ticker_data['timestamp'] = time.time()
+            self._ws_ticker_data['subscribed'] = False
+            logger.debug("ticker data subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_ticker_data['status'] = "offline"
+                self._ws_ticker_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("ticker data subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'ticker':
+            return
 
         # last update timestamp
         self._ws_ticker_data['timestamp'] = time.time()
@@ -695,7 +725,7 @@ class FTXFuturesWatcher(Watcher):
             return
 
         # last_trade_id = 0
-        data = message.get('data', {})
+        data = message.get('data', [])
         if not data:
             return
 
@@ -727,24 +757,41 @@ class FTXFuturesWatcher(Watcher):
 
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
-    def __on_book_ticker_data(self, data):
-        if type(data) is not dict:
-             return
-
-        # @todo
-
-    def __on_depth_data(self, data):
-        if type(data) is not dict:
-            return
-
-        # @todo
-
     def __on_trade_data(self, message):
         # market data instrument by symbol
         if type(message) is not dict:
             return
 
-        # @todo subscription result
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_trade_data['timestamp'] = time.time()
+            self._ws_trade_data['subscribed'] = True
+            logger.debug("trade data subscriptionStatus : subscribed to %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'unsubscribed':
+            self._ws_trade_data['timestamp'] = time.time()
+            self._ws_trade_data['subscribed'] = False
+            logger.debug("trade data subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_ticker_data['status'] = "offline"
+                self._ws_ticker_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("trade subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'trades':
+            return
 
         # last update timestamp
         self._ws_trade_data['timestamp'] = time.time()
@@ -795,16 +842,148 @@ class FTXFuturesWatcher(Watcher):
                 if candle is not None:
                     self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
 
-    def __on_fills(self, message):
-        # market data instrument by symbol
+    def __on_book_ticker_data(self, message):
         if type(message) is not dict:
+            return
+
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_orderbook_data['timestamp'] = time.time()
+            self._ws_orderbook_data['subscribed'] = True
+            logger.debug("order book data subscriptionStatus : subscribed to %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'unsubscribed':
+            self._ws_orderbook_data['timestamp'] = time.time()
+            self._ws_orderbook_data['subscribed'] = False
+            logger.debug("order book subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_orderbook_data['status'] = "offline"
+                self._ws_orderbook_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("order book subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'orderbook':
+            return
+
+        # last update timestamp
+        self._ws_orderbook_data['timestamp'] = time.time()
+
+        symbol = message.get('market')
+        if not symbol:
+            return
+
+        data = message.get('data', [])
+        if not data:
             return
 
         # @todo
 
-    def __on_orders(self, message):
+    def __on_fills_data(self, message):
         # market data instrument by symbol
         if type(message) is not dict:
+            return
+
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_fills_data['timestamp'] = time.time()
+            self._ws_fills_data['subscribed'] = True
+            logger.debug("user fills data subscriptionStatus : subscribed to %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'unsubscribed':
+            self._ws_fills_data['timestamp'] = time.time()
+            self._ws_fills_data['subscribed'] = False
+            logger.debug("user fills subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_fills_data['status'] = "offline"
+                self._ws_fills_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("user fills subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'fills':
+            return
+
+        # last update timestamp
+        self._ws_fills_data['timestamp'] = time.time()
+
+        symbol = message.get('market')
+        if not symbol:
+            return
+
+        data = message.get('data', [])
+        if not data:
+            return
+
+        # @todo
+
+    def __on_orders_data(self, message):
+        # market data instrument by symbol
+        if type(message) is not dict:
+            return
+
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_orders_data['timestamp'] = time.time()
+            self._ws_orders_data['subscribed'] = True
+            logger.debug("user orders data subscriptionStatus : subscribed to %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'unsubscribed':
+            self._ws_orders_data['timestamp'] = time.time()
+            self._ws_orders_data['subscribed'] = False
+            logger.debug("user orders subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_orders_data['status'] = "offline"
+                self._ws_orders_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("user orders subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'orders':
+            return
+
+        # last update timestamp
+        self._ws_orders_data['timestamp'] = time.time()
+
+        symbol = message.get('market')
+        if not symbol:
+            return
+
+        data = message.get('data', [])
+        if not data:
             return
 
         # @todo

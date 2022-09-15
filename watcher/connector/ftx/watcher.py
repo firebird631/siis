@@ -9,7 +9,6 @@ from typing import Optional, List, Tuple
 
 import time
 import traceback
-import math
 
 from datetime import datetime
 
@@ -22,7 +21,7 @@ from connector.ftx.connector import Connector
 from trader.order import Order
 from trader.market import Market
 
-from instrument.instrument import Instrument, Candle
+from instrument.instrument import Instrument
 
 from database.database import Database
 
@@ -45,6 +44,111 @@ class FTXWatcher(Watcher):
     BASE_QUOTE = 'USD'
     USE_DEPTH_AS_TRADE = False  # Use depth best bid/ask in place of aggregated trade data (use a single stream)
 
+    def __setup_ws_state(self):
+        return {
+            'status': "offline",
+            'timestamp': 0.0,
+            'subscribed': False,
+            'lost': False,
+            'retry': 0.0
+        }
+
+    def __reset_ws_state(self, ws):
+        """Reset the states of a WS connection watcher."""
+        ws['status'] = "offline"
+        ws['timestamp'] = 0.0
+        ws['subscribed'] = False
+        ws['lost'] = False
+        ws['retry'] = 0.0
+
+    def __check_reconnect(self, ws):
+        """Return True if a reconnection in needed."""
+        # if ws['lost']:
+        #     return True
+
+        # 15 seconds during maintenance, 5 the rest of the time (post_only, cancel_only, online, offline)
+        delay = 15.0 if self.maintenance else 5.0
+
+        # above a delay without activity then reconnect
+        if ws['timestamp'] > 0.0 and time.time() - ws['timestamp'] > delay:
+            # if maintenance need to wait 5 sec before try to reconnect
+            # if ws['status'] == "maintenance" and ws['retry'] <= 0.0:
+            #     ws['retry'] = time.time() + 5.0
+
+            return True
+
+        return False
+
+    def __reconnect_ws(self, ws, callback, name):
+        # if ws['retry'] > 0.0 and time.time() < ws['retry']:
+        #     return
+
+        with self._mutex:
+            try:
+                self._connector.ws.stop_socket(name)
+                self.__reset_ws_state(ws)
+
+                # try now, if fail it will retry later
+                ws['timestamp'] = time.time()
+
+                pairs = []
+                instruments = self._available_instruments
+
+                for market_id in self._watched_instruments:
+                    if market_id in instruments:
+                        pairs.append(market_id)
+
+                for pair in pairs:
+                    try:
+                        self._connector.ws.subscribe_public(
+                            subscription=name,
+                            pair=[pair],
+                            callback=callback)
+                    except Exception as e:
+                        error_logger.error(repr(e))
+                        traceback_logger.error(traceback.format_exc())
+
+                logger.debug("%s subscribe %s to markets data stream..." % (self.name, name))
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+    def __reconnect_user_ws(self):
+        # if self._ws_fills_data['retry'] > 0.0 and time.time() < self._ws_fills_data['retry']:
+        #     return
+        # if self._ws_orders_data['retry'] > 0.0 and time.time() < self._ws_orders_data['retry']:
+        #     return
+
+        with self._mutex:
+            try:
+                self._connector.ws.stop_private_socket('fills')
+                self._connector.ws.stop_private_socket('orders')
+
+                # error retrieving the token, retry later
+                self._ws_fills_data['timestamp'] = time.time()
+                self._ws_orders_data['timestamp'] = time.time()
+
+                ws_token = self._connector.get_ws_token()
+
+                if ws_token:
+                    self.__reset_ws_state(self._ws_fills_data)
+                    self.__reset_ws_state(self._ws_orders_data)
+
+                    self._connector.ws.subscribe_private(
+                        token=ws_token,
+                        subscription='fills',
+                        callback=self.__on_fills_data)
+
+                    self._connector.ws.subscribe_private(
+                        token=ws_token,
+                        subscription='orders',
+                        callback=self.__on_orders_data)
+
+                    logger.debug("%s subscribe to user data stream..." % self.name)
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
     def __init__(self, service):
         super().__init__("ftx.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
 
@@ -59,9 +163,14 @@ class FTXWatcher(Watcher):
         self.__configured_symbols = set()  # cache for configured symbols set
         self.__matching_symbols = set()  # cache for matching symbols
 
-        self._tickers_handler = None  # WS all tickers
-        self._book_tickers_handler = None  # WS all book tickers
-        self._user_data_handler = None  # WS user data
+        # user WS
+        self._ws_fills_data = self.__setup_ws_state()
+        self._ws_orders_data = self.__setup_ws_state()
+
+        # public WS
+        self._ws_ticker_data = self.__setup_ws_state()
+        self._ws_trade_data = self.__setup_ws_state()
+        self._ws_orderbook_data = self.__setup_ws_state()
 
     def connect(self):
         super().connect()
@@ -73,6 +182,15 @@ class FTXWatcher(Watcher):
 
                 identity = self.service.identity(self._name)
 
+                # user WS
+                self.__reset_ws_state(self._ws_fills_data)
+                self.__reset_ws_state(self._ws_orders_data)
+
+                # public WS
+                self.__reset_ws_state(self._ws_ticker_data)
+                self.__reset_ws_state(self._ws_trade_data)
+                self.__reset_ws_state(self._ws_orderbook_data)
+
                 if identity:
                     if not self._connector:
                         self._connector = Connector(
@@ -81,18 +199,14 @@ class FTXWatcher(Watcher):
                             identity.get('api-key'),
                             identity.get('api-secret'),
                             identity.get('host'))
-                    # else:
-                    #     # to get a clean connection
-                    #     self._connector.disconnect()
+                    else:
+                        # to get a clean connection
+                        self._connector.disconnect()
 
                     if not self._connector.connected or not self._connector.ws_connected:
                         self._connector.connect()
 
                     if self._connector and self._connector.connected:
-                        #
-                        # instruments
-                        #
-
                         # get all products symbols
                         self._available_instruments = set()
 
@@ -134,8 +248,30 @@ class FTXWatcher(Watcher):
                         for instrument in instruments:
                             self._available_instruments.add(instrument['name'])
 
-                        # userdata @todo
-                        # self._user_data_handler = self._connector.ws.start_user_socket(self.__on_user_data)
+                        # and start ws manager if necessary
+                        try:
+                            # self._connector.ws.connect()
+                            self._connector.ws.start()
+                        except RuntimeError:
+                            logger.debug("%s WS already started..." % self.name)
+
+                        # user data only in real mode
+                        if not self.service.paper_mode:
+                            ws_token = self._connector.get_ws_token()
+
+                            if ws_token:
+                                self._connector.ws.subscribe_private(
+                                    token=ws_token,
+                                    subscription='fills',
+                                    callback=self.__on_fills_data)
+
+                                self._connector.ws.subscribe_private(
+                                    token=ws_token,
+                                    subscription='orders',
+                                    callback=self.__on_orders_data)
+                        else:
+                            self._ws_fills_data['timestamp'] = time.time()
+                            self._ws_orders_data['timestamp'] = time.time()
 
                         # retry the previous subscriptions
                         if self._watched_instruments:
@@ -147,20 +283,23 @@ class FTXWatcher(Watcher):
                                 if market_id in self._available_instruments:
                                     pairs.append(market_id)
 
-                                    try:
-                                        self._connector.ws.subscribe_ticker(market_id, callback=self.__on_ticker_data)
-                                        self._connector.ws.subscribe_trades(market_id, callback=self.__on_trade_data)
-                                        # @todo order book
+                            for pair in pairs:
+                                try:
+                                    self._connector.ws.subscribe_public(
+                                        subscription='ticker',
+                                        pair=[pair],
+                                        callback=self.__on_ticker_data)
 
-                                    except Exception as e:
-                                        error_logger.error(repr(e))
-                                        traceback_logger.error(traceback.format_exc())
+                                    self._connector.ws.subscribe_public(
+                                        subscription='trades',
+                                        pair=[pair],
+                                        callback=self.__on_trade_data)
 
-                        # and start ws manager if necessary
-                        try:
-                            self._connector.ws.connect()
-                        except RuntimeError:
-                            logger.debug("%s WS already started..." % self.name)
+                                    # @todo order book
+
+                                except Exception as e:
+                                    error_logger.error(repr(e))
+                                    traceback_logger.error(traceback.format_exc())
 
                         # once market are init
                         self._ready = True
@@ -190,13 +329,10 @@ class FTXWatcher(Watcher):
                     self._connector.disconnect()
                     self._connector = None
 
-                    # reset WS handlers
-                    self._tickers_handler = None
-                    self._book_tickers_handler = None
-                    self._user_data_handler = None
-
                 self._ready = False
                 self._connecting = False
+
+                self.stream_connection_status(False)
 
                 logger.debug("%s disconnected" % self.name)
 
@@ -215,6 +351,10 @@ class FTXWatcher(Watcher):
     @property
     def authenticated(self) -> bool:
         return self._connector and self._connector.authenticated
+
+    @property
+    def maintenance(self) -> bool:
+        return False
 
     def pre_update(self):
         if not self._connecting and not self._ready:
@@ -306,10 +446,10 @@ class FTXWatcher(Watcher):
                         elif timeframe == Instrument.TF_MONTH:
                             self.fetch_and_generate(market_id, Instrument.TF_MONTH, depth, None)
 
+                        time.sleep(0.5)  # no more than 2 call per second
+
                     except Exception as e:
                         error_logger.error(repr(e))
-
-                    time.sleep(0.5)  # no more than 2 call per second
 
             if tick_depth:
                 try:
@@ -321,9 +461,19 @@ class FTXWatcher(Watcher):
             # one more watched instrument
             self.insert_watched_instrument(market_id, [0])
 
+            # live data
+            pair = [market_id]
+
             # and start listening for this symbol (trade+depth)
-            self._connector.ws.subscribe_ticker(market_id, callback=self.__on_ticker_data)
-            self._connector.ws.subscribe_trades(market_id, callback=self.__on_trade_data)
+            self._connector.ws.subscribe_public(
+                subscription='ticker',
+                pair=pair,
+                callback=self.__on_ticker_data)
+
+            self._connector.ws.subscribe_public(
+                subscription='trades',
+                pair=pair,
+                callback=self.__on_trade_data)
 
             # no more than 10 messages per seconds on websocket
             time.sleep(0.1)
@@ -336,8 +486,10 @@ class FTXWatcher(Watcher):
                 instruments = self._available_instruments
 
                 if market_id in instruments:
-                    self._connector.ws.unsubscribe_ticker(market_id)
-                    self._connector.ws.unsubscribe_trades(market_id)
+                    pair = [market_id]
+
+                    self._connector.ws.unsubscribe_public('ticker', pair)
+                    self._connector.ws.unsubscribe_public('trade', pair)
 
                     self._watched_instruments.remove(market_id)
 
@@ -355,6 +507,25 @@ class FTXWatcher(Watcher):
             # connection lost, ready status to false before to retry a connection
             self._ready = False
             return False
+
+        # disconnected for user socket in real mode, and auto-reconnect failed
+        if not self.service.paper_mode:
+            if self.__check_reconnect(self._ws_fills_data) or self.__check_reconnect(self._ws_orders_data):
+                # logger.debug("%s reconnecting to user trades and user orders data stream..." % self.name)
+                self.__reconnect_user_ws()
+
+        # disconnected for a public socket, and auto-reconnect failed
+        if self.__check_reconnect(self._ws_ticker_data):
+            # logger.debug("%s reconnecting to tickers data stream..." % self.name)
+            self.__reconnect_ws(self._ws_ticker_data, self.__on_ticker_data, 'ticker')
+
+        if self.__check_reconnect(self._ws_trade_data):
+            # logger.debug("%s reconnecting to trades data stream..." % self.name)
+            self.__reconnect_ws(self._ws_trade_data, self.__on_trade_data, 'trade')
+
+        # if self.__check_reconnect(self._ws_orderbook_data):
+        #     # logger.debug("%s reconnecting to order book data stream..." % self.name)
+        #     self.__reconnect_ws(self._ws_orderbook_data, self.__on_book_ticker_data, 'orderbook')
 
         #
         # ohlc close/open
@@ -524,15 +695,46 @@ class FTXWatcher(Watcher):
 
     def __on_ticker_data(self, message):
         # market data instrument by symbol
-        if type(message) is not dict:
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_ticker_data['timestamp'] = time.time()
+            self._ws_ticker_data['subscribed'] = True
+            logger.debug("ticker data subscriptionStatus : subscribed to %s" % message.get('market'))
+
             return
+
+        elif msg_type == 'unsubscribed':
+            self._ws_ticker_data['timestamp'] = time.time()
+            self._ws_ticker_data['subscribed'] = False
+            logger.debug("ticker data subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_ticker_data['status'] = "offline"
+                self._ws_ticker_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("ticker subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'ticker':
+            return
+
+        # last update timestamp
+        self._ws_ticker_data['timestamp'] = time.time()
 
         symbol = message.get('market')
         if not symbol:
             return
 
         # last_trade_id = 0
-        data = message.get('data', {})
+        data = message.get('data', [])
         if not data:
             return
 
@@ -564,107 +766,44 @@ class FTXWatcher(Watcher):
 
         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
-    def __on_book_ticker_data(self, data):
-        logger.debug(data)
-    #     if type(data) is not dict:
-    #         return
-    #
-    #     event_type = data.get('e', "")
-    #     if event_type != 'bookTicker':
-    #         return
-    #
-    #     # market data instrument by symbol
-    #     symbol = data.get('s')
-    #     if not symbol:
-    #         return
-    #
-    #     # not available in futures but only for spot
-    #     bid = float(data['b']) if data.get('b') else None  # B for qty
-    #     ask = float(data['a']) if data.get('a') else None  # A for qty
-    #
-    #     market_data = (symbol, None, None, bid, ask, None, None, None, None, None)
-    #     self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
-
-    def __on_depth_data(self, data):
-        pass
-    #     if type(data) is not dict:
-    #         return
-    #
-    #     if 'data' in data:
-    #         data = data['data']
-    #
-    #     event_type = data.get('e', "")
-    #     if event_type != 'depthUpdate':
-    #         return
-    #
-    #     symbol = data.get('s')
-    #     if not symbol:
-    #         return
-    #
-    #     # get bid/ask for market update from depth book
-    #     last_update_time = data['T'] * 0.001
-    #
-    #     if 'b' in data and data['b']:
-    #         bid = float(data['b'][0][0])  # B for qty
-    #     else:
-    #         bid = None
-    #
-    #     if 'a' in data and data['a']:
-    #         ask = float(data['a'][0][0])  # A for qty
-    #     else:
-    #         ask = None
-    #
-    #     market_data = (symbol, last_update_time > 0, last_update_time, bid, ask, None, None, None, None, None)
-    #     self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
-    #
-    #     # # @todo using binance.DepthCache
-    #     # if symbol not in self._depths:
-    #     #     # initial snapshot of the order book from REST API
-    #     #     initial = self._connector.client.get_order_book(symbol=symbol, limit=100)
-    #     #
-    #     #     bids = {}
-    #     #     asks = {}
-    #     #
-    #     #     for bid in initial['bids']:
-    #     #         bids[bid[0]] = bid[1]
-    #     #
-    #     #     for ask in initial['asks']:
-    #     #         asks[ask[0]] = ask[1]
-    #     #
-    #     #     self._depths[symbol] = [initial.get('lastUpdateId', 0), bids, asks]
-    #     #
-    #     # depth = self._depths[symbol]
-    #     #
-    #     # # The first processed should have U <= lastUpdateId+1 AND u >= lastUpdateId+1
-    #     # if data['u'] <= depth[0] or data['U'] >= depth[0]:
-    #     #     # drop event if older than the last snapshot
-    #     #     return
-    #     #
-    #     # if data['U'] != depth[0] + 1:
-    #     #     logger.warning("Watcher %s, there is a gap into depth data for symbol %s" % (self._name, symbol))
-    #     #
-    #     # for bid in data['b']:
-    #     #     # if data['U'] <= depth[0]+1 and data['u'] >= depth[0]+1:
-    #     #     if bid[1] == 0:
-    #     #         del depth[1][bid[0]]  # remove at price
-    #     #     else:
-    #     #         depth[2][bid[0]] = bid[1]  # price : volume
-    #     #
-    #     # for ask in data['a']:
-    #     #     if ask[1] == 0:
-    #     #         del depth[2][ask[0]]
-    #     #     else:
-    #     #         depth[2][ask[0]] = ask[1]
-    #     #
-    #     # # last processed id, next must be +1
-    #     # depth[0] = data['u']
-    #     #
-    #     # # self.service.notify(Signal.SIGNAL_ORDER_BOOK, self.name, (symbol, depth[1], depth[2]))
-
     def __on_trade_data(self, message):
         # market data instrument by symbol
         if type(message) is not dict:
             return
+
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_trade_data['timestamp'] = time.time()
+            self._ws_trade_data['subscribed'] = True
+            logger.debug("trade data subscriptionStatus : subscribed to %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'unsubscribed':
+            self._ws_trade_data['timestamp'] = time.time()
+            self._ws_trade_data['subscribed'] = False
+            logger.debug("trade data subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_ticker_data['status'] = "offline"
+                self._ws_ticker_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("trade subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'trades':
+            return
+
+        # last update timestamp
+        self._ws_trade_data['timestamp'] = time.time()
 
         symbol = message.get('market')
         if not symbol:
@@ -712,198 +851,151 @@ class FTXWatcher(Watcher):
                 if candle is not None:
                     self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
 
-    def __on_user_data(self, message):
+    def __on_book_ticker_data(self, message):
+        if type(message) is not dict:
+            return
+
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_orderbook_data['timestamp'] = time.time()
+            self._ws_orderbook_data['subscribed'] = True
+            logger.debug("order book data subscriptionStatus : subscribed to %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'unsubscribed':
+            self._ws_orderbook_data['timestamp'] = time.time()
+            self._ws_orderbook_data['subscribed'] = False
+            logger.debug("order book subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_orderbook_data['status'] = "offline"
+                self._ws_orderbook_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("order book subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'orderbook':
+            return
+
+        # last update timestamp
+        self._ws_orderbook_data['timestamp'] = time.time()
+
+        symbol = message.get('market')
+        if not symbol:
+            return
+
+        data = message.get('data', [])
+        if not data:
+            return
+
+        # @todo
+
+    def __on_fills_data(self, message):
         # market data instrument by symbol
         if type(message) is not dict:
             return
 
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_fills_data['timestamp'] = time.time()
+            self._ws_fills_data['subscribed'] = True
+            logger.debug("user fills data subscriptionStatus : subscribed to %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'unsubscribed':
+            self._ws_fills_data['timestamp'] = time.time()
+            self._ws_fills_data['subscribed'] = False
+            logger.debug("user fills subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_fills_data['status'] = "offline"
+                self._ws_fills_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("user fills subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'fills':
+            return
+
+        # last update timestamp
+        self._ws_fills_data['timestamp'] = time.time()
+
+        symbol = message.get('market')
+        if not symbol:
+            return
+
+        data = message.get('data', [])
+        if not data:
+            return
+
         # @todo
-        # if event_type == 'executionReport':
-        #     exec_logger.info("binance.com executionReport %s" % str(data))
-        #
-        #     symbol = data.get('s')
-        #     if not symbol:
-        #         return
-        #
-        #     event_timestamp = float(data['E']) * 0.001
-        #     cid = data['c']
-        #
-        #     if data['x'] == 'REJECTED':  # and data['X'] == '?':
-        #         client_order_id = str(data['c'])
-        #         reason = ""
-        #
-        #         if data['r'] == 'INSUFFICIENT_BALANCE':
-        #             reason = 'insufficient balance'
-        #
-        #         self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
-        #
-        #     elif (data['x'] == 'TRADE') and (data['X'] == 'FILLED' or data['X'] == 'PARTIALLY_FILLED'):
-        #         order_id = str(data['i'])
-        #         client_order_id = str(data['c'])
-        #
-        #         timestamp = float(data['T']) * 0.001  # transaction time
-        #
-        #         price = None
-        #         stop_price = None
-        #
-        #         if data['o'] == 'LIMIT':
-        #             order_type = Order.ORDER_LIMIT
-        #             price = float(data['p'])
-        #
-        #         elif data['o'] == 'MARKET':
-        #             order_type = Order.ORDER_MARKET
-        #
-        #         elif data['o'] == 'STOP_LOSS':
-        #             order_type = Order.ORDER_STOP
-        #             stop_price = float(data['P'])
-        #
-        #         elif data['o'] == 'STOP_LOSS_LIMIT':
-        #             order_type = Order.ORDER_STOP_LIMIT
-        #             price = float(data['p'])
-        #             stop_price = float(data['P'])
-        #
-        #         elif data['o'] == 'TAKE_PROFIT':
-        #             order_type = Order.ORDER_TAKE_PROFIT
-        #             stop_price = float(data['P'])
-        #
-        #         elif data['o'] == 'TAKE_PROFIT_LIMIT':
-        #             order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-        #             price = float(data['p'])
-        #             stop_price = float(data['P'])
-        #
-        #         elif data['o'] == 'LIMIT_MAKER':
-        #             order_type = Order.ORDER_LIMIT
-        #             price = float(data['p'])
-        #
-        #         else:
-        #             order_type = Order.ORDER_LIMIT
-        #
-        #         if data['f'] == 'GTC':
-        #             time_in_force = Order.TIME_IN_FORCE_GTC
-        #         elif data['f'] == 'IOC':
-        #             time_in_force = Order.TIME_IN_FORCE_IOC
-        #         elif data['f'] == 'FOK':
-        #             time_in_force = Order.TIME_IN_FORCE_FOK
-        #         else:
-        #             time_in_force = Order.TIME_IN_FORCE_GTC
-        #
-        #         order = {
-        #             'id': order_id,
-        #             'symbol': symbol,
-        #             'type': order_type,
-        #             'trade-id': str(data['t']),
-        #             'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-        #             'timestamp': timestamp,
-        #             'quantity': float(data['q']),
-        #             'price': price,
-        #             'stop-price': stop_price,
-        #             'exec-price': float(data['L']),
-        #             'filled': float(data['l']),
-        #             'cumulative-filled': float(data['z']),
-        #             'quote-transacted': float(data['Y']),  # similar as float(data['Z']) for cumulative
-        #             'stop-loss': None,
-        #             'take-profit': None,
-        #             'time-in-force': time_in_force,
-        #             'commission-amount': float(data['n']),
-        #             'commission-asset': data['N'],
-        #             'maker': data['m'],  # trade execution over or counter the market : true if maker, false if taker
-        #             'fully-filled': data['X'] == 'FILLED'  # fully filled status else its partially
-        #         }
-        #
-        #         self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
-        #
-        #     elif data['x'] == 'NEW' and data['X'] == 'NEW':
-        #         order_id = str(data['i'])
-        #         timestamp = float(data['O']) * 0.001  # order creation time
-        #         client_order_id = str(data['c'])
-        #
-        #         iceberg_qty = float(data['F'])
-        #
-        #         price = None
-        #         stop_price = None
-        #
-        #         if data['o'] == 'LIMIT':
-        #             order_type = Order.ORDER_LIMIT
-        #             price = float(data['p'])
-        #
-        #         elif data['o'] == 'MARKET':
-        #             order_type = Order.ORDER_MARKET
-        #
-        #         elif data['o'] == 'STOP_LOSS':
-        #             order_type = Order.ORDER_STOP
-        #             stop_price = float(data['P'])
-        #
-        #         elif data['o'] == 'STOP_LOSS_LIMIT':
-        #             order_type = Order.ORDER_STOP_LIMIT
-        #             price = float(data['p'])
-        #             stop_price = float(data['P'])
-        #
-        #         elif data['o'] == 'TAKE_PROFIT':
-        #             order_type = Order.ORDER_TAKE_PROFIT
-        #             stop_price = float(data['P'])
-        #
-        #         elif data['o'] == 'TAKE_PROFIT_LIMIT':
-        #             order_type = Order.ORDER_TAKE_PROFIT_LIMIT
-        #             price = float(data['p'])
-        #             stop_price = float(data['P'])
-        #
-        #         elif data['o'] == 'LIMIT_MAKER':
-        #             order_type = Order.ORDER_LIMIT
-        #             price = float(data['p'])
-        #
-        #         else:
-        #             order_type = Order.ORDER_LIMIT
-        #
-        #         if data['f'] == 'GTC':
-        #             time_in_force = Order.TIME_IN_FORCE_GTC
-        #         elif data['f'] == 'IOC':
-        #             time_in_force = Order.TIME_IN_FORCE_IOC
-        #         elif data['f'] == 'FOK':
-        #             time_in_force = Order.TIME_IN_FORCE_FOK
-        #         else:
-        #             time_in_force = Order.TIME_IN_FORCE_GTC
-        #
-        #         order = {
-        #             'id': order_id,
-        #             'symbol': symbol,
-        #             'direction': Order.LONG if data['S'] == 'BUY' else Order.SHORT,
-        #             'type': order_type,
-        #             'timestamp': event_timestamp,
-        #             'quantity': float(data['q']),
-        #             'price': price,
-        #             'stop-price': stop_price,
-        #             'time-in-force': time_in_force,
-        #             'stop-loss': None,
-        #             'take-profit': None
-        #         }
-        #
-        #         self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order, client_order_id))
-        #
-        #     elif data['x'] == 'CANCELED' and data['X'] == 'CANCELED':
-        #         order_id = str(data['i'])
-        #         org_client_order_id = data['C']
-        #
-        #         self.service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (symbol, order_id, org_client_order_id))
-        #
-        #     elif data['x'] == 'EXPIRED' and data['X'] == 'EXPIRED':
-        #         order_id = str(data['i'])
-        #
-        #         self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
-        #
-        #     elif data['x'] == 'REPLACED' or data['X'] == 'REPLACED':
-        #         pass  # nothing to do (currently unused)
-        #
-        # elif event_type == 'outboundAccountInfo':
-        #     event_timestamp = float(data['E']) * 0.001
-        #
-        #     # balances
-        #     for balance in data['B']:
-        #         asset_name = balance['a']
-        #         free = balance['f']
-        #         locked = balance['l']
-        #
-        #         # asset updated
-        #         self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, float(locked), float(free)))
+
+    def __on_orders_data(self, message):
+        # market data instrument by symbol
+        if type(message) is not dict:
+            return
+
+        msg_type = message.get('type')
+        if msg_type == 'subscribed':
+            self._ws_orders_data['timestamp'] = time.time()
+            self._ws_orders_data['subscribed'] = True
+            logger.debug("user orders data subscriptionStatus : subscribed to %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'unsubscribed':
+            self._ws_orders_data['timestamp'] = time.time()
+            self._ws_orders_data['subscribed'] = False
+            logger.debug("user orders subscriptionStatus : unsubscribed from %s" % message.get('market'))
+
+            return
+
+        elif msg_type == 'info':
+            if message.get('code', 0) == 20001:
+                # need reconnect
+                self._ws_orders_data['status'] = "offline"
+                self._ws_orders_data['lost'] = True
+
+                return
+
+        elif msg_type == 'error':
+            error_logger.error(message)
+
+            error_logger.error("user orders subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+
+        if message.get('channel') != 'orders':
+            return
+
+        # last update timestamp
+        self._ws_orders_data['timestamp'] = time.time()
+
+        symbol = message.get('market')
+        if not symbol:
+            return
+
+        data = message.get('data', [])
+        if not data:
+            return
+
+        # @todo
 
     #
     # misc

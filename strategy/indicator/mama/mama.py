@@ -80,9 +80,9 @@ class MAMAIndicator(Indicator):
         return self._mamas
 
     def cross(self):
-        if (self._prev_mama > self._prev_fama and self._last_mama < self._last_fama):
+        if self._prev_mama > self._prev_fama and self._last_mama < self._last_fama:
             return -1
-        elif (self._prev_mama < self._prev_fama and self._last_mama > self._last_fama):
+        elif self._prev_mama < self._prev_fama and self._last_mama > self._last_fama:
             return 1
 
         return 0

@@ -446,3 +446,94 @@ class WssClient(FTXSocketManager):
     # def request(self, request, callback, **kwargs):
     #     id_ = "_".join([request['event'], request['type']])
     #     return self._start_private_socket(id_, request, callback, private=True)
+
+
+# order book misc
+#         self._orderbook_timestamps: DefaultDict[str, float] = defaultdict(float)
+#         self._orderbook_update_events.clear()
+#         self._orderbooks: DefaultDict[str, Dict[str, DefaultDict[float, float]]] = defaultdict(
+#             lambda: {side: defaultdict(float) for side in {'bids', 'asks'}})
+#         self._orderbook_timestamps.clear()
+#         self._last_received_orderbook_data_at: float = 0.0
+
+#     def _reset_orderbook(self, market: str) -> None:
+#         if market in self._orderbooks:
+#             del self._orderbooks[market]
+#         if market in self._orderbook_timestamps:
+#             del self._orderbook_timestamps[market]
+
+#     def get_orderbook(self, market: str) -> Dict[str, List[Tuple[float, float]]]:
+#         subscription = {'channel': 'orderbook', 'market': market}
+#         if subscription not in self._subscriptions:
+#             self._subscribe(subscription)
+#         if self._orderbook_timestamps[market] == 0:
+#             self.wait_for_orderbook_update(market, 5)
+#         return {
+#             side: sorted(
+#                 [(price, quantity) for price, quantity in list(self._orderbooks[market][side].items())
+#                  if quantity],
+#                 key=lambda order: order[0] * (-1 if side == 'bids' else 1)
+#             )
+#             for side in {'bids', 'asks'}
+#         }
+
+#     def get_orderbook_timestamp(self, market: str) -> float:
+#         return self._orderbook_timestamps[market]
+
+#     def wait_for_orderbook_update(self, market: str, timeout: Optional[float]) -> None:
+#         subscription = {'channel': 'orderbook', 'market': market}
+#         if subscription not in self._subscriptions:
+#             self._subscribe(subscription)
+#         self._orderbook_update_events[market].wait(timeout)
+
+#     def _handle_orderbook_message(self, message: Dict) -> None:
+#         market = message['market']
+#         subscription = {'channel': 'orderbook', 'market': market}
+#         if subscription not in self._subscriptions:
+#             return
+#         data = message['data']
+#         if data['action'] == 'partial':
+#             self._reset_orderbook(market)
+#         for side in {'bids', 'asks'}:
+#             book = self._orderbooks[market][side]
+#             for price, size in data[side]:
+#                 if size:
+#                     book[price] = size
+#                 else:
+#                     del book[price]
+#             self._orderbook_timestamps[market] = data['time']
+#         checksum = data['checksum']
+#         orderbook = self.get_orderbook(market)
+#         checksum_data = [
+#             ':'.join([f'{float(order[0])}:{float(order[1])}' for order in (bid, offer) if order])
+#             for (bid, offer) in zip_longest(orderbook['bids'][:100], orderbook['asks'][:100])
+#         ]
+#
+#         computed_result = int(zlib.crc32(':'.join(checksum_data).encode()))
+#         if computed_result != checksum:
+#             self._last_received_orderbook_data_at = 0
+#             self._reset_orderbook(market)
+#             self._unsubscribe({'market': market, 'channel': 'orderbook'})
+#             self._subscribe({'market': market, 'channel': 'orderbook'})
+#         else:
+#             self._orderbook_update_events[market].set()
+#             self._orderbook_update_events[market].clear()
+
+#     def _on_message(self, ws, raw_message: str) -> None:
+#         message = json.loads(raw_message)
+#         message_type = message['type']
+#         if message_type in {'subscribed', 'unsubscribed'}:
+#             return
+#         elif message_type == 'info':
+#             if message['code'] == 20001:
+#                 return self.reconnect()
+#         elif message_type == 'error':
+#             raise Exception(message)
+#         channel = message['channel']
+#
+#         if channel == 'orderbook':
+#             self._handle_orderbook_message(message)
+#         elif channel == 'fills':
+#             self._handle_fills_message(message)
+#         elif channel == 'orders':
+#             self._handle_orders_message(message)

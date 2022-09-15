@@ -85,10 +85,16 @@ class HMAIndicator(Indicator):
         # hma12 = 2.0 * ta_SMA(data*weights, N_2) / ta_SMA(weights, N_2)
         hma12 = 2.0 * ta_WMA(data, N_2)
 
+        if np.isnan(hma12[-1]):
+            return np.array([0.0])
+
         # 2) calculate a WMA for period n and subtract if from step 1
         # hma12 = hma12 - (MM_n(N, data*weights) / MM_n(N, weights))
         # hma12 = hma12 - (ta_SMA(data*weights, N) / ta_SMA(weights, N))
         hma12 = hma12 - ta_WMA(data, N)
+
+        if np.isnan(hma12[-1]):
+            return np.array([0.0])
 
         # 3) calculate a WMA with period sqrt(n) using the data from step 2
         # hma = (MM_n(N_sqrt, hma12*weights) / MM_n(N_sqrt, weights))
@@ -104,7 +110,7 @@ class HMAIndicator(Indicator):
         Retourne un array de la même taille que data. Lorsque step > 1, les valeurs sont interpolees lineairement.
         """
         sub_data = down_sample(data, step) if filtering else data[::step]
-        t_subdata = range(0,len(data), step)
+        t_subdata = range(0, len(data), step)
 
         N_2 = int(N / 2)
         N_sqrt = int(math.sqrt(N))
@@ -124,7 +130,11 @@ class HMAIndicator(Indicator):
 
     def compute(self, timestamp, prices):
         self._prev = self._last
-        self._hmas = HMAIndicator.HMA_n(self._length, prices)  # [-self._length-7:])
+
+        if np.isnan(prices[-1]):
+            return self._hmas
+
+        self._hmas = HMAIndicator.HMA_n(self._length, prices)
 
         self._last = self._hmas[-1]
         self._last_timestamp = timestamp

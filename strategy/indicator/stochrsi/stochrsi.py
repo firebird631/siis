@@ -77,9 +77,9 @@ class StochRSIIndicator(Indicator):
 
     def cross(self):
         """K cross D line"""
-        if (self._prev_k > self._prev_d and self._last_k < self._last_d):
+        if self._prev_k > self._prev_d and self._last_k < self._last_d:
             return -1
-        elif (self._prev_k < self._prev_d and self._last_k > self._prev_d):
+        elif self._prev_k < self._prev_d and self._last_k > self._prev_d:
             return 1
 
         return 0
@@ -138,14 +138,14 @@ class StochRSIIndicator(Indicator):
         K = np.zeros(len(rsi))
 
         for (j,d) in enumerate(rsi):
-            i=min(j,N)
+            i = min(j, N)
             highest = max(rsi[j-i:j+1])
             lowest = min(rsi[j-i:j+1])
 
             if highest == lowest:
                 highest += 0.000000001
 
-            K[j]=(d-lowest)/(highest-lowest)  # +epsilon to avoid 0
+            K[j] = (d-lowest)/(highest-lowest)  # +epsilon to avoid 0
 
         D = MM_n(N_D, K)
         return K, D

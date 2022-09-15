@@ -3,13 +3,10 @@
 # @license Copyright (c) 2022 Dream Overflow
 # HTTPS+WS connector for ftx.com
 
-# from connector.ftx.client import Client
-# from connector.ftx.streams import ThreadedWebsocketManager
 import hmac
 import time
 
 from connector.ftx.rest.client import FtxClient
-from connector.ftx.websocket.client import FtxWebsocketClient
 from connector.ftx.ws import WssClient
 
 import logging
@@ -39,12 +36,9 @@ class Connector(object):
         if self._session is None:
             # Create HTTPS session
             self._session = FtxClient(self.__api_key, self.__api_secret, None)
-            # self._session = Client(self.__api_key, self.__api_secret, None)
 
         if self._ws is None and use_ws:
             self._ws = WssClient(self.__api_key, self.__api_secret)
-            # self._ws = FtxWebsocketClient(self.__api_key, self.__api_secret)
-            # self._ws = ThreadedWebsocketManager(self.__api_key, self.__api_secret)
 
     def disconnect(self):
         if self._ws:

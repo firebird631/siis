@@ -132,7 +132,8 @@ class MACDIndicator(Indicator):
         self._prev_signal = self._last_signal
 
         # self._macds = MACDIndicator.MACD(self._short_l, self._long_l, prices)
-        self._macds, self._signals, self._hists = ta_MACD(prices, fastperiod=self._short_l, slowperiod=self._long_l, signalperiod=self._short_l)
+        self._macds, self._signals, self._hists = ta_MACD(
+            prices, fastperiod=self._short_l, slowperiod=self._long_l, signalperiod=self._short_l)
 
         self._last_macd = self._macds[-1]
         self._last_signal = self._signals[-1]
