@@ -246,8 +246,6 @@ class FTXFuturesWatcher(Watcher):
                         for instrument in instruments:
                             self._available_instruments.add(instrument['name'])
 
-                        logger.info(self._available_instruments)
-
                         # and start ws manager if necessary
                         try:
                             # self._connector.ws.connect()
@@ -280,10 +278,9 @@ class FTXFuturesWatcher(Watcher):
                             pairs = []
 
                             for market_id in self._watched_instruments:
-                                if 1:#market_id in self._available_instruments:
+                                if market_id in self._available_instruments:
                                     pairs.append(market_id)
 
-                            logger.info(pairs)
                             for pair in pairs:
                                 try:
                                     self._connector.ws.subscribe_public(
