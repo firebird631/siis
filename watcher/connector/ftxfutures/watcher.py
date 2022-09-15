@@ -110,6 +110,9 @@ class FTXFuturesWatcher(Watcher):
                         error_logger.error(repr(e))
                         traceback_logger.error(traceback.format_exc())
 
+                    # no more than 10 messages per seconds on websocket
+                    time.sleep(0.1)
+
                 logger.debug("%s subscribe %s to markets data stream..." % (self.name, name))
             except Exception as e:
                 error_logger.error(repr(e))
@@ -714,9 +717,8 @@ class FTXFuturesWatcher(Watcher):
                 return
 
         elif msg_type == 'error':
-            error_logger.error(message)
-
             error_logger.error("ticker data subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+            return
 
         if message.get('channel') != 'ticker':
             return
@@ -790,9 +792,8 @@ class FTXFuturesWatcher(Watcher):
                 return
 
         elif msg_type == 'error':
-            error_logger.error(message)
-
             error_logger.error("trade subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+            return
 
         if message.get('channel') != 'trades':
             return
@@ -874,9 +875,8 @@ class FTXFuturesWatcher(Watcher):
                 return
 
         elif msg_type == 'error':
-            error_logger.error(message)
-
             error_logger.error("order book subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+            return
 
         if message.get('channel') != 'orderbook':
             return
@@ -923,9 +923,8 @@ class FTXFuturesWatcher(Watcher):
                 return
 
         elif msg_type == 'error':
-            error_logger.error(message)
-
             error_logger.error("user fills subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+            return
 
         if message.get('channel') != 'fills':
             return
@@ -972,9 +971,8 @@ class FTXFuturesWatcher(Watcher):
                 return
 
         elif msg_type == 'error':
-            error_logger.error(message)
-
             error_logger.error("user orders subscriptionStatus : %s - %s" % (message.get('code'), message.get('msg')))
+            return
 
         if message.get('channel') != 'orders':
             return
