@@ -221,10 +221,11 @@ class FTXFuturesWatcher(Watcher):
                             if instrument.get('type') != 'future':
                                 continue
 
-                            # if instrument.get('futureType') != 'perpetual':
-                            #     continue
+                            # only perpetual
+                            if instrument.get('futureType') != 'perpetual':
+                                continue
 
-                            if self.SYMBOL_SUFFIX in instrument.get('name', ""):
+                            if self.SYMBOL_SUFFIX not in instrument.get('name', ""):
                                 continue
 
                             filtered_instr.append(instrument)
@@ -244,6 +245,8 @@ class FTXFuturesWatcher(Watcher):
 
                         for instrument in instruments:
                             self._available_instruments.add(instrument['name'])
+
+                        logger.info(self._available_instruments)
 
                         # and start ws manager if necessary
                         try:
@@ -277,9 +280,10 @@ class FTXFuturesWatcher(Watcher):
                             pairs = []
 
                             for market_id in self._watched_instruments:
-                                if market_id in self._available_instruments:
+                                if 1:#market_id in self._available_instruments:
                                     pairs.append(market_id)
 
+                            logger.info(pairs)
                             for pair in pairs:
                                 try:
                                     self._connector.ws.subscribe_public(
@@ -293,6 +297,9 @@ class FTXFuturesWatcher(Watcher):
                                         callback=self.__on_trade_data)
 
                                     # @todo order book
+
+                                    # no more than 10 messages per seconds on websocket
+                                    time.sleep(0.2)
 
                                 except Exception as e:
                                     error_logger.error(repr(e))

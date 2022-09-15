@@ -297,6 +297,9 @@ class FTXWatcher(Watcher):
 
                                     # @todo order book
 
+                                    # no more than 10 messages per seconds on websocket
+                                    time.sleep(0.2)
+
                                 except Exception as e:
                                     error_logger.error(repr(e))
                                     traceback_logger.error(traceback.format_exc())
