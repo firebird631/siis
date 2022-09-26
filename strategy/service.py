@@ -566,6 +566,11 @@ class StrategyService(Service):
         return self._timestamp if self._backtesting else time.time()
 
     @property
+    def paper_mode(self) -> bool:
+        """True in paper trading mode"""
+        return self._paper_mode
+
+    @property
     def backtesting(self) -> bool:
         """True if backtesting"""
         return self._backtesting

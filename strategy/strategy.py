@@ -213,10 +213,15 @@ class Strategy(Runnable):
 
         self._condition = threading.Condition()
 
+        self._fetch_delay = 0.0
+
         if options.get('trader'):
             trader_conf = options['trader']
             if trader_conf.get('name'):
                 self._trader_conf = trader_conf
+
+        if options.get('delay'):
+            self._fetch_delay = options['delay']
 
         for k, watcher_conf in options.get('watchers', {}).items():
             self._watchers_conf[k] = watcher_conf
@@ -508,6 +513,7 @@ class Strategy(Runnable):
 
                         instrument.trade_quantity = mapped_instrument.get('size', 0.0)
 
+                        # quantity computation mode else uses default
                         trade_qty_mode = mapped_instrument.get('size-mode', None)
                         if trade_qty_mode:
                             if trade_qty_mode == "quote-to-base":
@@ -553,6 +559,9 @@ class Strategy(Runnable):
                                 strategy_trader.on_market_info()
                     else:
                         instrument = self._instruments.get(mapped_symbol)
+
+                    if self._fetch_delay > 0.0:
+                        time.sleep(self._fetch_delay)
 
                     if watcher.has_prices_and_volumes:
                         instrument.add_watcher(Watcher.WATCHER_PRICE_AND_VOLUME, watcher)
