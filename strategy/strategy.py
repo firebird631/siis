@@ -213,15 +213,10 @@ class Strategy(Runnable):
 
         self._condition = threading.Condition()
 
-        self._fetch_delay = 0.0
-
         if options.get('trader'):
             trader_conf = options['trader']
             if trader_conf.get('name'):
                 self._trader_conf = trader_conf
-
-        if options.get('delay'):
-            self._fetch_delay = options['delay']
 
         for k, watcher_conf in options.get('watchers', {}).items():
             self._watchers_conf[k] = watcher_conf
@@ -560,8 +555,8 @@ class Strategy(Runnable):
                     else:
                         instrument = self._instruments.get(mapped_symbol)
 
-                    if self._fetch_delay > 0.0:
-                        time.sleep(self._fetch_delay)
+                    if self.service.fetch_delay > 0.0:
+                        time.sleep(self.service.fetch_delay)
 
                     if watcher.has_prices_and_volumes:
                         instrument.add_watcher(Watcher.WATCHER_PRICE_AND_VOLUME, watcher)

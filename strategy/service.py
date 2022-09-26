@@ -73,6 +73,7 @@ class StrategyService(Service):
         self._report_path = options.get('reports-path', './')
         self._watcher_only = options.get('watcher-only', False)
         self._profile = options.get('profile', 'default')
+        self._fetch_delay = options.get('delay', 0.0)
 
         self._indicators_config = utils.load_config(options, 'indicators')
         self._tradeops_config = utils.load_config(options, 'tradeops')
@@ -569,6 +570,11 @@ class StrategyService(Service):
     def paper_mode(self) -> bool:
         """True in paper trading mode"""
         return self._paper_mode
+
+    @property
+    def fetch_delay(self) -> bool:
+        """Optional additional data fetching delay (between 2 calls)"""
+        return self._fetch_delay
 
     @property
     def backtesting(self) -> bool:
