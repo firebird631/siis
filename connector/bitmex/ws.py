@@ -17,6 +17,8 @@ from decimal import Decimal
 
 import logging
 logger = logging.getLogger('siis.connector.bitmex.ws')
+error_logger = logging.getLogger('siis.error.connector.bitmex.ws')
+traceback_logger = logging.getLogger('siis.traceback.connector.bitmex.ws')
 
 
 def to_nearest(num, tick_size):
@@ -201,7 +203,7 @@ class BitMEXWebsocket():
         self._error = err
 
         logger.error(repr(err))
-        logger.error(traceback.format_exc())
+        traceback_logger.error(traceback.format_exc())
 
         self.exit()
 
@@ -243,11 +245,11 @@ class BitMEXWebsocket():
 
         # websocket.enableTrace(True)
         self.ws = websocket.WebSocketApp(wsURL,
-                                        on_message=self.__on_message,
-                                        on_close=self.__on_close,
-                                        on_open=self.__on_open,
-                                        on_error=self.__on_error,
-                                        header=self.__get_auth())
+                                         on_message=self.__on_message,
+                                         on_close=self.__on_close,
+                                         on_open=self.__on_open,
+                                         on_error=self.__on_error,
+                                         header=self.__get_auth())
 
         # self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(
         #   sslopt=sslopt_ca_certs, ping_timeout=10, ping_interval=60))
@@ -268,7 +270,7 @@ class BitMEXWebsocket():
             sleep(1)
             conn_timeout -= 1
 
-        if conn_timeout <= 0: # or self._error:
+        if conn_timeout <= 0:  # or self._error:
             logger.error("Couldn't connect to WS. Max conn timeout !")
             self.exit()
 
@@ -336,7 +338,7 @@ class BitMEXWebsocket():
         """
         self.ws.send(json.dumps({"op": command, "args": args or []}))
 
-    def __on_message(self, message):
+    def __on_message(self, cls, message):
         """
         Handler for parsing WS messages.
         """
@@ -445,17 +447,18 @@ class BitMEXWebsocket():
                     self._callback[1](self._callback[0], 'action', (action, table, updated, message['data']))
 
         except Exception as e:
-            logger.error(traceback.format_exc())            
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
 
-    def __on_open(self):
+    def __on_open(self, cls):
         logger.debug("BitMex websocket Opened.")
         self._connected = True
 
-    def __on_close(self):
-        logger.debug('BitMex websocket Closed')
+    def __on_close(self, cls, close_status_code, close_msg):
+        logger.debug('BitMex websocket Closed (code:%s)' % close_status_code)
         self._connected = False
 
-    def __on_error(self, error):
+    def __on_error(self, cls, error):
         self._connected = False
         if not self.exited:
             self.error(error)

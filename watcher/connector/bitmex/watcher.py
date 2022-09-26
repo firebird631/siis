@@ -58,7 +58,7 @@ class BitMexWatcher(Watcher):
             try:
                 self._ready = False
                 self._connecting = True
-                
+
                 identity = self.service.identity(self._name)
 
                 if identity:
@@ -67,7 +67,7 @@ class BitMexWatcher(Watcher):
                             self.service,
                             identity.get('api-key'),
                             identity.get('api-secret'),
-                            self.configured_symbols(),  # want WS subscribes to thats instruments or all if ['*']
+                            self.configured_symbols(),  # want WS subscribes to some instruments or all if ['*']
                             identity.get('host'),
                             (self, BitMexWatcher._ws_message))
                     else:
@@ -82,7 +82,7 @@ class BitMexWatcher(Watcher):
                     if not self._connector.connected or not self._connector.ws_connected:
                         self._connector.connect()
 
-                    # get list of all availables instruments, and list of subscribed
+                    # get list of all available instruments, and list of subscribed
                     self._available_instruments = set(self._connector.all_instruments)
                     self._watched_instruments = set(self._connector.watched_instruments)
 

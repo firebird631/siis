@@ -19,11 +19,6 @@ import traceback
 from urllib.request import urlopen as _urlopen
 from urllib.parse import urlparse as parse_url, urljoin, urlencode
 
-try:
-    from systemd.daemon import notify
-except ImportError:
-    notify = None
-
 
 def _url_encode(params):
     return urlencode(params).encode("utf-8")
@@ -56,7 +51,7 @@ error_logger = logging.getLogger("siis.error.connector.ig.lightstreamer")
 
 class Subscription(object):
     """
-    Represents a Subscription to be submitted to a Lightstreamer Server.
+    Represents a Subscription to be submitted to a LightStreamer Server.
     """
 
     def __init__(self, mode, items, fields, adapter=""):
@@ -70,7 +65,7 @@ class Subscription(object):
 
     def _decode(self, value, last):
         """
-        Decode the field value according to Lightstremar Text Protocol specifications.
+        Decode the field value according to LightStreamer Text Protocol specifications.
         """
         if value == "$":
             return u''
@@ -88,9 +83,9 @@ class Subscription(object):
 
     def notifyupdate(self, item_line):
         """
-        Invoked by LSClient each time Lightstreamer Server pushes a new item event.
+        Invoked by LSClient each time LightStreamer Server pushes a new item event.
         """
-        # Tokenize the item line as sent by Lightstreamer
+        # Tokenize the item line as sent by LightStreamer
         toks = item_line.rstrip('\r\n').split('|')
         undecoded_item = dict(list(zip(self.field_names, toks[1:])))
 
@@ -117,7 +112,7 @@ class Subscription(object):
 
 
 class LSClient(object):
-    """Manages the communication with Lightstreamer Server"""
+    """Manages the communication with LightStreamer Server"""
 
     def __init__(self, base_url, adapter_set="", user="", password="", cid="mgQkwtwdysogQz2BJ4Ji kOj2Bg"):
         self._base_url = parse_url(base_url)
@@ -153,7 +148,7 @@ class LSClient(object):
 
     def _set_control_link_url(self, custom_address=None):
         """Set the address to use for the Control Connection
-        in such cases where Lightstreamer is behind a Load Balancer.
+        in such cases where LightStreamer is behind a Load Balancer.
         """
         if custom_address is None:
             self._control_url = self._base_url
@@ -184,7 +179,7 @@ class LSClient(object):
 
     def connect(self):
         """
-        Establish a connection to Lightstreamer Server to create a new session.
+        Establish a connection to LightStreamer Server to create a new session.
         """
         self._stream_connection = self._call(
             self._base_url,
@@ -238,7 +233,7 @@ class LSClient(object):
             self._set_control_link_url(self._session.get("ControlAddress"))
 
             # Start a new thread to handle real time updates sent
-            # by Lightstreamer Server on the stream connection.
+            # by LightStreamer Server on the stream connection.
             self._stream_connection_thread = threading.Thread(
                 name="lightstreamer-{0}".format(self._bind_counter),
                 target=self._receive)
@@ -276,7 +271,7 @@ class LSClient(object):
             
             logger.info("Disconnected from LightStreamer")
         else:
-            logger.warning("No connection to Lightstreamer")
+            logger.warning("No connection to LightStreamer")
 
     @property
     def connected(self) -> bool:
@@ -293,11 +288,11 @@ class LSClient(object):
                 # since it is handled by thread completion.
                 self._join()
             else:
-                logger.warning("No connection to Lightstreamer")
+                logger.warning("No connection to LightStreamer")
 
     def subscribe(self, subscription):
         """"
-        Perform a subscription request to Lightstreamer Server.
+        Perform a subscription request to LightStreamer Server.
         """
         # Register the Subscription with a new subscription key
         self.lock()
@@ -348,10 +343,9 @@ class LSClient(object):
         Forwards the real time update to the relative
         Subscription instance for further dispatching to its listeners.
         """
-        #logger.debug("Received update message ---> <{0}>".format(update_message))
+        # logger.debug("Received update message ---> <{0}>".format(update_message))
         tok = update_message.split(',', 1)
-
-        if (not tok[0] or not tok[1]):
+        if not tok[0] or not tok[1]:
             return
 
         table, item = int(tok[0]), tok[1]
@@ -364,8 +358,8 @@ class LSClient(object):
         rebind = False
         receive = True
 
-        while receive:
-            #logger.debug("Waiting for a new message")
+        while receive:  # and self._stream_connection_thread.active_connection:
+            # logger.debug("Waiting for a new message")
             try:
                 message = self._read_from_stream()
 
@@ -373,12 +367,9 @@ class LSClient(object):
                 #   logger.debug("Received message ---> <{0}>".format(message))
 
             except Exception:
-                logger.error("LightSreamer communication error")
+                logger.error("LightStreamer communication error")
                 error_logger.error(traceback.format_exc())
                 message = None
-
-            if notify:
-                notify('WATCHDOG=1')
 
             if message is None:
                 receive = False
@@ -399,7 +390,8 @@ class LSClient(object):
                 rebind = True
             elif message.startswith(SYNC_ERROR_CMD):
                 # Terminate the receiving loop on SYNC ERROR message.
-                # A complete implementation should create a new session and re-subscribe to all the old items and relative fields.
+                # A complete implementation should create a new session and re-subscribe
+                # to all the old items and relative fields.
                 logger.error("SYNC ERROR")
                 receive = False
             elif message.startswith(END_CMD):
@@ -441,7 +433,7 @@ class LSClient(object):
 
 
 # class LSClient(object):
-#     """Manages the communication with Lightstreamer Server"""
+#     """Manages the communication with LightStreamer Server"""
 
 #     def __init__(self, base_url, adapter_set="", user="", password=""):
 #         self._base_url = parse_url(base_url)
@@ -494,16 +486,9 @@ class LSClient(object):
 #         return line
 
 #     def connect(self):
-#         """Establish a connection to Lightstreamer Server to create
+#         """Establish a connection to LightStreamer Server to create
 #         a new session.
 #         """
-
-#         if not notify:
-#             log.warning(
-#                 "systemd.daemon not available, "
-#                 "no watchdog notifications will be sent."
-#             )
-
 #         self._stream_connection = self._call(
 #             self._base_url,
 #             CONNECTION_URL_PATH,
@@ -659,10 +644,7 @@ class LSClient(object):
 #                 log.error("Communication error")
 #                 print(traceback.format_exc())
 #                 message = None
-
-#             if notify:
-#                 notify("WATCHDOG=1")
-
+#
 #             if message is None:
 #                 receive = False
 #                 log.warning("No new message received")
