@@ -440,7 +440,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
             if trader.has_quantity(self.instrument.quote, self.instrument.trade_quantity):
                 quantity = self.instrument.adjust_quantity(self.instrument.trade_quantity / price)  # and adjusted to 0/max/step
             else:
-                Terminal.inst().notice("Not enought free quote asset %s, has %s but need %s" % (
+                Terminal.inst().notice("Not enough free quote asset %s, has %s but need %s" % (
                     self.instrument.quote,
                     self.instrument.format_quantity(trader.asset(self.instrument.quote).free),
                     self.instrument.format_quantity(self.instrument.trade_quantity)), view='status')

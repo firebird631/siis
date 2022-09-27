@@ -529,6 +529,7 @@ class Strategy(Runnable):
 
                             instrument.value_per_pip = market.value_per_pip
                             instrument.one_pip_means = market.one_pip_means
+                            instrument.contract_size = market.contract_size
 
                             instrument.set_base(market.base)
                             instrument.set_quote(market.quote)
@@ -944,6 +945,7 @@ class Strategy(Runnable):
 
                                 instrument.value_per_pip = market.value_per_pip
                                 instrument.one_pip_means = market.one_pip_means
+                                instrument.contract_size = market.contract_size
 
                                 instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
                                 instrument.set_notional_limits(market.min_notional, market.max_notional,
@@ -1121,6 +1123,8 @@ class Strategy(Runnable):
                                 # if signal.data[5]:
                                 #     instrument.base_exchange_rate = signal.data[5]
 
+                                if signal.data[6]:
+                                    instrument.contract_size = signal.data[6]
                                 if signal.data[7]:
                                     instrument.value_per_pip = signal.data[7]
 

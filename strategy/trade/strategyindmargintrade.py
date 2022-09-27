@@ -100,7 +100,7 @@ class StrategyIndMarginTrade(StrategyTrade):
         if trader.create_order(order, instrument) > 0:
             # keep the related create position identifier if available
             self.create_oid = order.order_id
-            self.position_id = order.position_id  # might be market-id, but depends if hedging active or not
+            self.position_id = order.position_id  # might be market-id, but it is related by hedging state
 
             if not self.eot and order.created_time:
                 # only at the first open
@@ -136,7 +136,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         if trader.create_order(order, instrument) > 0:
             self.create_oid = order.order_id
-            self.position_id = order.position_id  # might be market-id, but depends if hedging active or not
+            self.position_id = order.position_id  # might be market-id, but related by hedging state
 
             if not self.eot and order.created_time:
                 # only at the first open
@@ -533,6 +533,15 @@ class StrategyIndMarginTrade(StrategyTrade):
     def is_spot(cls) -> bool:
         return False
 
+    @property
+    def invested_quantity(self) -> float:
+        if self.is_active():
+            return self.e - self.x
+        elif self.op:
+            return self.oq
+        else:
+            return 0.0
+
     #
     # signals
     #
@@ -679,7 +688,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                     if maker is None:
                         # no information, try to detect it
                         if self._stats.get('entry-order-type', Order.ORDER_MARKET) == Order.ORDER_LIMIT:
-                            # @todo only if execution price is equal or better then order price (depends of direction)
+                            # @todo only if execution price is equal or better, then order price (depends on direction)
                             maker = True
                         else:
                             maker = False
@@ -1024,8 +1033,9 @@ class StrategyIndMarginTrade(StrategyTrade):
         super().update_stats(instrument, timestamp)
 
         if self.is_active():
-            # @todo support only for quantity in asset not in lot or contract of different size
             last_price = instrument.close_exec_price(self.direction)
+            if last_price <= 0:
+                return
 
             upnl = 0.0  # unrealized PNL
             rpnl = 0.0  # realized PNL
@@ -1034,11 +1044,11 @@ class StrategyIndMarginTrade(StrategyTrade):
             nrq = self.e - self.x
 
             if self.dir > 0:
-                upnl = last_price * nrq - self.aep * nrq
-                rpnl = self.axp * self.x - self.aep * self.x
+                upnl = (last_price - self.aep) * nrq * instrument.contract_size
+                rpnl = (self.axp - self.aep) * self.x * instrument.contract_size
             elif self.dir < 0:
-                upnl = self.aep * nrq - last_price * nrq
-                rpnl = self.aep * self.x - self.axp * self.x
+                upnl = (self.aep - last_price) * nrq * instrument.contract_size
+                rpnl = (self.aep - self.axp) * self.x * instrument.contract_size
 
             # including fees and realized profit and loss
             self._stats['unrealized-profit-loss'] = instrument.adjust_quote(

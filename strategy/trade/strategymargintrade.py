@@ -531,6 +531,15 @@ class StrategyMarginTrade(StrategyTrade):
     def is_spot(cls) -> bool:
         return False
 
+    @property
+    def invested_quantity(self) -> float:
+        if self.is_active():
+            return self.e - self.x
+        elif self.op:
+            return self.oq
+        else:
+            return 0.0
+
     #
     # signal
     #
@@ -920,11 +929,11 @@ class StrategyMarginTrade(StrategyTrade):
             nrq = self.e - self.x
 
             if self.dir > 0:
-                upnl = last_price * nrq - self.aep * nrq
-                rpnl = self.axp * self.x - self.aep * self.x
+                upnl = (last_price - self.aep) * nrq * instrument.contract_size
+                rpnl = (self.axp - self.aep) * self.x * instrument.contract_size
             elif self.dir < 0:
-                upnl = self.aep * nrq - last_price * nrq
-                rpnl = self.aep * self.x - self.axp * self.x
+                upnl = (self.aep - last_price) * nrq * instrument.contract_size
+                rpnl = (self.aep - self.axp) * self.x * instrument.contract_size
 
             # including fees and realized profit and loss
             self._stats['unrealized-profit-loss'] = instrument.adjust_quote(

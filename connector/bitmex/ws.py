@@ -414,15 +414,15 @@ class BitMEXWebsocket():
                             continue  # No item found to update. Could happen before push
 
                         # Log executions
-                        if table == 'order':
-                            is_canceled = 'ordStatus' in updateData and updateData['ordStatus'] == 'Canceled'
-                            if 'cumQty' in updateData and not is_canceled:
-                                contExecuted = updateData['cumQty'] - item['cumQty']
-                                if contExecuted > 0:
-                                    instrument = self.get_instrument(item['symbol'])
-
-                                    logger.info("BitMex execution: %s %d Contracts of %s at %.*f" % (
-                                        item['side'], contExecuted, item['symbol'], instrument['tickLog'], item['price']))
+                        # if table == 'order':
+                        #     is_canceled = 'ordStatus' in updateData and updateData['ordStatus'] == 'Canceled'
+                        #     if 'cumQty' in updateData and not is_canceled:
+                        #         contExecuted = updateData['cumQty'] - item['cumQty']
+                        #         if contExecuted > 0:
+                        #             instrument = self.get_instrument(item['symbol'])
+                        #
+                        #             logger.info("BitMex execution: %s %d Contracts of %s at %.*f" % (
+                        #                 item['side'], contExecuted, item['symbol'], instrument['tickLog'], item['price']))
 
                         # Update this item.
                         item.update(updateData)

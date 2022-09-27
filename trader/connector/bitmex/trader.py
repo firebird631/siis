@@ -141,7 +141,7 @@ class BitMexTrader(Trader):
 
     def update(self):
         """
-        Here we use the WS API so its only a simple sync we process here.
+        Here we use the WS API so it is only a simple sync we process here.
         """
         if not super().update():
             return False
@@ -211,6 +211,7 @@ class BitMexTrader(Trader):
             market = self._markets.get(market_id)
             margin = market.margin_cost(quantity, price)
 
+            logger.debug("%s %s %s" % (quantity, price, margin))
             if margin:
                 return self.account.margin_balance >= margin
 
@@ -443,7 +444,8 @@ class BitMexTrader(Trader):
                 position.leverage = pos['leverage']
 
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                position.created_time = datetime.strptime(pos.get('openingTimestamp', time.time()),
+                                                          "%Y-%m-%dT%H:%M:%S.%fZ").replace(
                     tzinfo=UTC()).timestamp()
 
                 # id is symbol
@@ -462,31 +464,32 @@ class BitMexTrader(Trader):
 
                 # position.market_close = pos['market_close']
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                position.created_time = datetime.strptime(pos.get('openingTimestamp', time.time()),
+                                                          "%Y-%m-%dT%H:%M:%S.%fZ").replace(
                     tzinfo=UTC()).timestamp()
 
-                # XBt to XBT
-                ratio = 1.0
-                if pos['currency'] == 'XBt':
-                    ratio = 1.0 / 100000000.0
-
-                # @todo minus taker-fee
-                position.profit_loss = (float(pos['unrealisedPnl']) * ratio)
-                position.profit_loss_rate = float(pos['unrealisedPnlPcnt'])
-
-                # @todo minus maker-fee
-                position.profit_loss_market = (float(pos['unrealisedPnl']) * ratio)
-                position.profit_loss_market_rate = float(pos['unrealisedPnlPcnt'])
+                # # XBt to XBT
+                # ratio = 1.0
+                # if pos['currency'] == 'XBt':
+                #     ratio = 1.0 / 100000000.0
+                #
+                # # @todo minus taker-fee
+                # position.profit_loss = (float(pos['unrealisedPnl']) * ratio)
+                # position.profit_loss_rate = float(pos['unrealisedPnlPcnt'])
+                #
+                # # @todo minus maker-fee
+                # position.profit_loss_market = (float(pos['unrealisedPnl']) * ratio)
+                # position.profit_loss_market_rate = float(pos['unrealisedPnlPcnt'])
 
                 # compute profit loss in base currency (disabled, uses values above)
-                # position.update_profit_loss(market)
+                position.update_profit_loss(market)
 
     def __update_orders(self):
         if not self.connected:
             return
 
         # filters only siis managed orders
-        src_orders = self._watcher.connector.ws.open_orders("") # "siis_")
+        src_orders = self._watcher.connector.ws.open_orders("")  # "siis_")
 
         # first delete older orders
         order_rm_list = []
@@ -595,7 +598,7 @@ class BitMexTrader(Trader):
                 # reduce only order (only reduce a position)
                 order.reduce_only = True
             else:
-                order.redeuce_only = False
+                order.reduce_only = False
 
             # execution price
             if 'LastPrice' in exec_inst:

@@ -216,7 +216,6 @@ class StrategyTrade(object):
     def invested_quantity(self) -> float:
         """
         Return the actively invested quantity or to be invested if not an active trade.
-        @todo Implement for margin, ind-margin and position trade
         """
         if self.is_active():
             return (self.e - self.x) * self.aep

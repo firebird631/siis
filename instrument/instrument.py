@@ -327,7 +327,7 @@ class Instrument(object):
                 '_size_limits', '_price_limits', '_notional_limits', \
                 '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', \
                 '_base', '_quote', '_trade', '_orders', \
-                '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', \
+                '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', '_contract_size',  \
                 '_timezone', '_session_offset', '_session_duration', '_trading_sessions'
 
     _watchers: Dict[int, Watcher]
@@ -376,6 +376,7 @@ class Instrument(object):
 
         self._one_pip_means = 1.0
         self._value_per_pip = 1.0
+        self._contract_size = 1.0
 
         # evening session from 00h00m00s000ms to 23h59m59s999ms in UTC, tuple with float time offset and time duration
         self._timezone = 0.0         # market timezone UTC+N
@@ -684,6 +685,10 @@ class Instrument(object):
         return self._one_pip_means
 
     @property
+    def contract_size(self) -> float:
+        return self._contract_size
+
+    @property
     def leverage(self) -> float:
         """
         Account and instrument related leverage.
@@ -713,6 +718,10 @@ class Instrument(object):
     @one_pip_means.setter
     def one_pip_means(self, one_pip_means: float):
         self._one_pip_means = one_pip_means
+
+    @contract_size.setter
+    def contract_size(self, contract_size: float):
+        self._contract_size = contract_size
 
     #
     # ticks or candles
