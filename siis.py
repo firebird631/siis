@@ -498,7 +498,8 @@ def application(argv):
     # strategy service listen to watcher service
     watcher_service.add_listener(strategy_service)
 
-    # strategy service listen to trader service
+    # want to display watchdog notification, strategy service listen to trader service
+    trader_service.add_listener(notifier_service)
     trader_service.add_listener(strategy_service)
 
     # want to display desktop notification, update view and notify on discord

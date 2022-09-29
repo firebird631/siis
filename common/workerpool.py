@@ -9,6 +9,7 @@ import time
 import multiprocessing
 import collections
 
+from strategy.strategytrader import StrategyTrader
 from terminal.terminal import Terminal
 
 import logging
@@ -49,6 +50,8 @@ class Worker(threading.Thread):
         self._running = False
         self._ping = None
 
+        self._long_process = False
+
     def start(self):
         if not self._running:
             self._running = True
@@ -70,6 +73,21 @@ class Worker(threading.Thread):
         count_down, job = self._pool.next_job(self)
 
         if job:
+            if len(job[1]) > 1 and isinstance(job[1][1], StrategyTrader):
+                # every job might be like this but check anyway
+                if job[1][1].initialized != 0 or job[1][1].preprocessing != 0 or job[1][1].bootstrapping != 0:
+                    # avoid every other ping
+                    self._long_process = True
+
+                    if self._ping:
+                        # process the pong message immediately during startup phase because it could take more time
+                        self.pong(time.time(), self._ping[0], self._ping[1], self._ping[2])
+                        self._ping = None
+                else:
+                    self._long_process = False
+            else:
+                self._long_process = False
+
             try:
                 job[0](*job[1])
             except Exception as e:
@@ -109,6 +127,10 @@ class Worker(threading.Thread):
         self._ping = (0, None, True)
 
     def watchdog(self, watchdog_service, timeout):
+        if self._long_process:
+            # avoid watchdog during starting process
+            return
+
         self._ping = (watchdog_service.gen_pid("worker-%s" % self._uid), watchdog_service, False)
 
     def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):

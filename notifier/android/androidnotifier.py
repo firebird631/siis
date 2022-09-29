@@ -189,6 +189,17 @@ class AndroidNotifier(Notifier):
             ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
             message = "Watchdog unreachable service %s at %s - %s" % (signal.data[0], ldatetime, signal.data[1])
 
+        elif signal.signal_type == Signal.SIGNAL_DATA_TIMEOUT:
+            if 'timeout' not in self._watchdog:
+                return
+
+            channel = self._channels.get('watchdog')
+
+            ldatetime = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+
+            message = "Watchdog data timeout type %s detail %s since %.0f' at %s" % (
+                signal.data[0], signal.data[1], signal.data[2], ldatetime)
+
         if message:
             if channel and self._auth_key:
                 try:
@@ -203,7 +214,15 @@ class AndroidNotifier(Notifier):
         if signal.source == Signal.SOURCE_STRATEGY:
             if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_ALERT:
                 self.push_signal(signal)
+            elif signal.signal_type == Signal.SIGNAL_DATA_TIMEOUT:
+                self.push_signal(signal)
 
         elif signal.source == Signal.SOURCE_WATCHDOG:
-            if signal.signal_type in (Signal.SIGNAL_WATCHDOG_TIMEOUT, Signal.SIGNAL_WATCHDOG_UNREACHABLE):
+            if Signal.SIGNAL_WATCHDOG_TIMEOUT <= signal.signal_type <= Signal.SIGNAL_WATCHDOG_UNREACHABLE:
+                self.push_signal(signal)
+            elif signal.signal_type == Signal.SIGNAL_DATA_TIMEOUT:
+                self.push_signal(signal)
+
+        elif signal.source == Signal.SOURCE_TRADER:
+            if signal.signal_type == Signal.SIGNAL_DATA_TIMEOUT:
                 self.push_signal(signal)

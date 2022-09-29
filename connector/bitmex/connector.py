@@ -82,7 +82,6 @@ class Connector(object):
                 self._ws = BitMEXWebsocket(self.__api_key, self.__api_secret, self._callback)
 
             if self._ws is not None and not self._ws.connected:
-                self._ws = BitMEXWebsocket(self.__api_key, self.__api_secret, self._callback)
                 # only subscribe to available instruments
                 symbols = []
 

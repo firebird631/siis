@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Websocket connector for bitmex.com
+import time
 
 import websocket
 import threading
@@ -32,7 +33,7 @@ def to_nearest(num, tick_size):
     return float((Decimal(round(num / tick_size, 0)) * tick_dec))
 
 
-class BitMEXWebsocket():
+class BitMEXWebsocket(object):
     """
     Connects to BitMEX websocket for streaming realtime data.
     The Marketmaker still interacts with this as if it were a REST Endpoint, but now it can get
@@ -57,6 +58,7 @@ class BitMEXWebsocket():
         self.__api_key = api_key
         self.__api_secret = api_secret
         self._callback = callback
+        self._message_last_time = 0.0
 
         self.__reset()
 
@@ -69,6 +71,8 @@ class BitMEXWebsocket():
         """
         self.symbols = symbols
         self.should_auth = should_auth
+
+        self._message_last_time = 0.0
 
         subscriptions = []
 
@@ -114,6 +118,10 @@ class BitMEXWebsocket():
     #
     # Data methods
     #
+
+    @property
+    def message_last_time(self):
+        return self._message_last_time
 
     def get_instrument(self, symbol):
         """
@@ -241,7 +249,7 @@ class BitMEXWebsocket():
         logger.debug("BitMex starting thread")
         ssl_defaults = ssl.get_default_verify_paths()
         sslopt_ca_certs = {'ca_certs': ssl_defaults.cafile}
-        #sslopt_ca_certs = {'ca_certs': ssl.CERT_NONE, 'check_hostname': False}
+        # sslopt_ca_certs = {'ca_certs': ssl.CERT_NONE, 'check_hostname': False}
 
         # websocket.enableTrace(True)
         self.ws = websocket.WebSocketApp(wsURL,
@@ -252,7 +260,8 @@ class BitMEXWebsocket():
                                          header=self.__get_auth())
 
         # self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(
-        #   sslopt=sslopt_ca_certs, ping_timeout=10, ping_interval=60))
+        #     sslopt=sslopt_ca_certs, ping_timeout=10, ping_interval=60))
+
         self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(
             sslopt=sslopt_ca_certs, ping_timeout=None, ping_interval=None))
         self.wst.daemon = True
@@ -342,6 +351,8 @@ class BitMEXWebsocket():
         """
         Handler for parsing WS messages.
         """
+        self._message_last_time = time.time()
+
         try:
             message = json.loads(message)
         except Exception as e:

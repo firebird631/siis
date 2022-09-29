@@ -23,5 +23,5 @@ matplotlib>=3.5.1
 mpl_finance>=0.10.0
 
 # for FTX client
-websockets>=10.3
-gevent>=21.12.0
+# websockets>=10.3
+# gevent>=21.12.0

@@ -44,7 +44,7 @@ class NotifierService(Service):
             self._profile_config['notifiers'] = {}
 
         if 'desktop' not in self._profile_config['notifiers']:
-            # always default add a desktop notifier, but could be disable opt-in in the profile
+            # always default add a desktop notifier, but could be disabled opt-in in the profile
             self._profile_config['notifiers']['desktop'] = {
                 'status': "enabled",
                 'name': "desktop"
@@ -186,6 +186,20 @@ class NotifierService(Service):
     def receiver(self, signal: Signal):
         if signal.source == Signal.SOURCE_STRATEGY:
             if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_ALERT:
+
+                # propagate the signal to the notifiers
+                with self._mutex:
+                    self._signals_handler.notify(signal)
+
+        if signal.source == Signal.SOURCE_TRADER:
+            if signal.signal_type == Signal.SIGNAL_DATA_TIMEOUT:
+
+                # propagate the signal to the notifiers
+                with self._mutex:
+                    self._signals_handler.notify(signal)
+
+        if signal.source == Signal.SOURCE_WATCHDOG:
+            if Signal.SIGNAL_WATCHDOG_TIMEOUT <= signal.signal_type <= Signal.SIGNAL_WATCHDOG_UNREACHABLE:
 
                 # propagate the signal to the notifiers
                 with self._mutex:

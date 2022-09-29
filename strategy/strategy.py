@@ -436,6 +436,10 @@ class Strategy(Runnable):
                 self._name, self._identifier, timeout,), view='content')
 
     def watchdog(self, watchdog_service, timeout):
+        if self._preset:
+            # not during preset
+            return
+
         if self._condition.acquire(timeout=timeout):
             self._ping = (watchdog_service.gen_pid(self._thread.name if self._thread else "unknown"),
                           watchdog_service, False)

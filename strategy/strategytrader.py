@@ -662,9 +662,17 @@ class StrategyTrader(object):
         with self._mutex:
             self._checked = 1
 
+    @property
+    def initialized(self):
+        return self._initialized
+
     #
     # pre-processing
     #
+
+    @property
+    def preprocessing(self):
+        return self._preprocessing
 
     def preprocess_load_cache(self, from_date: datetime, to_date: datetime):
         """
@@ -687,6 +695,10 @@ class StrategyTrader(object):
     #
     # processing
     #
+
+    @property
+    def bootstrapping(self):
+        return self._bootstrapping
 
     def prepare(self):
         """

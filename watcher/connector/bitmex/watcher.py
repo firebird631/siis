@@ -114,7 +114,7 @@ class BitMexWatcher(Watcher):
                 self._ready = False
                 self._connecting = False
 
-                logger.debug("%s disconnected" % (self.name))
+                logger.debug("%s disconnected" % self.name)
 
             except Exception as e:
                 logger.debug(repr(e))
@@ -155,7 +155,7 @@ class BitMexWatcher(Watcher):
             return False
 
         if not self.connected:
-            # connection lost, ready status to false to retry a connection
+            # connection lost, ready status on false to retry a connection
             self._ready = False
             return False
 
@@ -165,6 +165,15 @@ class BitMexWatcher(Watcher):
 
         with self._mutex:
             self.update_from_tick()
+
+        #
+        # check WS connection state
+        #
+        if self._connector and self._connector.ws and not self._connecting:
+            if time.time() - self._connector.ws.message_last_time >= 15:
+                # connection lost, ready status on false to retry a connection
+                self._ready = False
+                return False
 
         #
         # market info update (each 4h)
@@ -256,6 +265,9 @@ class BitMexWatcher(Watcher):
 
     @staticmethod
     def _ws_message(self, message, data):
+        # retains for monitoring
+        self._last_user_ws_update = time.time()
+
         if message == 'action':
             #
             # account data update
@@ -279,7 +291,7 @@ class BitMexWatcher(Watcher):
                 self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
 
             elif (data[1] == 'liquidation') and (data[0] == 'insert'):  # action
-                exec_logger.info("bitmex l226 liquidation > %s " % str(data))
+                # logger.debug("bitmex l226 liquidation > %s " % str(data))
 
                 for ld in data[3]:
                     # data[3]['orderID']
@@ -306,8 +318,9 @@ class BitMexWatcher(Watcher):
             #
 
             if (data[1] == 'execution') and data[2]:
-                for ld in data[3]:
-                    exec_logger.info("bitmex l185 execution > %s" % str(ld))
+                pass
+                # for ld in data[3]:
+                #     logger.debug("bitmex l185 execution > %s" % str(ld))
 
             #
             # positions

@@ -59,6 +59,8 @@ class Signal(object):
 	SIGNAL_WATCHDOG_TIMEOUT = 800       # data is a tuple with (pid, service_name, timeout)
 	SIGNAL_WATCHDOG_UNREACHABLE = 801   # data is a tuple with (service_name, message)
 
+	SIGNAL_DATA_TIMEOUT = 900           # data is a tuple with (data type, data name, last time)
+
 	SOURCE_UNDEFINED = 0
 	SOURCE_WATCHER = 1
 	SOURCE_TRADER = 2

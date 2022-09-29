@@ -885,7 +885,7 @@ class Trader(Runnable):
         """
         market = self._markets.get(market_id)
         if market is None:
-            # not interested by this market
+            # not interested in this market
             return
 
         order = self._orders.get(order_data['id'])

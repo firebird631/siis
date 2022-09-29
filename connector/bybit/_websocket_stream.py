@@ -69,13 +69,13 @@ class _WebSocketManager:
         self._reset()
         self.attempting_connection = False
 
-    def _on_open(self):
+    def _on_open(self, cls):
         """
         Log WS open.
         """
         logger.debug(f"WebSocket {self.ws_name} opened.")
 
-    def _on_message(self, message):
+    def _on_message(self, cls, message):
         """
         Parse incoming messages.
         """
@@ -133,10 +133,10 @@ class _WebSocketManager:
             logger.info(f"WebSocket {self.ws_name} attempting connection...")
             self.ws = websocket.WebSocketApp(
                 url=url,
-                on_message=lambda ws, msg: self._on_message(msg),
-                on_close=self._on_close,  # (),
-                on_open=self._on_open,  # (),
-                on_error=lambda ws, err: self._on_error(err)
+                on_message=self._on_message,
+                on_close=self._on_close,
+                on_open=self._on_open,
+                on_error=self._on_error
             )
 
             # Setup the thread running WebSocketApp.
@@ -193,7 +193,7 @@ class _WebSocketManager:
             })
         )
 
-    def _on_error(self, error):
+    def _on_error(self, cls, error):
         """
         Exit on errors and raise exception, or attempt reconnect.
         """
@@ -207,7 +207,7 @@ class _WebSocketManager:
             self._reset()
             self._connect(self.endpoint)
 
-    def _on_close(self):
+    def _on_close(self, cls, close_status_code, close_msg):
         """
         Log WS close.
         """
