@@ -330,7 +330,6 @@ class BitMexWatcher(Watcher):
                 for ld in data[3]:
                     ref_order_id = ""
                     symbol = ld['symbol']
-                    position_id = symbol
 
                     # 'leverage': 10, 'crossMargin': False
 
@@ -491,23 +490,32 @@ class BitMexWatcher(Watcher):
                             symbol, ld.get('clOrdID', "")))
 
                     elif status == 'Filled':  # action='update'
-                        operation_time = datetime.strptime(ld.get('timestamp', '1970-01-01 00:00:00.000Z'),
-                                                           "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC()).timestamp()
+                        if ld.get('transactTime'):
+                            operation_time = datetime.strptime(ld['transactTime'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                                tzinfo=UTC()).timestamp()
+                        elif ld.get('timestamp'):
+                            operation_time = datetime.strptime(ld['timestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                                tzinfo=UTC()).timestamp()
+                        else:
+                            operation_time = time.time()
+
                         # 'workingIndicator': False, if fully filled
-                        #  'leavesQty': 0, if fully filled
-                        # 'currency': 'XBT', 'settlCurrency': 'XBt', 'triggered': '', 'simpleLeavesQty': None, 'leavesQty': 10000, 'simpleCumQty': None, 'cumQty': 0, 'avgPx': None, ...
+                        # 'leavesQty': 0, if fully filled
+                        # 'currency': 'XBT', 'settlCurrency': 'XBt', 'triggered': '', 'simpleLeavesQty': None,
+                        # 'leavesQty': 10000, 'simpleCumQty': None, 'cumQty': 0, 'avgPx': None, ...
 
                         order = {
-                          'id': ld['orderID'],
-                          'symbol': symbol,
-                          # 'direction': direction,  # no have
-                          'timestamp': operation_time,
-                          'quantity': ld.get('orderQty', 0.0),
-                          'filled': None,  # no have
-                          'cumulative-filled': ld.get('cumQty', 0),
-                          'exec-price': None,  # no have
-                          'avg-price': ld.get('avgPx', 0),  # averaged for the cumulative
-                          # 'maker': ,   # trade execution over or counter the market : true if maker, false if taker
+                            'id': ld['orderID'],
+                            'symbol': symbol,
+                            'direction': Order.LONG if ld['side'] == 'Buy' else Order.SHORT,
+                            'timestamp': operation_time,
+                            'quantity': ld.get('orderQty', 0),
+                            'filled': None,  # no have
+                            'cumulative-filled': ld.get('cumQty', 0),
+                            'exec-price': None,  # no have
+                            'avg-price': ld.get('avgPx', 0),              # average price for the cumulative
+                            'fully-filled': ld.get('leavesQty', 0) <= 0,  # means fully-filled
+                            # 'maker': ,   # trade execution over or counter the market : true if maker, false if taker
                         }
 
                         self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (
@@ -560,7 +568,11 @@ class BitMexWatcher(Watcher):
 
             elif (data[1] == 'instrument' or data[1] == 'quote') and data[0] == 'insert' or data[0] == 'update':
                 for market_id in data[2]:
-                    instrument = self.connector.ws.get_instrument(market_id)
+                    try:
+                        instrument = self.connector.ws.get_instrument(market_id)
+                    except Exception:
+                        # instrument not found
+                        continue
 
                     if market_id not in self._watched_instruments:
                         # not a symbol of interest

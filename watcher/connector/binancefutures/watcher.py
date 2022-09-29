@@ -1117,7 +1117,7 @@ class BinanceFuturesWatcher(Watcher):
                     # total sum of isolated margin for each symbols
                     if pos['mt'] == 'isolated':  # else 'cross'
                         total_isolated_margin_balance += float(pos['iw'])
-                    
+
                     quantity = abs(float(pos['pa']))
 
                     position_data = {
@@ -1136,8 +1136,8 @@ class BinanceFuturesWatcher(Watcher):
                         'liquidation-price': None,  # no have
                         'commission': 0.0,
                         'profit-currency': self.BASE_QUOTE,
-                        'profit-loss': float(pos['up']),
-                        'profit-loss-rate': None,
+                        # 'profit-loss': float(pos['up']),
+                        # 'profit-loss-rate': None,
                     }
 
                     # needed to know if opened or deleted position, only on ORDER event reason type

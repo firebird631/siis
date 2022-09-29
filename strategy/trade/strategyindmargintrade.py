@@ -643,6 +643,14 @@ class StrategyIndMarginTrade(StrategyTrade):
             if data['id'] == self.create_oid:
                 prev_e = self.e
 
+                # in case of direct traded signal without open (could occur on bitmex market order)
+                if not self.eot:
+                    self.eot = data['timestamp']
+
+                # in case it occurs after position open signal and/or direct traded signal without open
+                if self.e == 0:
+                    self._entry_state = StrategyTrade.STATE_OPENED
+
                 # a single order for the entry, then it is OK and preferred to use cumulative-filled and avg-price
                 # because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -707,7 +715,6 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 if self.e >= self.oq or data.get('fully-filled', False):
                     # bitmex does not send ORDER_DELETED signal, cleanup here
-                    # we have a fully-filled status with binancefutures
                     self._entry_state = StrategyTrade.STATE_FILLED
 
                     self.create_oid = None
@@ -816,7 +823,6 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 if self.x >= self.e or data.get('fully-filled', False):
                     # bitmex does not send ORDER_DELETED signal, cleanup here
-                    # we have a fully-filled status with binancefutures
                     self._exit_state = StrategyTrade.STATE_FILLED
 
                     if data['id'] == self.limit_oid:
@@ -853,6 +859,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             # no longer related position, have to cleanup any related trades in case of manual close, liquidation
             self.position_id = None
 
+            # @todo when position closed from outside ...
             if self.x < self.e:
                 # mean fill the rest (because qty can concerns many trades...)
                 filled = instrument.adjust_quantity(self.e - self.x)

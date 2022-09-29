@@ -226,7 +226,7 @@ class BitMexTrader(Trader):
             return Order.REASON_INVALID_ARGS
 
         if not self._watcher.connector:
-            error_logger.error("Trader %s refuse order because of missing connector" % (self.name,))
+            error_logger.error("Trader %s refuse order because of missing connector" % self.name)
             return Order.REASON_ERROR
 
         postdict = {
@@ -284,13 +284,14 @@ class BitMexTrader(Trader):
             postdict['orderQty'] = qty
 
         # execution price for stop orders
-        if order.order_type in (Order.ORDER_STOP, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT, Order.ORDER_TAKE_PROFIT_LIMIT):
+        if order.order_type in (Order.ORDER_STOP, Order.ORDER_STOP_LIMIT, Order.ORDER_TAKE_PROFIT,
+                                Order.ORDER_TAKE_PROFIT_LIMIT):
             if order.price_type == Order.PRICE_LAST:
                 exec_inst.append('LastPrice')
             elif order.price_type == Order.PRICE_INDEX:
                 exec_inst.append('IndexPrice')
             elif order.price_type == Order.PRICE_MARK:
-                 exec_inst.append('MarkPrice')
+                exec_inst.append('MarkPrice')
 
         if order.reduce_only:
             exec_inst.append("ReduceOnly")
@@ -300,7 +301,8 @@ class BitMexTrader(Trader):
         if exec_inst:
             postdict['execInst'] = ','.join(exec_inst)
 
-        logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), order.symbol, order.price, order.quantity))
+        logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), order.symbol,
+                                                      order.price, order.quantity))
 
         # @todo could test size limit, notional limit, price limit...
 
@@ -323,6 +325,9 @@ class BitMexTrader(Trader):
 
         # store the order with its order id
         order.set_order_id(result['orderID'])
+
+        # relate position to its market id (no possible hedging to distinct two opposites directions)
+        order.set_position_id(market_or_instrument.market_id)
 
         order.created_time = self._parse_datetime(result.get('timestamp')).replace(tzinfo=UTC()).timestamp()
         order.transact_time = self._parse_datetime(result.get('transactTime')).replace(tzinfo=UTC()).timestamp()

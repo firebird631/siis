@@ -307,6 +307,10 @@ class BinanceFuturesTrader(Trader):
 
                 order.set_order_id(str(result['orderId']))
 
+                # relate position to its market id
+                # @todo distinct position id if using hedging
+                order.set_position_id(market_or_instrument.market_id)
+
                 order.created_time = result['updateTime'] * 0.001
                 order.transact_time = result['updateTime'] * 0.001
 

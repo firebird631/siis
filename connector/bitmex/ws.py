@@ -36,13 +36,7 @@ def to_nearest(num, tick_size):
 class BitMEXWebsocket(object):
     """
     Connects to BitMEX websocket for streaming realtime data.
-    The Marketmaker still interacts with this as if it were a REST Endpoint, but now it can get
-    much more realtime data without heavily polling the API.
-    
-    The Websocket offers a bunch of data as raw properties right on the object.
-    On connect, it synchronously asks for a push of all this data then returns.
-    Right after, the MM can start using its data. It will be updated in realtime, so the MM can poll as often as it wants.
-    
+
     @todo Might need a mutex when reading/writing the data object.
 
     # ref #1: https://github.com/BitMEX/sample-market-maker/blob/master/market_maker/ws/ws_thread.py
@@ -52,7 +46,7 @@ class BitMEXWebsocket(object):
     """
 
     MAX_TABLE_LEN = 200  # Don't grow a table larger than this amount. Helps cap memory usage.
-    PREFERED_ORDER_BOOK = "orderBookL2_25"
+    PREFERRED_ORDER_BOOK = "orderBookL2_25"
 
     def __init__(self, api_key, api_secret, callback=None):
         self.__api_key = api_key
@@ -60,15 +54,25 @@ class BitMEXWebsocket(object):
         self._callback = callback
         self._message_last_time = 0.0
 
+        self._error = None
+
+        self.exited = False
+
+        self.symbols = []
+        self.should_auth = False
+
         self.__reset()
 
     def __del__(self):
         self.exit()
 
-    def connect(self, endpoint="", symbols=["XBTUSD"], should_auth=True):
+    def connect(self, endpoint="", symbols=None, should_auth=True):
         """
         Connect to the websocket and initialize data stores.
         """
+        if symbols is None:
+            symbols = ["XBTUSD"]
+
         self.symbols = symbols
         self.should_auth = should_auth
 
@@ -79,7 +83,8 @@ class BitMEXWebsocket(object):
         # We can subscribe right in the connection querystring, so let's build that.
         # Subscribe to all pertinent endpoints
         for symbol in symbols:
-            subscriptions += [sub + ':' + symbol for sub in ["quote", "trade", "liquidation"]]  # , BitMEXWebsocket.PREFERED_ORDER_BOOK]]
+            subscriptions += [sub + ':' + symbol for sub in ["quote", "trade", "liquidation"]]
+            # , BitMEXWebsocket.PREFERRED_ORDER_BOOK]]
     
         subscriptions += ["instrument"]  # We want all of them
 
@@ -90,17 +95,17 @@ class BitMEXWebsocket(object):
             subscriptions += ["margin", "position"]
 
         # Get WS URL and connect.
-        urlParts = list(urlparse(endpoint))
-        urlParts[0] = urlParts[0].replace('http', 'ws')
-        urlParts[2] = "/realtime?subscribe=" + ",".join(subscriptions)
-        wsURL = urlunparse(urlParts)
+        url_parts = list(urlparse(endpoint))
+        url_parts[0] = url_parts[0].replace('http', 'ws')
+        url_parts[2] = "/realtime?subscribe=" + ",".join(subscriptions)
+        ws_url = urlunparse(url_parts)
 
         # @todo or
         # wsURL = self.__get_url(endpoint)
 
-        logger.debug("BitMex connecting to %s" % wsURL)
+        logger.debug("BitMex connecting to %s" % ws_url)
         try:
-            self.__connect(wsURL)
+            self.__connect(ws_url)
         except Exception as e:
             logger.error(repr(e))
             self.__reset()
@@ -128,12 +133,12 @@ class BitMEXWebsocket(object):
         Get an instrument by symbol.
         """
         instruments = self.data.get('instrument', {})
-        matchingInstruments = [i for i in instruments if i['symbol'] == symbol]
+        matching_instruments = [i for i in instruments if i['symbol'] == symbol]
 
-        if len(matchingInstruments) == 0:
+        if len(matching_instruments) == 0:
             raise Exception("BitMex unable to find instrument or index with symbol: " + symbol)
 
-        instrument = matchingInstruments[0]
+        instrument = matching_instruments[0]
         # Turn the 'tickSize' into 'tickLog' for use in rounding
         # http://stackoverflow.com/a/6190291/832202
         instrument['tickLog'] = decimal.Decimal(str(instrument['tickSize'])).as_tuple().exponent * -1
@@ -171,7 +176,7 @@ class BitMEXWebsocket(object):
         """
         Return order book for a symbol.
         """
-        order_book = self.data.get(self.PREFERED_ORDER_BOOK, {})
+        order_book = self.data.get(self.PREFERRED_ORDER_BOOK, {})
 
         buys = []
         sells = []
@@ -183,12 +188,12 @@ class BitMEXWebsocket(object):
                 elif order['side'] == 'Sell':
                     sells.append({'id': str(order['id']), 'size': order['size'], 'price': order['price']})
 
-        return (buys, sells)
+        return buys, sells
 
-    def open_orders(self, clOrdIDPrefix):
+    def open_orders(self, cl_ord_id_prefix):
         orders = self.data.get('order', [])
         # Filter to only open orders (leavesQty > 0) and those that we actually placed
-        return [o for o in orders if str(o['clOrdID']).startswith(clOrdIDPrefix) and o['leavesQty'] > 0]
+        return [o for o in orders if str(o['clOrdID']).startswith(cl_ord_id_prefix) and o['leavesQty'] > 0]
 
     def position(self, symbol):
         positions = self.data['position']
@@ -260,10 +265,10 @@ class BitMEXWebsocket(object):
                                          header=self.__get_auth())
 
         # self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(
-        #     sslopt=sslopt_ca_certs, ping_timeout=10, ping_interval=60))
+        #     sslopt=sslopt_ca_certs, ping_interval=60, ping_timeout=10))
 
         self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(
-            sslopt=sslopt_ca_certs, ping_timeout=None, ping_interval=None))
+            sslopt=sslopt_ca_certs, ping_interval=60, ping_timeout=10))
         self.wst.daemon = True
         self.wst.start()
 
@@ -357,7 +362,7 @@ class BitMEXWebsocket(object):
             message = json.loads(message)
         except Exception as e:
             logger.error("Unable to loads json message for : %s" % (str(message)))
-            message = []
+            message = {}
 
         table = message['table'] if 'table' in message else None
         action = message['action'] if 'action' in message else None
@@ -370,7 +375,8 @@ class BitMEXWebsocket(object):
                     if self._callback:
                         self._callback[1](self._callback[0], 'subscribed', None)
                 else:
-                    logger.error("Unable to subscribe to %s. Error: \"%s\" Please check and restart." % (message['request']['args'][0], message['error']))
+                    logger.error("Unable to subscribe to %s. Error: \"%s\" Please check and restart." % (
+                        message['request']['args'][0], message['error']))
 
             elif 'status' in message:
                 if message['status'] == 400:
@@ -442,7 +448,7 @@ class BitMEXWebsocket(object):
                         if table == 'order' and item['leavesQty'] <= 0:
                             self.data[table].remove(item)
 
-                        if table == 'instrument' or table == self.PREFERED_ORDER_BOOK:
+                        if table == 'instrument' or table == self.PREFERRED_ORDER_BOOK:
                             updated.add(updateData['symbol'])
 
                 elif action == 'delete':
