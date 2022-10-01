@@ -103,7 +103,7 @@
   </div>
 </div>
 
-<div class="modal" id="modify_trade_stop_loss" tabindex="-1" role="dialog" aria-labelledby="modify-trade-stop-loss" aria-hidden="true">
+<div class="modal" id="modify_trade_stop_loss" tabindex="-1" role="dialog" aria-labelledby="modify-trade-stop-loss" aria-hidden="true" style="z-index: 3000;">
   <div class="modal-dialog modal-sm" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -152,7 +152,7 @@
   </div>
 </div>
 
-<div class="modal" id="modify_trade_take_profit" tabindex="-1" role="dialog" aria-labelledby="modify-trade-take-profit" aria-hidden="true">
+<div class="modal" id="modify_trade_take_profit" tabindex="-1" role="dialog" aria-labelledby="modify-trade-take-profit" aria-hidden="true" style="z-index: 3000;">
   <div class="modal-dialog modal-sm" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -186,7 +186,7 @@
   </div>
 </div>
 
-<div class="modal" id="trade_details" tabindex="-1" role="dialog" aria-labelledby="Trade details" aria-hidden="true">
+<div class="modal" id="trade_details" tabindex="-1" role="dialog" aria-labelledby="Trade details" aria-hidden="true" style="z-index: 2000;">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -213,7 +213,7 @@
   </div>
 </div>
 
-<div class="modal" id="open_trade_adv" tabindex="-1" role="dialog" aria-labelledby="open-trade-adv" aria-hidden="true">
+<div class="modal" id="open_trade_adv" tabindex="-1" role="dialog" aria-labelledby="open-trade-adv" aria-hidden="true" style="z-index: 2000;">
   <div class="modal-dialog modal-md" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -265,7 +265,7 @@
   </div>
 </div>
 
-<div class="modal" id="modify_comment" tabindex="-1" role="dialog" aria-labelledby="modify-comment" aria-hidden="true">
+<div class="modal" id="modify_comment" tabindex="-1" role="dialog" aria-labelledby="modify-comment" aria-hidden="true" style="z-index: 3000;">
   <div class="modal-dialog modal-md" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -287,7 +287,7 @@
   </div>
 </div>
 
-<div class="modal" id="copy_signal" tabindex="-1" role="dialog" aria-labelledby="copy-signal" aria-hidden="true">
+<div class="modal" id="copy_signal" tabindex="-1" role="dialog" aria-labelledby="copy-signal" aria-hidden="true" style="z-index: 2000;">
   <div class="modal-dialog modal-md" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -439,22 +439,22 @@
 
     <div class="container-fluid traders">
         <div class="row">
-          <div class="col-sm-3 trader"></div>
-          <div class="col-sm-3 trader"></div>
-          <div class="col-sm-3 trader"></div>
-          <div class="col-sm-3 trader"></div>
+          <div class="col-sm-3 trader col1"></div>
+          <div class="col-sm-3 trader col2"></div>
+          <div class="col-sm-3 trader col3"></div>
+          <div class="col-sm-3 trader col4"></div>
         </div>
         <div class="row">
-          <div class="col-sm-3 trader"></div>
-          <div class="col-sm-3 trader"></div>
-          <div class="col-sm-3 trader"></div>
-          <div class="col-sm-3 trader"></div>
+          <div class="col-sm-3 trader col1"></div>
+          <div class="col-sm-3 trader col2"></div>
+          <div class="col-sm-3 trader col3"></div>
+          <div class="col-sm-3 trader col4"></div>
         </div>
         <div class="row">
-          <div class="col-sm-3 trader"></div>
-          <div class="col-sm-3 trader"></div>
-          <div class="col-sm-3 trader"></div>
-          <div class="col-sm-3 trader"></div>
+          <div class="col-sm-3 trader col1"></div>
+          <div class="col-sm-3 trader col2"></div>
+          <div class="col-sm-3 trader col3"></div>
+          <div class="col-sm-3 trader col4"></div>
         </div>
     </div>
 
@@ -489,17 +489,17 @@
                       <th style="width: 55px;">#</th>
                       <th style="width: 150px;">Symbol</th>
                       <th style="width: 30px;"><span class="fas fa-arrows-alt-v" style="padding-left: 4px;"></span></th>
-                      <th style="width: 165px;">Date (Entry)</th>
-                      <th>Order (Qty)</th>
-                      <th>Entry (Qty)</th>
-                      <th>Exit (Qty)</th>
-                      <th style="width: 30px;"><span class="fas fa-robot"></span></th>
-                      <th>Context</th>
+                      <th style="width: 165px;" class="optional-info">Date (Entry)</th>
+                      <th class="optional-info">Order (Qty)</th>
+                      <th class="optional-info">Entry (Qty)</th>
+                      <th class="optional-info">Exit (Qty)</th>
+                      <th style="width: 30px;"><span class="fas fa-robot optional-info"></span></th>
+                      <th class="optional-info">Context</th>
                       <th style="width: 75px;">%</th>
                       <th style="width: 85px;">UPNL</th>
-                      <th style="width: 45px;">Fees</th>
-                      <th>Stop-Loss</th>
-                      <th>Take-Profit</th>
+                      <th style="width: 45px;" class="optional-info">Fees</th>
+                      <th class="optional-info">Stop-Loss</th>
+                      <th class="optional-info">Take-Profit</th>
                       <th style="width: 35px; padding-left: 15px;"><span class="fas fa-window-close"></span></th>
                       <th style="width: 35px; padding-left: 15px;"><span class="fas fa-random"></span></th>
                       <th style="width: 35px; padding-left: 15px;"><span class="fas fa-info"></span></th>
@@ -516,16 +516,16 @@
                       <th style="width: 55px;">#</th>
                       <th style="width: 150px;">Symbol</th>
                       <th style="width: 30px;"><span class="fas fa-arrows-alt-v" style="padding-left: 4px;"></span></th>
-                      <th style="width: 165px;">Date (Exit)</th>
-                      <th>Order (Qty)</th>
-                      <th>Entry (Qty)</th>
-                      <th>Exit (Qty)</th>
-                      <th>Context</th>
+                      <th style="width: 165px;" class="optional-info">Date (Exit)</th>
+                      <th class="optional-info">Order (Qty)</th>
+                      <th class="optional-info">Entry (Qty)</th>
+                      <th class="optional-info">Exit (Qty)</th>
+                      <th class="optional-info">Context</th>
                       <th style="width: 75px;">%</th>
                       <th style="width: 85px;">PNL</th>
-                      <th style="width: 45px;">Fees</th>
-                      <th>Stop-Loss</th>
-                      <th>Take-Profit</th>
+                      <th style="width: 45px;" class="optional-info">Fees</th>
+                      <th class="optional-info">Stop-Loss</th>
+                      <th class="optional-info">Take-Profit</th>
                       <th style="width: 35px; padding-left: 15px;"><span class="fas fa-info"></span></th>
                     </tr>
                   </thead>
@@ -622,8 +622,8 @@
                   <thead style="width: 100%; border-bottom: 1px solid gray;">
                     <tr>
                       <th style="width: 150px;">Symbol</th>
-                      <th style="width: 75px;">Active (%)</th>
-                      <th style="width: 75px;">Total (%)</th>
+                      <th style="width: 75px;">Active</th>
+                      <th style="width: 75px;">Total</th>
                       <th style="width: 75px;">Success</th>
                       <th style="width: 75px;">Failed</th>
                       <th style="width: 75px;">ROE</th>
@@ -637,9 +637,9 @@
                   <thead style="width: 100%; border-bottom: 1px solid gray;">
                     <tr>
                       <th style="width: 150px;">Asset / Margin</th>
-                      <th style="width: 75px;">Free Quantity / Free Margin</th>
-                      <th style="width: 75px;">Locked / Margin Level</th>
-                      <th style="width: 75px;">Total / Total Margin</th>
+                      <th style="width: 75px;">Free</th>
+                      <th style="width: 75px;">Locked / Level</th>
+                      <th style="width: 75px;">Total</th>
                     </tr>
                   </thead>
                   <tbody>

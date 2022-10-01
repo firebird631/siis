@@ -41,6 +41,15 @@ def markets_table(trader, style='', offset=None, limit=None, col_ofs=None, group
             status = Color.colorize_cond("Open" if market.is_open else "Close", market.is_open, style=style,
                                          true=Color.GREEN, false=Color.RED)
 
+            min_leverage = market.min_leverage
+            max_leverage = market.max_leverage
+
+            if min_leverage != max_leverage and max_leverage > 1.0:
+                leverage = "%.2f (%s..%s)" % ((1.0 / market.margin_factor if market.margin_factor > 0.0 else 1.0),
+                                              market.min_leverage, market.max_leverage)
+            else:
+                leverage = '-'
+
             row = (
                 market.market_id,
                 market.symbol,
@@ -63,7 +72,7 @@ def markets_table(trader, style='', offset=None, limit=None, col_ofs=None, group
                 market.min_notional or '-',
                 market.max_notional or '-',
                 market.step_notional or '-',
-                "%.2f" % (1.0 / market.margin_factor if market.margin_factor > 0.0 else 1.0),
+                leverage,
                 "%.g" % market.base_exchange_rate,
                 'Yes' if market.hedging else 'No'
             )

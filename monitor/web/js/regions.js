@@ -217,6 +217,9 @@ window.fetch_regions = function() {
         window.regions = {};
 
         let regions = result['data'];
+        if (!regions) {
+            return;
+        }
 
         // naturally ordered
         for (let i = 0; i < regions.length; ++i) {

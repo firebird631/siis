@@ -2269,6 +2269,106 @@ class RestartCommand(Command):
         return args, 0
 
 
+class SetTraderBalance(Command):
+    SUMMARY = "Reset the trader balance in paper-mode only to a specific value."
+    HELP = (
+        "param1: <balance> new balance",
+    )
+
+    def __init__(self, trader_service):
+        super().__init__('set-balance', None)
+
+        self._trader_service = trader_service
+
+    def execute(self, args):
+        if not args:
+            return False, "Missing parameters"
+
+        if not self._trader_service.trader():
+            return False, "No configured trader"
+
+        if not self._trader_service.trader().paper_mode:
+            return False, "Available only in paper-mode"
+
+        if len(args) != 1:
+            return False, "Missing parameter"
+
+        try:
+            balance = float(args[0])
+        except ValueError:
+            return False, "Invalid balance value format"
+
+        if balance <= 0.0:
+            return False, "Invalid balance value, must be greater than zero"
+
+        self._trader_service.trader().account.set_balance(balance)
+
+        return True, "Balance value updated"
+
+    def completion(self, args, tab_pos, direction):
+        return args, 0
+
+
+class SetTraderMarketLeverage(Command):
+    SUMMARY = "Set the leverage for a specific market if available."
+    HELP = (
+        "param1: <market-id> market identifier, symbol or alias",
+        "param2: <leverage> new leverage",
+    )
+
+    def __init__(self, trader_service):
+        super().__init__('set-leverage', None)
+
+        self._trader_service = trader_service
+
+    def execute(self, args):
+        if not args:
+            return False, "Missing parameters"
+
+        if not self._trader_service.trader():
+            return False, "No configured trader !"
+
+        if (not self._trader_service.trader().account.account_type & self._trader_service.trader().account.TYPE_MARGIN
+                == self._trader_service.trader().account.TYPE_MARGIN):
+            return False, "Available only in margin trading !"
+
+        if len(args) != 2:
+            return False, "Invalid parameters"
+
+        market_id = args[0]
+
+        try:
+            leverage = float(args[1])
+        except ValueError:
+            return False, "Invalid leverage value format"
+
+        if not 1.0 <= leverage <= 500:
+            return False, "Invalid leverage value (must be between 1 to 500)"
+
+        market = self._trader_service.trader().market(market_id)
+        if not market:
+            return False, "Invalid market identifier or alias"
+
+        if leverage > market.max_leverage:
+            return False, "Must be at max %s for this market" % market.max_leverage
+
+        if leverage < market.min_leverage:
+            return False, "Must be at least %s for this market" % market.min_leverage
+
+        market.margin_factor = 1.0 / leverage
+
+        return True, "Market leverage updated %s to for %s" % (leverage, market_id)
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            # market
+            trader = self._trader_service.trader()
+            if trader:
+                return self.iterate(0, trader.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service,
                               monitor_service, notifier_service):
     #
@@ -2333,6 +2433,13 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(TickerMemSetCommand(trader_service))
     commands_handler.register(ClosePositionCommand(trader_service))
     commands_handler.register(CloseAllPositionCommand(trader_service))
+
+    #
+    # trader operation
+    #
+
+    commands_handler.register(SetTraderBalance(trader_service))
+    commands_handler.register(SetTraderMarketLeverage(trader_service))
 
     #
     # multi-trades operations

@@ -15,7 +15,7 @@ import threading
 from common.utils import truncate
 
 import logging
-logger = logging.getLogger('siis')
+logger = logging.getLogger('siis.trader.account')
 
 
 class Account(object):

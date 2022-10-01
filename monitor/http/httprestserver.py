@@ -193,63 +193,64 @@ class StrategyInfoRestAPI(resource.Resource):
         # insert markets details
         markets = {}
 
-        instruments_ids = self._strategy_service.strategy().instruments_ids()
+        if self._strategy_service.strategy():
+            instruments_ids = self._strategy_service.strategy().instruments_ids()
 
-        for market_id in instruments_ids:
-            instr = self._strategy_service.strategy().instrument(market_id)
+            for market_id in instruments_ids:
+                instr = self._strategy_service.strategy().instrument(market_id)
 
-            strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
-            if strategy_trader is None:
-                continue
+                strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
+                if strategy_trader is None:
+                    continue
 
-            profiles = {}
+                profiles = {}
 
-            markets[market_id] = {
-                'strategy': strategy_name,
-                'market-id': market_id,
-                'symbol': instr.symbol,
-                'base': instr.base,       # base or asset
-                'quote': instr.quote,
-                'currency': instr.currency,
-                'tradeable': instr.tradeable,
-                'value-per-pip': instr.value_per_pip,
-                'one-pip-means': instr.one_pip_means,
-                'price-limits': instr.price_limits,
-                'notional-limits': instr.notional_limits,
-                'size-limits': instr.size_limits,
-                'bid': instr.market_bid,
-                'ask': instr.market_ask,
-                'mid': instr.market_price,
-                'spread': instr.market_spread,
-                'last-update-time': instr.last_update_time,
-                'sessions': {
-                    'timezone': instr.timezone,
-                    'offset': instr.session_offset,
-                    'duration': instr.session_duration,
-                    'trading': [t.to_dict() for t in instr.trading_sessions]
-                },
-                'trade': {
-                    'activity': strategy_trader.activity,       # bool
-                    'affinity': strategy_trader.affinity,       # int
-                    'max-trades': strategy_trader.max_trades,   # int
-                    'quantity': instr.trade_quantity,           # float
-                    'quantity-mode': instr.trade_quantity_mode  # int const
-                },
-                'volumes': {
-                    'base': instr.vol24h_base,   # float
-                    'quote': instr.vol24h_quote  # float
-                },
-                'profiles': profiles  # dict str:dict
-            }
+                markets[market_id] = {
+                    'strategy': strategy_name,
+                    'market-id': market_id,
+                    'symbol': instr.symbol,
+                    'base': instr.base,       # base or asset
+                    'quote': instr.quote,
+                    'currency': instr.currency,
+                    'tradeable': instr.tradeable,
+                    'value-per-pip': instr.value_per_pip,
+                    'one-pip-means': instr.one_pip_means,
+                    'price-limits': instr.price_limits,
+                    'notional-limits': instr.notional_limits,
+                    'size-limits': instr.size_limits,
+                    'bid': instr.market_bid,
+                    'ask': instr.market_ask,
+                    'mid': instr.market_price,
+                    'spread': instr.market_spread,
+                    'last-update-time': instr.last_update_time,
+                    'sessions': {
+                        'timezone': instr.timezone,
+                        'offset': instr.session_offset,
+                        'duration': instr.session_duration,
+                        'trading': [t.to_dict() for t in instr.trading_sessions]
+                    },
+                    'trade': {
+                        'activity': strategy_trader.activity,       # bool
+                        'affinity': strategy_trader.affinity,       # int
+                        'max-trades': strategy_trader.max_trades,   # int
+                        'quantity': instr.trade_quantity,           # float
+                        'quantity-mode': instr.trade_quantity_mode  # int const
+                    },
+                    'volumes': {
+                        'base': instr.vol24h_base,   # float
+                        'quote': instr.vol24h_quote  # float
+                    },
+                    'profiles': profiles  # dict str:dict
+                }
 
-            contexts_ids = self._strategy_service.strategy().contexts_ids(market_id)
+                contexts_ids = self._strategy_service.strategy().contexts_ids(market_id)
 
-            for context_id in contexts_ids:
-                context = self._strategy_service.strategy().dumps_context(market_id, context_id)
-                context['strategy'] = strategy_name  # related strategy
-                context['profile-id'] = context_id   # context id to profile id
+                for context_id in contexts_ids:
+                    context = self._strategy_service.strategy().dumps_context(market_id, context_id)
+                    context['strategy'] = strategy_name  # related strategy
+                    context['profile-id'] = context_id   # context id to profile id
 
-                profiles[context_id] = context
+                    profiles[context_id] = context
 
         results = {
             'broker': {
@@ -337,22 +338,22 @@ class InstrumentRestAPI(resource.Resource):
         strategy_id = self._strategy_service.strategy_identifier()
 
         # @todo get state info quantity, context/profile
+        if self._strategy_service.strategy():
+            with self._strategy_service.strategy().mutex:
+                strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
+                if strategy_trader is None:
+                    return NoResource("Unknown market-id %s" % market_id)
 
-        with self._strategy_service.strategy().mutex:
-            strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
-            if strategy_trader is None:
-                return NoResource("Unknown market-id %s" % market_id)
-
-            with strategy_trader.trade_mutex:
-                results = {
-                    'strategy': strategy_name,
-                    'strategy-id': strategy_id,
-                    'market-id': market_id,
-                    'activity': strategy_trader.activity,
-                    'affinity': strategy_trader.affinity,
-                    # context/profile
-                    # 'trade-mode': strategy_trader.
-                }
+                with strategy_trader.trade_mutex:
+                    results = {
+                        'strategy': strategy_name,
+                        'strategy-id': strategy_id,
+                        'market-id': market_id,
+                        'activity': strategy_trader.activity,
+                        'affinity': strategy_trader.affinity,
+                        # context/profile
+                        # 'trade-mode': strategy_trader.
+                    }
 
         return json.dumps(results).encode("utf-8")
 
@@ -438,31 +439,32 @@ class StrategyTradeRestAPI(resource.Resource):
             except ValueError:
                 return NoResource("Incorrect market-id value")
 
-        if trade_id > 0:
-            with self._strategy_service.strategy.mutex:
-                strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
-                if strategy_trader is None:
-                    return NoResource("Unknown market-id %s" % market_id)
+        if self._strategy_service.strategy():
+            if trade_id > 0:
+                with self._strategy_service.strategy.mutex:
+                    strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
+                    if strategy_trader is None:
+                        return NoResource("Unknown market-id %s" % market_id)
 
-                found_trade = None
+                    found_trade = None
 
-                with strategy_trader.trade_mutex:
-                    for trade in strategy_trader.trades:
-                        if trade.id == trade_id:
-                            found_trade = trade
-                            break
+                    with strategy_trader.trade_mutex:
+                        for trade in strategy_trader.trades:
+                            if trade.id == trade_id:
+                                found_trade = trade
+                                break
 
-                    if found_trade:
-                        # trade dumps with its operations
-                        trade_dumps = trade.dumps_notify_update(self._strategy_service.timestamp, strategy_trader)
-                        trade_dumps['operations'] = [operation.dumps() for operation in trade.operations]
+                        if found_trade:
+                            # trade dumps with its operations
+                            trade_dumps = trade.dumps_notify_update(self._strategy_service.timestamp, strategy_trader)
+                            trade_dumps['operations'] = [operation.dumps() for operation in trade.operations]
 
-                        results['data'] = trade_dumps
-                    else:
-                        return NoResource("Unknown trade-id %s for market %s" % (trade_id, market_id))
-        else:
-            # current active trade list
-            results['data'] = self._strategy_service.strategy().dumps_trades_update()
+                            results['data'] = trade_dumps
+                        else:
+                            return NoResource("Unknown trade-id %s for market %s" % (trade_id, market_id))
+            else:
+                # current active trade list
+                results['data'] = self._strategy_service.strategy().dumps_trades_update()
 
         return json.dumps(results).encode("utf-8")
 
@@ -563,10 +565,11 @@ class HistoricalTradeRestAPI(resource.Resource):
             results['data'] = None  # @todo
         else:
             # historical trades list
-            history_trades = self._strategy_service.strategy().dumps_trades_history()
+            if self._strategy_service.strategy():
+                history_trades = self._strategy_service.strategy().dumps_trades_history()
 
-            # sort by last realized exit trade timestamp
-            results['data'] = sorted(history_trades, key=lambda trade: trade['stats']['last-realized-exit-datetime'])
+                # sort by last realized exit trade timestamp
+                results['data'] = sorted(history_trades, key=lambda trade: trade['stats']['last-realized-exit-datetime'])
 
         return json.dumps(results).encode("utf-8")
 
@@ -616,7 +619,8 @@ class StrategyAlertRestAPI(resource.Resource):
             results['data'] = None  # @todo
         else:
             # current active alerts list
-            results['data'] = self._strategy_service.strategy().dumps_active_alerts()
+            if self._strategy_service.strategy():
+                results['data'] = self._strategy_service.strategy().dumps_active_alerts()
 
         return json.dumps(results).encode("utf-8")
 
@@ -745,11 +749,12 @@ class StrategyRegionRestAPI(resource.Resource):
             # @todo
             results['data'] = None
         else:
-            # strategy trader region for a specific market
-            trade_regions = self._strategy_service.strategy().dumps_regions()
+            if self._strategy_service.strategy():
+                # strategy trader region for a specific market
+                trade_regions = self._strategy_service.strategy().dumps_regions()
 
-            # sort by last created timestamp
-            results['data'] = sorted(trade_regions, key=lambda region: region['created'])
+                # sort by last created timestamp
+                results['data'] = sorted(trade_regions, key=lambda region: region['created'])
 
         return json.dumps(results).encode("utf-8")
 

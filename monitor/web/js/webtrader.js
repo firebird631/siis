@@ -5,6 +5,25 @@
  * Web trader main.
  */
 
+ (function($) {
+     $.fn.doubleTap = function(doubleTapCallback) {
+         return this.each(function(){
+			var elm = this;
+			var lastTap = 0;
+			$(elm).bind('mousedown', function (e) {
+                var now = (new Date()).valueOf();
+				var diff = (now - lastTap);
+                lastTap = now ;
+                if (diff < 250) {
+                  if($.isFunction( doubleTapCallback )) {
+                    doubleTapCallback.call(elm);
+		          }
+                }
+			});
+         });
+    }
+})(jQuery);
+
 $(window).ready(function() {
     CURRENCIES = {
         'EUR': 2,
@@ -77,6 +96,12 @@ $(window).ready(function() {
     }
     if (searchParams.has('ws-port')) {
         window.server['ws-port'] = parseInt(searchParams.get('ws-port'));
+    }
+
+    if (navigator.userAgent.toLowerCase().match(/mobile/i)) {
+        window.mobileDevice = true;
+    } else {
+        window.mobileDevice = false;
     }
 
     window.broker = {
@@ -773,14 +798,25 @@ $(window).ready(function() {
         on_change_take_profit_step(); 
     });
 
-    $('#trade_list_sizer').dblclick(function(e) {
-        let elt = $('div.trade-list');
-        if (elt.attr('view-mode') == 'maximized') {
-            restore_trade_list_view();
-        } else {
-            maximize_trade_list_view();
-        }
-    });
+    if (window.mobileDevice) {
+        $('#trade_list_sizer').doubleTap(function(e) {
+            let elt = $('div.trade-list');
+            if (elt.attr('view-mode') == 'maximized') {
+                restore_trade_list_view();
+            } else {
+                maximize_trade_list_view();
+            }
+        });
+    } else {
+        $('#trade_list_sizer').dblclick(function(e) {
+            let elt = $('div.trade-list');
+            if (elt.attr('view-mode') == 'maximized') {
+                restore_trade_list_view();
+            } else {
+                maximize_trade_list_view();
+            }
+        });
+    }
 
     $('#toggle_trades_status').on('click', function(elt) {
         $('#trades_status').toggle();
@@ -1134,6 +1170,19 @@ function authenticate() {
 }
 
 function setup_traders() {
+    if ($('div.traders').width() <= 450) {
+        // one trader per row
+        let rows = $('div.traders div.row');
+        rows.children('div.col2').remove();
+        rows.children('div.col3').remove();
+        rows.children('div.col4').remove();
+    } else if ($('div.traders').width() <= 820) {
+        // one trader per row
+        let rows = $('div.traders div.row');
+        rows.children('div.col2').remove();
+        rows.children('div.col3').remove();
+    }
+
     $("div.trader").each(function(i, elt) {
         let trader_row1 = $('<div class="row trader-row1 trader-row"></div>');
         let trader_row2 = $('<div class="row trader-row2 trader-row"></div>');
@@ -1238,6 +1287,10 @@ function fetch_status() {
     })
     .done(function(result) {
         // trader status
+        if (!result['data']) {
+            return;
+        }
+
         let trader = result['data']['trader'];
 
         set_conn_update_state('trader', trader.name, trader.connected ? 1 : -1);
@@ -1473,6 +1526,10 @@ function fetch_trades() {
 
         let trades = result['data'];
 
+        if (!trades) {
+            return;
+        }
+
         // sort by entry date
         trades.sort((a, b) => (a['entry-open-time'] > b['entry-open-time']) - (a['entry-open-time'] < b['entry-open-time']));
 
@@ -1516,6 +1573,10 @@ function fetch_history() {
         window.historical_trades = {};
 
         let trades = result['data'];
+
+        if (!trades) {
+            return;
+        }
 
         // naturally ordered
         for (let i = 0; i < trades.length; ++i) {
@@ -2002,6 +2063,14 @@ function on_change_profile(elt) {
     let value = $(elt.target).val();
     let market = window.markets[retrieve_symbol(elt)];
 
+    if (!market) {
+        return;
+    }
+
+    if (!'profiles' in market) {
+        return;
+    }
+
     if (value in market.profiles) {
         let profile = market.profiles[value];
         let trader_id = $(elt.target).attr('trader-id');
@@ -2203,10 +2272,20 @@ function on_update_performances() {
                 row_entry.append($('<td class="balance-total">' + format_value(balance.total, precision) + '</td>'));
             } else if (balance.type == "margin") {
                 row_entry.append($('<td class="balance-free">' + format_value(balance.free, precision) + '</td>'));
-                row_entry.append($('<td class="balance-locked">' + format_value(balance.locked, precision) +
-                    ' (level '+ (balance['margin-level'] * 100).toFixed(2) + '%)</td>'));
-                row_entry.append($('<td class="balance-total">' + format_value(balance.total, precision) +
-                    ' (upnl ' + format_value(balance.upnl, precision) + ')</td>'));
+
+                if (balance.locked > 0.0) {
+                    row_entry.append($('<td class="balance-locked">' + format_value(balance.locked, precision) +
+                        ' (level '+ (balance['margin-level'] * 100).toFixed(2) + '%)</td>'));
+                } else {
+                    row_entry.append($('<td class="balance-locked">0</td>'));
+                }
+
+                if (balance.upnl != 0.0) {
+                    row_entry.append($('<td class="balance-total">' + format_value(balance.total, precision) +
+                        ' (upnl ' + format_value(balance.upnl, precision) + ')</td>'));
+                } else {
+                    row_entry.append($('<td class="balance-total">' + format_value(balance.total, precision) + '</td>'));
+                }
             }
 
             table.append(row_entry);

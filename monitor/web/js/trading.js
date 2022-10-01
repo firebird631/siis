@@ -725,25 +725,25 @@ function add_active_trade(market_id, trade) {
     trade_elt.append($('<td></td>').append(trade_id));
     trade_elt.append($('<td></td>').append(trade_symbol));
     trade_elt.append($('<td></td>').append(trade_direction));
-    trade_elt.append($('<td></td>').append(trade_datetime));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_datetime));
     
-    trade_elt.append($('<td></td>').append(trade_order));
-    trade_elt.append($('<td></td>').append(trade_entry));
-    trade_elt.append($('<td></td>').append(trade_exit));
-    
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_order));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_entry));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_exit));
+
     trade_elt.append($('<td></td>').append(trade_auto));
-    trade_elt.append($('<td></td>').append(trade_context));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_context));
 
     trade_elt.append($('<td></td>').append(trade_percent));
     trade_elt.append($('<td></td>').append(trade_upnl));
-    trade_elt.append($('<td></td>').append(trade_fees));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_fees));
 
     if (server.permissions.indexOf("strategy-modify-trade") != -1) {
-        trade_elt.append($('<td></td>').append(trade_stop_loss).append(trade_stop_loss_chg));
-        trade_elt.append($('<td></td>').append(trade_take_profit).append(trade_take_profit_chg));
+        trade_elt.append($('<td></td>').addClass('optional-info').append(trade_stop_loss).append(trade_stop_loss_chg));
+        trade_elt.append($('<td></td>').addClass('optional-info').append(trade_take_profit).append(trade_take_profit_chg));
     } else {
-        trade_elt.append($('<td></td>').append(trade_stop_loss));
-        trade_elt.append($('<td></td>').append(trade_take_profit));
+        trade_elt.append($('<td></td>').addClass('optional-info').append(trade_stop_loss));
+        trade_elt.append($('<td></td>').addClass('optional-info').append(trade_take_profit));
     }
 
     if (server.permissions.indexOf("strategy-close-trade") < 0) {
@@ -998,20 +998,20 @@ function add_historical_trade(market_id, trade) {
     trade_elt.append($('<td></td>').append(trade_id));
     trade_elt.append($('<td></td>').append(trade_symbol));
     trade_elt.append($('<td></td>').append(trade_direction));
-    trade_elt.append($('<td></td>').append(trade_datetime));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_datetime));
     
-    trade_elt.append($('<td></td>').append(trade_order));
-    trade_elt.append($('<td></td>').append(trade_entry));
-    trade_elt.append($('<td></td>').append(trade_exit));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_order));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_entry));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_exit));
     
-    trade_elt.append($('<td></td>').append(trade_context));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_context));
 
     trade_elt.append($('<td></td>').append(trade_percent));
     trade_elt.append($('<td></td>').append(trade_pnl));
-    trade_elt.append($('<td></td>').append(trade_fees));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_fees));
     
-    trade_elt.append($('<td></td>').append(trade_stop_loss));
-    trade_elt.append($('<td></td>').append(trade_take_profit));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_stop_loss));
+    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_take_profit));
     
     trade_elt.append($('<td></td>').append(trade_details));
 
@@ -1434,6 +1434,8 @@ function on_details_active_trade(elt) {
         return;
     }
 
+    tbody.attr('trade-key', key);
+
     let market_id = trade['market-id'];
     let currency_display = get_currency_display(trade.stats['profit-loss-currency']);
 
@@ -1488,6 +1490,11 @@ function on_details_active_trade(elt) {
         $('<td class="data-value">' + format_price(market_id, trade['stop-loss-price']) + ' (' +
         trade_stop_loss_pct + ')</td>'));
 
+    let trade_stop_loss_chg = $('<button class="btn btn-light trade-modify-stop-loss fas fa-pencil-alt"></button>');
+    if (server.permissions.indexOf("strategy-modify-trade") != -1) {
+        stop_loss_price.append(trade_stop_loss_chg);
+    }
+
     let take_profit_price_rate = compute_price_pct(trade['take-profit-price'],
         trade['avg-entry-price'] || trade['order-price'],
         trade.direction == "long" ? 1 : -1);
@@ -1495,6 +1502,11 @@ function on_details_active_trade(elt) {
     let take_profit_price = $('<tr></tr>').append($('<td class="data-name">Take-Profit</td>')).append(
         $('<td class="data-value">' + format_price(market_id, trade['take-profit-price']) + ' (' +
         trade_take_profit_pct + ')</td>'));
+
+    let trade_take_profit_chg = $('<button class="btn btn-light trade-modify-take-profit fas fa-pencil-alt"></button>');
+    if (server.permissions.indexOf("strategy-modify-trade") != -1) {
+        take_profit_price.append(trade_take_profit_chg);
+    }
 
     let avg_entry_price = $('<tr></tr>').append($('<td class="data-name">Avg entry price</td>')).append(
         $('<td class="data-value">' + format_price(market_id, trade['avg-entry-price']) + '</td>'));
@@ -1616,72 +1628,83 @@ function on_details_active_trade(elt) {
     comment.append(comment_value);
 
     let comment_chg = $('<button class="btn btn-light trade-modify-comment fas fa-pencil-alt"></button>');
-    comment.append(comment_chg);
+    if (server.permissions.indexOf("strategy-modify-trade") != -1) {
+        comment.append(comment_chg);
+    }
 
-    comment_chg.on('click', function(elt) {
-        $('#updated_trade_comment').val("");
+    //
+    // actions
+    //
 
-        $('#modify_comment').attr('trade-key', key);
-        $("#modify_comment").modal({'show': true, 'backdrop': true});
+    if (server.permissions.indexOf("strategy-modify-trade") != -1) {
+        trade_stop_loss_chg.on('click', on_modify_active_trade_stop_loss);
+        trade_take_profit_chg.on('click', on_modify_active_trade_take_profit);
 
-        $("#modify_comment_apply").off('click');
-        $("#modify_comment_apply").on('click', function(elt) {
-            let key = $('#modify_comment').attr('trade-key');
+        comment_chg.on('click', function(elt) {
+            $('#updated_trade_comment').val("");
 
-            let parts = key.split(':');
-            if (parts.length != 2) {
-                return false;
-            }
+            $('#modify_comment').attr('trade-key', key);
+            $("#modify_comment").modal({'show': true, 'backdrop': true});
 
-            let market_id = parts[0];
-            let trade_id = parseInt(parts[1]);
+            $("#modify_comment_apply").off('click');
+            $("#modify_comment_apply").on('click', function(elt) {
+                let key = $('#modify_comment').attr('trade-key');
 
-            let endpoint = "strategy/trade";
-            let url = base_url() + '/' + endpoint;
+                let parts = key.split(':');
+                if (parts.length != 2) {
+                    return false;
+                }
 
-            let market = window.markets[market_id];
-            let comment = $('#updated_trade_comment').val();
+                let market_id = parts[0];
+                let trade_id = parseInt(parts[1]);
 
-            if (market_id && market && trade_id) {
-                let data = {
-                    'market-id': market['market-id'],
-                    'trade-id': trade_id,
-                    'command': "trade-modify",
-                    'action': "comment",
-                    'comment': comment
-                };
+                let endpoint = "strategy/trade";
+                let url = base_url() + '/' + endpoint;
 
-                $.ajax({
-                    type: "POST",
-                    url: url,
-                    headers: {
-                        'Authorization': "Bearer " + server['auth-token'],
-                        'TWISTED_SESSION': server.session,
-                    },
-                    data: JSON.stringify(data),
-                    dataType: 'json',
-                    contentType: 'application/json'
-                })
-                .done(function(data) {
-                    if (data.error) {
-                        for (let msg in data.messages) {
-                            notify({'message': data.messages[msg], 'title': 'Modify Comment', 'type': 'error'});
+                let market = window.markets[market_id];
+                let comment = $('#updated_trade_comment').val();
+
+                if (market_id && market && trade_id) {
+                    let data = {
+                        'market-id': market['market-id'],
+                        'trade-id': trade_id,
+                        'command': "trade-modify",
+                        'action': "comment",
+                        'comment': comment
+                    };
+
+                    $.ajax({
+                        type: "POST",
+                        url: url,
+                        headers: {
+                            'Authorization': "Bearer " + server['auth-token'],
+                            'TWISTED_SESSION': server.session,
+                        },
+                        data: JSON.stringify(data),
+                        dataType: 'json',
+                        contentType: 'application/json'
+                    })
+                    .done(function(data) {
+                        if (data.error) {
+                            for (let msg in data.messages) {
+                                notify({'message': data.messages[msg], 'title': 'Modify Comment', 'type': 'error'});
+                            }
+                        } else {
+                            notify({'message': "Success", 'title': 'Modify Comment', 'type': 'success'});
+
+                            // local update
+                            comment_value.text(comment);
                         }
-                    } else {
-                        notify({'message': "Success", 'title': 'Modify Comment', 'type': 'success'});
-
-                        // local update
-                        comment_value.text(comment);
-                    }
-                })
-                .fail(function(data) {
-                    for (let msg in data.messages) {
-                        notify({'message': msg, 'title': 'Modify Comment', 'type': 'error'});
-                    }
-                });
-            }
+                    })
+                    .fail(function(data) {
+                        for (let msg in data.messages) {
+                            notify({'message': msg, 'title': 'Modify Comment', 'type': 'error'});
+                        }
+                    });
+                }
+            });
         });
-    });
+    }
 
     tbody.append(best_price);
     tbody.append(worst_price);

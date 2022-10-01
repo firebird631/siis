@@ -871,7 +871,11 @@ class StrategyIndMarginTrade(StrategyTrade):
                     elif self.dir < 0:
                         self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
 
-            self._exit_state = StrategyTrade.STATE_FILLED
+            if self._exit_state != StrategyTrade.STATE_FILLED:
+                self._exit_state = StrategyTrade.STATE_FILLED
+
+                # for stats
+                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
     def is_target_order(self, order_id: str, ref_order_id: str) -> bool:
         if order_id and (order_id == self.create_oid or order_id == self.stop_oid or order_id == self.limit_oid):

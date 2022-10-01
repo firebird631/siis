@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Union
+from typing import Union, Tuple
 
 import re
 import time
@@ -368,20 +368,26 @@ class BitMexWatcher(Watcher):
                         'filled': None,  # no have
                         'liquidation-price': ld.get('liquidationPrice'),
                         'commission': ld.get('commission', 0.0),
-                        'profit-currency': ld.get('currency'),
+                        # 'profit-currency': ld.get('currency'),
                         # 'profit-loss': ld.get('unrealisedPnl'),
                         # 'profit-loss-rate': ld.get('unrealisedPnlPcnt')
                     }
 
                     if (ld.get('openOrderBuyQty', 0) or ld.get('openOrderSellQty', 0)) and quantity == 0.0:
                         # not current quantity, but open order qty
+                        exec_logger.info("bitmex.com position opened %s" % str(ld))
+
                         self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (
                             symbol, position_data, ref_order_id))
                     elif quantity > 0:
                         # current qty updated
+                        # exec_logger.info("bitmex.com position updated %s" % str(ld))
+
                         self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (
                             symbol, position_data, ref_order_id))
                     else:
+                        exec_logger.info("bitmex.com position deleted %s" % str(ld))
+
                         # empty quantity no open order qty, position deleted
                         self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (
                             symbol, position_data, ref_order_id))
@@ -590,74 +596,19 @@ class BitMexWatcher(Watcher):
                     base_symbol = instrument.get('rootSymbol', 'USD')
                     quote_symbol = symbol[-3:]
 
-                    # base to XBT
-                    base_exchange_rate = 1.0
-
                     # base instrument
                     base_market_id = "XBT" + quote_symbol
                     base_market = None
-                    xbtusd_market = None
-
-                    if quote_symbol == "USD" and base_market_id != symbol:
-                        xbtusd_market = self.connector.ws.get_instrument("XBTUSD")
-                        if xbtusd_market:
-                            base_exchange_rate = instrument.get('lastPrice', 1.0)
-
-                    elif base_market_id != symbol:
-                        base_market = self.connector.ws.get_instrument(base_market_id)
-                        xbtusd_market = self.connector.ws.get_instrument("XBTUSD")
-                        if base_market and xbtusd_market:
-                            base_exchange_rate = instrument.get('lastPrice', 1.0) / (base_market.get('lastPrice', 1.0))
+                    xbtusd_instrument = self.connector.ws.get_instrument("XBTUSD")
 
                     bid = instrument.get('bidPrice')
                     ask = instrument.get('askPrice')
 
                     if bid is not None and ask is not None:
-                        value_per_pip = 1.0
-                        contract_size = 1.0
-
-                        # update contract size and value per pip
-                        if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD (xbt perpetual)
-                            base_exchange_rate = instrument.get('lastPrice', 1.0)  # quoted in USD
-                            contract_size = 1.0 / instrument.get('lastPrice', 1.0)
-                            value_per_pip = contract_size * 1.0
-
-                        elif base_market_id == symbol:  # XBTU19 (xbt futures)
-                            base_exchange_rate = xbtusd_market.get('lastPrice', 1.0)  # quoted in USD
-                            contract_size = 1.0 / instrument.get('lastPrice', 1.0)
-                            value_per_pip = contract_size * 1.0
-
-                        elif quote_symbol == 'USD' and base_market_id != symbol:  # ETHUSD, XRPUSD... (alts perpetuals)
-                            if xbtusd_market:
-                                base_exchange_rate = xbtusd_market.get('lastPrice', 1.0)  # quoted in USD
-
-                                if base_symbol == 'ETH':
-                                    # ETHUSD Contract Size 0,001 mXBT per 1 USD
-                                    contract_size = 0.001 * 0.001 * instrument.get('lastPrice', 1.0) * (xbtusd_market.get('lastPrice', 1.0) * 0.001)
-                                elif base_symbol == 'ADA':
-                                    # ADAUSD Contract Size 0,0001 XBT per 1 USD
-                                    contract_size = 0.0001 * instrument.get('lastPrice', 1.0) * xbtusd_market.get('lastPrice', 1.0)
-                                elif base_symbol == 'XRP':
-                                    # XRPUSD Contract Size 0,0002 XBT per 1 USD
-                                    contract_size = 0.0002 * instrument.get('lastPrice', 1.0) * xbtusd_market.get('lastPrice', 1.0)
-
-                                value_per_pip = contract_size  # * instrument.get('tickSize', 1.0)
-
-                            elif base_market and base_market_id != symbol:  # ADAZ18... (alts futures)
-                                if xbtusd_market:
-                                    base_exchange_rate = 1.0  # quoted in XBT
-
-                                    if base_symbol == 'ETH':
-                                        # ETH Contract Size 0.00001 ETH
-                                        contract_size = 0.00001 * instrument.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0)
-                                    elif base_symbol == 'ADA':
-                                        # ADA Contract Size 0,01 ADA
-                                        contract_size = 0.0001 * instrument.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0)
-                                    elif base_symbol == 'XRP':
-                                        # XRP Contract Size 0,01 XRP
-                                        contract_size = 0.01 * instrument.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0)
-
-                                    value_per_pip = contract_size  # * instrument.get('tickSize', 1.0)
+                        # contract_size need to be updated as price changes
+                        base_exchange_rate, contract_size, value_per_pip = self.compute_market_data(
+                            base_market, base_market_id, symbol, base_symbol, quote_symbol,
+                            instrument, xbtusd_instrument)
 
                         vol24h = instrument.get('volume24h')
                         vol24hquote = instrument.get('foreignNotional24h')
@@ -719,7 +670,7 @@ class BitMexWatcher(Watcher):
             # base instrument
             base_market_id = "XBT" + quote_symbol
             base_market = self.connector.ws.get_instrument(base_market_id)
-            xbtusd_market = self.connector.ws.get_instrument("XBTUSD")
+            xbtusd_instrument = self.connector.ws.get_instrument("XBTUSD")
 
             # @todo 'multiplier', 'riskStep', 'riskLimit'
 
@@ -738,7 +689,13 @@ class BitMexWatcher(Watcher):
 
             # need to divided by account currency XBt = 100000000
             market.margin_factor = instrument.get('initMargin', 1.0)
-            # market.max_margin_factor = 1.0 / (instrument.get('riskLimit', 1.0) * ratio) # ex: 20000000000 for max leverage 200
+
+            ratio = 1.0 / 100000000.0
+
+            min_leverage = 1.0
+            max_leverage = instrument.get('riskLimit', 1.0) * ratio  # ex: 20000000000 for max leverage 200
+
+            market.set_leverages((min_leverage, max_leverage))
 
             # '-' if perpetual else match the regexp and keep the expiry part only
             expiry = BitMexWatcher.EXPIRY_RE.match(market_id)
@@ -759,54 +716,14 @@ class BitMexWatcher(Watcher):
                 market.ask = ask
                 market.last_update_time = update_time
 
-            market.lot_size = instrument.get('lotSize', 1.0)  # ex: 1.0 for XBTUSD
+            market.lot_size = 1.0  # instrument.get('lotSize', 1.0)  # ex: 1.0 for XBTUSD
             market.contract_size = 1.0
             market.value_per_pip = 1.0
             market.one_pip_means = instrument.get('tickSize', 1.0)
 
             # contract_size need to be updated as price changes
-            if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD (xbt perpetual)
-                market.base_exchange_rate = instrument.get('lastPrice', 1.0)  # quoted in USD
-                market.contract_size = 1.0 / instrument.get('lastPrice', 1.0)
-                market.value_per_pip = 1.0
-
-            elif base_market_id == symbol:  # XBTU19 (xbt futures)
-                market.base_exchange_rate = xbtusd_market.get('lastPrice', 1.0)  # quoted in USD
-                market.contract_size = 1.0 / instrument.get('lastPrice', 1.0)
-                market.value_per_pip = 1.0
-
-            elif quote_symbol == 'USD' and base_market_id != symbol:  # ETHUSD, XRPUSD... (alts perpetuals)
-                if xbtusd_market:
-                    market.base_exchange_rate = xbtusd_market.get('lastPrice', 1.0)  # quoted in USD
-
-                    if base_symbol == 'ETH':
-                        # ETHUSD Contract Size 0,001 mXBT per 1 USD
-                        market.contract_size = 0.001 * 0.001 * instrument.get('lastPrice', 1.0) * (xbtusd_market.get('lastPrice', 1.0) * 0.001)
-                    elif base_symbol == 'ADA':
-                        # ADAUSD Contract Size 0,0001 XBT per 1 USD
-                        market.contract_size = 0.0001 * instrument.get('lastPrice', 1.0) * xbtusd_market.get('lastPrice', 1.0)
-                    elif base_symbol == 'XRP':
-                        # XRPUSD Contract Size 0,0002 XBT per 1 USD
-                        market.contract_size = 0.0002 * instrument.get('lastPrice', 1.0) * xbtusd_market.get('lastPrice', 1.0)
-
-                    market.value_per_pip = market.contract_size  # * instrument.get('tickSize', 1.0)
-
-            elif base_market and base_market_id != symbol:  # ADAZ18... (alts futures)
-                if xbtusd_market:
-                    market.base_exchange_rate = 1.0  # quoted in XBT
-                    market.value_per_pip = 1.0
-
-                    if base_symbol == 'ETH':
-                        # ETH Contract Size 0.00001 ETH
-                        market.contract_size = 0.00001 * instrument.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0)
-                    elif base_symbol == 'ADA':
-                        # ADA Contract Size 0,01 ADA
-                        market.contract_size = 0.0001 * instrument.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0)
-                    elif base_symbol == 'XRP':
-                        # XRP Contract Size 0,01 XRP
-                        market.contract_size = 0.01 * instrument.get('lastPrice', 1.0) / xbtusd_market.get('lastPrice', 1.0)
-
-                    market.value_per_pip = market.contract_size  # * instrument.get('tickSize', 1.0)
+            market.base_exchange_rate, market.contract_size, market.value_per_pip = self.compute_market_data(
+                base_market, base_market_id, symbol, base_symbol, quote_symbol, instrument, xbtusd_instrument)
 
             market.maker_fee = instrument.get('makerFee', 0.0)
             market.taker_fee = instrument.get('takerFee', 0.0)
@@ -833,6 +750,65 @@ class BitMexWatcher(Watcher):
             return market
 
         return None
+
+    def compute_market_data(self, base_market, base_market_id,
+                            symbol, base_symbol, quote_symbol,
+                            instrument, xbtusd_instrument) -> Tuple[float, float, float]:
+        base_exchange_rate = 1.0
+        contract_size = 1.0
+        value_per_pip = 1.0
+
+        # contract_size need to be updated as price changes
+        if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD (xbt perpetual)
+            # market.base_exchange_rate = instrument.get('lastPrice', 1.0)  # quoted in USD
+            contract_size = 1.0 / instrument.get('lastPrice', 1.0) ** 2
+            value_per_pip = 1.0
+
+        elif base_market_id == symbol:  # XBTU19 (xbt futures)
+            # market.base_exchange_rate = xbtusd_market.get('lastPrice', 1.0)  # quoted in USD
+            contract_size = 1.0 / instrument.get('lastPrice', 1.0) ** 2
+            value_per_pip = 1.0
+
+        elif quote_symbol == 'USD' and base_market_id != symbol:  # ETHUSD, XRPUSD... (alts perpetuals)
+            if xbtusd_instrument:
+                # market.base_exchange_rate = xbtusd_market.get('lastPrice', 1.0)  # quoted in USD
+
+                if base_symbol == 'ETH':
+                    # ETHUSD Contract Size 0,001 mXBT per 1 USD
+                    contract_size = 0.001 * 0.001 # * instrument.get('lastPrice', 1.0)  # * (xbtusd_instrument.get('lastPrice', 1.0) * 0.001)
+                elif base_symbol == 'ADA':
+                    # ADAUSD Contract Size 0,0001 XBT per 1 USD
+                    contract_size = 0.0001 # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
+                elif base_symbol == 'XRP':
+                    # XRPUSD Contract Size 0,0002 XBT per 1 USD
+                    contract_size = 0.0002 # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
+                else:
+                    # @todo others markets
+                    contract_size = 1.0
+
+                value_per_pip = contract_size  # * instrument.get('tickSize', 1.0)
+
+        elif base_market and base_market_id != symbol:  # ADAZ18... (alts futures)
+            if xbtusd_instrument:
+                base_exchange_rate = 1.0  # quoted in XBT
+                value_per_pip = 1.0
+
+                if base_symbol == 'ETH':
+                    # ETH Contract Size 0.00001 ETH
+                    contract_size = 0.00001 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
+                elif base_symbol == 'ADA':
+                    # ADA Contract Size 0,01 ADA
+                    contract_size = 0.0001 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
+                elif base_symbol == 'XRP':
+                    # XRP Contract Size 0,01 XRP
+                    contract_size = 0.01 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
+                else:
+                    # @todo others markets
+                    contract_size = 1.0
+
+                value_per_pip = contract_size  # * instrument.get('tickSize', 1.0)
+
+        return base_exchange_rate, contract_size, value_per_pip
 
     def update_markets_info(self):
         """

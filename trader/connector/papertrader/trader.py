@@ -284,6 +284,7 @@ class PaperTrader(Trader):
                     # self.account.set_risk_limit(risk_limit)
 
                     # margin level
+                    used_cost += self.account.profit_loss
                     if used_cost > 0.0:
                         self.account.set_margin_level(self.account.margin_balance / used_cost)
                     else:

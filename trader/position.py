@@ -61,7 +61,7 @@ class Position(Keyed):
 
         self._profit_loss = 0.0
         self._profit_loss_rate = 0.0
-        
+
         self._profit_loss_market = 0.0
         self._profit_loss_market_rate = 0.0
 

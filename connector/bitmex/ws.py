@@ -268,7 +268,7 @@ class BitMEXWebsocket(object):
         #     sslopt=sslopt_ca_certs, ping_interval=60, ping_timeout=10))
 
         self.wst = threading.Thread(name="bitmex.ws", target=lambda: self.ws.run_forever(
-            sslopt=sslopt_ca_certs, ping_interval=60, ping_timeout=10))
+            sslopt=sslopt_ca_certs, ping_interval=60, ping_timeout=10, ping_payload="ping"))
         self.wst.daemon = True
         self.wst.start()
 

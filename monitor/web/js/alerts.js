@@ -243,6 +243,9 @@ window.fetch_alerts = function() {
         window.active_alerts = {};
 
         let alerts = result['data'];
+        if (!alerts) {
+            return;
+        }
 
         // naturally ordered
         for (let i = 0; i < alerts.length; ++i) {
@@ -279,6 +282,9 @@ window.fetch_alerts = function() {
         window.alerts = {};
 
         let alerts = result['data'];
+        if (!alerts) {
+            return;
+        }
 
         // naturally ordered
         for (let i = 0; i < alerts.length; ++i) {

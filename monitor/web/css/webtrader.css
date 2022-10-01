@@ -1,3 +1,10 @@
+/**
+ * @date 2020-05-24
+ * @author Frederic Scherma, All rights reserved without prejudices.
+ * @license Copyright (c) 2020 Dream Overflow
+ * http rest server
+ */
+
 .btn-default {
     border: 1px gray solid;
 }
@@ -358,9 +365,6 @@ div.status {
     position: absolute;
     left: 140px;
     top: -2px;
-}
-
-#state_values {
     font-size: 0.75em;
 }
 
@@ -446,4 +450,67 @@ div.chart-buttons {
     right: 50px;
     top: 50px;
     width: 300px;    
+}
+
+/**
+ * responsiveness for small resolution or tablet
+ */
+@media (max-width: 820px) {
+    div.trader.col1 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+
+/**
+ * responsiveness for smartphones
+ */
+@media (max-width: 450px) {
+    #state_values {
+        display: none;
+    }
+
+    div.trader.col1 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    div.traders {
+        height: 70vh;
+        margin-bottom: 15px;
+    }
+
+    div.trade-list-menu {
+        border-right: 3px solid gray;
+        width: 100%;
+    }
+
+    div.trade-list {
+        overflow-y: auto;
+    }
+
+    a.menu-btn-half-left {
+        width: 50%;
+    }
+
+    a.menu-btn-half-right {
+        width: 151px;
+        margin-left: -3px;
+        border-right: 1px solid gray;
+        border-bottom-left-radius: 3px;
+        border-top-left-radius: 3px;
+    }
+
+    div.trade-list-context {
+        width: 100%;
+        padding: 0px;
+    }
+
+    th.optional-info, td.optional-info {
+        display: none;
+    }
+
+    .modal {
+       overflow-y:auto;
+    }
 }
