@@ -510,10 +510,16 @@ class BitMexWatcher(Watcher):
                         # 'currency': 'XBT', 'settlCurrency': 'XBt', 'triggered': '', 'simpleLeavesQty': None,
                         # 'leavesQty': 10000, 'simpleCumQty': None, 'cumQty': 0, 'avgPx': None, ...
 
+                        # side could by missing...
+                        if 'side' in ld:
+                            direction = Order.LONG if ld['side'] == 'Buy' else Order.SHORT
+                        else:
+                            direction = Order.LONG
+
                         order = {
                             'id': ld['orderID'],
                             'symbol': symbol,
-                            'direction': Order.LONG if ld['side'] == 'Buy' else Order.SHORT,
+                            'direction': direction,
                             'timestamp': operation_time,
                             'quantity': ld.get('orderQty', 0),
                             'filled': None,  # no have

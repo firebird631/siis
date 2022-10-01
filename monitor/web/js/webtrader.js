@@ -1176,11 +1176,15 @@ function setup_traders() {
         rows.children('div.col2').remove();
         rows.children('div.col3').remove();
         rows.children('div.col4').remove();
-    } else if ($('div.traders').width() <= 820) {
+    } else if ($('div.traders').width() <= 1024) {
         // one trader per row
         let rows = $('div.traders div.row');
-        rows.children('div.col2').remove();
         rows.children('div.col3').remove();
+        rows.children('div.col4').remove();
+    } else if ($('div.traders').width() <= 1280) {
+        // one trader per row
+        let rows = $('div.traders div.row');
+        rows.children('div.col4').remove();
     }
 
     $("div.trader").each(function(i, elt) {
