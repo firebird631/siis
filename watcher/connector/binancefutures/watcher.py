@@ -562,6 +562,7 @@ class BinanceFuturesWatcher(Watcher):
                 market.trade, market.orders,  # type
                 market.base, market.base_display, market.base_precision,  # base
                 market.quote, market.quote_display, market.quote_precision,  # quote
+                market.settlement, market.settlement_display, market.settlement_precision,  # settlement
                 market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
                 str(market.lot_size), str(market.contract_size), str(market.base_exchange_rate),
                 str(market.value_per_pip), str(market.one_pip_means), '-',

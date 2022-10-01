@@ -29,7 +29,7 @@ class Position(Keyed):
     """
 
     __slots_ = '_trader', '_position_id', '_state', '_symbol', '_symbol', '_quantity', \
-               '_profit_loss', '_profit_loss_rate', '_profit_loss_currency', \
+               '_profit_loss', '_profit_loss_rate', \
                '_profit_loss_market', '_profit_loss_market_rate', '_raw_profit_loss', '_raw_profit_loss_rate', \
                '_created_time', '_market_close', \
                '_leverage', '_entry_price', '_exit_price' \
@@ -64,8 +64,6 @@ class Position(Keyed):
 
         self._profit_loss_market = 0.0
         self._profit_loss_market_rate = 0.0
-
-        self._profit_loss_currency = ""
 
         self._created_time = 0.0
         self._closed_time = 0.0
@@ -156,10 +154,6 @@ class Position(Keyed):
         return self._leverage
 
     @property
-    def profit_loss_currency(self) -> str:
-        return self._profit_loss_currency
-
-    @property
     def raw_profit_loss(self) -> float:
         return self._raw_profit_loss
 
@@ -210,10 +204,6 @@ class Position(Keyed):
     @direction.setter
     def direction(self, direction: int):
         self._direction = direction
-
-    @profit_loss_currency.setter
-    def profit_loss_currency(self, currency: str):
-        self._profit_loss_currency = currency
 
     @profit_loss.setter
     def profit_loss(self, profit_loss: float):
@@ -403,7 +393,6 @@ class Position(Keyed):
             'take-profit-price': self._take_profit,
             'stop-loss-price': self._stop_loss,
             'trailing-stop': self._trailing_stop,
-            'profit-loss-currency': self._profit_loss_currency,
             'raw-profit-loss': self._raw_profit_loss,
             'raw-profit-loss-rate': self._raw_profit_loss_rate,
             'profit-loss': self._profit_loss,
@@ -434,10 +423,6 @@ class Position(Keyed):
         self._stop_loss = data.get('stop-loss-price', None)
         self._trailing_stop = data.get('trailing-stop', False)
 
-        # if data.get('profit-loss-currency', "") == self._profit_loss_currency:
-        #     # @todo could merge with current
-
-        self._profit_loss_currency = data.get('profit-loss-currency', "")
         self._raw_profit_loss = data.get('raw-profit-loss', 0.0)
         self._raw_profit_loss_rate = data.get('raw-profit-loss-rate', 0.0)
         self._profit_loss = data.get('profit-loss', 0.0)

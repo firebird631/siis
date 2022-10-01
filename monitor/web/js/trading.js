@@ -678,17 +678,11 @@ function add_active_trade(market_id, trade) {
 
     if (parseFloat(trade['filled-entry-qty']) > 0.0 && trade.stats['profit-loss'] != undefined) {
         trade_percent.text(trade['profit-loss-pct'] + '%');
-        trade_upnl.text(format_quote_price(market_id, trade.stats['profit-loss']) + currency_display);
+        trade_upnl.text(format_settlement_price(market_id, trade.stats['profit-loss']) + currency_display);
     } else {
         trade_percent.text("-");
         trade_upnl.text("-");
     }
-
-    // fees
-    let fees = trade.stats['entry-fees'] == undefined || trade.stats['exit-fees'] == undefined ? 0.0 : format_quote_price(
-        market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
-    let trade_fees = $('<span class="trade-fees"></span>').text(fees);
-    trade_fees.attr('title', (trade.stats['fees-pct'] == undefined ? 0.0 : trade.stats['fees-pct']).toFixed(2) + '%');
 
     // stop-loss
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);  // + UP/DN buttons
@@ -736,7 +730,6 @@ function add_active_trade(market_id, trade) {
 
     trade_elt.append($('<td></td>').append(trade_percent));
     trade_elt.append($('<td></td>').append(trade_upnl));
-    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_fees));
 
     if (server.permissions.indexOf("strategy-modify-trade") != -1) {
         trade_elt.append($('<td></td>').addClass('optional-info').append(trade_stop_loss).append(trade_stop_loss_chg));
@@ -834,17 +827,11 @@ function update_active_trade(market_id, trade) {
 
     if (parseFloat(trade['filled-entry-qty']) > 0.0 && trade.stats['profit-loss'] != undefined) {
         trade_percent.text(trade['profit-loss-pct'] + '%');
-        trade_upnl.text(format_quote_price(market_id, trade.stats['profit-loss']) + currency_display);
+        trade_upnl.text(format_settlement_price(market_id, trade.stats['profit-loss']) + currency_display);
     } else {
         trade_percent.text("-");
         trade_upnl.text("-");
     }
-
-    // fees
-    let fees = trade.stats['entry-fees'] == undefined || trade.stats['exit-fees'] == undefined ? 0.0 : format_quote_price(
-        market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
-    let trade_fees = $('<span class="trade-fees"></span>').text(fees);
-    trade_fees.attr('title', (trade.stats['fees-pct'] == undefined ? 0.0 : trade.stats['fees-pct']).toFixed(2) + '%');
 
     // stop-loss
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);  // + UP/DN buttons
@@ -875,7 +862,6 @@ function update_active_trade(market_id, trade) {
     trade_elt.find('span.trade-exit').replaceWith(trade_exit);
     trade_elt.find('span.trade-percent').replaceWith(trade_percent);
     trade_elt.find('span.trade-upnl').replaceWith(trade_upnl);
-    trade_elt.find('span.trade-fees').replaceWith(trade_fees);
     trade_elt.find('span.trade-stop-loss').replaceWith(trade_stop_loss);
     trade_elt.find('span.trade-take-profit').replaceWith(trade_take_profit);
 
@@ -934,6 +920,23 @@ function format_quote_price(market_id, price) {
     return "0.0";
 }
 
+function format_settlement_price(market_id, price) {
+    if (price == undefined) {
+        return "0.0";
+    }
+
+    let market = window.markets[market_id];
+    if (market) {
+        if (typeof(price) === "string") {
+            price = parseFloat(price);
+        }
+
+        return price.toFixed(market['settlement-precision'] || 8).replace(/\.?0+$/, '');
+    }
+
+    return "0.0";
+}
+
 function add_historical_trade(market_id, trade) {
     let trade_elt = $('<tr class="historical-trade"></tr>');
     let key = market_id + ':' + trade.id;
@@ -970,12 +973,8 @@ function add_historical_trade(market_id, trade) {
         .text(trade['label'] ? trade['label'] + ' (' + trade['timeframe'] + ')' : trade['timeframe']);
 
     let trade_percent = $('<span class="trade-percent"></span>').text(trade['profit-loss-pct'] +'%');   
-    let trade_pnl = $('<span class="trade-pnl"></span>').text(format_quote_price(market_id,
+    let trade_pnl = $('<span class="trade-pnl"></span>').text(format_settlement_price(market_id,
         trade.stats['profit-loss']) + currency_display);
-
-    let fees = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']);
-    let trade_fees = $('<span class="trade-fees"></span>').text(fees);
-    trade_fees.attr('title', (trade.stats['fees-pct'] || 0.0).toFixed(2) + '%');
 
     let trade_stop_loss = $('<span class="trade-stop-loss"></span>').text(trade['stop-loss-price']);
     trade_stop_loss.attr('data-toggle', "tooltip");
@@ -1008,8 +1007,7 @@ function add_historical_trade(market_id, trade) {
 
     trade_elt.append($('<td></td>').append(trade_percent));
     trade_elt.append($('<td></td>').append(trade_pnl));
-    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_fees));
-    
+
     trade_elt.append($('<td></td>').addClass('optional-info').append(trade_stop_loss));
     trade_elt.append($('<td></td>').addClass('optional-info').append(trade_take_profit));
     
@@ -1530,9 +1528,9 @@ function on_details_active_trade(elt) {
     let total_fees_text = '-';
     if (parseFloat(trade['filled-entry-qty']) > 0.0) {
         profit_loss_pct_text = trade['profit-loss-pct'] + '%';
-        trade_upnl_text = format_quote_price(market_id, trade.stats['profit-loss']) + currency_display;
-        entry_fees_text = format_quote_price(market_id, trade.stats['entry-fees']) + currency_display;
-        total_fees_text = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']) +
+        trade_upnl_text = format_settlement_price(market_id, trade.stats['profit-loss']) + currency_display;
+        entry_fees_text = format_settlement_price(market_id, trade.stats['entry-fees']) + currency_display;
+        total_fees_text = format_settlement_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']) +
             currency_display + ' (' + trade.stats['fees-pct'] + '%)';
         symbol.find('span').addClass('badge-info');
         lmarket_id.find('span').addClass('badge-info');
@@ -1542,7 +1540,7 @@ function on_details_active_trade(elt) {
     }
 
     if (parseFloat(trade['filled-exit-qty']) > 0.0) {
-        exit_fees_text = format_quote_price(market_id, trade.stats['exit-fees']) + currency_display;
+        exit_fees_text = format_settlement_price(market_id, trade.stats['exit-fees']) + currency_display;
     }
 
     let profit_loss_pct = $('<tr></tr>').append($('<td class="data-name">Profit/Loss</td>')).append(
@@ -1819,9 +1817,9 @@ function on_details_historical_trade(elt) {
     let total_fees_text = '-';
     if (parseFloat(trade['filled-entry-qty']) > 0.0) {
         profit_loss_pct_text = trade['profit-loss-pct'] + '%';
-        trade_pnl_text = format_quote_price(market_id, trade.stats['profit-loss']) + currency_display;
-        entry_fees_text = format_quote_price(market_id, trade.stats['entry-fees']) + currency_display;
-        total_fees_text = format_quote_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']) +
+        trade_pnl_text = format_settlement_price(market_id, trade.stats['profit-loss']) + currency_display;
+        entry_fees_text = format_settlement_price(market_id, trade.stats['entry-fees']) + currency_display;
+        total_fees_text = format_settlement_price(market_id, trade.stats['entry-fees'] + trade.stats['exit-fees']) +
             currency_display + ' (' + trade.stats['fees-pct'] + '%)';
         symbol.find('span').addClass('badge-info');
         lmarket_id.find('span').addClass('badge-info');
@@ -1831,7 +1829,7 @@ function on_details_historical_trade(elt) {
     }
 
     if (parseFloat(trade['filled-exit-qty']) > 0.0) {
-        exit_fees_text = format_quote_price(market_id, trade.stats['exit-fees']) + currency_display;
+        exit_fees_text = format_settlement_price(market_id, trade.stats['exit-fees']) + currency_display;
     }
 
     let profit_loss_pct = $('<tr></tr>').append($('<td class="data-name">Profit/Loss</td>')).append(

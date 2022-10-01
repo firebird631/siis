@@ -669,6 +669,7 @@ class BitMexWatcher(Watcher):
 
             market.set_base(base_symbol, base_symbol, base_precision)
             market.set_quote(quote_symbol, quote_symbol)
+            market.set_settlement("XBT", '₿', 8)
 
             # base to XBT
             market.base_exchange_rate = 1.0
@@ -741,6 +742,7 @@ class BitMexWatcher(Watcher):
                 market.trade, market.orders,  # type
                 market.base, market.base_display, market.base_precision,  # base
                 market.quote, market.quote_display, market.quote_precision,  # quote
+                market.settlement, market.settlement_display, market.settlement_precision,  # settlement
                 market.expiry, int(market.last_update_time * 1000.0),  # expiry, timestamp
                 str(market.lot_size), str(market.contract_size), str(market.base_exchange_rate),
                 str(market.value_per_pip), str(market.one_pip_means), str(market.margin_factor),

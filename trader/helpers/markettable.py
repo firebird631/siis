@@ -15,7 +15,7 @@ def markets_table(trader, style='', offset=None, limit=None, col_ofs=None, group
     """
     Returns a table of any followed markets.
     """
-    columns = ('Market', 'Symbol', 'Base', 'Quote', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip',
+    columns = ('Market', 'Symbol', 'Base', 'Quote', 'Settlement', 'Rate', 'Type', 'Unit', 'Status', 'PipMean', 'PerPip',
                'Lot', 'Contract', 'Min Size', 'Max Size', 'Step Size', 'Min Price', 'Max Price', 'Step Price',
                'Min Notional', 'Max Notional', 'Step Notional', 'Leverage', 'Base ER', 'Hedge')
 
@@ -53,8 +53,9 @@ def markets_table(trader, style='', offset=None, limit=None, col_ofs=None, group
             row = (
                 market.market_id,
                 market.symbol,
-                market.base,
-                market.quote,
+                "%s (%s)" % (market.base, market.base_precision),
+                "%s (%s)" % (market.quote, market.quote_precision),
+                "%s (%s)" % (market.settlement, market.settlement_precision),
                 str("%.8f" % market.base_exchange_rate).rstrip('0').rstrip('.'),
                 market.market_type_str().capitalize(),
                 market.unit_type_str().capitalize(),

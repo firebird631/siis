@@ -72,6 +72,7 @@ class MySql(Database):
                     trade_type INTEGER NOT NULL DEFAULT 0, orders INTEGER NOT NULL DEFAULT 0,
                     base VARCHAR(32) NOT NULL, base_display VARCHAR(32) NOT NULL, base_precision VARCHAR(32) NOT NULL,
                     quote VARCHAR(32) NOT NULL, quote_display VARCHAR(32) NOT NULL, quote_precision VARCHAR(32) NOT NULL,
+                    settlement VARCHAR(32) NOT NULL, settlement_display VARCHAR(32) NOT NULL, settlement_precision VARCHAR(32) NOT NULL,
                     expiry VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL,
                     lot_size VARCHAR(32) NOT NULL, contract_size VARCHAR(32) NOT NULL, base_exchange_rate VARCHAR(32) NOT NULL,
                     value_per_pip VARCHAR(32) NOT NULL, one_pip_means VARCHAR(32) NOT NULL, margin_factor VARCHAR(32) NOT NULL DEFAULT '1.0',
@@ -228,7 +229,7 @@ class MySql(Database):
                 cursor = self._db.cursor()
 
                 for mi in mki:
-                    if mi[21] is None:
+                    if mi[22] is None:
                         # margin factor is unavailable when market is down, so use previous value if available
                         cursor.execute("""SELECT margin_factor FROM market WHERE broker_id = '%s' AND market_id = '%s'""" % (mi[0], mi[1]))
                         row = cursor.fetchone()
@@ -238,18 +239,19 @@ class MySql(Database):
                         if row:
                             # replace by previous margin factor from the DB
                             margin_factor = row[0]
-                            mi[21] = margin_factor
+                            mi[22] = margin_factor
                         else:
-                            mi[21] = "1.0"
+                            mi[22] = "1.0"
 
-                        if not mi[21]:
-                            mi[21] = "1.0"
+                        if not mi[24]:
+                            mi[22] = "1.0"
 
                     cursor.execute("""INSERT INTO market(broker_id, market_id, symbol,
                                         market_type, unit_type, contract_type,
                                         trade_type, orders,
                                         base, base_display, base_precision,
                                         quote, quote_display, quote_precision,
+                                        settlement, settlement_display, settlement_precision,
                                         expiry, timestamp,
                                         lot_size, contract_size, base_exchange_rate,
                                         value_per_pip, one_pip_means, margin_factor,
@@ -257,12 +259,13 @@ class MySql(Database):
                                         min_notional, max_notional, step_notional,
                                         min_price, max_price, step_price,
                                         maker_fee, taker_fee, maker_commission, taker_commission) 
-                                    VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                     ON DUPLICATE KEY UPDATE symbol = VALUES(symbol),
                                         market_type = VALUES(market_type), unit_type = VALUES(unit_type), contract_type = VALUES(contract_type),
                                         trade_type = VALUES(trade_type), orders = VALUES(orders),
                                         base = VALUES(base), base_display = VALUES(base_display), base_precision = VALUES(base_precision),
                                         quote = VALUES(quote), quote_display = VALUES(quote_display), quote_precision = VALUES(quote_precision),
+                                        settlement = VALUES(settlement), settlement_display = VALUES(settlement_display), settlement_precision = VALUES(settlement_precision),
                                         expiry = VALUES(expiry), timestamp = VALUES(timestamp),
                                         lot_size = VALUES(lot_size), contract_size = VALUES(contract_size), base_exchange_rate = VALUES(base_exchange_rate),
                                         value_per_pip = VALUES(value_per_pip), one_pip_means = VALUES(one_pip_means), margin_factor = VALUES(margin_factor),
@@ -299,6 +302,7 @@ class MySql(Database):
                                         trade_type, orders,
                                         base, base_display, base_precision,
                                         quote, quote_display, quote_precision,
+                                        settlement, settlement_display, settlement_precision,
                                         expiry, timestamp,
                                         lot_size, contract_size, base_exchange_rate,
                                         value_per_pip, one_pip_means, margin_factor,
@@ -325,31 +329,32 @@ class MySql(Database):
 
                         market_info.set_base(row[6], row[7], int(row[8]))
                         market_info.set_quote(row[9], row[10], int(row[11]))
+                        market_info.set_settlement(row[12], row[13], int(row[14]))
 
-                        market_info.expiry = row[12]
-                        market_info.last_update_time = row[13] * 0.001
+                        market_info.expiry = row[15]
+                        market_info.last_update_time = row[16] * 0.001
 
-                        market_info.lot_size = float(row[14])
-                        market_info.contract_size = float(row[15])
-                        market_info.base_exchange_rate = float(row[16])
-                        market_info.value_per_pip = float(row[17])
-                        market_info.one_pip_means = float(row[18])
+                        market_info.lot_size = float(row[17])
+                        market_info.contract_size = float(row[18])
+                        market_info.base_exchange_rate = float(row[19])
+                        market_info.value_per_pip = float(row[20])
+                        market_info.one_pip_means = float(row[21])
 
-                        if row[19] is not None or row[19] is not 'None':
-                            if row[19] == '-':  # not defined mean 1.0 or no margin
+                        if row[22] is not None or row[22] is not 'None':
+                            if row[22] == '-':  # not defined mean 1.0 or no margin
                                 market_info.margin_factor = 1.0
                             else:
-                                market_info.margin_factor = float(row[19])
+                                market_info.margin_factor = float(row[22])
 
-                        market_info.set_size_limits(float(row[20]), float(row[21]), float(row[22]))
-                        market_info.set_notional_limits(float(row[23]), float(row[24]), float(row[25]))
-                        market_info.set_price_limits(float(row[26]), float(row[27]), float(row[28]))
+                        market_info.set_size_limits(float(row[23]), float(row[24]), float(row[25]))
+                        market_info.set_notional_limits(float(row[26]), float(row[27]), float(row[28]))
+                        market_info.set_price_limits(float(row[29]), float(row[30]), float(row[31]))
 
-                        market_info.maker_fee = float(row[29])
-                        market_info.taker_fee = float(row[30])
+                        market_info.maker_fee = float(row[32])
+                        market_info.taker_fee = float(row[33])
 
-                        market_info.maker_commission = float(row[31])
-                        market_info.taker_commission = float(row[32])
+                        market_info.maker_commission = float(row[34])
+                        market_info.taker_commission = float(row[35])
                     else:
                         market_info = None
 

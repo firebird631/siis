@@ -89,7 +89,7 @@ class Account(object):
     @property
     def account_type(self) -> int:
         return self._account_type
-            
+
     @property
     def name(self) -> str:
         return self._name

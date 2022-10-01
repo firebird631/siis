@@ -200,6 +200,7 @@ class KrakenFetcher(Fetcher):
                     trade, orders,  # type
                     base_asset, base_display, base_precision,  # base
                     quote_asset, quote_display, quote_precision,  # quote
+                    "", "", 8,  # settlement
                     expiry, int(time.time() * 1000.0),  # expiry, timestamp
                     str(lot_size), str(contract_size), str(base_exchange_rate),
                     str(value_per_pip), str(one_pip_means), '-',

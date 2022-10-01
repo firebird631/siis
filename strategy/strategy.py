@@ -537,11 +537,13 @@ class Strategy(Runnable):
 
                             instrument.set_base(market.base)
                             instrument.set_quote(market.quote)
+                            instrument.set_settlement(market.settlement)
 
                             instrument.set_price_limits(market.min_price, market.max_price, market.step_price)
                             instrument.set_notional_limits(market.min_notional, market.max_notional,
                                                            market.step_notional)
                             instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
+                            instrument.set_settlement_precision(market.settlement_precision)
 
                             instrument.set_fees(market.maker_fee, market.taker_fee)
                             instrument.set_commissions(market.maker_commission, market.taker_commission)
@@ -946,6 +948,7 @@ class Strategy(Runnable):
 
                                 instrument.set_base(market.base)
                                 instrument.set_quote(market.quote)
+                                instrument.set_settlement(market.settlement)
 
                                 instrument.value_per_pip = market.value_per_pip
                                 instrument.one_pip_means = market.one_pip_means
@@ -955,6 +958,7 @@ class Strategy(Runnable):
                                 instrument.set_notional_limits(market.min_notional, market.max_notional,
                                                                market.step_notional)
                                 instrument.set_size_limits(market.min_size, market.max_size, market.step_size)
+                                instrument.set_settlement_precision(market.settlement_precision)
 
                                 instrument.set_fees(market.maker_fee, market.taker_fee)
                                 instrument.set_commissions(market.maker_commission, market.taker_commission)

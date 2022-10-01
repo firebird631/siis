@@ -320,13 +320,13 @@ class Instrument(object):
     TRADE_QUANTITY_DEFAULT = 0
     TRADE_QUANTITY_QUOTE_TO_BASE = 1
 
-    __slots__ = '_watchers', '_market_id', '_symbol', '_alias', '_tradeable', '_currency', \
+    __slots__ = '_watchers', '_market_id', '_symbol', '_alias', '_tradeable', \
                 '_trade_quantity', '_trade_quantity_mode', '_leverage', \
                 '_market_bid', '_market_ask', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', \
-                '_size_limits', '_price_limits', '_notional_limits', \
+                '_size_limits', '_price_limits', '_notional_limits', '_settlement_precision', \
                 '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', \
-                '_base', '_quote', '_trade', '_orders', \
+                '_base', '_quote', '_settlement', '_trade', '_orders', \
                 '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', '_contract_size',  \
                 '_timezone', '_session_offset', '_session_duration', '_trading_sessions'
 
@@ -343,13 +343,12 @@ class Instrument(object):
 
         self._base = ""
         self._quote = ""
+        self._settlement = ""
 
         self._trade = 0
         self._orders = 0
 
         self._hedging = False
-
-        self._currency = "USD"
 
         self._trade_quantity = 0.0
         self._trade_quantity_mode = Instrument.TRADE_QUANTITY_DEFAULT
@@ -368,6 +367,7 @@ class Instrument(object):
         self._size_limits = (0.0, 0.0, 0.0, 0)
         self._price_limits = (0.0, 0.0, 0.0, 0)
         self._notional_limits = (0.0, 0.0, 0.0, 0)
+        self._settlement_precision = 8
 
         self._ticks = []      # list of tuple(timestamp, bid, ask, last, volume, direction)
         self._candles = {}    # list per timeframe
@@ -478,20 +478,19 @@ class Instrument(object):
         return self._base
 
     @property
+    def settlement(self) -> str:
+        return self._settlement
+
+    def set_settlement(self, settlement: str):
+        self._settlement = settlement
+
+    @property
     def hedging(self) -> bool:
         return self._hedging
     
     @hedging.setter
     def hedging(self, hedging: bool):
         self._hedging = hedging
-
-    @property
-    def currency(self) -> str:
-        return self._currency
-
-    @currency.setter
-    def currency(self, currency: str):
-        self._currency = currency
 
     @property
     def expiry(self) -> str:
@@ -669,6 +668,10 @@ class Instrument(object):
         return self._price_limits[2]
 
     @property
+    def settlement_precision(self) -> float:
+        return self._settlement_precision
+
+    @property
     def tick_price(self) -> float:
         return self._price_limits[2]
 
@@ -710,6 +713,9 @@ class Instrument(object):
     def set_price_limits(self, min_price: float, max_price: float, step_price: float):
         price_precision = max(0, decimal_place(step_price) if step_price > 0 else 0)
         self._price_limits = (min_price, max_price, step_price, price_precision)
+
+    def set_settlement_precision(self, settlement_precision: float):
+        self._settlement_precision = settlement_precision
 
     @value_per_pip.setter
     def value_per_pip(self, value_per_pip: float):
@@ -1257,6 +1263,29 @@ class Instrument(object):
             formatted_quote = formatted_quote.rstrip('0').rstrip('.')
 
         return formatted_quote
+
+    def format_settlement(self, settlement: float) -> str:
+        """
+        Format the settlement according to the precision.
+        If the settlement symbol is not defined the quote information are used.
+        """
+        if settlement is None or math.isnan(settlement):
+            settlement = 0.0
+
+        if not self._settlement:
+            return self.format_quote(settlement)
+
+        precision = self._settlement_precision or 8
+        tick_size = pow(10, -precision)
+
+        adjusted_settlement = truncate(round(settlement / tick_size) * tick_size, precision)
+        formatted_settlement = "{:0.0{}f}".format(adjusted_settlement, precision)
+
+        # remove trailing 0s and dot
+        if '.' in formatted_settlement:
+            formatted_settlement = formatted_settlement.rstrip('0').rstrip('.')
+
+        return formatted_settlement
 
     def adjust_quantity(self, quantity: float, min_is_zero: bool = True) -> float:
         """

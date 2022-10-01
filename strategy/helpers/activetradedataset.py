@@ -79,7 +79,7 @@ def get_all_active_trades(strategy):
                             'wt': trade.worst_price_timestamp(),
                             'label': trade.label,
                             'pl': profit_loss,
-                            'upnl': strategy_trader.instrument.format_quote(trade.unrealized_profit_loss),
+                            'upnl': strategy_trader.instrument.format_settlement(trade.unrealized_profit_loss),
                             'pnlcur': trade.profit_loss_currency,
                             'fees': trade.entry_fees_rate() + trade.estimate_exit_fees_rate(strategy_trader.instrument),
                             'leop': strategy_trader.instrument.format_price(

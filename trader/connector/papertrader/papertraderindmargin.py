@@ -328,8 +328,6 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
 
         position.created_time = trader.timestamp
 
-        account_currency = trader.account.currency
-
         # long are open on ask and short on bid
         exec_price = open_exec_price
         position.entry_price = exec_price

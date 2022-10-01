@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS market(
     trade_type INTEGER NOT NULL DEFAULT 0, orders INTEGER NOT NULL DEFAULT 0,
     base VARCHAR(32) NOT NULL, base_display VARCHAR(32) NOT NULL, base_precision VARCHAR(32) NOT NULL,
     quote VARCHAR(32) NOT NULL, quote_display VARCHAR(32) NOT NULL, quote_precision VARCHAR(32) NOT NULL,
+    settlement VARCHAR(32) NOT NULL, settlement_display VARCHAR(32) NOT NULL, settlement_precision VARCHAR(32) NOT NULL,
     expiry VARCHAR(32) NOT NULL, timestamp BIGINT NOT NULL,
     lot_size VARCHAR(32) NOT NULL, contract_size VARCHAR(32) NOT NULL, base_exchange_rate VARCHAR(32) NOT NULL,
     value_per_pip VARCHAR(32) NOT NULL, one_pip_means VARCHAR(32) NOT NULL, margin_factor VARCHAR(32) NOT NULL DEFAULT '1.0',

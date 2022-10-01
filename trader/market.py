@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from typing import Union, Tuple, List, Set
 
 import time
@@ -84,6 +85,7 @@ class Market(object):
     __slots__ = '_market_id', '_symbol', '_trade', '_orders', \
                 '_base', '_base_display', '_base_precision', \
                 '_quote', '_quote_display', '_quote_precision', \
+                '_settlement', '_settlement_display', '_settlement_precision', \
                 '_expiry', '_is_open', '_contract_size', '_lot_size', '_base_exchange_rate', \
                 '_value_per_pip', '_one_pip_means', '_margin_factor', '_size_limits', '_price_limits', \
                 '_notional_limits', '_market_type', '_unit_type', '_contract_type', '_vol24h_base', '_vol24h_quote', \
@@ -105,6 +107,10 @@ class Market(object):
         self._quote = "USD"
         self._quote_display = "$"
         self._quote_precision = 8  # on the quote
+
+        self._settlement = ""
+        self._settlement_display = ""
+        self._settlement_precision = 8  # on the settlement
 
         self._expiry = None
         self._is_open = True
@@ -229,6 +235,23 @@ class Market(object):
     @property
     def base_precision(self) -> int:
         return self._base_precision
+
+    def set_settlement(self, symbol: str, display: str, precision: int = 8):
+        self._settlement = symbol
+        self._settlement_display = display
+        self._settlement_precision = precision
+
+    @property
+    def settlement(self) -> str:
+        return self._settlement
+
+    @property
+    def settlement_display(self) -> str:
+        return self._settlement_display
+
+    @property
+    def settlement_precision(self) -> int:
+        return self._settlement_precision
 
     @property
     def expiry(self) -> str:
@@ -644,6 +667,29 @@ class Market(object):
             formatted_price = formatted_price.rstrip('0').rstrip('.')
 
         return formatted_price
+
+    def format_settlement(self, settlement: float) -> str:
+        """
+        Format the settlement according to the precision.
+        If the settlement symbol is not defined the quote information are used.
+        """
+        if settlement is None or math.isnan(settlement):
+            settlement = 0.0
+
+        if not self._settlement:
+            return self.format_price(settlement)
+
+        precision = self._settlement_precision or 8
+        tick_size = pow(10, -precision)
+
+        adjusted_settlement = truncate(round(settlement / tick_size) * tick_size, precision)
+        formatted_settlement = "{:0.0{}f}".format(adjusted_settlement, precision)
+
+        # remove trailing 0s and dot
+        if '.' in formatted_settlement:
+            formatted_settlement = formatted_settlement.rstrip('0').rstrip('.')
+
+        return formatted_settlement
 
     def format_spread(self, spread: float, shifted: bool = False) -> str:
         """

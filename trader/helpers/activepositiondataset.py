@@ -58,10 +58,10 @@ def get_active_positions(trader):
                         # 'tr-dist': market.format_price(position.trailing_stop_distance) if
                         # position.trailing_stop_distance else None,
                         'pl': position.profit_loss_rate,
-                        'pnl': market.format_price(position.profit_loss),
+                        'pnl': market.format_settlement(position.profit_loss),
                         'mpl': position.profit_loss_market_rate,
-                        'mpnl': market.format_price(position.profit_loss_market),
-                        'pnlcur': position.profit_loss_currency,
+                        'mpnl': market.format_settlement(position.profit_loss_market),
+                        'pnlcur': market.settlement_display or market.settlement or market.quote_display or market.quote,
                         'cost': market.format_quantity(position.position_cost(market)),
                         'margin': market.format_quantity(position.margin_cost(market)),
                         'key': position.key

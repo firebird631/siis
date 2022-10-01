@@ -388,9 +388,9 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def store_market_info(self, data: Tuple[str, str, str, int, int, int, int, int, str, str, int, str, str, int, str,
-                                            int, str, str, str, str, str, str, str, str, str, str, str, str, str, str,
-                                            str, str, str, str, str]):
+    def store_market_info(self, data: Tuple[str, str, str, int, int, int, int, int, str, str, int, str, str, int,
+                                            str, str, int, str, int, str, str, str, str, str, str, str, str, str,
+                                            str, str, str, str, str, str, str, str, str, str]):
         """
         @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
@@ -407,6 +407,9 @@ class Database(object):
             str quote (not empty)
             str quote_display (not empty)
             int quote_precision (not empty)
+            str settlement (not empty)
+            str settlement_display (not empty)
+            int settlement_precision (not empty)
             str expiry
             int timestamp (or 0)
             str lot_size
