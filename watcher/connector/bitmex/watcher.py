@@ -685,7 +685,7 @@ class BitMexWatcher(Watcher):
             min_notional = 1.0  # $
 
             if quote_symbol != "USD" and base_market_id != "XBT":
-                # any contract on futur XBT quote
+                # any contract on future XBT quote
                 min_notional = 0.0001
 
             # BCHXBT 'maxOrderQty': 100000000, 'maxPrice': 10, 'lotSize': 1, 'tickSize': 0.0001,

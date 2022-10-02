@@ -53,7 +53,7 @@ function on_strategy_create_region(market_id, region_id, timestamp, region, do_n
     }
 
     let lregion_id = $('<span class="region-id"></span>').text(region.id);
-    let region_symbol = $('<span class="region-symbol"></span>').text(market_id);
+    let region_symbol = $('<span class="region-symbol badge badge-info"></span>').text(market_id);
 
     let region_label = $('<span class="region-label"></span>').text(region.name);
 
@@ -92,14 +92,14 @@ function on_strategy_create_region(market_id, region_id, timestamp, region, do_n
 
     region_elt.append($('<td></td>').append(lregion_id));
     region_elt.append($('<td></td>').append(region_symbol));
-    region_elt.append($('<td></td>').append(region_label));
+    region_elt.append($('<td></td>').addClass('optional-info').append(region_label));
     region_elt.append($('<td></td>').append(region_direction));
     region_elt.append($('<td></td>').append(region_stage));
     region_elt.append($('<td></td>').append(region_timeframe));
     // region_elt.append($('<td></td>').append(region_datetime));
-    region_elt.append($('<td></td>').append(region_expiry));
+    region_elt.append($('<td></td>').addClass('optional-info').append(region_expiry));
     region_elt.append($('<td></td>').append(region_condition));
-    region_elt.append($('<td></td>').append(region_cancellation));
+    region_elt.append($('<td></td>').addClass('optional-info').append(region_cancellation));
     region_elt.append($('<td></td>').append(region_inside));
 
 //    expiry: 0
@@ -117,6 +117,11 @@ function on_strategy_create_region(market_id, region_id, timestamp, region, do_n
     }
 
     region_elt.append($('<td></td>').append(region_remove));
+
+    let region_details = $('<button class="region-details btn btn-info fas fa-info"></button>');
+    region_elt.append($('<td></td>').append(region_details));
+
+    region_details.on('click', on_details_region);
 
     // append
     $('div.region-list-entries tbody').prepend(region_elt);
@@ -241,5 +246,13 @@ function on_add_range_region(elt) {
 }
 
 function on_add_trend_region(elt) {
+    alert("TODO");
+}
+
+function on_details_signal_region(elt) {
+    alert("TODO");
+}
+
+function on_details_region(elt) {
     alert("TODO");
 }

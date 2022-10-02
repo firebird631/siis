@@ -15,7 +15,7 @@ function on_strategy_signal_alert(market_id, alert_id, timestamp, alert, do_noti
     let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
 
     let lalert_id = $('<span class="alert-id"></span>').text(alert.id);
-    let alert_symbol = $('<span class="alert-symbol"></span>').text(symbol).attr('title', market_id);
+    let alert_symbol = $('<span class="alert-symbol badge badge-info"></span>').text(symbol).attr('title', market_id);
     let alert_direction = $('<span class="alert-direction fa"></span>')
         .addClass(alert.trigger > 0 ? 'trade-long' : 'trade-short')
         .addClass(alert.trigger > 0 ? 'fa-arrow-up' : 'fa-arrow-down');
@@ -32,16 +32,22 @@ function on_strategy_signal_alert(market_id, alert_id, timestamp, alert, do_noti
     let alert_reason = $('<span class="alert-reason"></span>').text(alert.reason);
 
     let alert_message = $('<span class="alert-message"></span>').text(alert.message);
+    let alert_details = $('<button class="alert-details btn btn-info fas fa-info"></button>');
 
     alert_elt.append($('<td></td>').append(lalert_id));
     alert_elt.append($('<td></td>').append(alert_symbol));
-    alert_elt.append($('<td></td>').append(alert_label));
+    alert_elt.append($('<td></td>').addClass('optional-info').append(alert_label));
     alert_elt.append($('<td></td>').append(alert_direction));
     alert_elt.append($('<td></td>').append(alert_timeframe));
-    alert_elt.append($('<td></td>').append(alert_lastprice));
+    alert_elt.append($('<td></td>').addClass('optional-info').append(alert_lastprice));
     alert_elt.append($('<td></td>').append(alert_reason));
-    alert_elt.append($('<td></td>').append(alert_message));
+    alert_elt.append($('<td></td>').addClass('optional-info').append(alert_message));
     alert_elt.append($('<td></td>').append(alert_datetime));
+
+    alert_elt.append($('<td></td>').append(alert_details));
+
+    // actions
+    alert_details.on('click', on_details_signal_alert);
 
     // append
     $('div.alert-list-entries tbody').prepend(alert_elt);
@@ -105,7 +111,7 @@ function on_strategy_create_alert(market_id, alert_id, timestamp, alert, do_noti
     let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
 
     let lalert_id = $('<span class="alert-id"></span>').text(alert.id);
-    let alert_symbol = $('<span class="alert-symbol"></span>').text(symbol).attr('title', market_id);
+    let alert_symbol = $('<span class="alert-symbol badge badge-info"></span>').text(symbol).attr('title', market_id);
 
     let alert_label = $('<span class="alert-label"></span>').text(alert.name);
     let alert_datetime = $('<span class="alert-datetime"></span>').text(timestamp_to_datetime_str(alert.created));
@@ -127,12 +133,12 @@ function on_strategy_create_alert(market_id, alert_id, timestamp, alert, do_noti
 
     alert_elt.append($('<td></td>').append(lalert_id));
     alert_elt.append($('<td></td>').append(alert_symbol));
-    alert_elt.append($('<td></td>').append(alert_label));
+    alert_elt.append($('<td></td>').addClass('optional-info').append(alert_label));
     alert_elt.append($('<td></td>').append(alert_timeframe));
-    alert_elt.append($('<td></td>').append(alert_expiry));
-    alert_elt.append($('<td></td>').append(alert_countdown));
+    alert_elt.append($('<td></td>').addClass('optional-info').append(alert_expiry));
+    alert_elt.append($('<td></td>').addClass('optional-info').append(alert_countdown));
     alert_elt.append($('<td></td>').append(alert_condition));
-    alert_elt.append($('<td></td>').append(alert_cancellation));
+    alert_elt.append($('<td></td>').addClass('optional-info').append(alert_cancellation));
     alert_elt.append($('<td></td>').append(alert_message));
 
     // actions
@@ -143,6 +149,11 @@ function on_strategy_create_alert(market_id, alert_id, timestamp, alert, do_noti
     }
 
     alert_elt.append($('<td></td>').append(alert_remove));
+
+    let alert_details = $('<button class="alert-details btn btn-info fas fa-info"></button>');
+    alert_elt.append($('<td></td>').append(alert_details));
+
+    alert_details.on('click', on_details_alert);
 
     // append
     $('div.active-alert-list-entries tbody').prepend(alert_elt);
@@ -302,5 +313,13 @@ window.fetch_alerts = function() {
 };
 
 function on_add_price_cross_alert(elt) {
+    alert("TODO");
+}
+
+function on_details_signal_alert(elt) {
+    alert("TODO");
+}
+
+function on_details_alert(elt) {
     alert("TODO");
 }
