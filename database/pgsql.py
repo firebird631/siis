@@ -264,7 +264,7 @@ class PgSql(Database):
                 cursor = self._db.cursor()
 
                 for mi in mki:
-                    if mi[22] is None:
+                    if mi[24] is None:
                         # margin factor is unavailable when market is down, so use previous value if available
                         cursor.execute("""SELECT margin_factor FROM market WHERE broker_id = '%s' AND market_id = '%s'""" % (mi[0], mi[1]))
                         row = cursor.fetchone()
