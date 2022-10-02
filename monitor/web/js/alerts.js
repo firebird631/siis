@@ -81,6 +81,34 @@ function price_src_to_str(price_src) {
     }
 }
 
+function alert_name_format(alert_data, market_id, price_src) {
+    let condition_msg = "-";
+
+    if (alert_data.name == "price-cross") {
+        if (alert_data.direction > 0) {
+            condition_msg = `if ${price_src} price goes above ${format_price(market_id, alert_data.price)}`;
+        } else if (alert.direction < 0) {
+            condition_msg = `if ${price_src} price goes below ${format_price(market_id, alert_data.price)}`;
+        }
+    }
+
+    return condition_msg;
+}
+
+function alert_cancellation_format(alert_data, market_id, price_src) {
+    let cancellation_msg = "never";
+
+    if (alert_data.cancellation > 0) {
+        if (alert_data.direction > 0) {
+            cancellation_msg = `if ${price_src} price < ${format_price(market_id, alert_data.cancellation)}`;
+        } else if (alert.direction < 0) {
+            cancellation_msg = `if ${price_src} price > ${format_price(market_id, alert_data.cancellation)}`;
+        }
+    }
+
+    return cancellation_msg;
+}
+
 function on_strategy_create_alert(market_id, alert_id, timestamp, alert, do_notify=true) {
     let key = market_id + ':' + alert_id;
 
@@ -92,21 +120,8 @@ function on_strategy_create_alert(market_id, alert_id, timestamp, alert, do_noti
 
     let price_src = price_src_to_str(alert['price-src']);
 
-    if (alert.name == "price-cross") {
-        if (alert.direction > 0) {
-            condition_msg = `if ${price_src} price goes above ${format_price(market_id, alert.price)}`;
-        } else if (alert.direction < 0) {
-            condition_msg = `if ${price_src} price goes below ${format_price(market_id, alert.price)}`;
-        }
-    }
-
-    if (alert.cancellation > 0) {
-        if (alert.direction > 0) {
-            cancellation_msg = `if ${price_src} price < ${format_price(market_id, alert.cancellation)}`;
-        } else if (alert.direction < 0) {
-            cancellation_msg = `if ${price_src} price > ${format_price(market_id, alert.cancellation)}`;
-        }
-    }
+    condition_msg = alert_name_format(alert, market_id, price_src);
+    cancellation_msg = alert_cancellation_format(alert, market_id, price_src);
 
     let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
 
@@ -317,9 +332,113 @@ function on_add_price_cross_alert(elt) {
 }
 
 function on_details_signal_alert(elt) {
-    alert("TODO");
+    let key = retrieve_alert_key(elt);
+    let table = $('#alert_details_table');
+    let tbody = table.find('tbody').empty();
+
+    let alert_signal = window.alerts[key];
+    if (!alert_signal) {
+        return;
+    }
+
+    let market_id = region['market-id'];
+
+    $('#alert_details').modal({'show': true, 'backdrop': true});
 }
 
 function on_details_alert(elt) {
-    alert("TODO");
+    let key = retrieve_alert_key(elt);
+    let table = $('#active_alert_details_table');
+    let tbody = table.find('tbody').empty();
+
+    let active_alert = window.active_alerts[key];
+    if (!active_alert) {
+        return;
+    }
+
+    let market_id = active_alert['market-id'];
+    let price_src = price_src_to_str(alert['price-src']);
+
+    let condition_msg = alert_name_format(active_alert, market_id, price_src);
+    let cancellation_msg = alert_cancellation_format(active_alert, market_id, price_src);
+
+    let id = $('<tr></tr>').append($('<td class="data-name">Identifier</td>')).append(
+        $('<td class="data-value">' + active_alert.id + '</td>'));
+    let lmarket_id = $('<tr></tr>').append($('<td class="data-name">Market</td>')).append(
+        $('<td class="data-value"><span class="badge badge-info">' + active_alert['market-id'] + '</span></td>'));
+    let symbol = $('<tr></tr>').append($('<td class="data-name">Symbol</td>')).append(
+        $('<td class="data-value"><span class="badge badge-info">' + active_alert.symbol + '</span></td>'));
+    let version = $('<tr></tr>').append($('<td class="data-name">Version</td>')).append(
+        $('<td class="data-value">' + active_alert.version + '</td>'));
+    let timestamp = $('<tr></tr>').append($('<td class="data-name">Created</td>')).append(
+        $('<td class="data-value">' + timestamp_to_datetime_str(active_alert.created) + '</td>'));
+    let timeframe = $('<tr></tr>').append($('<td class="data-name">Timeframe</td>')).append(
+        $('<td class="data-value">' + (timeframe_to_str(active_alert.timeframe) || "trade/tick") + '</td>'));
+    let expiry = $('<tr></tr>').append($('<td class="data-name">Expiry</td>')).append(
+        $('<td class="data-value">' + (timeframe_to_str(active_alert.expiry) || "never") + '</td>'));
+
+    let label = $('<tr></tr>').append($('<td class="data-name">Label</td>')).append(
+        $('<td class="data-value">' + active_alert.name + '</td>'));
+    let alert_price = $('<tr></tr>').append($('<td class="data-name">Price</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, active_alert.price) + '</td>'));
+
+    let spacer1 = $('<tr></tr>').append($('<td class="data-name">-</td>')).append(
+        $('<td class="data-value">-</td>'));
+
+    let condition = $('<tr></tr>').append($('<td class="data-name">Trigger condition</td>')).append(
+        $('<td class="data-value">' + condition_msg + '</td>'));
+
+    let spacer2 = $('<tr></tr>').append($('<td class="data-name">-</td>')).append(
+        $('<td class="data-value">-</td>'));
+
+    let direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
+        $('<td class="data-value">' + active_alert.direction + '</td>'));
+    if (active_alert.direction == "long" || active_alert.direction == 1) {
+        direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
+        $('<td class="data-value"><span class="alert-direction fas alert-up fa-arrow-up"></span></td>'));
+    } else if (active_alert.direction == "short" || active_alert.direction == -1) {
+        direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
+        $('<td class="data-value"><span class="alert-direction fas alert-down fa-arrow-dn"></span></td>'));
+    }
+
+    let cancellation_price_rate = compute_price_pct(active_alert['cancellation-price'],
+        active_alert.price,
+        active_alert.direction == "long" || active_alert.direction == 1 ? 1 : -1);
+    let cancellation_price_pct = (cancellation_price_rate * 100).toFixed(2) + '%';
+    let cancellation_price = $('<tr></tr>').append($('<td class="data-name">Cancellation-Price</td>')).append(
+        $('<td class="data-value">' + format_price(market_id, active_alert['cancellation-price']) + ' (' +
+        cancellation_price_pct + ')</td>'));
+
+    let spacer3 = $('<tr></tr>').append($('<td class="data-name">-</td>')).append(
+        $('<td class="data-value">-</td>'));
+
+    let cancellation_condition = $('<tr></tr>').append($('<td class="data-name">Cancellation condition</td>')).append(
+        $('<td class="data-value">' + cancellation_msg + '</td>'));
+
+    let spacer4 = $('<tr></tr>').append($('<td class="data-name">-</td>')).append(
+        $('<td class="data-value">-</td>'));
+
+    let comment = $('<tr></tr>').append($('<td class="data-name">User comment</td>')).append(
+        $('<td class="data-value">' + (active_alert.message || '-') + '</td>'));
+
+    tbody.append(id);
+    tbody.append(lmarket_id);
+    tbody.append(symbol);
+    tbody.append(version);
+    tbody.append(timestamp);
+    tbody.append(timeframe);
+    tbody.append(expiry);
+    tbody.append(direction);
+    tbody.append(label);
+    tbody.append(alert_price);
+    tbody.append(spacer1);
+    tbody.append(condition);
+    tbody.append(spacer2);
+    tbody.append(cancellation_price);
+    tbody.append(spacer3);
+    tbody.append(cancellation_condition);
+    tbody.append(spacer4);
+    tbody.append(comment);
+
+    $('#active_alert_details').modal({'show': true, 'backdrop': true});
 }

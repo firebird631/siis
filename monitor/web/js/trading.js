@@ -526,6 +526,10 @@ function compute_price_pct(target, base, direction) {
         base = parseFloat(base);
     }
 
+    if (base == 0) {
+        return 0.0;
+    }
+
     if (direction > 0) {
         return (target - base) / base;
     } else if (direction < 0) {

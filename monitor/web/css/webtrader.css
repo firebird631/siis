@@ -138,6 +138,10 @@ div.trade-list-context {
     height: calc(25vh - 2px - 15px);
 }
 
+tbody.items-list-view {
+    overflow-y: scroll;
+}
+
 input.stop-loss-price, input.take-profit-price, input.entry-price {
     width: 150px;
     margin-right: 15px;
@@ -404,11 +408,11 @@ div.console-list-entries {
     display: none;
 }
 
-span.trade-long, span.region-up {
+span.trade-long, span.region-up, span.alert-up {
     color: green;
 }
 
-span.trade-short, span.region-down {
+span.trade-short, span.region-down, span.alert-down {
     color: red;
 }
 
@@ -480,6 +484,11 @@ div.chart-buttons {
         display: none;
     }
 
+    a.menu-btn {
+        border-right: 1px solid gray;
+        width: 345px;
+    }
+
     div.trader.col1 {
         flex: 0 0 100%;
         max-width: 100%;
@@ -514,6 +523,7 @@ div.chart-buttons {
     div.trade-list-context {
         width: 100%;
         padding: 0px;
+        margin-top: 10px
     }
 
     th.optional-info, td.optional-info {
