@@ -182,7 +182,7 @@ class Region(object):
 
     def can_delete(self, timestamp: float, bid: float, ask: float) -> bool:
         """
-        By default perform a test on expiration time, but more deletion cases can be added,
+        By default, perform a test on expiration time, but more deletion cases can be added,
         like a cancellation price trigger.
 
         @param timestamp float Current timestamp

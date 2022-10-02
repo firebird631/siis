@@ -10,7 +10,19 @@
 // @todo remove region
 
 function on_strategy_signal_region(market_id, region_id, timestamp, region, do_notify=true) {
-    // @todo update inside status
+    let key = market_id + ':' + region.id;
+    let container = $('div.region-list-entries tbody');
+    let region_elt = container.find('tr.region[trade-key="' + key + '"]')
+
+    if (!region_elt.length) {
+        return;
+    }
+
+    // @todo how to update inside status
+
+    //    'timestamp': timestamp,
+    //    'last-price': strategy_trader.instrument.format_price(strategy_trader.instrument.market_price),
+    //    'reason': "",  # region specific detail of the trigger
 }
 
 function price_src_to_str(price_src) {
@@ -298,9 +310,6 @@ function on_details_region(elt) {
 
     let spacer1 = $('<tr></tr>').append($('<td class="data-name">-</td>')).append(
         $('<td class="data-value">-</td>'));
-
-//high: 20000
-//low: 19000
 
     let condition = $('<tr></tr>').append($('<td class="data-name">Trigger condition</td>')).append(
         $('<td class="data-value">' + condition_msg + '</td>'));
