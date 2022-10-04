@@ -64,9 +64,13 @@ class AuthRestAPI(resource.Resource):
         return json.dumps({}).encode("utf-8")
 
     def render_POST(self, request):
-        content = json.loads(request.content.read().decode("utf-8"))
+        api_key = ""
 
-        api_key = content.get('api-key')
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
+            api_key = content.get('api-key')
+        except Exception as e:
+            logger.debug(e)
 
         if api_key == self.__api_key:
             # @todo use a JWT
@@ -516,9 +520,16 @@ class StrategyTradeRestAPI(resource.Resource):
         if not self._allow_close_trade:
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
-        content = json.loads(request.content.read().decode("utf-8"))
+        results = {
+            'messages': [],
+            'error': False
+        }
 
-        results = self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, content)
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
+            results = self._strategy_service.command(Strategy.COMMAND_TRADE_EXIT, content)
+        except Exception as e:
+            logger.debug(e)
 
         return json.dumps(results).encode("utf-8")
 
@@ -659,12 +670,20 @@ class StrategyAlertRestAPI(resource.Resource):
         if not self._allow_clean_alert:
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
-        content = json.loads(request.content.read().decode("utf-8"))
+        results = {
+            'messages': [],
+            'error': False
+        }
 
-        if content.get('action') != 'del-alert':
-            return json.dumps({'error': True, 'messages': ['inconsistent-content']}).encode("utf-8")
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
 
-        results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+            if content.get('action') != 'del-alert':
+                return json.dumps({'error': True, 'messages': ['inconsistent-content']}).encode("utf-8")
+
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+        except Exception as e:
+            logger.debug(e)
 
         return json.dumps(results).encode("utf-8")
 
@@ -793,12 +812,20 @@ class StrategyRegionRestAPI(resource.Resource):
         if not self._allow_clean_region:
             return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
-        content = json.loads(request.content.read().decode("utf-8"))
+        results = {
+            'messages': [],
+            'error': False
+        }
 
-        if content.get('action') != 'del-region':
-            return json.dumps({'error': True, 'messages': ['inconsistent-content']}).encode("utf-8")
+        try:
+            content = json.loads(request.content.read().decode("utf-8"))
 
-        results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+            if content.get('action') != 'del-region':
+                return json.dumps({'error': True, 'messages': ['inconsistent-content']}).encode("utf-8")
+
+            results = self._strategy_service.command(Strategy.COMMAND_TRADER_MODIFY, content)
+        except Exception as e:
+            logger.debug(e)
 
         return json.dumps(results).encode("utf-8")
 

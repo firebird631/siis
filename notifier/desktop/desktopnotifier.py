@@ -138,7 +138,7 @@ class DesktopNotifier(Notifier):
                     alert = DesktopNotifier.AUDIO_ALERT_TRADE_WIN
                     icon = self._alerts[alert][2]
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            fmt_datetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
             # generic signal reason
             action = signal.data['way']
@@ -158,7 +158,7 @@ class DesktopNotifier(Notifier):
                 signal.data['app-name'],
                 action,
                 signal.data['direction'],
-                ldatetime,
+                fmt_datetime,
                 signal.data['id'],
                 signal.data['timeframe'])
 
@@ -185,7 +185,7 @@ class DesktopNotifier(Notifier):
                 alert = DesktopNotifier.AUDIO_ALERT_DOWN
                 icon = self._alerts[alert][2]
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            fmt_datetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
             label = "Alert %s %s on %s" % (signal.data['name'], signal.data['reason'], signal.data['symbol'],)
 
@@ -195,7 +195,7 @@ class DesktopNotifier(Notifier):
                 signal.data['last-price'],
                 signal.data['app-name'],
                 signal.data['reason'],
-                ldatetime,
+                fmt_datetime,
                 signal.data['id'],
                 signal.data['timeframe'])
 
@@ -206,12 +206,12 @@ class DesktopNotifier(Notifier):
             icon = "dialog-error"
             alert = DesktopNotifier.AUDIO_ALERT_WARNING
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            fmt_datetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
             label = "Trade #%s error on %s !" % (signal.data['trade-id'], signal.data['symbol'],)
 
             message = "Trade error at %s - #%s on %s" % (
-                ldatetime,
+                fmt_datetime,
                 signal.data['trade-id'],
                 signal.data['symbol'])
 

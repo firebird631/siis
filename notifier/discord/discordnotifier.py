@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Discord notification handler
+
 import copy
 import re
 
@@ -29,7 +30,8 @@ error_logger = logging.getLogger('siis.error.notifier.discord')
 class DiscordNotifier(Notifier):
     """
     Discord notifier for webhooks.
-    @todo Active and history tables but this will need at least a timer or usage of API to delete the previous table.
+
+    @todo trade-quantity
     """
 
     def __init__(self, identifier, service, options):
@@ -51,21 +53,18 @@ class DiscordNotifier(Notifier):
         self._webhooks = notifier_config.get('webhooks', {})
         self._avatar_url = notifier_config.get('avatar-url', None)
 
-        self._display_percent = False
         self._active_trades = notifier_config.get('active-trades', False)
         self._historical_trades = notifier_config.get('historical-trades', False)
 
-        self._template = notifier_config.get('template', "default")
-
         self._signals_opts = notifier_config.get('signals', (
                 "alert",
-                "entry",
-                "exit",
-                # "update",
-                # "take-profit",
-                # "stop-loss",
-                # "quantity",
-                # "error",
+                "trade-entry",
+                "trade-exit",
+                "trade-update",
+                # "trade-quantity",
+                # "trade-error",
+                "signal-entry",
+                "signal-exit"
             ))
 
         self._strategy_service = None
@@ -239,6 +238,19 @@ class DiscordNotifier(Notifier):
         if t['stats']['exit-reason'] != "undefined":
             messages.append("- Cause: %s" % t['stats']['exit-reason'].title())
 
+        if t['profit-loss-pct'] > 0.0 and self._display_percent_win:
+            if self._display_percent_in_pip:
+                instrument = self.service.strategy_service.strategy().instrument(symbol)
+                messages.append("- Reward : %gpips" % Notifier.pnl_in_pips(instrument, t))
+            else:
+                messages.append("- Reward : %.2f%%" % t['profit-loss-pct'])
+        elif t['profit-loss-pct'] < 0.0 and self._display_percent_loss:
+            if self._display_percent_in_pip:
+                instrument = self.service.strategy_service.strategy().instrument(symbol)
+                messages.append("- Loss : %gpips" % Notifier.pnl_in_pips(instrument, t))
+            else:
+                messages.append("- Loss : %.2f%%" % t['profit-loss-pct'])
+
         return messages
 
     def process_signal(self, signal):
@@ -250,55 +262,38 @@ class DiscordNotifier(Notifier):
         #
 
         if signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ENTRY:
+            if 'trade-entry' not in self._signals_opts:
+                return
+
             messages = self.format_trade_entry(signal.data, locale)
             message = '\n'.join(messages)
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            if 'trade-update' not in self._signals_opts:
+                return
+
             messages = self.format_trade_update(signal.data, locale)
             message = '\n'.join(messages)
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_EXIT:
+            if 'trade-exit' not in self._signals_opts:
+                return
+
             messages = self.format_trade_exit(signal.data, locale)
             message = '\n'.join(messages)
 
-        # if Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY <= signal.signal_type <= Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
-        #     if signal.data['way'] not in self._signals_opts:
-        #         return
-        #
-        #     # generic signal reason
-        #     action = signal.data['way']
-        #
-        #     # specified exit reason
-        #     if action == "exit" and 'stats' in signal.data and 'exit-reason' in signal.data['stats']:
-        #         action = signal.data['stats']['exit-reason']
-        #
-        #     ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-        #
-        #     message = "%s@%s (%s) %s %s at %s - #%s in %s" % (
-        #         signal.data['symbol'],
-        #         signal.data['order-price'],
-        #         signal.data['app-name'],
-        #         action,
-        #         signal.data['direction'],
-        #         ldatetime,
-        #         signal.data['id'],
-        #         signal.data['timeframe'])
-        #
-        #     if signal.data.get('stop-loss-price') and 'stop-loss' in self._signals_opts:
-        #         message += " SL@%s" % (signal.data['stop-loss-price'],)
-        #
-        #     if signal.data.get('take-profit-price') and 'take-profit' in self._signals_opts:
-        #         message += " TP@%s" % (signal.data['take-profit-price'],)
-        #
-        #     if signal.data.get('profit-loss-pct') is not None:
-        #         message += " (%.2f%%)" % (signal.data['profit-loss-pct'],)
-        #
-        #     if signal.data.get('order-qty') is not None and 'order-qty' in self._signals_opts:
-        #         message += " Q:%s" % signal.data['order-qty']
-        #
-        #     if signal.data.get('label') is not None:
-        #         message += " (%s)" % signal.data['label']
-        #
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ERROR:
+            if 'trade-error' not in self._signals_opts:
+                return
+
+            border = "orange"
+
+            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+
+            message = "Trade error at %s - #%s on %s" % (
+                ldatetime,
+                signal.data['trade-id'],
+                signal.data['symbol'])
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_ALERT:
             if 'alert' not in self._signals_opts:
@@ -314,7 +309,7 @@ class DiscordNotifier(Notifier):
             else:
                 border = "default"
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            fmt_datetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
             message = "%s %s@%s (%s) %s at %s - #%s in %s" % (
                 signal.data['name'],
@@ -322,31 +317,24 @@ class DiscordNotifier(Notifier):
                 signal.data['last-price'],
                 signal.data['app-name'],
                 signal.data['reason'],
-                ldatetime,
+                fmt_datetime,
                 signal.data['id'],
                 signal.data['timeframe'])
 
             if signal.data.get('user') is not None:
                 message += " (%s)" % signal.data['user']
 
-        elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ERROR:
-            if 'error' not in self._signals_opts:
+        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY:
+            if 'signal-entry' not in self._signals_opts:
                 return
 
-            border = "orange"
-
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-
-            message = "Trade error at %s - #%s on %s" % (
-                ldatetime,
-                signal.data['trade-id'],
-                signal.data['symbol'])
-
-        elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY:
             # @todo
             return
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_EXIT:
+            if 'signal-exit' not in self._signals_opts:
+                return
+
             # @todo
             return
 

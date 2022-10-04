@@ -137,6 +137,7 @@ $(window).ready(function() {
         'CS.D.GBPUSD.MINI.IP': ['OANDA', 'GBPUSD'],
 
         'CS.D.CFEGOLD.CFE.IP': ['OANDA', 'XAUUSD'],
+        // @todo SILVER, CRUDE OIL, BRENT OIL ...
 
         'CC.D.CL.UME.IP': ['NYMEX', 'CL1!'],
 
@@ -994,13 +995,14 @@ $(window).ready(function() {
             set_conn_state(-1);
 
             // @todo reconnect
+            // reconnect();
         });
     };
 
     function start_ws() {
         if (ws != null) {
             console.log("Close previous WS");
-            ws.close()
+            ws.close();
             ws = null;
         }
 
@@ -1024,6 +1026,7 @@ $(window).ready(function() {
             reset_states();
 
             // @todo reconnect if lost
+            // reconnect();
         };
 
         ws.onmessage = function (event) {
@@ -1279,6 +1282,10 @@ function fetch_status() {
     let endpoint = "monitor/status";
     let url = base_url() + '/' + endpoint;
 
+    if (!window.server['connected']) {
+        return;
+    }
+
     $.ajax({
         type: "GET",
         url: url,
@@ -1321,6 +1328,10 @@ function fetch_status() {
 function fetch_strategy() {
     let endpoint = "strategy";
     let url = base_url() + '/' + endpoint;
+
+    if (!window.server['connected']) {
+        return;
+    }
 
     $.ajax({
         type: "GET",
@@ -1514,6 +1525,10 @@ function fetch_trades() {
 
     let params = {}
 
+    if (!window.server['connected']) {
+        return;
+    }
+
     $.ajax({
         type: "GET",
         url: url,
@@ -1562,6 +1577,10 @@ function fetch_history() {
 
     let params = {}
 
+    if (!window.server['connected']) {
+        return;
+    }
+
     $.ajax({
         type: "GET",
         url: url,
@@ -1604,6 +1623,10 @@ function fetch_balances() {
     let url = base_url() + '/' + endpoint;
 
     let params = {}
+
+    if (!window.server['connected']) {
+        return;
+    }
 
     $.ajax({
         type: "GET",
@@ -2180,7 +2203,7 @@ function on_update_performances() {
 
             if (!isNaN(at['profit-loss-pct'])) {
                 perfs[market_id].active += at['profit-loss-pct'];
-                
+
                 active_total_sum_pct += at['profit-loss-pct'];
                 active_total_sum += at.stats['profit-loss'];
             }
@@ -2581,7 +2604,7 @@ function format_value(value, precision) {
 
 // function rcv_ws_data() {
 //     $('#ws_state').css('border-color', 'green');
-
+//
 //     setTimeout(function() {
 //         $('#ws_state').css('border-color', 'gray');
 //     }, 500);

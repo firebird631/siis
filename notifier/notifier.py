@@ -48,6 +48,15 @@ class Notifier(Runnable):
 
         self._signals = collections.deque()  # filtered received signals accepted to process
 
+        notifier_config = service.notifier_config(identifier)
+
+        self._template = notifier_config.get('template', "default")
+        self._prefix = notifier_config.get('prefix', "")
+
+        self._display_percent_win = notifier_config.get('display-percent-win', False)
+        self._display_percent_loss = notifier_config.get('display-percent-loss', False)
+        self._display_percent_in_pip = notifier_config.get('display-percent-in-pip', False)
+
         # listen to its service
         self.service.add_listener(self)
 
@@ -200,3 +209,10 @@ class Notifier(Runnable):
             profit_loss = 0.0
 
         return profit_loss
+
+    @staticmethod
+    def pnl_in_pips(instrument, trade):
+        if instrument and trade:
+            return round((trade['profit-loss-pct'] * 0.01 * trade['avg-entry-price']) / instrument.one_pip_means, 1)
+
+        return 0

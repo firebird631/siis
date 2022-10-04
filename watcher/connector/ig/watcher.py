@@ -1198,9 +1198,13 @@ class IGWatcher(Watcher):
                 market.margin_factor = float(instrument['marginFactor']) * 0.01
             else:
                 market.margin_factor = float(instrument['marginFactor'])
+
+            market.set_leverages((1, round(1.0 / market.margin_factor)))
             margin_factor = str(market.margin_factor)
         elif instrument.get('margin') and market.is_open:
             market.margin_factor = float(instrument['margin']) * 0.01
+
+            market.set_leverages((1, round(1.0 / market.margin_factor)))
             margin_factor = str(market.margin_factor)
         else:
             # we don't want this when market is down because it could overwrite the previous stored value
@@ -1216,12 +1220,17 @@ class IGWatcher(Watcher):
         # BINARY OPT_* BUNGEE_* 
         if instrument['type'] == 'CURRENCIES':
             market.market_type = Market.TYPE_CURRENCY
+            market.set_leverages((1, 30))
         elif instrument['type'] == 'INDICES':
             market.market_type = Market.TYPE_INDICE
+            market.set_leverages((1, 20))
         elif instrument['type'] == 'COMMODITIES':
             market.market_type = Market.TYPE_COMMODITY
+            # @todo silver is 10 others 20
+            market.set_leverages((1, 20))
         elif instrument['type'] == 'SHARES':
             market.market_type = Market.TYPE_STOCK
+            market.set_leverages((1, 5))
         elif instrument['type'] == 'RATES':
             market.market_type = Market.TYPE_RATE
         elif instrument['type'] == 'SECTORS':

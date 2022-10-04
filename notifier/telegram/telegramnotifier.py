@@ -29,7 +29,8 @@ class TelegramNotifier(Notifier):
     """
     Telegram notifier using bot and API.
 
-    @todo trading commands
+    @todo trade-quantity
+    @todo complete trading commands
     """
 
     WAIT_DELAY = 1.0  # 1 second to check bot command
@@ -46,24 +47,21 @@ class TelegramNotifier(Notifier):
         self._commands = notifier_config.get('commands', {})
         self._op_commands = notifier_config.get('op-commands', {})
 
-        self._display_percent = False
         self._active_trades = notifier_config.get('active-trades', False)
         self._historical_trades = notifier_config.get('historical-trades', False)
 
         self._last_update_id = 0
         self._last_command_update = 0.0
 
-        self._template = notifier_config.get('template', "default")
-
         self._signals_opts = notifier_config.get('signals', (
             "alert",
-            "entry",
-            "exit",
-            # "update",
-            # "take-profit",
-            # "stop-loss",
-            # "quantity",
-            # "error",
+            "signal-entry",
+            "signal-exit",
+            "trade-entry",
+            "trade-exit",
+            "trade-update",
+            # "trade-error",
+            # "trade-quantity",
         ))
 
         self._opened_trades = {}
@@ -107,8 +105,6 @@ class TelegramNotifier(Notifier):
                 except ValueError:
                     raise NotifierException(self.name, self.identifier, "Malformed chat-id %s for command %s" % (
                         chat_id, k))
-
-        # @todo op-commands
 
         # template
         if self._template not in ("default", "light", "verbose"):
@@ -279,6 +275,19 @@ class TelegramNotifier(Notifier):
         if t['stats']['exit-reason'] != "undefined":
             messages.append("- Cause: %s" % t['stats']['exit-reason'].title())
 
+        if t['profit-loss-pct'] > 0.0 and self._display_percent_win:
+            if self._display_percent_in_pip:
+                instrument = self.service.strategy_service.strategy().instrument(symbol)
+                messages.append("- Reward : %gpips" % Notifier.pnl_in_pips(instrument, t))
+            else:
+                messages.append("- Reward : %.2f%%" % t['profit-loss-pct'])
+        elif t['profit-loss-pct'] < 0.0 and self._display_percent_loss:
+            if self._display_percent_in_pip:
+                instrument = self.service.strategy_service.strategy().instrument(symbol)
+                messages.append("- Loss : %gpips" % Notifier.pnl_in_pips(instrument, t))
+            else:
+                messages.append("- Loss : %.2f%%" % t['profit-loss-pct'])
+
         return messages
 
     def process_signal(self, signal):
@@ -290,27 +299,36 @@ class TelegramNotifier(Notifier):
         #
 
         if signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ENTRY:
+            if 'trade-entry' not in self._signals_opts:
+                return
+
             messages = self.format_trade_entry(signal.data, locale)
             message = '\n'.join(messages)
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_UPDATE:
+            if 'trade-update' not in self._signals_opts:
+                return
+
             messages = self.format_trade_update(signal.data, locale)
             message = '\n'.join(messages)
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_EXIT:
+            if 'trade-exit' not in self._signals_opts:
+                return
+
             messages = self.format_trade_exit(signal.data, locale)
             message = '\n'.join(messages)
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_TRADE_ERROR:
-            if 'error' not in self._signals_opts:
+            if 'trade-error' not in self._signals_opts:
                 return
 
             border = "orange"
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            fmt_datetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
             message = "Trade error at %s - #%s on %s" % (
-                ldatetime,
+                fmt_datetime,
                 signal.data['trade-id'],
                 signal.data['symbol'])
 
@@ -328,7 +346,7 @@ class TelegramNotifier(Notifier):
             else:
                 border = "default"
 
-            ldatetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+            fmt_datetime = datetime.fromtimestamp(signal.data['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
 
             message = "%s %s@%s (%s) %s at %s - #%s in %s" % (
                 signal.data['name'],
@@ -336,7 +354,7 @@ class TelegramNotifier(Notifier):
                 signal.data['last-price'],
                 signal.data['app-name'],
                 signal.data['reason'],
-                ldatetime,
+                fmt_datetime,
                 signal.data['id'],
                 signal.data['timeframe'])
 
@@ -344,10 +362,16 @@ class TelegramNotifier(Notifier):
                 message += " (%s)" % signal.data['user']
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_ENTRY:
+            if 'signal-entry' not in self._signals_opts:
+                return
+
             # @todo
             return
 
         elif signal.signal_type == Signal.SIGNAL_STRATEGY_SIGNAL_EXIT:
+            if 'signal-exit' not in self._signals_opts:
+                return
+
             # @todo
             return
 
