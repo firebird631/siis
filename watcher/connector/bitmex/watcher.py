@@ -274,7 +274,13 @@ class BitMexWatcher(Watcher):
             #
             
             if data[1] == 'margin':
+                if not self.connector.ws:
+                    return
+
                 funds = self.connector.ws.funds()
+                if not funds:
+                    return
+
                 ratio = 1.0
                 currency = funds['currency']
 
