@@ -43,24 +43,30 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal, do_notify=t
     let signal_percent = $('<span class="signal-percent"></span>').text((pnl * 100).toFixed(2) + '%');
 
     let signal_copy = $('<button class="signal-copy btn btn-info fas fa-copy"></button>');
+    let signal_details = $('<button class="signal-info btn btn-info fas fa-info"></button>');
+    let signal_tv = $('<button class="signal-tv btn btn-info fas fa-link"></button>');
 
     // signal_elt.append($('<td></td>').append(lsignal_id));
     signal_elt.append($('<td></td>').append(signal_symbol));
     signal_elt.append($('<td></td>').append(signal_direction));
     signal_elt.append($('<td></td>').append(signal_way));
     signal_elt.append($('<td></td>').append(signal_datetime));
-    signal_elt.append($('<td></td>').append(signal_order));
+    signal_elt.append($('<td></td>').addClass('optional-info').append(signal_order));
     signal_elt.append($('<td></td>').append(signal_context));
-    signal_elt.append($('<td></td>').append(signal_stop_loss));
-    signal_elt.append($('<td></td>').append(signal_take_profit));
-    signal_elt.append($('<td></td>').append(signal_reason));
+    signal_elt.append($('<td></td>').addClass('optional-info').append(signal_stop_loss));
+    signal_elt.append($('<td></td>').addClass('optional-info').append(signal_take_profit));
+    signal_elt.append($('<td></td>').addClass('optional-info').append(signal_reason));
     signal_elt.append($('<td></td>').append(signal_percent));
     signal_elt.append($('<td></td>').append(signal_copy));
+    signal_elt.append($('<td></td>').append(signal_details));
+    signal_elt.append($('<td></td>').append(signal_tv));
 
     // append
     $('div.signal-list-entries tbody').prepend(signal_elt);
 
     signal_copy.on('click', on_copy_signal);
+    signal_copy.on('click', on_details_signal);
+    signal_copy.on('click', on_open_signal_tv);
 
     window.signals[key] = signal;
 
@@ -378,6 +384,56 @@ function on_copy_signal(elt) {
                 }
             });
         });
+    }
+}
+
+function on_details_signal(elt) {
+    let key = retrieve_signal_key(elt);
+    $('#details_signal').attr('signal-key', key);
+
+    let signal = window.signals[key];
+    if (!signal) {
+        return;
+    }
+
+    let market_id = signal['market-id'];
+    let market = window.markets[market_id];
+    if (!market) {
+        return;
+    }
+
+    // @todo
+}
+
+function on_open_signal_tv(elt) {
+    let key = retrieve_signal_key(elt);
+
+    let signal = window.signals[key];
+    if (!signal) {
+        return;
+    }
+
+    let market_id = signal['market-id'];
+    let market = window.markets[market_id];
+    if (!market) {
+        return;
+    }
+
+    let interval = int(signal.timeframe);
+    // @todo if possible a day the datetime
+
+    if (window.broker['name'] in window.broker_to_tv) {
+        if (market_id in window.symbol_to_tv) {
+            // mapped symbol
+            let stv = window.symbol_to_tv[market_id];
+
+            window.open('https://fr.tradingview.com/chart?symbol=' + stv[0] + '%3A' + stv[1] + '&' + interval);
+        } else {
+            // direct mapping with suffix
+            let btv = window.broker_to_tv[window.broker['name']];
+
+            window.open('https://fr.tradingview.com/chart?symbol=' + btv[0] + '%3A' + market_id + btv[1] + '&' + interval);
+        }
     }
 }
 

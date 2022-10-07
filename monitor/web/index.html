@@ -294,6 +294,33 @@
   </div>
 </div>
 
+<div class="modal" id="signal_details" tabindex="-1" role="dialog" aria-labelledby="Trade details" aria-hidden="true" style="z-index: 2000;">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Signal details</h5>
+      </div>
+      <div class="modal-body">
+        <div class="">
+            <table id="signal_details_table" class="content-table" style="width: 100%;">
+              <thead style="width: 100%; border-bottom: 1px solid gray;">
+                <tr>
+                  <th>Data</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="open_trade_adv" tabindex="-1" role="dialog" aria-labelledby="open-trade-adv" aria-hidden="true" style="z-index: 2000;">
   <div class="modal-dialog modal-md" role="document">
     <div class="modal-content">
@@ -629,6 +656,7 @@
                       <th style="width: 75px; text-align: center;">%</th>
                       <th style="width: 35px; padding-left: 15px;"><span class="fas fa-copy"></span></th>
                       <th style="width: 35px; padding-left: 15px;"><span class="fas fa-info"></span></th>
+                      <th style="width: 35px; padding-left: 15px;"><span class="fas fa-link"></span></th>
                     </tr>
                   </thead>
                   <tbody class="items-list-view">

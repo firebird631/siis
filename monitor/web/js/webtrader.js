@@ -112,6 +112,9 @@ $(window).ready(function() {
     window.broker_to_tv = {
         'binance.com': ['BINANCE', ''],
         'binancefutures.com': ['BINANCE', 'PERP'],
+        'bitmex.com': ['BITMEX', ''],
+        'ftx.com': ['FTX', ''],
+        'bybit.com': ['BYBIT', ''],
         'ig.com': ['OANDA' , ''],
         'kraken.com': ['KRAKEN', ''],
     };
@@ -125,6 +128,7 @@ $(window).ready(function() {
         'IX.D.NASDAQ.IFE.IP': ['OANDA', 'NAS100USD'],
         'IX.D.SPTRD.IFE.IP': ['OANDA', 'SPX500USD'],
 
+         // @todo 100$ contract, 25$ contract, 10€ contract...
         'CS.D.USDCHF.MINI.IP': ['OANDA', 'USDCHF'],
         'CS.D.USDJPY.MINI.IP': ['OANDA', 'USDJPY'],
         'CS.D.AUDNZD.MINI.IP': ['OANDA', 'AUDNZD'],
@@ -136,10 +140,11 @@ $(window).ready(function() {
         'CS.D.EURUSD.MINI.IP': ['OANDA', 'EURUSD'],
         'CS.D.GBPUSD.MINI.IP': ['OANDA', 'GBPUSD'],
 
+        // @todo SILVER, BRENT OIL ...
         'CS.D.CFEGOLD.CFE.IP': ['OANDA', 'XAUUSD'],
-        // @todo SILVER, CRUDE OIL, BRENT OIL ...
-
-        'CC.D.CL.UME.IP': ['NYMEX', 'CL1!'],
+        // 'CS.D.CFESILVER.CFE.IP': ['OANDA', 'XAGUSD'],
+        'CC.D.CL.UME.IP': ['OANDA', 'WTIOUSD'],
+        // 'CC.D.xx.UME.IP': ['CURRENCY.COM', 'NATURALGAS']
 
         // kraken.com mapping
         'XLTCZEUR': ['KRAKEN', 'LTCEUR'],
