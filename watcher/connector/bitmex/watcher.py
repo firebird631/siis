@@ -212,7 +212,7 @@ class BitMexWatcher(Watcher):
                 if ohlc_depths:
                     for timeframe, depth in ohlc_depths.items():
                         if timeframe == Instrument.TF_1M:
-                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth, Instrument.TF_1M)
+                            self.fetch_and_generate(market_id, Instrument.TF_1M, depth)
                         elif timeframe == Instrument.TF_2M:
                             self.fetch_and_generate(market_id, Instrument.TF_1M, depth * 2, Instrument.TF_2M)
                         elif timeframe == Instrument.TF_3M:
@@ -220,11 +220,11 @@ class BitMexWatcher(Watcher):
                         elif timeframe == Instrument.TF_5M:
                             self.fetch_and_generate(market_id, Instrument.TF_5M, depth)
                         elif timeframe == Instrument.TF_10M:
-                            self.fetch_and_generate(market_id, Instrument.TF_10M, depth * 2, Instrument.TF_10M)
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth * 2, Instrument.TF_10M)
                         elif timeframe == Instrument.TF_15M:
-                            self.fetch_and_generate(market_id, Instrument.TF_15M, depth)
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth * 3, Instrument.TF_15M)
                         elif timeframe == Instrument.TF_30M:
-                            self.fetch_and_generate(market_id, Instrument.TF_15M, depth * 2, Instrument.TF_30M)
+                            self.fetch_and_generate(market_id, Instrument.TF_5M, depth * 6, Instrument.TF_30M)
                         elif timeframe == Instrument.TF_1H:
                             self.fetch_and_generate(market_id, Instrument.TF_1H, depth)
                         elif timeframe == Instrument.TF_2H:
@@ -232,13 +232,13 @@ class BitMexWatcher(Watcher):
                         elif timeframe == Instrument.TF_3H:
                             self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 3, Instrument.TF_3H)
                         elif timeframe == Instrument.TF_4H:
-                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth)
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 4, Instrument.TF_4H)
                         elif timeframe == Instrument.TF_6H:
                             self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 6, Instrument.TF_6H)
                         elif timeframe == Instrument.TF_8H:
-                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth * 2, Instrument.TF_8H)
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 8, Instrument.TF_8H)
                         elif timeframe == Instrument.TF_12H:
-                            self.fetch_and_generate(market_id, Instrument.TF_4H, depth * 3, Instrument.TF_12H)
+                            self.fetch_and_generate(market_id, Instrument.TF_1H, depth * 12, Instrument.TF_12H)
                         elif timeframe == Instrument.TF_1D:
                             self.fetch_and_generate(market_id, Instrument.TF_1D, depth)
                         elif timeframe == Instrument.TF_2D:
@@ -884,21 +884,21 @@ class BitMexWatcher(Watcher):
             yield trade
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
-        TF_MAP = {
+        tf_map = {
             60: '1m',
             300: '5m',
             3600: '1h',
             86400: '1d'
         }
 
-        if timeframe not in TF_MAP:
+        if timeframe not in tf_map:
             logger.error("Watcher %s does not support timeframe %s" % (self.name, timeframe))
             return
 
         candles = []
 
         # second timeframe to bitmex bin size
-        bin_size = TF_MAP[int(timeframe)]
+        bin_size = tf_map[int(timeframe)]
 
         try:
             candles = self._connector.get_historical_candles(market_id, bin_size, from_date, to_date, partial=True)
