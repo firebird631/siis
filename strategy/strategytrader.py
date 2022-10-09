@@ -824,9 +824,9 @@ class StrategyTrader(object):
             regions_data = [region.dumps() for region in self._regions]
             alerts_data = [alert.dumps() for alert in self._alerts]
 
-            Database.inst().store_user_trader((
-                trader.name, trader.account.name, self.instrument.market_id,
-                self.strategy.identifier, self.activity, trader_data, regions_data, alerts_data))
+        Database.inst().store_user_trader((
+            trader.name, trader.account.name, self.instrument.market_id,
+            self.strategy.identifier, self.activity, trader_data, regions_data, alerts_data))
 
     def dumps(self) -> dict:
         """
@@ -1877,7 +1877,7 @@ class StrategyTrader(object):
 
     def check_entry_timeout(self, trade, timestamp, timeout):
         """
-        Timeout then can cancel a non filled trade if exit signal occurs before timeout (timeframe).
+        Timeout then can cancel a non-filled trade if exit signal occurs before timeout (timeframe).
         """
         if trade.is_entry_timeout(timestamp, timeout):
             trader = self.strategy.trader()

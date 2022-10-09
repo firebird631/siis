@@ -608,18 +608,26 @@ class Strategy(Runnable):
         """
         For each strategy-trader terminate to be done only in live mode.
         """
-        with self._mutex:
-            if not self.service.backtesting and not self.trader().paper_mode:
-                for k, strategy_trader in self._strategy_traders.items():
+        if not self.service.backtesting and not self.trader().paper_mode:
+            with self._mutex:
+                markets_ids = self._strategy_traders.keys()
+
+            for market_id in markets_ids:
+                strategy_trader = self._strategy_traders.get(market_id)
+                if strategy_trader:
                     strategy_trader.terminate()
 
     def save(self):
         """
         For each strategy-trader save to be done only in live mode.
         """
-        with self._mutex:
-            if not self.service.backtesting and not self.trader().paper_mode:
-                for k, strategy_trader in self._strategy_traders.items():
+        if not self.service.backtesting and not self.trader().paper_mode:
+            with self._mutex:
+                markets_ids = self._strategy_traders.keys()
+
+            for market_id in markets_ids:
+                strategy_trader = self._strategy_traders.get(market_id)
+                if strategy_trader:
                     strategy_trader.save()
 
     def load(self):

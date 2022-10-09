@@ -641,7 +641,7 @@ class StrategyIndMarginTrade(StrategyTrade):
             # order fully or partially filled
             filled = 0
 
-            if data['id'] == self.create_oid:
+            if data['id'] == self.create_oid or ref_order_id == self.create_ref_oid:
                 prev_e = self.e
 
                 # in case of direct traded signal without open (could occur on bitmex market order)

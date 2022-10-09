@@ -31,6 +31,7 @@ import logging
 logger = logging.getLogger('siis.trader.bitmex')
 error_logger = logging.getLogger('siis.error.trader.bitmex')
 order_logger = logging.getLogger('siis.order.trader.bitmex')
+traceback_logger = logging.getLogger('siis.traceback.trader.bitmex')
 
 
 class BitMexTrader(Trader):
@@ -109,6 +110,178 @@ class BitMexTrader(Trader):
                 return None
 
         return market
+
+    def order_info(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> Union[dict, None]:
+        """
+        Retrieve the detail of an order.
+        """
+        if not order_id or not market_or_instrument:
+            return None
+
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to retrieve order info because of missing connector" % self.name)
+            return None
+
+        results = None
+
+        try:
+            results = self._watcher.connector.request(path="order", verb='GET', max_retries=3)
+        except Exception as e:
+            # None as error
+            return None
+
+        if results and str(results.get('orderID', "")) == order_id:
+            order_data = results
+
+        try:
+            pass
+            # @todo
+            # symbol = order_data['symbol']
+            # market = self.market(symbol)
+            #
+            # if not market:
+            #     return None
+            #
+            # price = None
+            # stop_price = None
+            # completed = False
+            # order_ref_id = order_data['clientOrderId']
+            # event_timestamp = order_data['updateTime'] * 0.001 if 'updateTime' in order_data else order_data['time'] * 0.001
+            #
+            # if order_data['status'] == Client.ORDER_STATUS_NEW:
+            #     status = 'opened'
+            # elif order_data['status'] == Client.ORDER_STATUS_PENDING_CANCEL:
+            #     # @note not exactly the same meaning
+            #     status = 'pending'
+            # elif order_data['status'] == Client.ORDER_STATUS_FILLED:
+            #     status = 'closed'
+            #     completed = True
+            #     if 'updateTime' in order_data:
+            #         event_timestamp = order_data['updateTime'] * 0.001
+            # elif order_data['status'] == Client.ORDER_STATUS_PARTIALLY_FILLED:
+            #     status = 'opened'
+            #     completed = False
+            #     if 'updateTime' in order_data:
+            #         event_timestamp = order_data['updateTime'] * 0.001
+            # elif order_data['status'] == Client.ORDER_STATUS_CANCELED:
+            #     status = 'canceled'
+            #     # status = 'deleted'
+            # elif order_data['status'] == Client.ORDER_STATUS_EXPIRED:
+            #     status = 'expired'
+            #     # completed = True ? and on watcher WS...
+            # else:
+            #     status = ""
+            #
+            # # reduce only
+            # reduce_only = order_data['reduceOnly']
+            #
+            # # price type
+            # if order_data['workingType'] == 'MARK_PRICE':
+            #     price_type = Order.PRICE_MARK
+            # elif order_data['workingType'] == 'CONTRACT_PRICE':
+            #     price_type = Order.PRICE_LAST
+            # else:
+            #     price_type = Order.PRICE_LAST
+            #
+            # # 'type' and 'origType'
+            # if order_data['type'] == Client.ORDER_TYPE_LIMIT:
+            #     order_type = Order.ORDER_LIMIT
+            #     price = float(order_data['price']) if 'price' in order_data else None
+            #
+            # elif order_data['type'] == Client.ORDER_TYPE_MARKET:
+            #     order_type = Order.ORDER_MARKET
+            #
+            # elif order_data['type'] == Client.ORDER_TYPE_STOP:
+            #     order_type = Order.ORDER_STOP
+            #     price = float(order_data['price']) if 'price' in order_data else None
+            #     stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+            #
+            # elif order_data['type'] == Client.ORDER_TYPE_TAKE_PROFIT:
+            #     order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+            #     price = float(order_data['price']) if 'price' in order_data else None
+            #     stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+            #
+            # elif order_data['type'] == Client.ORDER_TYPE_TAKE_PROFIT_MARKET:
+            #     order_type = Order.ORDER_TAKE_PROFIT
+            #     stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+            #
+            # elif order_data['type'] == Client.ORDER_TYPE_TRAILING_STOP_MARKET:
+            #     order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+            #     # @todo not supported
+            #
+            # else:
+            #     order_type = Order.ORDER_MARKET
+            #
+            # if order_data['timeInForce'] == Client.TIME_IN_FORCE_GTC:
+            #     time_in_force = Order.TIME_IN_FORCE_GTC
+            # elif order_data['timeInForce'] == Client.TIME_IN_FORCE_IOC:
+            #     time_in_force = Order.TIME_IN_FORCE_IOC
+            # elif order_data['timeInForce'] == Client.TIME_IN_FORCE_FOK:
+            #     time_in_force = Order.TIME_IN_FORCE_FOK
+            # else:
+            #     time_in_force = Order.TIME_IN_FORCE_GTC
+            #
+            # # order_data['cumQuote'] "0",
+            # # order_data['positionSide'] "SHORT",
+            #
+            # # if Close - All
+            # # order_data['closePosition'] false
+            #
+            # # ignored when order type is TRAILING_STOP_MARKET
+            # # order_data['stopPrice'] "9300"
+            #
+            # # only for trailing stop market
+            # # order_data['activatePrice'] "9020"
+            # # order_data['priceRate'] "0.3"
+            # # order_data['priceProtect'] false
+            #
+            # post_only = False
+            # cumulative_commission_amount = 0.0  # @todo
+            #
+            # cumulative_filled = float(order_data['executedQty'])
+            # order_volume = float(order_data['origQty'])
+            # fully_filled = completed
+            #
+            # # trades = array of trade ids related to order (if trades info requested and data available)
+            # trades = []
+            #
+            # order_info = {
+            #     'id': order_id,
+            #     'symbol': symbol,
+            #     'status': status,
+            #     'ref-id': order_ref_id,
+            #     'direction': Order.LONG if order_data['side'] == "Buy" else Order.SHORT,
+            #     'type': order_type,
+            #     'timestamp': event_timestamp,
+            #     'avg-price': float(order_data['avgPrice']),
+            #     'quantity': order_volume,
+            #     'cumulative-filled': cumulative_filled,
+            #     'cumulative-commission-amount': cumulative_commission_amount,
+            #     'price': price,
+            #     'stop-price': stop_price,
+            #     'time-in-force': time_in_force,
+            #     'post-only': post_only,
+            #     # 'close-only': ,
+            #     'reduce-only': reduce_only,
+            #     # 'stop-loss': None,
+            #     # 'take-profit': None,
+            #     'fully-filled': fully_filled
+            #     # 'trades': trades
+            # }
+            #
+            # return order_info
+
+        except Exception as e:
+            error_logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
+
+            # error during processing
+            return None
+
+        # empty means success returns but does not exist
+        return {
+            'id': None
+        }
 
     @property
     def authenticated(self) -> bool:
@@ -328,6 +501,11 @@ class BitMexTrader(Trader):
 
         # relate position to its market id (no possible hedging to distinct two opposites directions)
         order.set_position_id(market_or_instrument.market_id)
+
+        # partially or fully filled
+        if result.get('cumQty', 0) > 0 and result.get('ordStatus', 'New') == 'Filled':
+            fully_filled = result.get('leavesQty', 0) == 0
+            order.set_executed(result['cumQty'], fully_filled, result['avgPx'])
 
         order.created_time = self._parse_datetime(result.get('timestamp')).replace(tzinfo=UTC()).timestamp()
         order.transact_time = self._parse_datetime(result.get('transactTime')).replace(tzinfo=UTC()).timestamp()

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import shutil
 from typing import TYPE_CHECKING, List, Union, Optional
 
 if TYPE_CHECKING:
@@ -793,7 +794,7 @@ class PaperTrader(Trader):
             order = self._orders.get(order_id)
 
             if order is None:
-                # empty means success returns but does not exists
+                # empty means success returns but does not exist
                 return {
                     'id': None
                 }
@@ -953,6 +954,9 @@ class PaperTrader(Trader):
         if not filename:
             if dataset == "trader":
                 filename = "siis_trader.%s" % export_format
+
+        # make a backup just before
+        shutil.copyfile(filename, filename + '.bak')
 
         with self._mutex:
             try:

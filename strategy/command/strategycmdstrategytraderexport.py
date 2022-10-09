@@ -276,7 +276,13 @@ def cmd_strategy_trader_export_all(strategy, data):
     last_count = 0
 
     with strategy._mutex:
-        for k, strategy_trader in strategy._strategy_traders.items():
+        symbols = strategy._strategy_traders.keys()
+
+    for symbol in symbols:
+        with strategy._mutex:
+            strategy_trader = strategy._strategy_traders.get(symbol)
+
+        if strategy_trader:
             if export_format == "json":
                 if last_count > 0:
                     data['first'] = False

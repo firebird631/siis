@@ -232,6 +232,7 @@ def cmd_strategy_trader_import_all(strategy, data):
             if not strategy_trader:
                 results.append({'message': "Unable to retrieved strategy-trader for %s" % market_id, 'error': True})
 
+        if strategy_trader:
             sub_data = {
                 'dataset': dataset,
                 'data': data_dumps
