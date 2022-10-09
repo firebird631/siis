@@ -5,6 +5,7 @@
 
 import json
 import csv
+import shutil
 
 from common.utils import timeframe_to_str
 
@@ -260,6 +261,9 @@ def cmd_strategy_trader_export_all(strategy, data):
             filename = "siis_regions.%s" % export_format
         elif dataset == "strategy":
             filename = "siis_strategy.%s" % export_format
+
+    # make a backup just before
+    shutil.copyfile(filename, filename + '.bak')
 
     with open(filename, "w") as f:
         if export_format == "json":
