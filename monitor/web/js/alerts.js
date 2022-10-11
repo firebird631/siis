@@ -398,7 +398,7 @@ function on_details_alert(elt) {
         $('<td class="data-value"><span class="alert-direction fas alert-up fa-arrow-up"></span></td>'));
     } else if (active_alert.direction == "short" || active_alert.direction == -1) {
         direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
-        $('<td class="data-value"><span class="alert-direction fas alert-down fa-arrow-dn"></span></td>'));
+        $('<td class="data-value"><span class="alert-direction fas alert-down fa-arrow-down"></span></td>'));
     }
 
     let cancellation_price_rate = compute_price_pct(active_alert['cancellation-price'],

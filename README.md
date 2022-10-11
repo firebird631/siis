@@ -343,7 +343,7 @@ The identity name must be specified, and need to be configured into the _identit
 * --last=\<number\> Fast last number of candles for every watched market (take care can take all requests credits on the broker).
 * --market=\<market-id\> Specific market identifier to fetch, binarize only.
 * --broker=\<broker-name\> Specific fetcher or watcher name to fetch or binarize market from.
-* --timeframe=\<timeframe\> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in **1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1M, 1w**
+* --timeframe=\<timeframe\> Time frame unit or 0 for trade level. For fetcher, higher candles are generated. Defined value is in second or an alias in **1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1w, 1M**
 * --cascaded=\<max-timeframe\> During fetch process generate the candles of highers timeframe from lowers. Default is no. Take care to have entire multiple to fulfill the generated candles.
 * --target=\<timeframe\> During fetch or rebuild process generate the candles of specified timeframe. Default is no. Take care to have entire multiple to fulfill the generated candles.
 * --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.

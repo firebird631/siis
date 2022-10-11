@@ -324,7 +324,7 @@ function on_details_region(elt) {
         $('<td class="data-value"><span class="region-direction fas region-up fa-arrow-up"></span></td>'));
     } else if (region.direction == "short" || region.direction == -1) {
         direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
-        $('<td class="data-value"><span class="region-direction fas region-down fa-arrow-dn"></span></td>'));
+        $('<td class="data-value"><span class="region-direction fas region-down fa-arrow-down"></span></td>'));
     }
 
     let stage = $('<tr></tr>').append($('<td class="data-name">Stage</td>')).append(
@@ -334,7 +334,7 @@ function on_details_region(elt) {
         $('<td class="data-value"><span class="region-direction fas region-up fa-arrow-up"></span></td>'));
     } else if (region.stage == "short" || region.stage == -1) {
         stage = $('<tr></tr>').append($('<td class="data-name">Stage</td>')).append(
-        $('<td class="data-value"><span class="region-direction fas region-down fa-arrow-dn"></span></td>'));
+        $('<td class="data-value"><span class="region-direction fas region-down fa-arrow-down"></span></td>'));
     }
 
     let region_price = 0.0;

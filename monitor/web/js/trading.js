@@ -1472,7 +1472,7 @@ function on_details_active_trade(elt) {
         $('<td class="data-value"><span class="trade-direction fas trade-long fa-arrow-up"></span></td>'));
     } else if (trade.direction == "short") {
        direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
-        $('<td class="data-value"><span class="trade-direction fas trade-short fa-arrow-dn"></span></td>'));
+        $('<td class="data-value"><span class="trade-direction fas trade-short fa-arrow-down"></span></td>'));
     }
 
     let state = $('<tr></tr>').append($('<td class="data-name">State</td>')).append(
@@ -1771,7 +1771,7 @@ function on_details_historical_trade(elt) {
         $('<td class="data-value"><span class="trade-direction fas trade-long fa-arrow-up"></span></td>'));
     } else if (trade.direction == "short") {
        direction = $('<tr></tr>').append($('<td class="data-name">Direction</td>')).append(
-        $('<td class="data-value"><span class="trade-direction fas trade-short fa-arrow-dn"></span></td>'));
+        $('<td class="data-value"><span class="trade-direction fas trade-short fa-arrow-down"></span></td>'));
     }
 
     let state = $('<tr></tr>').append($('<td class="data-name">State</td>')).append(
