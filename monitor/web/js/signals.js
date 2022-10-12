@@ -65,8 +65,8 @@ function on_strategy_signal(market_id, signal_id, timestamp, signal, do_notify=t
     $('div.signal-list-entries tbody').prepend(signal_elt);
 
     signal_copy.on('click', on_copy_signal);
-    signal_copy.on('click', on_details_signal);
-    signal_copy.on('click', on_open_signal_tv);
+    signal_details.on('click', on_details_signal);
+    signal_tv.on('click', on_open_signal_tv);
 
     window.signals[key] = signal;
 
