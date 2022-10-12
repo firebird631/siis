@@ -7,6 +7,9 @@ import numpy as np
 
 from .strategytradercontext import StrategyTraderContext
 
+import logging
+logger = logging.getLogger('siis.strategy.takeprofit')
+
 
 def search_std_atrsr(direction, timeframe, orientation, depth, price, epsilon=0.0):
     if not timeframe.atrsr:

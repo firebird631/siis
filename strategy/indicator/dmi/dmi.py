@@ -4,8 +4,7 @@
 # Directional moving index indicator using close, low and high prices.
 
 from strategy.indicator.indicator import Indicator
-# from strategy.indicator.utils import down_sample
-from talib import PLUS_DI as ta_PLUS_DI, MINUS_DI as ta_MINUS_DI
+from talib import PLUS_DI as TA_PLUS_DI, MINUS_DI as TA_MINUS_DI
 
 import numpy as np
 
@@ -67,8 +66,8 @@ class DMIIndicator(Indicator):
         self._prev_dp = self._last_dp
         self._prev_dm = self._last_dm
 
-        self._dps = ta_PLUS_DI(high, low, close, timeperiod=self._length)
-        self._dms = ta_MINUS_DI(high, low, close, timeperiod=self._length)
+        self._dps = TA_PLUS_DI(high, low, close, timeperiod=self._length)
+        self._dms = TA_MINUS_DI(high, low, close, timeperiod=self._length)
 
         self._last_dp = self._dps[-1]
         self._last_dm = self._dms[-1]

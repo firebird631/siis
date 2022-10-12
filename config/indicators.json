@@ -158,5 +158,10 @@
         "status": "load",
         "classpath": "strategy.indicator.volumeprofile.volumeprofile.VolumeProfileIndicator",
         "options": {}
+    },
+    "cci": {
+        "status": "load",
+        "classpath": "strategy.indicator.cci.cci.CCIIndicator",
+        "options": {}
     }
 }

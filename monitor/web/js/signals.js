@@ -419,7 +419,7 @@ function on_open_signal_tv(elt) {
         return;
     }
 
-    let interval = int(signal.timeframe);
+    let interval = Math.floor(signal.timeframe);
     // @todo if possible a day the datetime
 
     if (window.broker['name'] in window.broker_to_tv) {
