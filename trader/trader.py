@@ -936,7 +936,7 @@ class Trader(Runnable):
         """
         order = self._orders.get(order_data['id'])
         if order:
-            # update executed qty (depending of the implementation filled or cumulative-filled or both are present)
+            # update executed qty (depending on the implementation filled or cumulative-filled or both are present)
             if order_data.get('cumulative-filled') is not None:
                 order.executed = order_data['cumulative-filled']
             elif order_data.get('filled') is not None:

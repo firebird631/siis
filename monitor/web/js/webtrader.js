@@ -143,7 +143,7 @@ $(window).ready(function() {
         // @todo SILVER, BRENT OIL ...
         'CS.D.CFEGOLD.CFE.IP': ['OANDA', 'XAUUSD'],
         // 'CS.D.CFESILVER.CFE.IP': ['OANDA', 'XAGUSD'],
-        'CC.D.CL.UME.IP': ['OANDA', 'WTIOUSD'],
+        'CC.D.CL.UME.IP': ['OANDA', 'WTICOUSD'],
         // 'CC.D.xx.UME.IP': ['CURRENCY.COM', 'NATURALGAS']
 
         // kraken.com mapping
@@ -1720,6 +1720,30 @@ function timeframe_to_str(timeframe) {
     } else {
         return "";
     }
+}
+
+function timeframe_from_str(timeframe) {
+    if (timeframe == null || timeframe == undefined) {
+        return 0;
+    }
+
+    if (typeof(timeframe) !== "string") {
+        return timeframe;
+    }
+
+    if (timeframe.endsWith('m')) {
+        return parseFloat(timeframe.slice(0, -1)) * 60;
+    } else if (timeframe.endsWith('h')) {
+        return parseFloat(timeframe.slice(0, -1)) * 60 * 60;
+    } else if (timeframe.endsWith('d')) {
+        return parseFloat(timeframe.slice(0, -1)) * 60 * 60 * 24;
+    } else if (timeframe.endsWith('w')) {
+        return parseFloat(timeframe.slice(0, -1)) * 60 * 60 * 24 * 7;
+    } else if (timeframe.endsWith('M')) {
+        return parseFloat(timeframe.slice(0, -1)) * 60 * 60 * 24 * 30;
+    }
+
+    return 0;
 }
 
 //

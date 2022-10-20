@@ -419,8 +419,15 @@ function on_open_signal_tv(elt) {
         return;
     }
 
-    let interval = Math.floor(signal.timeframe);
-    // @todo if possible a day the datetime
+    let interval = signal.timeframe;
+
+    if (signal.timeframe.endsWith('m')) {
+        interval = "interval=" + parseFloat(signal.timeframe.slice(0, -1));
+    } else {
+        interval = "interval=" + signal.timeframe.toUpperCase();
+    }
+
+    // @todo if possible the datetime
 
     if (window.broker['name'] in window.broker_to_tv) {
         if (market_id in window.symbol_to_tv) {
