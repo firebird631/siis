@@ -82,7 +82,7 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             return atr_stop_loss
 
         elif data.stop_loss.type == data.PRICE_CUR_ATR_SR:
-            curatr_stop_loss = data.stop_loss.timeframe.atrsr._tdn[-1] if len(data.stop_loss.timeframe.atrsr._tdn) else 0.0
+            curatr_stop_loss = data.stop_loss.timeframe.atrsr.cur_down
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -138,7 +138,7 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             return 0.0
 
         elif data.stop_loss.type == data.PRICE_ATR_SR:
-            atr_stop_loss = search_atrsr(-direction, data.stop_loss.timeframe, data.stop_loss.orientation,
+            atr_stop_loss = search_atrsr(-direction, data.stop_loss.timeframe, -data.stop_loss.orientation,
                                          data.stop_loss.depth, entry_price, price_epsilon)
 
             if data.stop_loss.distance > 0.0:
@@ -154,7 +154,7 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             return atr_stop_loss
 
         elif data.stop_loss.type == data.PRICE_CUR_ATR_SR:
-            curatr_stop_loss = data.stop_loss.timeframe.atrsr._tup[-1] if len(data.stop_loss.timeframe.atrsr._tup) else 0.0
+            curatr_stop_loss = data.stop_loss.timeframe.atrsr.cur_up
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -331,7 +331,7 @@ def dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_st
     # if stop_loss < last_price:
     #     return stop_loss - price_epsilon
 
-    if stop_loss < last_price - price_epsilon:
+    if 0 < stop_loss < last_price - price_epsilon:
         return stop_loss - price_epsilon
 
     return 0.0
@@ -352,7 +352,7 @@ def dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_s
     # if stop_loss > last_price:
     #     return stop_loss + price_epsilon
 
-    if stop_loss > last_price + price_epsilon:
+    if 0 < stop_loss > last_price + price_epsilon:
         return stop_loss + price_epsilon
 
     return 0.0

@@ -34,7 +34,6 @@ def search_sorted_atrsr(direction, timeframe, orientation, depth, price, epsilon
     else:
         return timeframe.atrsr.search_sorted_both(direction, price, depth, epsilon)
 
-
 search_atrsr = search_std_atrsr
 # search_atrsr = search_sorted_atrsr
 
@@ -82,7 +81,7 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return atr_take_profit
 
         elif data.take_profit.type == data.PRICE_CUR_ATR_SR:
-            curatr_take_profit = data.take_profit.timeframe.atrsr._tup[-1] if len(data.take_profit.timeframe.atrsr._tup) else 0.0
+            curatr_take_profit = data.take_profit.timeframe.atrsr.cur_up
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
@@ -174,8 +173,8 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return 0.0
 
         elif data.take_profit.type == data.PRICE_ATR_SR:
-            atr_take_profit =  search_atrsr(direction, data.take_profit.timeframe, data.take_profit.orientation,
-                                            data.take_profit.depth, entry_price, price_epsilon)
+            atr_take_profit = search_atrsr(direction, data.take_profit.timeframe, -data.take_profit.orientation,
+                                           data.take_profit.depth, entry_price, price_epsilon)
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
@@ -190,7 +189,7 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return atr_take_profit
 
         elif data.take_profit.type == data.PRICE_CUR_ATR_SR:
-            curatr_take_profit =  data.take_profit.timeframe.atrsr._tdn[-1] if len(data.take_profit.timeframe.atrsr._tdn) else 0.0
+            curatr_take_profit = data.take_profit.timeframe.atrsr.cur_down
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
@@ -348,11 +347,12 @@ def dynamic_take_profit_fixed_dist_short(timeframe, last_price, curr_take_profit
 
 def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price, depth,
                                    orientation, price_epsilon=0.0):
-    # search in short direction because be want a price lower than actual take-profit loss but we keep it
+    # search in short direction because we want a price lower than actual take-profit loss but we keep it
     # only if higher than current close price
-    take_profit = search_atrsr(-1, timeframe, orientation, depth, curr_take_profit_price, price_epsilon)
+    take_profit = search_atrsr(1, timeframe, orientation, depth, curr_take_profit_price, price_epsilon)
 
-    if take_profit > last_price + price_epsilon:
+    if 0 < take_profit > last_price + price_epsilon:
+        logger.debug("%s << %s" % (curr_take_profit_price, take_profit))
         return take_profit
 
     return 0.0
@@ -369,9 +369,10 @@ def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price
 def dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_price, depth,
                                     orientation, price_epsilon=0.0):
     # reverse explanation of the long version (revert orientation)
-    take_profit = search_atrsr(1, timeframe, -orientation, depth, curr_take_profit_price, price_epsilon)
+    take_profit = search_atrsr(-1, timeframe, -orientation, depth, curr_take_profit_price, price_epsilon)
 
-    if take_profit < last_price - price_epsilon:
+    if 0 < take_profit < last_price - price_epsilon:
+        logger.debug("%s >> %s" % (curr_take_profit_price, take_profit))
         return take_profit
 
     return 0.0

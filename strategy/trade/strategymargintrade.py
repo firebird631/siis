@@ -705,7 +705,7 @@ class StrategyMarginTrade(StrategyTrade):
                 elif filled > 0:
                     self.x = instrument.adjust_quantity(self.x + filled)
 
-                logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
+                # logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
 
                 if self.x >= self.oq:
                     self._exit_state = StrategyTrade.STATE_FILLED

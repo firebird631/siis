@@ -774,7 +774,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                 elif filled > 0:
                     self.x = instrument.adjust_quantity(self.x + filled)
 
-                logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
+                # logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
 
                 if self._entry_state == StrategyTrade.STATE_FILLED:
                     if self.x >= self.e:
