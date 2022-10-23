@@ -213,6 +213,9 @@ class AndroidNotifier(Notifier):
             elif op:
                 messages.append("- Order-Price: %s" % t['order-price'])
 
+            if 'trade-quantity' in self._signals_opts and t['order-qty']:
+                messages.append("- Amount: %s" % t['order-qty'])
+
             if t['timeframe']:
                 messages.append("- Timeframe: %s" % t['timeframe'])
 
@@ -238,6 +241,9 @@ class AndroidNotifier(Notifier):
                 messages.append("- Entry-Price: %s" % t['avg-entry-price'])
             elif op:
                 messages.append("- Entry-Price: %s" % t['order-price'])
+
+            if 'trade-quantity' in self._signals_opts and t['order-qty']:
+                messages.append("- Amount: %s" % t['order-qty'])
 
         if float(t['take-profit-price']):
             messages.append("- Take-Profit: %s" % t['take-profit-price'])
