@@ -264,6 +264,7 @@ class TelegramNotifier(Notifier):
         trade_id = t['id']
         symbol = t['symbol']
         alias = t['alias']
+        market_id = t['market-id']
 
         axp = float(t.get('avg-exit-price', "0"))
 
@@ -277,13 +278,13 @@ class TelegramNotifier(Notifier):
 
         if t['profit-loss-pct'] > 0.0 and self._display_percent_win:
             if self._display_percent_in_pip:
-                instrument = self.service.strategy_service.strategy().instrument(symbol)
+                instrument = self.service.strategy_service.strategy().instrument(market_id)
                 messages.append("- Reward : %gpips" % Notifier.pnl_in_pips(instrument, t))
             else:
                 messages.append("- Reward : %.2f%%" % t['profit-loss-pct'])
         elif t['profit-loss-pct'] < 0.0 and self._display_percent_loss:
             if self._display_percent_in_pip:
-                instrument = self.service.strategy_service.strategy().instrument(symbol)
+                instrument = self.service.strategy_service.strategy().instrument(market_id)
                 messages.append("- Loss : %gpips" % Notifier.pnl_in_pips(instrument, t))
             else:
                 messages.append("- Loss : %.2f%%" % t['profit-loss-pct'])
@@ -487,6 +488,14 @@ class TelegramNotifier(Notifier):
                     traceback_logger.error(traceback.format_exc())
 
     def process_trade_command(self, command, chat_id, locale="fr"):
+        """
+        Here symbol refer to market-id or symbol or alias.
+
+        @param command:
+        @param chat_id:
+        @param locale:
+        @return:
+        """
         messages = []
 
         if len(command) == 1:
@@ -588,7 +597,7 @@ class TelegramNotifier(Notifier):
                     messages.append("- Stop-Loss: %s" % t['stop-loss-price'])
 
                 if aep:
-                    instrument = self.service.strategy_service.strategy().instrument(symbol)
+                    instrument = self.service.strategy_service.strategy().find_instrument(symbol)
 
                     upnl = Notifier.estimate_profit_loss(instrument, t)
                     messages.append("- Unrealized-PNL %.2f%%" % (upnl * 100.0,))

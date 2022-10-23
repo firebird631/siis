@@ -1167,7 +1167,7 @@ class Trader(Runnable):
                     'type': 'margin',
                     'free': self.account.margin_balance,
                     'locked': self.account.balance - self.account.margin_balance,
-                    'total': self.account.net_worth or self.account.balance,
+                    'total': self.account.balance,  # or self.account.net_worth
                     'upnl': self.account.profit_loss,
                     'margin-level': self.account.margin_level,
                     'precision': self.account.currency_precision

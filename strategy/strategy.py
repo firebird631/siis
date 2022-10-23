@@ -765,6 +765,13 @@ class Strategy(Runnable):
         return None
 
     def symbol_for_market_id(self, market_id: str) -> Union[str, None]:
+        """
+        Retrieve the instrument from a market-id from the configuration.
+        If not found directly it look up into the mapped names.
+
+        @param market_id:
+        @return:
+        """
         if self._trader_conf is None or not self._trader_conf.get('instruments'):
             return None
 
@@ -777,7 +784,7 @@ class Strategy(Runnable):
 
     def find_instrument(self, symbol_or_market_id: str) -> Union[Instrument, None]:
         """
-        Return instrument from its market-id or name or symbol or alias.
+        Return instrument from its market-id or symbol or alias.
         """
         if not symbol_or_market_id:
             return None

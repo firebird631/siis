@@ -387,7 +387,6 @@ class BitMexTrader(Trader):
             market = self._markets.get(market_id)
             margin = market.margin_cost(quantity, price)
 
-            logger.debug("%s %s %s" % (quantity, price, margin))
             if margin:
                 return self.account.margin_balance >= margin
 

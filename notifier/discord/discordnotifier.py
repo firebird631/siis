@@ -227,6 +227,7 @@ class DiscordNotifier(Notifier):
         trade_id = t['id']
         symbol = t['symbol']
         alias = t['alias']
+        market_id = t['market-id']
 
         axp = float(t.get('avg-exit-price', "0"))
 
@@ -240,13 +241,13 @@ class DiscordNotifier(Notifier):
 
         if t['profit-loss-pct'] > 0.0 and self._display_percent_win:
             if self._display_percent_in_pip:
-                instrument = self.service.strategy_service.strategy().instrument(symbol)
+                instrument = self.service.strategy_service.strategy().instrument(market_id)
                 messages.append("- Reward : %gpips" % Notifier.pnl_in_pips(instrument, t))
             else:
                 messages.append("- Reward : %.2f%%" % t['profit-loss-pct'])
         elif t['profit-loss-pct'] < 0.0 and self._display_percent_loss:
             if self._display_percent_in_pip:
-                instrument = self.service.strategy_service.strategy().instrument(symbol)
+                instrument = self.service.strategy_service.strategy().instrument(market_id)
                 messages.append("- Loss : %gpips" % Notifier.pnl_in_pips(instrument, t))
             else:
                 messages.append("- Loss : %.2f%%" % t['profit-loss-pct'])
