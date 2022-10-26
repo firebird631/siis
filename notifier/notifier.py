@@ -56,6 +56,7 @@ class Notifier(Runnable):
         self._display_percent_win = notifier_config.get('display-percent-win', False)
         self._display_percent_loss = notifier_config.get('display-percent-loss', False)
         self._display_percent_in_pip = notifier_config.get('display-percent-in-pip', False)
+        self._display_quantity_in_local = notifier_config.get('display-quantity-in-local', True)
 
         # listen to its service
         self.service.add_listener(self)
@@ -213,6 +214,7 @@ class Notifier(Runnable):
     @staticmethod
     def pnl_in_pips(instrument, trade):
         if instrument and trade:
-            return round((trade['profit-loss-pct'] * 0.01 * trade['avg-entry-price']) / instrument.one_pip_means, 1)
+            aep = float(trade['avg-entry-price'])
+            return round((trade['profit-loss-pct'] * 0.01 * aep) / instrument.one_pip_means, 1)
 
         return 0

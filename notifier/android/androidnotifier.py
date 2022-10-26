@@ -24,7 +24,6 @@ class AndroidNotifier(Notifier):
     Android Firebase push notifier.
 
     @todo Strategy alert notifications
-    @todo trade-quantity
     """
 
     def __init__(self, identifier: str, service, options: dict):
@@ -196,6 +195,7 @@ class AndroidNotifier(Notifier):
         trade_id = t['id']
         symbol = t['symbol']
         alias = t['alias']
+        market_id = t['market-id']
 
         open_dt = Notifier.parse_utc_datetime(t['entry-open-time'])
 
@@ -214,7 +214,15 @@ class AndroidNotifier(Notifier):
                 messages.append("- Order-Price: %s" % t['order-price'])
 
             if 'trade-quantity' in self._signals_opts and t['order-qty']:
-                messages.append("- Amount: %s" % t['order-qty'])
+                if self._display_quantity_in_local:
+                    instrument = self.service.strategy_service.strategy().instrument(market_id)
+                    if instrument and instrument.trade_quantity > 0:
+                        display_qty = float(t['order-qty']) / instrument.trade_quantity
+                        messages.append("- Amount: %g" % display_qty)
+                    else:
+                        messages.append("- Amount: %s" % t['order-qty'])
+                else:
+                    messages.append("- Amount: %s" % t['order-qty'])
 
             if t['timeframe']:
                 messages.append("- Timeframe: %s" % t['timeframe'])

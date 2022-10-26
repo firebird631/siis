@@ -37,6 +37,9 @@ Sum order :
 
 #125 --object=profile-for-account:\<account-id\> pour supprimer les data de strategy
 
+#127 faire un bouton + vue reduce position avec stepper entre 0 et order-qty et ( % ) affiché
+    - demande une méthode en plus sur strategytrade :: reduce ( ... )
+
 #######
 # WIP #
 #######

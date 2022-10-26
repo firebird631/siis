@@ -787,8 +787,8 @@ class FTXFuturesWatcher(Watcher):
         elif msg_type == 'info':
             if message.get('code', 0) == 20001:
                 # need reconnect
-                self._ws_ticker_data['status'] = "offline"
-                self._ws_ticker_data['lost'] = True
+                self._ws_trade_data['status'] = "offline"
+                self._ws_trade_data['lost'] = True
 
                 return
 
