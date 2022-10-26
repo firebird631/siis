@@ -244,9 +244,6 @@ class StrategyPositionTrade(StrategyTrade):
         return self.NOTHING_TO_DO
 
     def close(self, trader: Trader, instrument: Instrument) -> int:
-        """
-        Close the position and cancel the related orders.
-        """
         if self._closing:
             # already closing order
             return self.NOTHING_TO_DO
@@ -273,12 +270,52 @@ class StrategyPositionTrade(StrategyTrade):
                     return self.ERROR
 
         if self.position_id:
-            # most of the margin broker case we have a position id
             if trader.close_position(self.position_id, instrument, self.dir, self.position_quantity, True, None):
                 self._closing = True
                 return self.ACCEPTED
             else:
                 return self.REJECTED
+
+        return self.NOTHING_TO_DO
+
+    def reduce(self, trader: Trader, instrument: Instrument, quantity: float) -> int:
+        if self._closing:
+            # already closing order
+            return self.NOTHING_TO_DO
+
+        if self.create_oid:
+            # cancel the remaining buy order
+            if trader.cancel_order(self.create_oid, instrument) > 0:
+                self.create_ref_oid = None
+                self.create_oid = None
+
+                self._entry_state = StrategyTrade.STATE_CANCELED
+            else:
+                data = trader.order_info(self.create_oid, instrument)
+
+                if data is None:
+                    # API error, do nothing need retry
+                    return self.ERROR
+
+                elif data['id'] is None:
+                    # cannot retrieve the order, wrong id, no create order
+                    self.create_ref_oid = None
+                    self.create_oid = None
+                else:
+                    return self.ERROR
+
+        if self.position_id:
+            # compute the max quantity to reduce
+            available_qty = self.e - self.x
+
+            if available_qty > 0.0 and quantity > 0.0:
+                reduce_qty = min(quantity, available_qty)
+
+                if trader.close_position(self.position_id, instrument, self.dir, reduce_qty, True, None):
+                    self._closing = True
+                    return self.ACCEPTED
+                else:
+                    return self.REJECTED
 
         return self.NOTHING_TO_DO
 

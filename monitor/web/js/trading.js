@@ -667,6 +667,8 @@ function add_active_trade(market_id, trade) {
     trade_exit.attr('data-placement', "top");
     trade_exit.attr('title', '-');
 
+    let trade_reduce = $('<button class="btn btn-light trade-reduce-quantity fas fa-pencil-alt"></button>');
+
     // context
     let trade_context = $('<span class="trade-context"></span>')
         .text(trade['label'] ? trade['label'] + ' (' + trade['timeframe'] + ')' : trade['timeframe']);
@@ -727,7 +729,12 @@ function add_active_trade(market_id, trade) {
     
     trade_elt.append($('<td></td>').addClass('optional-info').append(trade_order));
     trade_elt.append($('<td></td>').addClass('optional-info').append(trade_entry));
-    trade_elt.append($('<td></td>').addClass('optional-info').append(trade_exit));
+
+    if (server.permissions.indexOf("strategy-modify-trade") != -1) {
+        trade_elt.append($('<td></td>').addClass('optional-info').append(trade_exit).append(trade_reduce));
+    } else {
+        trade_elt.append($('<td></td>').addClass('optional-info').append(trade_exit));
+    }
 
     trade_elt.append($('<td></td>').append(trade_auto));
     trade_elt.append($('<td></td>').addClass('optional-info').append(trade_context));
@@ -767,6 +774,7 @@ function add_active_trade(market_id, trade) {
     if (server.permissions.indexOf("strategy-modify-trade") != -1) {
         trade_stop_loss_chg.on('click', on_modify_active_trade_stop_loss);
         trade_take_profit_chg.on('click', on_modify_active_trade_take_profit);
+        trade_reduce.on('click', on_reduce_active_trade_quantity);
     }
 
     trade_details.on('click', on_details_active_trade);
@@ -1037,6 +1045,7 @@ function on_modify_active_trade_stop_loss(elt) {
     let trade = window.actives_trades[key];
     $('#modified_stop_loss_price').val(trade['stop-loss-price']);
     $('#modified_stop_loss_range').slider('setValue', 50);
+    $('#modified_stop_loss_range_relative').text((0).toFixed(2) + "%");
 
     $('#modify_trade_stop_loss').modal({'show': true, 'backdrop': true});
 }
@@ -1048,8 +1057,40 @@ function on_modify_active_trade_take_profit(elt) {
     let trade = window.actives_trades[key];
     $('#modified_take_profit_price').val(trade['take-profit-price']);
     $('#modified_take_profit_range').slider('setValue', 50);
+    $('#modified_take_profit_range_relative').text((0).toFixed(2) + "%");
 
     $('#modify_trade_take_profit').modal({'show': true, 'backdrop': true});
+}
+
+function on_reduce_active_trade_quantity(elt) {
+    let key = retrieve_trade_key(elt);
+    $('#reduce_trade_quantity').attr('trade-key', key);
+
+    let trade = window.actives_trades[key];
+    if (!trade) {
+        return;
+    }
+
+    let market_id = trade['market-id'];
+
+    let market = window.markets[market_id];
+    if (!market) {
+        return;
+    }
+
+    let max_qty = parseFloat(trade['filled-entry-qty']) - parseFloat(trade['filled-exit-qty']);
+
+    $('#reduce_trade_quantity_range').slider('setAttribute', 'max', max_qty);
+    $('#reduce_trade_quantity_range').slider('setAttribute', 'step', market['size-limits'][3] || 1).slider('refresh');
+    $('#reduce_trade_quantity_range').slider('setValue', 0);
+
+    $('#reduce_trade_quantity_range_relative').text("0 (0.00%)");
+    $('#reduce_trade_max_quantity').text('(max ' + max_qty + ')');
+    $('#reduce_trade_quantity_size').val(0);
+    $('#reduce_trade_quantity_size').attr('min', 0);
+    $('#reduce_trade_quantity_size').attr('max', max_qty);
+
+    $('#reduce_trade_quantity').modal({'show': true, 'backdrop': true});
 }
 
 function on_change_take_profit_step() {
@@ -1059,7 +1100,7 @@ function on_change_take_profit_step() {
     let take_profit_price = $('#modified_take_profit_price').val();
 
     let mode = $('#modified_take_profit_type').val();
-    let range = parseFloat($('#modified_take_profit_range').val());
+    let range = parseFloat($('#modified_take_profit_range').slider('getValue'));
 
     if (mode == 'percent') {
         range = (range - 50) * 0.001;
@@ -1088,7 +1129,7 @@ function on_change_stop_loss_step() {
     let stop_loss_price = $('#modified_stop_loss_price').val();
 
     let mode = $('#modified_stop_loss_type').val();
-    let range = parseFloat($('#modified_stop_loss_range').val());
+    let range = parseFloat($('#modified_stop_loss_range').slider('getValue'));
 
     if (mode == 'percent') {
         range = (range - 50) * 0.001;
@@ -1110,12 +1151,49 @@ function on_change_stop_loss_step() {
     $('#modified_stop_loss_price').val(stop_loss_price);
 }
 
+function on_change_reduce_trade_step() {
+    let key = $('#reduce_trade_quantity').attr('trade-key');
+
+    let trade = window.actives_trades[key];
+    let range = parseFloat($('#reduce_trade_quantity_range').slider('getValue'));
+
+    let qty = range;
+    let max_qty = parseFloat(trade['filled-entry-qty']) - parseFloat(trade['filled-exit-qty']);
+    let qty_pct = max_qty > 0 ? qty / max_qty * 100.0 : 0.0;
+
+    $('#reduce_trade_quantity_range_relative').text(qty + " (" + qty_pct.toFixed(2) + "%)");
+    $('#reduce_trade_quantity_size').val(qty);
+}
+
+function on_change_reduce_trade_size() {
+    let key = $('#reduce_trade_quantity').attr('trade-key');
+
+    let trade = window.actives_trades[key];
+    let size = $('#reduce_trade_quantity_size').val();
+
+    if (size < 0) {
+        $('#reduce_trade_quantity_size').val(0);
+        size = 0;
+    }
+
+    let max_qty = parseFloat(trade['filled-entry-qty']) - parseFloat(trade['filled-exit-qty']);
+
+   if (size > max_qty) {
+        $('#reduce_trade_quantity_size').val(max_qty);
+        size = max_qty;
+    }
+
+    let qty_pct = max_qty > 0 ? size / max_qty * 100.0 : 0.0;
+
+    $('#reduce_trade_quantity_range_relative').text(size + " (" + qty_pct.toFixed(2) + "%)");
+    $('#reduce_trade_quantity_range').slider('setValue', size);
+}
+
 function on_open_new_trade(elt, direction) {
     let market_id = retrieve_symbol(elt);
     let trader_id = retrieve_trader_id(elt);
 
     let market = window.markets[market_id];
-
     if (!market) {
         return;
     }
@@ -1421,6 +1499,61 @@ function on_add_active_trade_step_stop_loss() {
         .fail(function(data) {
             for (let msg in data.messages) {
                 notify({'message': msg, 'title': 'Add Step Stop-Loss', 'type': 'error'});
+            }
+        });
+    }
+}
+
+function on_apply_reduce_active_trade_quantity() {
+    let key = $('#reduce_trade_quantity').attr('trade-key');
+
+    let parts = key.split(':');
+    if (parts.length != 2) {
+        return false;
+    }
+
+    let market_id = parts[0];
+    let trade_id = parseInt(parts[1]);
+
+    let endpoint = "strategy/trade";
+    let url = base_url() + '/' + endpoint;
+
+    let market = window.markets[market_id];
+    let reduce_quantity = parseFloat($('#reduce_trade_quantity_range').slider('getValue'));
+
+    if (market_id && market && trade_id) {
+        let data = {
+            'market-id': market['market-id'],
+            'trade-id': trade_id,
+            'command': "trade-modify",
+            'action': "reduce-quantity",
+            'reduce-quantity': reduce_quantity,
+            'force': true
+        };
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            headers: {
+                'Authorization': "Bearer " + server['auth-token'],
+                'TWISTED_SESSION': server.session,
+            },
+            data: JSON.stringify(data),
+            dataType: 'json',
+            contentType: 'application/json'
+        })
+        .done(function(data) {
+            if (data.error) {
+                for (let msg in data.messages) {
+                    notify({'message': data.messages[msg], 'title': 'Reduce Quantity', 'type': 'error'});
+                }
+            } else {
+                notify({'message': "Success", 'title': 'Reduce Quantity', 'type': 'success'});
+            }
+        })
+        .fail(function(data) {
+            for (let msg in data.messages) {
+                notify({'message': msg, 'title': 'Reduce Quantity', 'type': 'error'});
             }
         });
     }

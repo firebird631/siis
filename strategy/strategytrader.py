@@ -1552,6 +1552,7 @@ class StrategyTrader(object):
 
                 return StrategyTrade.ACCEPTED
 
+
         return StrategyTrade.NOTHING_TO_DO
 
     def trade_modify_oco(self, trade: StrategyTrade, limit_price: float, stop_price: float, hard=True):
@@ -1584,6 +1585,23 @@ class StrategyTrader(object):
                 # soft only until active
                 trade.tp = limit_price
                 trade.sl = stop_price
+
+                # local notification
+                self.notify_trade_update(self.strategy.timestamp, trade)
+
+                return StrategyTrade.ACCEPTED
+
+        return StrategyTrade.NOTHING_TO_DO
+
+    def trade_reduce_quantity(self, trade: StrategyTrade, reduce_quantity: float):
+        """
+        Modify the take-profit limit or market price of a trade.
+        @param trade: Valid trade model
+        @param reduce_quantity: Quantity to reduce from the active trade
+        """
+        if trade:
+            if trade.is_active():
+                trade.reduce(self.strategy.trader(), self.instrument, reduce_quantity)
 
                 # local notification
                 self.notify_trade_update(self.strategy.timestamp, trade)

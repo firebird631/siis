@@ -250,6 +250,28 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                     results['error'] = True
                     results['messages'].append("Comment must be a string, for trade %i" % trade.id)
 
+            # reduce trade quantity
+            elif action == 'reduce-quantity' and 'reduce-quantity' in data and type(data['reduce-quantity']) in (float, int):
+                reduce_quantity = data['reduce-quantity']
+
+                if reduce_quantity < 0:
+                    results['error'] = True
+                    results['messages'].append("Reduce-quantity reduce-quantity must be greater than zero for trade %i" % trade.id)
+
+                    return results
+
+                if reduce_quantity > trade.remaining_qty():
+                    results['error'] = True
+                    results['messages'].append("Reduce-quantity reduce-quantity exceed for trade %i" % trade.id)
+
+                    return results
+
+                # apply
+                strategy_trader.trade_reduce_quantity(trade, reduce_quantity)
+
+                # update strategy-trader
+                strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+
             else:
                 # unsupported action
                 results['error'] = True

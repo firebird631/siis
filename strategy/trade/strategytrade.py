@@ -252,6 +252,9 @@ class StrategyTrade(object):
     def exec_exit_qty(self) -> float:
         return self.x
 
+    def remaining_qty(self) -> float:
+        return self.e - self.x
+
     @property
     def profit_loss(self) -> float:
         return self.pl
@@ -601,6 +604,20 @@ class StrategyTrade(object):
     def close(self, trader: Trader, instrument: Instrument) -> int:
         """
         Close the position or sell the asset.
+        """
+        return self.NOTHING_TO_DO
+
+    def reduce(self, trader: Trader, instrument: Instrument, quantity: float) -> int:
+        """
+        If possible, reduce the trade position size at market, immediately.
+        It also cancels the remaining entry quantity because action of reducing means logically don't want anymore.
+
+        @param trader: Trader instance.
+        @param instrument: Related Instrument instance.
+        @param quantity float Quantity in unit of quantity to reduce
+        @return:
+
+        @note If the quantity is greater than remaining quantity then the total remaining quantity if used.
         """
         return self.NOTHING_TO_DO
 

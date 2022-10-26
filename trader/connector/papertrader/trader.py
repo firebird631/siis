@@ -33,7 +33,7 @@ from trader.position import Position
 
 from .papertraderindmargin import exec_indmargin_order
 from .papertradermargin import exec_margin_order
-from .papertraderposition import close_position
+from .papertraderposition import close_position, reduce_position
 from .papertraderspot import exec_buysell_order
 
 import logging
@@ -713,8 +713,12 @@ class PaperTrader(Trader):
                 else:
                     # immediate execution of the order
                     if trader_market.has_position:
-                        # close isolated position
-                        result = close_position(self, trader_market, position, close_exec_price, Order.ORDER_MARKET)
+                        # partial close or total
+                        if 0 < quantity < position.quantity:
+                            result = reduce_position(self, trader_market, position, close_exec_price, quantity)
+                        else:
+                            # close isolated position
+                            result = close_position(self, trader_market, position, close_exec_price, Order.ORDER_MARKET)
                     else:
                         # close position (could be using FIFO method)
                         result = exec_margin_order(self, order, trader_market, open_exec_price, close_exec_price)

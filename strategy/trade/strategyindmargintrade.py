@@ -406,9 +406,6 @@ class StrategyIndMarginTrade(StrategyTrade):
         return self.NOTHING_TO_DO
 
     def close(self, trader: Trader, instrument: Instrument) -> int:
-        """
-        Close the position and cancel the related orders.
-        """
         if self._closing:
             # already closing order
             return self.NOTHING_TO_DO

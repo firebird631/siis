@@ -479,7 +479,7 @@ class Trader(Runnable):
         @param market If true close at market
         @param limit_price If Not market close at this limit price
 
-        @note This call depend of the state of the connector.
+        @note This call depend on the state of the connector.
         """
         return False
 
@@ -487,7 +487,7 @@ class Trader(Runnable):
                         stop_loss_price: Optional[float] = None, take_profit_price: Optional[float] = None) -> bool:
         """
         Modify the stop loss or take profit of a position.
-        @note This call depend of the state of the connector.
+        @note This call depend on the state of the connector.
         """
         return False
 

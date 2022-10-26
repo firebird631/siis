@@ -804,6 +804,23 @@ $(window).ready(function() {
         on_change_take_profit_step(); 
     });
 
+    $('#reduce_trade_quantity_range').slider({
+        'min': 0,
+        'max': 100,
+        'step': 1,
+        'value': 0,
+    }).on('change', function(elt) {
+        on_change_reduce_trade_step();
+    });
+
+    $('#reduce_trade_quantity_size').on('change', function(elt) {
+        on_change_reduce_trade_size();
+    });
+
+    $('#apply_reduce_trade_quantity').on('click', function(e) {
+        on_apply_reduce_active_trade_quantity();
+    });
+
     if (window.mobileDevice) {
         $('#trade_list_sizer').doubleTap(function(e) {
             let elt = $('div.trade-list');
