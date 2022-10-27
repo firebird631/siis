@@ -1050,8 +1050,7 @@ class IGWatcher(Watcher):
                                 'direction': direction,
                                 'timestamp': event_time,
                                 'quantity': quantity,
-                                'exec-price': exec_price,            # entry
-                                'avg-entry-price': avg_entry_price,  # entry
+                                'exec-price': exec_price,      # initial and average entry price
                                 'stop-loss': stop_level,
                                 'take-profit': limit_level,
                                 'profit-loss': profit_loss,
@@ -1075,9 +1074,8 @@ class IGWatcher(Watcher):
                                 'symbol': epic,
                                 'direction': direction,
                                 'timestamp': event_time,
-                                'quantity': quantity,
-                                'exec-price': level,
-                                'avg-entry-price': level,  # entry
+                                'quantity': quantity,  # updated qty
+                                'exec-price': level,   # if qty realized last exec price
                                 'stop-loss': stop_level,
                                 'take-profit': limit_level,
                                 'profit-loss': profit_loss,
@@ -1098,10 +1096,9 @@ class IGWatcher(Watcher):
                                 'symbol': epic,
                                 'direction': direction,
                                 'timestamp': event_time,
-                                'quantity': quantity,
-                                'exec-price': level,
-                                'avg-price': level,
-                                'avg-exit-price': level,  # exit
+                                'quantity': quantity,  # remaining qty (might be 0)
+                                'exec-price': level,   # last execution price
+                                # 'avg-exit-price': level,
                                 'stop-loss': stop_level,
                                 'take-profit': limit_level,
                                 'profit-loss': profit_loss,

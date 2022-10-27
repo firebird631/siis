@@ -37,8 +37,19 @@ Sum order :
 
 #125 --object=profile-for-account:\<account-id\> pour supprimer les data de strategy
 
-#127 faire un bouton + vue reduce position avec stepper entre 0 et order-qty et ( % ) affiché
-    - demande une méthode en plus sur strategytrade :: reduce ( ... )
+#127 dans le cadre du reduce :
+    base trader : OK (tester)
+    position trade : OK (tester)
+    position : update profit and loss doit tenir compte du realized PNL
+
+    position paper trader : doit ajuster le prix de sortie moyen en case de reduce mais aussi de close apres reduce
+
+    ind margin paper trader : idem
+    strategy ind margin trade : idem
+
+    margin trader : idem mais n'est plus utilisé
+    strategy margin trade : idem mais n'est plus utilisé
+
 
 #######
 # WIP #

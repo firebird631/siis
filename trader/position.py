@@ -26,6 +26,8 @@ class Position(Keyed):
     The rollover is not computed into the profit/loss, it might be done at the account level
 
     and position of the symbol (ex: $1000.01 or 1175.37€ or 11.3751B)
+
+    @todo Update PNL and compute a RNPL on partial reduce.
     """
 
     __slots_ = '_trader', '_position_id', '_state', '_symbol', '_symbol', '_quantity', \
@@ -33,7 +35,8 @@ class Position(Keyed):
                '_profit_loss_market', '_profit_loss_market_rate', '_raw_profit_loss', '_raw_profit_loss_rate', \
                '_created_time', '_market_close', \
                '_leverage', '_entry_price', '_exit_price' \
-               '_stop_loss', '_take_profit', '_trailing_stop', '_direction'
+               '_stop_loss', '_take_profit', '_trailing_stop', '_direction', \
+               '_entry_quantity', '_exit_quantity'
 
     LONG = 1    # long direction
     SHORT = -1  # short direction
@@ -77,9 +80,15 @@ class Position(Keyed):
         self._trailing_stop = False
         self._direction = Position.LONG
 
+        self._entry_quantity = 0.0
+        self._exit_quantity = 0.0
+
     def entry(self, direction: int, symbol: str, quantity: float, take_profit: Optional[float] = None,
               stop_loss: Optional[float] = None, leverage: float = 1.0, trailing_stop: bool = False):
-
+        """
+        Initial entry (only the first time, after it must use update method).
+        @note If quantity > 0, entry price must be modified.
+        """
         self._state = Position.STATE_OPENED
         self._direction = direction
         self._symbol = symbol
@@ -89,13 +98,43 @@ class Position(Keyed):
         self._leverage = leverage
         self._trailing_stop = trailing_stop
 
-    def closing(self, exit_price=None):
+        # entry quantity
+        self._entry_quantity = quantity
+
+    def update(self, direction: int, symbol: str, quantity: float, take_profit: Optional[float] = None,
+               stop_loss: Optional[float] = None, leverage: float = 1.0, trailing_stop: bool = False):
+        """
+        Very similar as entry but used for update. The entry quantity and exit quantity are also managed
+        according to the updated new quantity.
+
+        @note If quantity is different from previous entry or exit price must be modified.
+        """
+        self._state = Position.STATE_OPENED
+        self._direction = direction
+        self._symbol = symbol
+        self._take_profit = take_profit
+        self._stop_loss = stop_loss
+        self._leverage = leverage
+        self._trailing_stop = trailing_stop
+
+        if self._quantity != quantity:
+            if quantity < self._quantity:
+                # reduced qty
+                self._exit_quantity += self._quantity - quantity
+            elif quantity > self._quantity:
+                # increased qty
+                self._entry_quantity += quantity - self._quantity
+
+            # current quantity updated
+            self._quantity = quantity
+
+    def closing(self):
         self._state = Position.STATE_CLOSING
-        self._exit_price = exit_price
 
     def exit(self, exit_price=None):
         self._state = Position.STATE_CLOSED
-        self._exit_price = exit_price
+        if exit_price:
+            self._exit_price = exit_price
 
     def set_position_id(self, position_id: str):
         self._position_id = position_id
@@ -284,6 +323,7 @@ class Position(Keyed):
         """
         Compute profit_loss and profit_loss_rate for maker and taker.
         @param market A valid market object related to the symbol of the position.
+        @todo partial reduce make an RPNL
         """
         if market is None or not market.bid or not market.ask:
             return

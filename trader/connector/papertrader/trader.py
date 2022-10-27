@@ -756,7 +756,6 @@ class PaperTrader(Trader):
                         'quantity': position.quantity,
                         'exec-price': None,
                         'avg-entry-price': None,
-                        'avg-price': None,
                         'stop-loss': stop_loss_price,
                         'take-profit': take_profit_price,
                         'profit-loss': None,
@@ -964,7 +963,10 @@ class PaperTrader(Trader):
                 filename = "siis_trader.%s" % export_format
 
         # make a backup just before
-        shutil.copyfile(filename, filename + '.bak')
+        try:
+            shutil.copyfile(filename, filename + '.bak')
+        except FileNotFoundError:
+            pass
 
         with self._mutex:
             try:

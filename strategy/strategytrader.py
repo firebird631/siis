@@ -1912,7 +1912,7 @@ class StrategyTrader(object):
         if not trade:
             return False
 
-        trade_profit_loss = trade.profit_loss
+        trade_profit_loss = trade.estimate_profit_loss(self.instrument)
 
         if trade_profit_loss >= 0.0:
             if (trade.context and trade.context.take_profit and trade.context.take_profit.timeout > 0 and
@@ -1943,14 +1943,14 @@ class StrategyTrader(object):
     def retrieve_context(self, name) -> Optional[StrategyTraderContext]:
         """
         Return a trade context object. Used by set_trade_context.
-        Must be override.
+        Must be overridden.
         """
         return None
 
     def apply_trade_context(self, trade: StrategyTrade, context: StrategyTraderContext) -> bool:
         """
         Apply a trade context to a valid trade.
-        Must be override.
+        Must be overridden.
         """
         if not trade or not context:
             return False
@@ -1960,7 +1960,7 @@ class StrategyTrader(object):
     def set_trade_context(self, trade: StrategyTrade, name: str) -> bool:
         """
         Apply a trade context to a valid trade.
-        Must be override.
+        Must be overridden.
         """
         if not trade or not name:
             return False
@@ -1975,14 +1975,14 @@ class StrategyTrader(object):
     def contexts_ids(self) -> List[str]:
         """
         Returns the list of context ids.
-        Must be override.
+        Must be overridden.
         """
         return []
 
     def dumps_context(self, context_id: str) -> Optional[dict]:
         """
         Returns a dict with the normalized contexts details or None if don't exists.
-        Must be override.
+        Must be overridden.
         """
         return None
 
@@ -1993,21 +1993,21 @@ class StrategyTrader(object):
     def create_chart_streamer(self, timeframe) -> Union[Streamable, None]:
         """
         Create a streamer for the chart at a specific timeframe.
-        Must be override.
+        Must be overridden.
         """
         return None
 
     def subscribe_stream(self, timeframe: float) -> bool:
         """
         Use or create a specific streamer.
-        Must be override.
+        Must be overridden.
         """
         return False
 
     def unsubscribe_stream(self, timeframe: float) -> bool:
         """
         Delete a specific streamer when no more subscribers.
-        Must be override.
+        Must be overridden.
         """
         return False
 
@@ -2020,7 +2020,7 @@ class StrategyTrader(object):
     def report_state(self, mode=0):
         """
         Collect the state of the strategy trader (instant) and return a dataset.
-        Default only return a basic dataset, it must be override per strategy.
+        Default only return a basic dataset, it must be overridden per strategy.
 
         @param mode integer Additional report context.
         """

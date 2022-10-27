@@ -48,9 +48,9 @@ class StrategyTrade(object):
     TRADE_BUY_SELL = 0    # spot/asset trade
     TRADE_ASSET = 0
     TRADE_SPOT = 0
-    TRADE_MARGIN = 1      # individual margin trade but as FIFO position (incompatible with hedging markets)
-    TRADE_IND_MARGIN = 2  # indivisible margin trade position (incompatible with hedging markets)
-    TRADE_POSITION = 3    # individual margin trade position (compatible with hedging markets)
+    TRADE_MARGIN = 1      # individual position trade but in FIFO closing (incompatible with hedging markets, rare case)
+    TRADE_IND_MARGIN = 2  # indivisible (merged/unique) position (compatible with crypto futures)
+    TRADE_POSITION = 3    # independent position like CFD or Futures brokers (compatible with hedging markets)
 
     STATE_UNDEFINED = -1
     STATE_NEW = 0

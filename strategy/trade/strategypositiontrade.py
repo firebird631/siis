@@ -447,6 +447,28 @@ class StrategyPositionTrade(StrategyTrade):
             #     self._stats['profit-loss-currency'] = data['profit-currency']
 
     def position_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
+        def update_pl():
+            # PNL with its currency if provided (useless, computed at update_stats)
+
+            # if data.get('profit-loss') is not None:
+            #     self._stats['unrealized-profit-loss'] = data['profit-loss']
+            # if data.get('profit-currency'):
+            #     self._stats['profit-loss-currency'] = data['profit-currency']
+
+            # gross profit/loss rate (realized or if closed at market)
+            if self.aep > 0:
+                if self.direction > 0:
+                    if self.axp > 0:
+                        self.pl = (self.axp - self.aep) / self.aep
+                    elif instrument.close_exec_price(1) > 0:
+                        self.pl = (instrument.close_exec_price(1) - self.aep) / self.aep
+
+                elif self.direction < 0:
+                    if self.axp > 0:
+                        self.pl = (self.aep - self.axp) / self.aep
+                    elif instrument.close_exec_price(-1) > 0:
+                        self.pl = (self.aep - instrument.close_exec_price(-1)) / self.aep
+
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
             self.position_id = data['id']  # already defined at open
 
@@ -493,6 +515,14 @@ class StrategyPositionTrade(StrategyTrade):
 
                 # keep for close and for delta computation on update
                 self.position_quantity = last_qty
+
+                # average entry price at open (simply set)
+                if data.get('avg-entry-price') is not None:
+                    self.aep = data['avg-entry-price']
+                elif data.get('exec-price') is not None:
+                    self.aep = data['exec-price']
+
+                update_pl()
             else:
                 # in case of a limit order
                 self._entry_state = StrategyTrade.STATE_OPENED
@@ -522,12 +552,27 @@ class StrategyPositionTrade(StrategyTrade):
                     self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
                     # filled entry quantity from the diff with the previous one
+                    prev_x = self.x
                     self.x += self.position_quantity - last_qty
 
                     if self.x >= self.e:
                         self._exit_state = StrategyTrade.STATE_FILLED
                     else:
                         self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                    # average exit price at update
+                    if data.get('avg-exit-price') is not None:
+                        self.axp = data['avg-exit-price']
+                    elif data.get('exec-price') is not None:
+                        # compute
+                        dec_qty = self.position_quantity - last_qty
+
+                        if self.axp:
+                            self.axp = (self.axp * prev_x + data['exec-price'] * dec_qty) / (prev_x + dec_qty)
+                        else:
+                            self.axp = data['exec-price']
+
+                    update_pl()
 
                 elif last_qty > self.position_quantity:
                     # increase mean entry
@@ -537,6 +582,7 @@ class StrategyPositionTrade(StrategyTrade):
                     self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
                     # filled entry quantity from the diff with the previous one
+                    prev_e = self.e
                     self.e += last_qty - self.position_quantity
 
                     if self.e >= self.oq:
@@ -547,6 +593,20 @@ class StrategyPositionTrade(StrategyTrade):
                         self.create_ref_oid = None
                     else:
                         self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                    # average entry price at update
+                    if data.get('avg-entry-price') is not None:
+                        self.aep = data['avg-entry-price']
+                    elif data.get('exec-price') is not None:
+                        # compute
+                        inc_qty = last_qty - self.position_quantity
+
+                        if self.aep:
+                            self.aep = (self.aep * prev_e + data['exec-price'] * inc_qty) / (prev_e + inc_qty)
+                        else:
+                            self.aep = data['exec-price']
+
+                    update_pl()
 
                 # keep for close and for delta computation on update
                 self.position_quantity = last_qty
@@ -560,15 +620,34 @@ class StrategyPositionTrade(StrategyTrade):
             self.create_ref_oid = None
 
             # filled exit quantity equal to the entry
+            prev_x = self.x
             if self.x < self.e:
+                dec_qty = self.e - self.x  # realized qty at close
                 self.x = self.e
+            else:
+                dec_qty = 0.0
 
-            self.position_quantity = 0.0
             self._exit_state = StrategyTrade.STATE_FILLED
 
             # retains the last trade timestamp
             self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+            # average exit price at delete
+            if data.get('avg-exit-price') is not None:
+                self.axp = data['avg-exit-price']
+            elif data.get('exec-price') is not None:
+                # compute
+                if self.axp:
+                    self.axp = (self.axp * prev_x + data['exec-price'] * dec_qty) / (prev_x + dec_qty)
+                else:
+                    self.axp = data['exec-price']
+
             # logger.info("Exit avg-price=%s cum-filled=%s" % (self.axp, self.x))
+
+            update_pl()
+
+            # finally empty
+            self.position_quantity = 0.0
 
         elif signal_type == Signal.SIGNAL_POSITION_AMENDED:
             # update stop_loss/take_profit
@@ -577,36 +656,6 @@ class StrategyPositionTrade(StrategyTrade):
 
             if data.get('stop-loss'):
                 self.position_stop = data['stop-loss']
-
-        if data.get('profit-loss') is not None:
-            self._stats['unrealized-profit-loss'] = data['profit-loss']
-        if data.get('profit-currency'):
-            self._stats['profit-loss-currency'] = data['profit-currency']
-
-        #
-        # average entry/exit prices
-        #
-
-        if data.get('avg-entry-price') is not None:
-            self.aep = data['avg-entry-price']
-        if data.get('avg-exit-price') is not None:
-            self.axp = data['avg-exit-price']
-
-        #
-        # gross profit/loss rate
-        #
-
-        if self.direction > 0:
-            if self.aep > 0 and self.axp > 0:
-                self.pl = (self.axp - self.aep) / self.aep
-            elif self.aep > 0 and instrument.close_exec_price(1) > 0:
-                self.pl = (instrument.close_exec_price(1) - self.aep) / self.aep
-
-        elif self.direction < 0:
-            if self.aep > 0 and self.axp > 0:
-                self.pl = (self.aep - self.axp) / self.aep
-            elif self.aep > 0 and instrument.close_exec_price(-1) > 0:
-                self.pl = (self.aep - instrument.close_exec_price(-1)) / self.aep
 
     def is_target_order(self, order_id: str, ref_order_id: str) -> bool:
         if order_id and (order_id == self.create_oid):
@@ -731,16 +780,19 @@ class StrategyPositionTrade(StrategyTrade):
             nrq = self.e - self.x
 
             delta_price = 0.0
+            r_delta_price = 0.0
 
             if self.dir > 0:
                 delta_price = instrument.market_bid - self.aep
+                r_delta_price = self.axp - self.aep
             elif self.dir < 0:
                 delta_price = self.aep - instrument.market_ask
+                r_delta_price = self.aep - self.axp
 
             upnl = nrq * (delta_price / (instrument.one_pip_means or 1.0)) * instrument.value_per_pip
-            rpnl = self.x * (delta_price / (instrument.one_pip_means or 1.0)) * instrument.value_per_pip
+            rpnl = self.x * (r_delta_price / (instrument.one_pip_means or 1.0)) * instrument.value_per_pip
             # upnl = nrq * delta_price * instrument.contract_size  # no have contract size on instrument
-            # rpnl = self.x * delta_price * instrument.contract_size
+            # rpnl = self.x * r_delta_price * instrument.contract_size
 
             # including fees and realized profit and loss
             self._stats['unrealized-profit-loss'] = instrument.adjust_quote(

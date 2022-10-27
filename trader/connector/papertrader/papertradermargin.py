@@ -19,6 +19,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
     """
     Execute the order for margin position.
     @todo support of hedging else reduce first the opposite direction positions (FIFO method)
+    @todo partial reduce position (avg exit price, qty of position)
     """
     current_position = None
     positions = []
@@ -312,7 +313,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
 
         # if position is empty -> closed -> delete it
         if current_position.quantity <= 0.0:
-            current_position.exit(None)
+            current_position.exit(exec_price)
 
             # done during next update
             # trader.lock()

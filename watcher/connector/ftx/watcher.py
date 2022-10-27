@@ -495,7 +495,7 @@ class FTXWatcher(Watcher):
                     pair = [market_id]
 
                     self._connector.ws.unsubscribe_public('ticker', pair)
-                    self._connector.ws.unsubscribe_public('trade', pair)
+                    self._connector.ws.unsubscribe_public('trades', pair)
 
                     self._watched_instruments.remove(market_id)
 
@@ -527,7 +527,7 @@ class FTXWatcher(Watcher):
 
         if self.__check_reconnect(self._ws_trade_data):
             # logger.debug("%s reconnecting to trades data stream..." % self.name)
-            self.__reconnect_ws(self._ws_trade_data, self.__on_trade_data, 'trade')
+            self.__reconnect_ws(self._ws_trade_data, self.__on_trade_data, 'trades')
 
         # if self.__check_reconnect(self._ws_orderbook_data):
         #     # logger.debug("%s reconnecting to order book data stream..." % self.name)
@@ -702,6 +702,9 @@ class FTXWatcher(Watcher):
 
     def __on_ticker_data(self, message):
         # market data instrument by symbol
+        if type(message) is not dict:
+            return
+
         msg_type = message.get('type')
         if msg_type == 'subscribed':
             self._ws_ticker_data['timestamp'] = time.time()

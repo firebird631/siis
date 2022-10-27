@@ -720,8 +720,6 @@ class Trader(Runnable):
 
         if position_data.get('avg-entry-price') is not None:
             position.entry_price = position_data['avg-entry-price']
-        elif position_data.get('avg-price') is not None:
-            position.entry_price = position_data['avg-price']
         elif position_data.get('exec-price') is not None:
             position.entry_price = position_data['exec-price']
 
@@ -731,6 +729,7 @@ class Trader(Runnable):
         if market:
             position.update_profit_loss(market)
 
+        # overrides if provided by tiers
         if position_data.get('profit-loss') is not None:
             position._profit_loss = position_data.get('profit-loss')
             position._profit_market_loss = position_data.get('profit-loss')
@@ -750,7 +749,32 @@ class Trader(Runnable):
 
         if position:
             # update
-            position.entry(
+            avg_entry_price = 0.0
+            avg_exit_price = 0.0
+
+            # compute average entry price or exit price if necessary
+            if position_data.get('exec-price') is not None:
+                if position_data['quantity'] > position.quantity:
+                    # increased qty (enter)
+                    exec_qty = position_data['quantity'] - position.quantity
+
+                    if not position.entry_price:
+                        avg_entry_price = position_data['exec-price']
+                    else:
+                        avg_entry_price = (position.entry_price * position.quantity + position_data['exec-price'] * exec_qty) / (
+                            position.quantity + exec_qty)
+
+                elif position_data['quantity'] < position.quantity:
+                    # decreased qty (reduce)
+                    exec_qty = position.quantity - position_data['quantity']
+
+                    if not position.exit_price:
+                        avg_exit_price = position_data['exec-price']
+                    else:
+                        avg_exit_price = (position.exit_price * position.quantity + position_data['exec-price'] * exec_qty) / (
+                                position.quantity + exec_qty)
+
+            position.update(
                 position_data['direction'],
                 position_data['symbol'],
                 position_data['quantity'],
@@ -759,17 +783,19 @@ class Trader(Runnable):
                 position_data.get('leverage'),
                 position_data.get('trailing-stop'))
 
+            # provided average entry price or computed
             if position_data.get('avg-entry-price') is not None:
                 position.entry_price = position_data['avg-entry-price']
-            elif position_data.get('avg-price') is not None:
-                position.entry_price = position_data['avg-price']
-            elif position_data.get('exec-price') is not None:
-                position.entry_price = position_data['exec-price']
+            elif avg_entry_price:
+                position.entry_price = avg_entry_price
 
+            # provided average exit price or computed
             if position_data.get('avg-exit-price') is not None:
                 position.exit_price = position_data['avg-exit-price']
+            elif avg_exit_price:
+                position.exit_price = avg_exit_price
         else:
-            # not found, insert and change state 
+            # not found, insert and change state (might not occur)
             position = Position(self)
             position.set_position_id(position_data['id'])
             position.set_key(self.service.gen_key())
@@ -785,8 +811,6 @@ class Trader(Runnable):
 
             if position_data.get('avg-entry-price') is not None:
                 position.entry_price = position_data['avg-entry-price']
-            elif position_data.get('avg-price') is not None:
-                position.entry_price = position_data['avg-price']
             elif position_data.get('exec-price') is not None:
                 position.entry_price = position_data['exec-price']
 
@@ -799,6 +823,7 @@ class Trader(Runnable):
         if market:
             position.update_profit_loss(market)
 
+        # overrides if provided by tiers
         if position_data.get('profit-loss') is not None:
             position._profit_loss = position_data.get('profit-loss')
             position._profit_market_loss = position_data.get('profit-loss')

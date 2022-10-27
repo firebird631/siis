@@ -428,7 +428,7 @@ span.signal-exit, span.region-exit {
     color: orange;
 }
 
-button.trade-modify-take-profit, button.trade-modify-stop-loss {
+button.trade-modify-take-profit, button.trade-modify-stop-loss, button.trade-reduce-quantity {
     padding: 4px;
     margin-left: 3px;
 }

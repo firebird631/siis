@@ -150,6 +150,7 @@ def open_position(trader, order, market, open_exec_price):
 def close_position(trader, market, position, close_exec_price, order_type=Order.ORDER_LIMIT):
     """
     Close a position.
+    @todo Take care if called after a reduce_position then need avg exit price, previous rpnl...
     """
     if not position:
         return False
@@ -337,6 +338,8 @@ def close_position(trader, market, position, close_exec_price, order_type=Order.
 def reduce_position(trader, market, position, close_exec_price, reduce_quantity):
     """
     Reduce a position.
+    Very similar to close_position above but manage a partial amount.
+
     @todo Must to compute and update the avg exit price of the position and adjust PNL.
     """
     if not position:
@@ -393,9 +396,16 @@ def reduce_position(trader, market, position, close_exec_price, reduce_quantity)
     position_gain_loss = 0.0
 
     # the position is partially or fully closed, quantity in the opposite direction
+    if position.exit_price > 0:
+        # compute an average of the exit price
+        position.exit_price = (position.exit_price * position.quantity + close_exec_price * order.quantity) / (
+                position.quantity + order.quantity)
+    else:
+        # initial exit price
+        position.exit_price = close_exec_price
+
     position_gain_loss = effective_price * order.quantity
     position.quantity -= order.quantity
-    position.exit_price = close_exec_price
 
     # directly executed quantity
     order.executed = order.quantity
@@ -515,6 +525,7 @@ def reduce_position(trader, market, position, close_exec_price, reduce_quantity)
         order.symbol, order.order_id, ""))
 
     if position.quantity == 0:
+        # @todo could be a avg exit price
         position.exit(exec_price)
 
     return True

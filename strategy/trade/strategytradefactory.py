@@ -4,7 +4,6 @@
 # Strategy trade class factory
 
 from .strategyassettrade import StrategyAssetTrade
-from .strategyindmargin3xtrade import StrategyIndMargin3xTrade
 from .strategyindmargintrade import StrategyIndMarginTrade
 from .strategymargintrade import StrategyMarginTrade
 from .strategypositiontrade import StrategyPositionTrade
@@ -28,8 +27,6 @@ class StrategyTradeFactory(object):
             return StrategyIndMarginTrade
         elif name == "StrategyPositionTrade":
             return StrategyPositionTrade
-        elif name == "StrategyIndMargin3xTrade":
-            return StrategyIndMargin3xTrade
         elif name == "asset":
             return StrategyAssetTrade
         elif name == "margin":
@@ -38,8 +35,6 @@ class StrategyTradeFactory(object):
             return StrategyIndMarginTrade
         elif name == "position":
             return StrategyPositionTrade
-        elif name == "ind-margin-3x":
-            return StrategyIndMargin3xTrade
 
         return None
 

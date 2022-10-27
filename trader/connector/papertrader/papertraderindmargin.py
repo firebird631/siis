@@ -16,6 +16,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
     """
     Execute the order for indivisible margin position.
     @todo update to support only indivisible margin order
+    @todo partial reduce position (avg exit price, qty of position)
     """
     current_position = None
     positions = []
@@ -271,7 +272,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 'direction': current_position.direction,
                 'timestamp': order.transact_time,
                 'quantity': current_position.quantity,
-                # 'avg-price': current_position.entry_price,
+                # 'avg-entry-price': current_position.entry_price,
+                # 'avg-exit-price': current_position.exit_price,
                 'exec-price': exec_price,
                 'stop-loss': current_position.stop_loss,
                 'take-profit': current_position.take_profit,
@@ -288,7 +290,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         # if position is empty -> closed -> delete it
         if current_position.quantity <= 0.0:
             # take care this does not make an issue
-            current_position.exit(None)
+            current_position.exit(exec_price)
 
             # don't a next update
             # trader.lock()

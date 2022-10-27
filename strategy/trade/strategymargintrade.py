@@ -24,12 +24,11 @@ logger = logging.getLogger('siis.strategy.margintrade')
 
 class StrategyMarginTrade(StrategyTrade):
     """
-    Specialization for margin trading. 
+    Specialization for margin trading with FIFO position order at deletion.
+    @todo It is no longer maintained because no current usage and very specific.
 
     This type of trade is related to margin trading market, allowing or not hedging, where there is a
     position identifier per trade, but generally in the same direction (no hedging).
-
-    Works with crypto margin brokers (kraken...).
 
     @todo do we need like with asset trade an exit_trades list to compute the axp and x values, because
         if we use cumulative-filled and avg-price we have the same problem here too.

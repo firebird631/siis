@@ -263,7 +263,10 @@ def cmd_strategy_trader_export_all(strategy, data):
             filename = "siis_strategy.%s" % export_format
 
     # make a backup just before
-    shutil.copyfile(filename, filename + '.bak')
+    try:
+        shutil.copyfile(filename, filename + '.bak')
+    except FileNotFoundError:
+        pass
 
     with open(filename, "w") as f:
         if export_format == "json":
