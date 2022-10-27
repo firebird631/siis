@@ -671,7 +671,11 @@ class PaperTrader(Trader):
                 else:
                     order.order_type = Order.ORDER_MARKET
 
-                order.quantity = position.quantity  # fully close
+                if quantity > 0:
+                    order.quantity = min(quantity, position.quantity)
+                else:
+                    order.quantity = position.quantity  # fully close
+
                 order.leverage = position.leverage  # same as open
 
                 order.close_only = True

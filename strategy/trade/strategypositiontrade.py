@@ -312,7 +312,8 @@ class StrategyPositionTrade(StrategyTrade):
                 reduce_qty = min(quantity, available_qty)
 
                 if trader.close_position(self.position_id, instrument, self.dir, reduce_qty, True, None):
-                    self._closing = True
+                    # closing only if reduce full qty (because it is same as close)
+                    self._closing = quantity >= available_qty
                     return self.ACCEPTED
                 else:
                     return self.REJECTED
@@ -510,7 +511,7 @@ class StrategyPositionTrade(StrategyTrade):
             elif data.get('filled') is not None:
                 last_qty = data.get('filled', 0) + self.position_quantity
             else:
-                last_qty = self.position_quantity
+                last_qty = data.get('quantity', self.position_quantity)
 
             if self.position_quantity != last_qty:
                 if last_qty < self.position_quantity:

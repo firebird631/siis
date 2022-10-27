@@ -491,13 +491,13 @@ def reduce_position(trader, market, position, close_exec_price, reduce_quantity)
     # position signal
     #
 
-    # closed position
+    # updated position
     position_data = {
         'id': position.position_id,
         'symbol': position.symbol,
         'direction': position.direction,
         'timestamp': order.transact_time,
-        'quantity': 0,
+        'quantity': position.quantity,  # remaining quantity
         'avg-entry-price': position.entry_price,
         'avg-exit-price': position.exit_price,
         'exec-price': exec_price,
