@@ -193,6 +193,7 @@ class DiscordNotifier(Notifier):
         trade_id = t['id']
         symbol = t['symbol']
         alias = t['alias']
+        market_id = t['market-id']
 
         # filter only if a change occurs on targets or from entry execution state
         pt = self._opened_trades.get(symbol, {}).get(trade_id)
@@ -202,6 +203,7 @@ class DiscordNotifier(Notifier):
         modify_tp = False
         modify_sl = False
         modify_comment = False
+        partial_exit = False
 
         if pt:
             if pt['avg-entry-price'] != t['avg-entry-price']:
@@ -216,11 +218,32 @@ class DiscordNotifier(Notifier):
             if pt['comment'] != t['comment']:
                 accept = True
                 modify_comment = True
+            if pt.get('filled-exit-qty', "0") != t['filled-exit-qty']:
+                accept = True
+                partial_exit = True
 
         if accept:
             if self._template in ("default", "verbose"):
                 if execute and float(t['avg-entry-price']):
                     messages.append("- Entry-Price: %s" % t['avg-entry-price'])
+
+            if partial_exit and float(t['filled-exit-qty']):
+                reduce_amount = float(t['filled-exit-qty']) - float(pt.get('filled-exit-qty', "0"))
+                reduce_amount_pct = reduce_amount / float(t['filled-entry-qty']) * 100.0
+
+                if 'trade-quantity' in self._signals_opts and t['order-qty']:
+                    if self._display_quantity_in_local:
+                        instrument = self.service.strategy_service.strategy().instrument(market_id)
+                        if instrument and instrument.trade_quantity > 0:
+                            display_qty = reduce_amount / instrument.trade_quantity
+                            messages.append("- Reduce: %g (%.2f%%)" % (display_qty, reduce_amount_pct))
+                        else:
+                            messages.append("- Reduce: %g (%.2f%%)" % (reduce_amount, reduce_amount_pct))
+                    else:
+                        messages.append("- Reduce: %g (%.2f%%)" % (reduce_amount, reduce_amount_pct))
+                else:
+                    # don't display quantity, but need at least in percent
+                    messages.append("- Reduce: %.2f%%" % reduce_amount_pct)
 
             if modify_tp and float(t['take-profit-price']):
                 messages.append("- Modify-Take-Profit: %s" % t['take-profit-price'])

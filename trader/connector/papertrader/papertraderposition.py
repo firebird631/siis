@@ -337,7 +337,7 @@ def close_position(trader, market, position, close_exec_price, order_type=Order.
 def reduce_position(trader, market, position, close_exec_price, reduce_quantity):
     """
     Reduce a position.
-    @todo
+    @todo Must to compute and update the avg exit price of the position and adjust PNL.
     """
     if not position:
         return False
@@ -392,7 +392,7 @@ def reduce_position(trader, market, position, close_exec_price, reduce_quantity)
     # in base currency
     position_gain_loss = 0.0
 
-    # the position is closed, exact quantity in the opposite direction
+    # the position is partially or fully closed, quantity in the opposite direction
     position_gain_loss = effective_price * order.quantity
     position.quantity -= order.quantity
     position.exit_price = close_exec_price
@@ -515,7 +515,6 @@ def reduce_position(trader, market, position, close_exec_price, reduce_quantity)
         order.symbol, order.order_id, ""))
 
     if position.quantity == 0:
-        # @todo could need update avg exec price
         position.exit(exec_price)
 
     return True

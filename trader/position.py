@@ -264,7 +264,7 @@ class Position(Keyed):
     def change_rate(self, market: Market) -> float:
         """
         Compute and return the gained rate related to the entry and market price.
-        Its only the change of the price in percent (does not take care of the size of the position)
+        It is only the change of the price in percent (does not take care of the size of the position)
         @return Profit/loss rate
         """
         if market is None:
