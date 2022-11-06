@@ -614,8 +614,8 @@ class FTXFuturesWatcher(Watcher):
             # symbol['orderTypes'] in ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT']
             # market.orders =
 
-            market.maker_fee = account['makerFee'] if account else 0.0002
-            market.taker_fee = account['takerFee'] if account else 0.0005
+            market.maker_fee = account['makerFee'] * 0.01 if account else 0.0002
+            market.taker_fee = account['takerFee'] * 0.01 if account else 0.0005
 
             # only order book can give us bid/ask
             market.bid = float(symbol['bid'])
