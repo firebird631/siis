@@ -49,17 +49,17 @@ class BitMexAccount(Account):
         self._currency = funds['currency']
         self._name = funds['account']
 
-        self._balance = funds['walletBalance']  # diff between walletBalance and amount ??
+        self._balance = funds.get('walletBalance', 0.0)  # diff between walletBalance and amount ??
 
         # net worth : balance + unrealized profit/loss
-        self._net_worth = funds['amount'] + funds['prevUnrealisedPnl']
+        self._net_worth = funds.get('amount', 0.0) + funds.get('prevUnrealisedPnl', 0.0)
 
-        self._margin_balance = funds['marginBalance']   # free margin
-        self._risk_limit = funds['riskLimit']  # risk limit
+        self._margin_balance = funds.get('marginBalance', 0.0)   # free margin
+        self._risk_limit = funds.get('riskLimit', 0.0)  # risk limit
 
-        used_margin = funds['walletBalance'] - funds['availableMargin']
+        used_margin = funds.get('walletBalance', 0.0) - funds.get('availableMargin', 0.0)
         if used_margin > 0.0:
-            self._margin_level = funds['marginBalance'] / used_margin
+            self._margin_level = funds.get('marginBalance', 0.0) / used_margin
         else:
             self._margin_level = 0.0
 
