@@ -71,10 +71,11 @@ class BinanceClientProtocol(WebSocketClientProtocol):
                     error_logger.error(repr(e))
                     traceback_logger.error(traceback.format_exc())
 
-    # def connectionLost(self, reason):
-    #     WebSocketClientProtocol.connectionLost(self, reason)
-    #     subs = '/'.join(self.factory.subscriptions.keys())
-    #     error_logger.error("Binance WS public connection lost for %s: Reason is %s" % (subs, reason))
+    def connectionLost(self, reason):
+        pass
+        # WebSocketClientProtocol.connectionLost(self, reason)
+        # subs = '/'.join(self.factory.subscriptions.keys())
+        # error_logger.error("Binance WS public connection lost for %s: Reason is %s" % (subs, reason))
 
 
 class BinanceReconnectingClientFactory(ReconnectingClientFactory):
@@ -188,6 +189,7 @@ class BinanceSocketManager(threading.Thread):
             self._conns[id_] = connectWS(factory, context_factory)
         except Exception as e:
             logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
 
         return path
 
@@ -613,9 +615,10 @@ class BinanceSocketManager(threading.Thread):
         id_ = "_".join([subscription])
 
         if id_ not in self._conns:
-            # stream_path = 'streams={}'.format('/'.join(subscription))
-            stream_path = 'streams={}'.format(subscription)
-            return self._start_socket(subscription, stream_path, callback, subscription=subscription, pair=pair)
+            # stream_path = '?streams={}'.format('/'.join(subscription))
+            # stream_path = "?streams=" + ','.join(["{}@{}".format(x.lower(), subscription) for x in pair])
+            stream_path = '?streams={}'.format(subscription)
+            return self._start_socket(subscription, stream_path, callback, prefix='stream', subscription=subscription, pair=pair)
         else:
             reactor.callFromThread(self.send_subscribe, id_, subscription, pair)
 

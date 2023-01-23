@@ -116,6 +116,8 @@ class Connector(object):
     def deposits(self, asset=None, timestamp=None):
         """
         Returns deposits for a specific asset or any.
+
+        @deprecated
         """
         if self._session:
             data = {}
@@ -134,6 +136,8 @@ class Connector(object):
     def withdraws(self, asset=None, timestamp=None):
         """
         Returns withdraws for a specific asset or any.
+
+        @deprecated
         """
         if self._session:
             data = {}
@@ -205,6 +209,8 @@ class Connector(object):
     def get_dust_log(self):
         """
         Return an array with all past dust small amount balance conversions.
+
+        @deprecated
         """
         if self._session:
             results = self._session.get_dust_log()

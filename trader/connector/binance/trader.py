@@ -52,6 +52,8 @@ class BinanceTrader(Trader):
     @todo OCO orders
     """
 
+    COMPUTE_ASSET_PRICE = False
+
     _watcher: Union[BinanceWatcher, None]
 
     def __init__(self, service: TraderService):
@@ -480,13 +482,14 @@ class BinanceTrader(Trader):
         """
         Fetch recent asset and update the average unit price per asset and set it into positions.
 
-        @note Asset must be fetch before from DB if existing.
+        @note Asset must be fetched before from DB if existing.
+        @todo prefetch/compute option
         """
         query_time = time.time()
 
         try:
             balances_list = self._watcher.connector.balances()
-            dust_log = self._watcher.connector.get_dust_log()
+            # dust_log = self._watcher.connector.get_dust_log()
             exchange_info = self._watcher._symbols_data  # self._watcher.connector.client.get_exchange_info()
         except Exception as e:
             error_logger.error("__fetch_assets: %s" % repr(e))
@@ -533,168 +536,172 @@ class BinanceTrader(Trader):
             balances[asset.symbol] = balance
 
         #
-        # prefetch for currently non empty assets
+        # prefetch for currently non-empty assets
         #
 
-        for k, balance in balances.items():
-            asset_name = balance['asset']
+        if self.COMPUTE_ASSET_PRICE:
+            for k, balance in balances.items():
+                asset_name = balance['asset']
 
-            locked = float(balance['locked'])
-            free = float(balance['free'])
+                locked = float(balance['locked'])
+                free = float(balance['free'])
 
-            quote_symbol = balance['quote']
-            asset = self.__get_or_add_asset(asset_name)
+                quote_symbol = balance['quote']
+                asset = self.__get_or_add_asset(asset_name)
 
-            quantity = free + locked
-
-            # not empty balance or was not empty but not it is
-            if quantity or (not quantity and asset.quantity):
                 quantity = free + locked
 
-                last_update_time = asset.last_update_time
-                last_trade_id = asset.last_trade_id
+                # not empty balance or was not empty but not it is
+                if quantity or (not quantity and asset.quantity):
+                    quantity = free + locked
 
-                # get recent deposits and withdraws
-                deposits = self._watcher.connector.deposits(asset_name, last_update_time)
-                withdraws = self._watcher.connector.withdraws(asset_name, last_update_time)
+                    last_update_time = asset.last_update_time
+                    last_trade_id = asset.last_trade_id
 
-                #
-                # small balances (@todo to be sure they does not appears in transactions list)
-                #
+                    # get recent deposits and withdraws
+                    deposits = []  # self._watcher.connector.deposits(asset_name, last_update_time)
+                    withdraws = []  # self._watcher.connector.withdraws(asset_name, last_update_time)
 
-                # for dust in dust_log:
-                #   for log in dust['logs']:
-                #       if log['fromAsset'] == asset_name:
-                #           time = 0  # 'operateTime': '2018-10-08 20:11:18' @todo is UTC or LOCAL ? ...
-                #           if time > last_update_time:  # strictly greater than
-                #               price = self.history_price(asset_name+quote_symbol, float(log['operateTime'])*0.001)
-                #               balance['trades'].append({
-                #                   'id': 0,  # no id only for trades
-                #                   'time': time,
-                #                   'quote': quote_symbol,
-                #                   'price': price,
-                #                   'qty': log['amount'],
-                #                   # 'commission': log['serviceChargeAmount']  # think its already minus from transferedAmount
-                #                   'isBuyer': False  # as seller to dec qty
-                #               })
+                    #
+                    # small balances (@todo to be sure they does not appears in transactions list)
+                    #
 
-                #           balances['BNB']['trade'].append((log['transferedAmount'], time, True))  # as buyer to inc qty
+                    # @deprecated
+                    # for dust in dust_log:
+                    #   for log in dust['logs']:
+                    #       if log['fromAsset'] == asset_name:
+                    #           time = 0  # 'operateTime': '2018-10-08 20:11:18' @todo is UTC or LOCAL ? ...
+                    #           if time > last_update_time:  # strictly greater than
+                    #               price = self.history_price(asset_name+quote_symbol, float(log['operateTime'])*0.001)
+                    #               balance['trades'].append({
+                    #                   'id': 0,  # no id only for trades
+                    #                   'time': time,
+                    #                   'quote': quote_symbol,
+                    #                   'price': price,
+                    #                   'qty': log['amount'],
+                    #                   # 'commission': log['serviceChargeAmount']  # think its already minus from transferedAmount
+                    #                   'isBuyer': False  # as seller to dec qty
+                    #               })
 
-                #
-                # deposits are like buy trades
-                #
+                    #           balances['BNB']['trade'].append((log['transferedAmount'], time, True))  # as buyer to inc qty
 
-                for deposit in deposits:
-                    # only success deposits at insertTime (we don't known precisely the moment and the price of
-                    # the buy buy its all we have to deal with)
-                    if deposit['status'] == 1:
-                        timestamp = float(deposit['insertTime'])*0.001
-                        if timestamp > last_update_time:  # strictly greater than
-                            price = self.history_price(asset_name+quote_symbol, timestamp)
-                            balance['trades'].append({
-                                'id': 0,  # no id only for trades
-                                'time': deposit['insertTime'],
-                                'quote': quote_symbol,
-                                'price': price,
-                                'qty': deposit['amount'],
-                                'isBuyer': True
-                            })
+                    #
+                    # deposits are like buy trades
+                    #
 
-                #
-                # withdraws are like sell trades
-                #
-
-                for withdraw in withdraws:
-                    if withdraw['status'] == 6:
-                        timestamp = float(withdraw['applyTime'])*0.001
-                        if timestamp > last_update_time:  # strictly greater than
-                            price = self.history_price(asset_name+quote_symbol, timestamp)
-                            fee = 0.0
-                            # @todo compute withdraw fee
-                            # fee = symbols[symbol['baseAsset']]['']
-
-                            balance['trades'].append({
-                                'id': 0,
-                                'time': withdraw['applyTime'],
-                                'quote': quote_symbol,
-                                'price': price,
-                                'qty': withdraw['amount'],
-                                'isBuyer': False,
-                                'commission': fee
-                            })
-
-                #
-                # trades (buy or sell)
-                #
-
-                # for each quote get trades for every quotes
-                for qs in self._quotes:
-                    symbol = asset_name + qs
-
-                    if self._watcher.has_instrument(symbol):
-                        # query for post last update trades only
-                        trades_per_quote = self._watcher.connector.trades_for(symbol, timestamp=last_update_time)  # from_id=last_trade_id)
-                        
-                        # related market details
-                        market = markets[symbol]
-
-                        for trade in trades_per_quote:
-                            timestamp = float(trade['time'])*0.001
-
-                            # check only recent trades not strictly because multiple trade at same
-                            # last time are possibles
-                            if timestamp >= last_update_time and trade['id'] > last_trade_id:
-                                # compute the prefered quote-price
-                                quote_base = market['quoteAsset']
-                                quote_quote = market['quoteAsset']
-                                quote_price = 1.0
-
-                                if (quote_base != quote_symbol) and (quote_base != quote_quote):
-                                    # find a quote price if trade quote is not the preferred quote symbol for this asset
-                                    # and if we have a quote for it (contre-exemple is USDT asset,
-                                    # its a base with price constant to 1.0)
-                                    quote_quote = balances[quote_base]['quote']
-
-                                    if self._watcher.has_instrument(quote_base+quote_quote):
-                                        quote_price = self.history_price(quote_base+quote_quote, timestamp)
-                                    else:
-                                        logger.warning("Missing symbol " + quote_base+quote_quote)
-
-                                # counter part in the quote asset
-                                balances[quote_base]['trades'].append({
-                                    'id': 0,
-                                    'time': trade['time'],
-                                    'quote': quote_quote,
-                                    'price': quote_price,
-                                    'qty': float(trade['qty']) * float(trade['price']),
-                                    'isBuyer': not trade['isBuyer']  # neg
+                    # @deprecated
+                    for deposit in deposits:
+                        # only success deposits at insertTime (we don't know precisely the moment and the price of
+                        # the buy it's all we have to deal with)
+                        if deposit['status'] == 1:
+                            timestamp = float(deposit['insertTime'])*0.001
+                            if timestamp > last_update_time:  # strictly greater than
+                                price = self.history_price(asset_name+quote_symbol, timestamp)
+                                balance['trades'].append({
+                                    'id': 0,  # no id only for trades
+                                    'time': deposit['insertTime'],
+                                    'quote': quote_symbol,
+                                    'price': price,
+                                    'qty': deposit['amount'],
+                                    'isBuyer': True
                                 })
 
-                                # quote-price will be needed to convert into BTC, 'price' define the price of the asset
-                                trade['quote'] = quote_symbol
-                                trade['quote-price'] = quote_price
-                                balance['trades'].append(trade)
+                    #
+                    # withdraws are like sell trades
+                    #
 
-                                # fee asset trade
-                                if trade['commission']:
-                                    fee_asset = trade['commissionAsset']
-                                    fee_quote = balances[fee_asset]['quote']
+                    # @deprecated
+                    for withdraw in withdraws:
+                        if withdraw['status'] == 6:
+                            timestamp = float(withdraw['applyTime'])*0.001
+                            if timestamp > last_update_time:  # strictly greater than
+                                price = self.history_price(asset_name+quote_symbol, timestamp)
+                                fee = 0.0
+                                # @todo compute withdraw fee
+                                # fee = symbols[symbol['baseAsset']]['']
 
-                                    if self._watcher.has_instrument(fee_asset+fee_quote):
-                                        fee_price = self.history_price(fee_asset+fee_quote, timestamp)
-                                    elif self._watcher.has_instrument(fee_quote+fee_asset):
-                                        fee_price = 1.0 / self.history_price(fee_quote+fee_asset, timestamp)
-                                    else:
-                                        fee_price = 1.0
+                                balance['trades'].append({
+                                    'id': 0,
+                                    'time': withdraw['applyTime'],
+                                    'quote': quote_symbol,
+                                    'price': price,
+                                    'qty': withdraw['amount'],
+                                    'isBuyer': False,
+                                    'commission': fee
+                                })
 
-                                    balances[fee_asset]['trades'].append({
+                    #
+                    # trades (buy or sell)
+                    #
+
+                    # for each quote get trades for every quotes
+                    for qs in self._quotes:
+                        symbol = asset_name + qs
+
+                        if self._watcher.has_instrument(symbol):
+                            # query for post last update trades only
+                            trades_per_quote = self._watcher.connector.trades_for(symbol, timestamp=last_update_time)  # from_id=last_trade_id)
+
+                            # related market details
+                            market = markets[symbol]
+
+                            for trade in trades_per_quote:
+                                timestamp = float(trade['time'])*0.001
+
+                                # check only recent trades not strictly because multiple trade at same
+                                # last time are possibles
+                                if timestamp >= last_update_time and trade['id'] > last_trade_id:
+                                    # compute the preferred quote-price
+                                    quote_base = market['quoteAsset']
+                                    quote_quote = market['quoteAsset']
+                                    quote_price = 1.0
+
+                                    if (quote_base != quote_symbol) and (quote_base != quote_quote):
+                                        # find a quote price if trade quote is not the preferred quote symbol for this asset
+                                        # and if we have a quote for it (counter-example is USDT asset,
+                                        # it's a base with price constant to 1.0)
+                                        quote_quote = balances[quote_base]['quote']
+
+                                        if self._watcher.has_instrument(quote_base+quote_quote):
+                                            quote_price = self.history_price(quote_base+quote_quote, timestamp)
+                                        else:
+                                            logger.warning("Missing symbol " + quote_base+quote_quote)
+
+                                    # counterpart in the quote asset
+                                    balances[quote_base]['trades'].append({
                                         'id': 0,
                                         'time': trade['time'],
-                                        'quote': fee_quote,
-                                        'price': fee_price,
-                                        'qty': float(trade['commission']),
-                                        'isBuyer': False  # always minus
+                                        'quote': quote_quote,
+                                        'price': quote_price,
+                                        'qty': float(trade['qty']) * float(trade['price']),
+                                        'isBuyer': not trade['isBuyer']  # neg
                                     })
+
+                                    # quote-price will be needed to convert into BTC, 'price' define the price of the asset
+                                    trade['quote'] = quote_symbol
+                                    trade['quote-price'] = quote_price
+                                    balance['trades'].append(trade)
+
+                                    # fee asset trade
+                                    if trade['commission']:
+                                        fee_asset = trade['commissionAsset']
+                                        fee_quote = balances[fee_asset]['quote']
+
+                                        if self._watcher.has_instrument(fee_asset+fee_quote):
+                                            fee_price = self.history_price(fee_asset+fee_quote, timestamp)
+                                        elif self._watcher.has_instrument(fee_quote+fee_asset):
+                                            fee_price = 1.0 / self.history_price(fee_quote+fee_asset, timestamp)
+                                        else:
+                                            fee_price = 1.0
+
+                                        balances[fee_asset]['trades'].append({
+                                            'id': 0,
+                                            'time': trade['time'],
+                                            'quote': fee_quote,
+                                            'price': fee_price,
+                                            'qty': float(trade['commission']),
+                                            'isBuyer': False  # always minus
+                                        })
 
         #
         # compute entry price
@@ -790,7 +797,7 @@ class BinanceTrader(Trader):
                     if quantity_deviation >= 0.001:
                         # significant deviation...
                         logger.debug("%s deviation of computed quantity for %s from %s but must be %s" % (
-                            self._name ,asset_name, market.format_quantity(curr_qty), market.format_quantity(quantity)))
+                            self._name, asset_name, market.format_quantity(curr_qty), market.format_quantity(quantity)))
                 else:
                     if quantity_deviation >= 0.001:
                         # significant deviation...
@@ -837,7 +844,7 @@ class BinanceTrader(Trader):
             # any pair based on BTC
             quote_symbol = self._account.currency
         else:
-            # others case but might not occurs often because most of the assets are expressed in BTC
+            # others case but might not occur often because most of the assets are expressed in BTC
             for qs in self._quotes:
                 if self._watcher.has_instrument(asset.symbol+qs):
                     quote_symbol = qs

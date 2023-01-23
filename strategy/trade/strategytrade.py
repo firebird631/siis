@@ -1002,27 +1002,28 @@ class StrategyTrade(object):
     # stats
     #
 
-    def update_stats(self, instrument: Instrument, timestamp: float) :
+    def update_stats(self, instrument: Instrument, timestamp: float):
         if self.is_active():
             last_price = instrument.close_exec_price(self.direction)
 
-            if self.dir > 0:
-                if last_price > self._stats['best-price']:
-                    self._stats['best-price'] = last_price
-                    self._stats['best-timestamp'] = timestamp
+            if last_price > 0.0:
+                if self.dir > 0:
+                    if last_price > self._stats['best-price']:
+                        self._stats['best-price'] = last_price
+                        self._stats['best-timestamp'] = timestamp
 
-                if last_price < self._stats['worst-price'] or not self._stats['worst-price']:
-                    self._stats['worst-price'] = last_price
-                    self._stats['worst-timestamp'] = timestamp
+                    if last_price < self._stats['worst-price'] or not self._stats['worst-price']:
+                        self._stats['worst-price'] = last_price
+                        self._stats['worst-timestamp'] = timestamp
 
-            elif self.dir < 0:
-                if last_price < self._stats['best-price'] or not self._stats['best-price']:
-                    self._stats['best-price'] = last_price
-                    self._stats['best-timestamp'] = timestamp
+                elif self.dir < 0:
+                    if last_price < self._stats['best-price'] or not self._stats['best-price']:
+                        self._stats['best-price'] = last_price
+                        self._stats['best-timestamp'] = timestamp
 
-                if last_price > self._stats['worst-price']:
-                    self._stats['worst-price'] = last_price
-                    self._stats['worst-timestamp'] = timestamp
+                    if last_price > self._stats['worst-price']:
+                        self._stats['worst-price'] = last_price
+                        self._stats['worst-timestamp'] = timestamp
 
     def best_price(self) -> float:
         return self._stats['best-price']

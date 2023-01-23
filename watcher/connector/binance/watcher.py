@@ -393,6 +393,7 @@ class BinanceWatcher(Watcher):
                     pair = [market_id.lower()]
 
                     # self._connector.ws.unsubscribe_public('miniTicker', pair)
+                    self._connector.ws.unsubscribe_public('ticker', pair)
                     self._connector.ws.unsubscribe_public('aggTrade', pair)
                     # self._connector.ws.unsubscribe_public('depth', pair)
 
@@ -592,6 +593,9 @@ class BinanceWatcher(Watcher):
         if type(data) is not dict:
             return
 
+        if 'data' in data:
+            data = data['data']
+
         event_type = data.get('e', "")
         if event_type != '24hrTicker':
             return
@@ -612,6 +616,8 @@ class BinanceWatcher(Watcher):
 
             vol24_base = float(data['v']) if data['v'] else 0.0
             vol24_quote = float(data['q']) if data['q'] else 0.0
+
+            logger.debug(bid)
 
             # @todo compute base_exchange_rate
             # if quote_asset != self.BASE_QUOTE:
@@ -822,7 +828,6 @@ class BinanceWatcher(Watcher):
             spread = 0.0
 
             tick = (trade_time, price, price, price, vol, buyer_maker)
-
             self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
 
             if self._store_trade:

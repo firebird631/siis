@@ -801,7 +801,7 @@ class StrategyAssetTrade(StrategyTrade):
     def order_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
         if signal_type == Signal.SIGNAL_ORDER_OPENED:
             # already get at the return of create_order
-            if ref_order_id == self.entry_ref_oid:
+            if ref_order_id and ref_order_id == self.entry_ref_oid:
                 self.entry_oid = data['id']
                 self.entry_ref_oid = None
 
@@ -817,7 +817,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 self._entry_state = StrategyTrade.STATE_OPENED
 
-            elif ref_order_id == self.stop_ref_oid:
+            elif ref_order_id and ref_order_id == self.stop_ref_oid:
                 self.stop_oid = data['id']
                 self.stop_ref_oid = None
 
@@ -826,7 +826,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 self._exit_state = StrategyTrade.STATE_OPENED
 
-            elif ref_order_id == self.limit_ref_oid:
+            elif ref_order_id and ref_order_id == self.limit_ref_oid:
                 self.limit_oid = data['id']
                 self.limit_ref_oid = None
 
@@ -837,7 +837,9 @@ class StrategyAssetTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_ORDER_TRADED:
             # update the trade quantity
-            if (data['id'] == self.entry_oid) and ('filled' in data or 'cumulative-filled' in data):
+            if (data['id'] == self.entry_oid or ref_order_id and ref_order_id == self.entry_ref_oid) and (
+                    'filled' in data or 'cumulative-filled' in data):
+
                 # a single order for the entry, then it is OK and preferred to use cumulative-filled and avg-price
                 # because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -907,8 +909,9 @@ class StrategyAssetTrade(StrategyTrade):
                     self.entry_ref_oid = None
 
             elif ((data['id'] == self.limit_oid or data['id'] == self.stop_oid or
-                   ref_order_id == self.limit_ref_oid or ref_order_id == self.stop_ref_oid) and
+                   (ref_order_id and (ref_order_id == self.limit_ref_oid or ref_order_id == self.stop_ref_oid))) and
                   ('filled' in data or 'cumulative-filled' in data)):
+
                 # @warning on the exit side, normal case will have a single order, but possibly to have a 
                 # partial limit TP, plus remaining in market
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -987,10 +990,15 @@ class StrategyAssetTrade(StrategyTrade):
                     # fully filled, this is ok with single order asset trade, but will need a compute with multi-order
                     self._exit_state = StrategyTrade.STATE_FILLED
 
-                    if data['id'] == self.limit_oid:
+                    if (self.limit_oid and data['id'] == self.limit_oid) or (
+                            self.limit_ref_oid and ref_order_id == self.limit_ref_oid):
+
                         self.limit_oid = None
                         self.limit_ref_oid = None
-                    elif data['id'] == self.stop_oid:
+
+                    elif (self.stop_oid and data['id'] == self.stop_oid) or (
+                            self.stop_ref_oid and ref_order_id == self.stop_ref_oid):
+
                         self.stop_oid = None
                         self.stop_ref_oid = None
 
@@ -1001,6 +1009,9 @@ class StrategyAssetTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:
             # order is no longer active
+            if not data:
+                return
+
             if data == self.entry_oid:
                 self.entry_ref_oid = None
                 self.entry_oid = None
@@ -1019,6 +1030,9 @@ class StrategyAssetTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_ORDER_REJECTED:
             # order is rejected
+            if not data:
+                return
+
             if data == self.entry_ref_oid:
                 self.entry_ref_oid = None
                 self.entry_oid = None
@@ -1035,6 +1049,9 @@ class StrategyAssetTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_ORDER_CANCELED:
             # order is no longer active
+            if not data:
+                return
+
             if data == self.entry_oid:
                 self.entry_ref_oid = None
                 self.entry_oid = None
@@ -1153,6 +1170,7 @@ class StrategyAssetTrade(StrategyTrade):
                         # no longer stop order
                         self.stop_oid = None
                         self.stop_ref_oid = None
+                        self.stop_order_qty = 0.0
                     else:
                         self.fix_exit_by_order(data, instrument)
 
@@ -1170,6 +1188,7 @@ class StrategyAssetTrade(StrategyTrade):
                         # no longer limit order
                         self.limit_oid = None
                         self.limit_ref_oid = None
+                        self.limit_order_qty = 0.0
                     else:
                         self.fix_exit_by_order(data, instrument)
 
@@ -1189,10 +1208,13 @@ class StrategyAssetTrade(StrategyTrade):
         if 'cumulative-filled' not in order_data or 'fully-filled' not in order_data:
             return False
 
+        if 'ref-id' not in order_data:
+            return False
+
         if order_data['cumulative-filled'] > self.e or order_data['fully-filled']:
             self.order_signal(Signal.SIGNAL_ORDER_TRADED, order_data, order_data['ref-id'], instrument)
 
-        if 'ref-id' not in order_data or 'status' not in order_data:
+        if 'status' not in order_data:
             return False
 
         if order_data['status'] in ('closed', 'deleted'):
@@ -1215,10 +1237,13 @@ class StrategyAssetTrade(StrategyTrade):
         if 'cumulative-filled' not in order_data or 'fully-filled' not in order_data:
             return False
 
+        if 'ref-id' not in order_data:
+            return False
+
         if order_data['cumulative-filled'] > self.x or order_data['fully-filled']:
             self.order_signal(Signal.SIGNAL_ORDER_TRADED, order_data, order_data['ref-id'], instrument)
 
-        if 'ref-id' not in order_data or 'status' not in order_data:
+        if 'status' not in order_data:
             return False
 
         if order_data['status'] in ('closed', 'deleted'):
@@ -1251,22 +1276,23 @@ class StrategyAssetTrade(StrategyTrade):
         if self.is_active():
             last_price = instrument.close_exec_price(self.direction)
 
-            upnl = 0.0  # unrealized PNL
-            rpnl = 0.0  # realized PNL
+            if last_price > 0.0:
+                upnl = 0.0  # unrealized PNL
+                rpnl = 0.0  # realized PNL
 
-            # non realized quantity
-            nrq = self.e - self.x
+                # non realized quantity
+                nrq = self.e - self.x
 
-            if self.dir > 0:
-                upnl = last_price * nrq - self.aep * nrq
-                rpnl = self.axp * self.x - self.aep * self.x
-            elif self.dir < 0:
-                upnl = self.aep * nrq - last_price * nrq
-                rpnl = self.aep * self.x - self.axp * self.x
+                if self.dir > 0:
+                    upnl = last_price * nrq - self.aep * nrq
+                    rpnl = self.axp * self.x - self.aep * self.x
+                elif self.dir < 0:
+                    upnl = self.aep * nrq - last_price * nrq
+                    rpnl = self.aep * self.x - self.axp * self.x
 
-            # including fees and realized profit and loss
-            self._stats['unrealized-profit-loss'] = instrument.adjust_quote(
-                upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
+                # including fees and realized profit and loss
+                self._stats['unrealized-profit-loss'] = instrument.adjust_quote(
+                    upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
 
     def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
         data = list(super().info_report(strategy_trader))

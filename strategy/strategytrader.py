@@ -1773,7 +1773,7 @@ class StrategyTrader(object):
         if self._alerts:
             mutated = False
 
-            # one ore many alert, have to pass at least one test
+            # one or many alert, have to pass at least one test
             with self._mutex:
                 results = []
 
