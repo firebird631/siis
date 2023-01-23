@@ -617,8 +617,6 @@ class BinanceWatcher(Watcher):
             vol24_base = float(data['v']) if data['v'] else 0.0
             vol24_quote = float(data['q']) if data['q'] else 0.0
 
-            logger.debug(bid)
-
             # @todo compute base_exchange_rate
             # if quote_asset != self.BASE_QUOTE:
             #     if self._tickers_data.get(quote_asset+self.BASE_QUOTE):
