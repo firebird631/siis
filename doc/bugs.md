@@ -43,6 +43,11 @@ will do not have to be restarted every day, once your configured correctly. For 
 allow to have until 200 stream per web-socket connection, but there is some stream connection loss below this limit. 
 it works with less than 100 markets, trying to go above could be a problem.
 
+**Error during placement of a sell order** : It is better to always have a sufficient amount of BNB tokens to pay commissions with. 
+Binance use free (not in order) BNB tokens to pay commissions with a lower rate and the management is simpler for the bot.
+It you do not have enough BNB buy order will take on asset balance and sell order on quote balance. SiiS try to translate 
+as possible the amount, but it is strongly recommended to use BNB tokens to avoid issues.
+
 ### IG related ###
 
 **IG candle limit 10k reached** : Do the maths, how many markets do you want to initiate, to fetch, how many candles history you will need,
@@ -51,3 +56,15 @@ find your way, or try to ask if they can increase your limitations. I have no so
 **siis.error.watcher.ig AttributeError("module 'time' has no attribute 'clock'")** : Since Python 3.9 the Crypto package is not maintained. 
 Two solutions : replace by its alternative (remove the current, install its replacement) or manually fix the file lib/python3.<9|10>/site-packages/Crypto/Random/_UserFriendlyRNG.py
 at line 77 with t = time.process_time(). clock() function is deprecated and definitively removed since Python 3.9.
+
+### FTX related ###
+
+**No orders are created** : Yes the trading part (ordering, user WS) is not implemented for now.
+
+**It does not work at all** : Yes since FTX exit scam it is no longer working, please consider using another exchange.
+
+### ByBit related ###
+
+**No orders are created** : Yes the trading part (ordering, user WS) is not implemented for now.
+
+**It does not work at all** : Yes the watching of market data is not fully completed for now. Please consider donation to help the developer.

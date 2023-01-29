@@ -47,6 +47,8 @@ class StrategyAssetTrade(StrategyTrade):
         and to fix the quantity.
         - before modifying or canceling, it is necessary to compute the notional size and to compare with the
         min-notional size, because else it will be impossible to recreate a sell order with the remaining quantity.
+
+    @todo if commission is in asset or BNB and not in quote (case of binance : asset at buy et quote at sell / or BNB)
     """
 
     __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', \
@@ -803,7 +805,6 @@ class StrategyAssetTrade(StrategyTrade):
             # already get at the return of create_order
             if ref_order_id and ref_order_id == self.entry_ref_oid:
                 self.entry_oid = data['id']
-                self.entry_ref_oid = None
 
                 # init created timestamp at the create order open
                 if not self.eot:
@@ -819,7 +820,6 @@ class StrategyAssetTrade(StrategyTrade):
 
             elif ref_order_id and ref_order_id == self.stop_ref_oid:
                 self.stop_oid = data['id']
-                self.stop_ref_oid = None
 
                 if not self.xot:
                     self.xot = data['timestamp']
@@ -828,7 +828,6 @@ class StrategyAssetTrade(StrategyTrade):
 
             elif ref_order_id and ref_order_id == self.limit_ref_oid:
                 self.limit_oid = data['id']
-                self.limit_ref_oid = None
 
                 if not self.xot:
                     self.xot = data['timestamp']
@@ -875,6 +874,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 #
                 # fees/commissions
+                # @todo if commission is in asset or BNB
                 #
 
                 if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
@@ -887,7 +887,7 @@ class StrategyAssetTrade(StrategyTrade):
                     self._stats['entry-fees'] = data['cumulative-commission-amount']
                 elif 'commission-amount' in data:
                     self._stats['entry-fees'] += data['commission-amount']
-                # else:  # @todo on quote or on base...
+                # else:
                 #     self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get(
                 #         'maker', False) else instrument.taker_fee)
 
@@ -961,6 +961,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 #
                 # fees/commissions
+                # @todo if commission is in asset or BNB
                 #
 
                 # commission asset is asset, have to reduce it from filled
@@ -987,7 +988,7 @@ class StrategyAssetTrade(StrategyTrade):
                 #
 
                 if data.get('fully-filled'):
-                    # fully filled, this is ok with single order asset trade, but will need a compute with multi-order
+                    # fully filled, this is ok with single order asset trade, but will need to compute with multi-order
                     self._exit_state = StrategyTrade.STATE_FILLED
 
                     if (self.limit_oid and data['id'] == self.limit_oid) or (

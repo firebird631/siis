@@ -232,6 +232,16 @@ class Connector(object):
 
         return {}
 
+    def order_info(self, symbol, order_id):
+        """
+        Returns order info for a specific symbol and order identifier.
+        """
+        if self._session:
+            data = {'symbol': symbol, 'orderId': order_id}
+            return self._session.get_order(**data)
+
+        return {}
+
     #
     # futures
     #

@@ -190,7 +190,7 @@ class BinanceTrader(Trader):
 
     def create_order(self, order: Order, market_or_instrument: Union[Market, Instrument]) -> int:
         """
-        Create a market or limit order using the REST API. Take care to does not make too many calls per minutes.
+        Create a market or limit order using the REST API. Take care to do not make too many calls per minutes.
         """
         if not order or not market_or_instrument:
             return Order.REASON_INVALID_ARGS
@@ -360,10 +360,10 @@ class BinanceTrader(Trader):
             reason = str(e)
 
         if reason:
+            # Unknown order sent : reason.code -2011
             error_logger.error("Trader %s rejected cancel order %s %s reason %s !" % (self.name, order_id, symbol,
                                                                                       reason))
 
-            # @todo error to reason
             return Order.REASON_ERROR
 
         if result:
@@ -437,6 +437,154 @@ class BinanceTrader(Trader):
 
         return market
 
+    def order_info(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> Union[dict, None]:
+        """
+        Retrieve the detail of an order.
+        """
+        if not order_id or not market_or_instrument:
+            return None
+
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to retrieve order info because of missing connector" % self.name)
+            return None
+
+        results = None
+
+        try:
+            results = self._watcher.connector.order_info(market_or_instrument.market_id, order_id)
+        except Exception:
+            # None as error
+            return None
+
+        if results and str(results.get('orderId', 0)) == order_id:
+            order_data = results
+            logger.debug(str(order_data))
+
+            try:
+                symbol = order_data['symbol']
+                market = self.market(symbol)
+
+                if not market:
+                    return None
+
+                price = None
+                stop_price = None
+                completed = False
+                order_ref_id = order_data['clientOrderId']
+                event_timestamp = order_data['updateTime'] * 0.001 if 'updateTime' in order_data else order_data['time'] * 0.001
+
+                if order_data['status'] == Client.ORDER_STATUS_NEW:
+                    status = 'opened'
+                elif order_data['status'] == Client.ORDER_STATUS_PENDING_CANCEL:
+                    # @note not exactly the same meaning
+                    status = 'pending'
+                elif order_data['status'] == Client.ORDER_STATUS_FILLED:
+                    status = 'closed'
+                    completed = True
+                    if 'updateTime' in order_data:
+                        event_timestamp = order_data['updateTime'] * 0.001
+                elif order_data['status'] == Client.ORDER_STATUS_PARTIALLY_FILLED:
+                    status = 'opened'
+                    completed = False
+                    if 'updateTime' in order_data:
+                        event_timestamp = order_data['updateTime'] * 0.001
+                elif order_data['status'] == Client.ORDER_STATUS_CANCELED:
+                    status = 'canceled'
+                    # status = 'deleted'
+                elif order_data['status'] == Client.ORDER_STATUS_EXPIRED:
+                    status = 'expired'
+                    # completed = True ? and on watcher WS...
+                else:
+                    status = ""
+
+                # 'type' and 'origType'
+                if order_data['type'] == Client.ORDER_TYPE_LIMIT:
+                    order_type = Order.ORDER_LIMIT
+                    price = float(order_data['price']) if 'price' in order_data else None
+
+                elif order_data['type'] == Client.ORDER_TYPE_MARKET:
+                    order_type = Order.ORDER_MARKET
+
+                elif order_data['type'] == Client.ORDER_TYPE_STOP_LOSS:
+                    order_type = Order.ORDER_STOP
+                    price = float(order_data['price']) if 'price' in order_data else None
+                    stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+
+                elif order_data['type'] == Client.ORDER_TYPE_STOP_LOSS_LIMIT:
+                    order_type = Order.ORDER_STOP_LIMIT
+                    price = float(order_data['price']) if 'price' in order_data else None
+                    stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+
+                elif order_data['type'] == Client.ORDER_TYPE_TAKE_PROFIT_LIMIT:
+                    order_type = Order.ORDER_TAKE_PROFIT_LIMIT
+                    price = float(order_data['price']) if 'price' in order_data else None
+                    stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+
+                elif order_data['type'] == Client.ORDER_TYPE_LIMIT_MAKER:
+                    order_type = Order.ORDER_TAKE_PROFIT
+                    stop_price = float(order_data['stopPrice']) if 'stopPrice' in order_data else None
+
+                else:
+                    order_type = Order.ORDER_MARKET
+
+                if order_data['timeInForce'] == Client.TIME_IN_FORCE_GTC:
+                    time_in_force = Order.TIME_IN_FORCE_GTC
+                elif order_data['timeInForce'] == Client.TIME_IN_FORCE_IOC:
+                    time_in_force = Order.TIME_IN_FORCE_IOC
+                elif order_data['timeInForce'] == Client.TIME_IN_FORCE_FOK:
+                    time_in_force = Order.TIME_IN_FORCE_FOK
+                else:
+                    time_in_force = Order.TIME_IN_FORCE_GTC
+
+                post_only = False
+                cumulative_commission_amount = 0.0  # @todo
+
+                cumulative_filled = float(order_data['executedQty'])
+                order_volume = float(order_data['origQty'])
+                fully_filled = completed
+
+                # trades = array of trade ids related to order (if trades info requested and data available)
+                trades = []
+
+                order_info = {
+                    'id': order_id,
+                    'symbol': symbol,
+                    'status': status,
+                    'ref-id': order_ref_id,
+                    'direction': Order.LONG if order_data['side'] == Client.SIDE_BUY else Order.SHORT,
+                    'type': order_type,
+                    'timestamp': event_timestamp,
+                    'quantity': order_volume,
+                    'cumulative-filled': cumulative_filled,
+                    'cumulative-commission-amount': cumulative_commission_amount,
+                    'quote-transacted': float(order_data.get('cummulativeQuoteQty', "0.0")),
+                    'price': price,
+                    'stop-price': stop_price,
+                    'time-in-force': time_in_force,
+                    'post-only': post_only,
+                    # 'close-only': ,
+                    'fully-filled': fully_filled
+                    # 'trades': trades
+                }
+
+                # @todo average execution price
+                if 'price' in order_data:
+                    order_info['exec-price'] = float(order_data['price'])
+
+                return order_info
+
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+
+                # error during processing
+                return None
+
+        # empty means success returns but does not exist
+        return {
+            'id': None
+        }
+
     #
     # slots
     #
@@ -455,7 +603,7 @@ class BinanceTrader(Trader):
                     local_asset = self._assets.get(asset.symbol)
                     if local_asset:
                         # update stored asset
-                        local_asset.update_price(asset.last_update_time, asset.last_trade_id, asset.price, asset.quote)
+                        local_asset.update_price(asset.last_update_time, asset.last_trade_id, asset.price)
                         local_asset.set_quantity(asset.quantity, 0)  # no idea of locked/free set all locked
                     else:
                         # store it
@@ -729,9 +877,6 @@ class BinanceTrader(Trader):
 
             quantity = free + locked
 
-            # use preferred quote
-            quote_symbol = asset.quote
-
             # only if qty is not zero or zero but asset previous qty is not zero
             if quantity or (not quantity and asset.quantity):
                 realized_trades = trades
@@ -775,16 +920,16 @@ class BinanceTrader(Trader):
                 #
 
                 if not curr_price and quantity > 0:
-                    if self._watcher.has_instrument(asset_name+quote_symbol):
-                        curr_price = self.history_price(asset_name+quote_symbol, time.time()-60.0)
-                    elif self._watcher.has_instrument(quote_symbol+asset_name):
-                        curr_price = 1.0 / self.history_price(quote_symbol+asset_name, time.time()-60.0)
+                    if self._watcher.has_instrument(asset_name+asset.quote):
+                        curr_price = self.history_price(asset_name+asset.quote, time.time()-60.0)
+                    elif self._watcher.has_instrument(asset.quote+asset_name):
+                        curr_price = 1.0 / self.history_price(asset.quote+asset_name, time.time()-60.0)
                     else:
                         curr_price = 1.0
                         logger.warning("Unsupported quote for asset " + asset_name)
 
                 # update the asset
-                asset.update_price(query_time, last_trade_id, curr_price, quote_symbol)
+                asset.update_price(query_time, last_trade_id, curr_price)
                 asset.set_quantity(locked, free)
 
                 quantity_deviation = abs(quantity-curr_qty) / (quantity or 1.0)
@@ -811,7 +956,7 @@ class BinanceTrader(Trader):
                     asset.quantity, asset.format_price(asset.price), asset.quote))
             else:
                 # no more quantity at time just before the query was made
-                asset.update_price(query_time, asset.last_trade_id, 0.0, quote_symbol)
+                asset.update_price(query_time, asset.last_trade_id, 0.0)
                 asset.set_quantity(0.0, 0.0)
 
                 # store in database with the last computed entry price
@@ -830,33 +975,26 @@ class BinanceTrader(Trader):
         # and find related watched markets
         for qs in self._quotes:
             if asset_name+qs in self._markets:
-                asset.add_market_id(asset_name+qs)
+                if qs == self._account.currency:
+                    asset.add_market_id(asset_name+qs, True)
+                    asset.quote = qs
+                elif qs == self._account.alt_currency:
+                    asset.add_market_id(asset_name+qs)
+                    asset.quote = qs
 
-        # find the most appropriate quote of an asset.
-        quote_symbol = None
-        
-        if asset.symbol == self._account.currency and self._watcher.has_instrument(
-                asset.symbol+self._account.alt_currency):
-            # probably BTCUSDT
-            quote_symbol = self._account.alt_currency
-        elif asset.symbol != self._account.currency and self._watcher.has_instrument(
-                asset.symbol+self._account.currency):
-            # any pair based on BTC
-            quote_symbol = self._account.currency
-        else:
-            # others case but might not occur often because most of the assets are expressed in BTC
-            for qs in self._quotes:
-                if self._watcher.has_instrument(asset.symbol+qs):
-                    quote_symbol = qs
-                    break
+        if not asset.quote:
+            # find the most appropriate quote for each asset.
+            if asset.symbol != self._account.currency and self._watcher.has_instrument(
+                    asset.symbol+self._account.currency):
+                asset.quote = self._account.currency
+            elif asset.symbol != self._account.alt_currency and self._watcher.has_instrument(
+                    asset.symbol+self._account.alt_currency):
+                asset.quote = self._account.alt_currency
+            elif self._watcher.has_instrument(asset.symbol+'USD'):
+                asset.quote = 'USD'
 
-        if not quote_symbol:
             if not asset.quote:
                 logger.warning("No found quote for asset %s" % asset.symbol)
-
-            quote_symbol = asset.symbol
-
-        asset.quote = quote_symbol
 
         return asset
 
@@ -978,8 +1116,8 @@ class BinanceTrader(Trader):
 
     @Trader.mutexed
     def on_asset_updated(self, asset_name: str, locked: float, free: float):
-        asset = self.__get_or_add_asset(asset_name)
         # @todo update as kraken trader
+        asset = self.__get_or_add_asset(asset_name)
         if asset is not None:
             # significant deviation...
             if abs((locked+free)-asset.quantity) / ((locked+free) or 1.0) >= 0.001:
@@ -1004,8 +1142,10 @@ class BinanceTrader(Trader):
 
     def __update_asset(self, order_type, asset, market, trade_id, exec_price, trade_qty, buy_or_sell, timestamp):
         """
-        @note Taking last quote price might be at the timestamp of the trade but it cost an API call
+        @note Taking last quote price might be at the timestamp of the trade, but it cost an API call
         credit and plus a delay. Then assume the last tick price is enough precise.
+
+        @todo fix it
         """
         curr_price = asset.price   # might be in BTC
         curr_qty = asset.quantity
@@ -1014,21 +1154,23 @@ class BinanceTrader(Trader):
         base_precision = market.base_precision if market else 8
         quote_price = 1.0
 
-        if market and asset.symbol != self._account.currency and market.quote != self._account.currency:
-            # asset is not BTC, quote is not BTC, get its price at trade time
+        if market and asset.quote and asset.symbol != self._account.currency and market.quote != self._account.currency:
+            # asset is not USDT, quote is not USDT, get its price at trade time
             if self._watcher.has_instrument(market.quote+self._account.currency):
                 # direct (potential REST call)
                 quote_price = self.history_price(market.quote+self._account.currency, timestamp)
             elif self._watcher.has_instrument(self._account.currency+market.quote):
                 # indirect (potential REST call)
-                quote_price = 1.0 / self.history_price(self._account.currency+market.quote, timestamp)
+                history_price = self.history_price(self._account.currency + market.quote, timestamp)
+                if history_price > 0.0:
+                    quote_price = 1.0 / history_price
             else:
-                quote_price = 0.0  # might not occurs
+                quote_price = 0.0  # might not occur
                 logger.warning("Unsupported quote asset " + market.quote)
 
         price = exec_price * quote_price
 
-        # in BTC
+        # in USDT
         if curr_qty+trade_qty > 0.0:
             if buy_or_sell:
                 # adjust price when buying
@@ -1043,10 +1185,9 @@ class BinanceTrader(Trader):
 
         if not curr_price and trade_qty > 0:
             if asset.symbol == self._account.currency:
-                # last min BTCUSDT price
-                curr_price = self.history_price(asset.symbol+self.account.alt_currency, timestamp)
+                curr_price = 1.0
             else:
-                # base price in BTC at trade time
+                # base price in USDT at trade time
                 if self._watcher.has_instrument(asset.symbol+self._account.currency):
                     # direct
                     curr_price = self.history_price(asset.symbol+self._account.currency, timestamp)
@@ -1054,7 +1195,7 @@ class BinanceTrader(Trader):
                     # indirect
                     curr_price = 1.0 / self.history_price(self._account.currency+asset.symbol, timestamp)
                 else:
-                    curr_price = 0.0  # might not occurs
+                    curr_price = 0.0  # might not occur
                     logger.warning("Unsupported asset " + asset.symbol)
 
         #
@@ -1062,7 +1203,7 @@ class BinanceTrader(Trader):
         #
 
         # price
-        asset.update_price(timestamp, trade_id or asset.last_trade_id, curr_price, asset.quote)
+        asset.update_price(timestamp, trade_id or asset.last_trade_id, curr_price)
 
         # and qty
         if buy_or_sell:
@@ -1102,7 +1243,7 @@ class BinanceTrader(Trader):
         market = self._markets.get(order_data['symbol'])
 
         if market is None:
-            # not interested by this market
+            # not interested in this market
             return
 
         base_asset = self.__get_or_add_asset(market.base)
@@ -1113,7 +1254,7 @@ class BinanceTrader(Trader):
         order = self._orders.get(order_data['id'])
 
         if order is None:
-            # not found (might not occurs)
+            # not found (might not occur)
             order = Order(self, order_data['symbol'])
             order.set_order_id(order_data['id'])
 

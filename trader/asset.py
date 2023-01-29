@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Union
 
 if TYPE_CHECKING:
     from trader.trader import Trader
@@ -112,7 +112,7 @@ class Asset(object):
             self._profit_loss_market = 0.0
             self._profit_loss_market_rate = 0.0
 
-    def update_price(self, last_update_time: float, last_trade_id: int, price: float, quote: str):
+    def update_price(self, last_update_time: float, last_trade_id: int, price: float, quote: Union[str, None] = None):
         """
         Update entry price at time and last trade id.
         """

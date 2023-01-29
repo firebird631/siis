@@ -27,7 +27,7 @@ def cmd_cancel_order(trader: Trader, data: dict) -> dict:
     market_id = data.get('market-id')
     order_id = data.get('order-id')
 
-    market = trader.market(market_id)
+    market = trader.find_market(market_id)
 
     if market is None:
         Terminal.inst().error("No market found to cancel order %s..." % (order_id,))

@@ -173,7 +173,7 @@ class Strategy(Runnable):
 
         self._setup_backtest = None
         self._setup_live = None
-        
+
         self._update_strategy = None
         self._async_update_strategy = None
 

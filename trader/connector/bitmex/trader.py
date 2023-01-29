@@ -629,9 +629,12 @@ class BitMexTrader(Trader):
                 position.leverage = pos['leverage']
 
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos.get('openingTimestamp', time.time()),
-                                                          "%Y-%m-%dT%H:%M:%S.%fZ").replace(
-                    tzinfo=UTC()).timestamp()
+
+                if pos.get('openingTimestamp'):
+                    position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                        tzinfo=UTC()).timestamp()
+                else:
+                    position.created_time = time.time()
 
                 # id is symbol
                 self._positions[symbol] = position
@@ -649,9 +652,12 @@ class BitMexTrader(Trader):
 
                 # position.market_close = pos['market_close']
                 position.entry_price = pos['avgEntryPrice']
-                position.created_time = datetime.strptime(pos.get('openingTimestamp', time.time()),
-                                                          "%Y-%m-%dT%H:%M:%S.%fZ").replace(
-                    tzinfo=UTC()).timestamp()
+
+                if pos.get('openingTimestamp'):
+                    position.created_time = datetime.strptime(pos['openingTimestamp'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                        tzinfo=UTC()).timestamp()
+                else:
+                    position.created_time = time.time()
 
                 # # XBt to XBT
                 # ratio = 1.0

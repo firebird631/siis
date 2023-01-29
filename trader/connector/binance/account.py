@@ -22,13 +22,13 @@ error_logger = logging.getLogger('siis.error.trader.account.binance')
 class BinanceAccount(Account):
     """
     Binance trader related account.
-    Account currency is BTC and alternative currency is USDT.
+    Account currency is USDT and alternative currency is BTC.
     """
 
-    CURRENCY = "BTC"
-    CURRENCY_SYMBOL = "₿"
-    ALT_CURRENCY = "USDT"
-    ALT_CURRENCY_SYMBOL = "Ť"
+    CURRENCY = "USDT"
+    CURRENCY_SYMBOL = "Ť"
+    ALT_CURRENCY = "BTC"
+    ALT_CURRENCY_SYMBOL = "₿"
 
     _parent: BinanceTrader
 
@@ -67,12 +67,19 @@ class BinanceAccount(Account):
             # asset_quantities impl for this trader
             asset_quantities = self.parent.asset_quantities()
 
-            self._currency_ratio = self.parent.last_price(self._currency+self._alt_currency)
-            currency_market = self.parent.market(self._currency+self._alt_currency)
+            if self.parent.has_market(self._alt_currency+self._currency):
+                currency_market = self.parent.market(self._alt_currency+self._currency)
+                if currency_market:
+                    self._currency_ratio = 1.0 / (self.parent.last_price(self._alt_currency+self._currency) or 1)
+                    self._currency_precision = currency_market.quote_precision
+                    self._alt_currency_precision = currency_market.base_precision
 
-            if currency_market:
-                self._currency_precision = currency_market.base_precision
-                self._alt_currency_precision = currency_market.quote_precision
+            elif self.parent.has_market(self._currency+self._alt_currency):
+                currency_market = self.parent.market(self._currency+self._alt_currency)
+                if currency_market:
+                    self._currency_ratio = self.parent.last_price(self._currency+self._alt_currency) or 1
+                    self._currency_precision = currency_market.base_precision
+                    self._alt_currency_precision = currency_market.quote_precision
 
             for balance in asset_quantities:
                 asset_name = balance[0]
@@ -82,13 +89,13 @@ class BinanceAccount(Account):
                 if free or locked:
                     # asset price in quote
                     if asset_name == self._alt_currency:
-                        # asset USDT
-                        base_price = 1.0 / (self.parent.last_price(self._currency+self._alt_currency) or 1.0)
+                        # asset BTC,EUR,USD...
+                        base_price = self.parent.last_price(self._alt_currency+self._currency) or 1.0
                     elif asset_name != self._currency:
-                        # any asset except BTC
+                        # any asset except USDT
                         base_price = self.parent.last_price(asset_name+self._currency) or 1.0
                     else:
-                        # asset BTC itself
+                        # asset USDT itself
                         base_price = 1.0
 
                     self._asset_balance += (free + locked) * base_price

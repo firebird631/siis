@@ -314,7 +314,7 @@ class Watcher(Runnable):
     def receiver(self, signal: Signal):
         if signal.source == Signal.SOURCE_WATCHER:
             if signal.source_name != self._name:
-                # only interested by the watcher of the same name
+                # only interested in the watcher of the same name
                 return
 
             elif signal.signal_type not in (Signal.SIGNAL_MARKET_LIST_DATA,):
