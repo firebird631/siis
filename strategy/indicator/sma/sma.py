@@ -56,6 +56,13 @@ class SMAIndicator(Indicator):
     def smas(self):
         return self._smas
 
+    @property
+    def values(self):
+        return self._smas
+
+    def has_values(self, min_samples=1):
+        return self._smas.size >= min_samples and not np.isnan(self._smas[-min_samples])
+
     @staticmethod
     def SMA_n_sf(length, data, step=1, filtering=False):
         """ 

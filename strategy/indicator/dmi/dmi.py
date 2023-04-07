@@ -62,6 +62,9 @@ class DMIIndicator(Indicator):
     def dms(self):
         return self._dms   
 
+    def has_values(self, min_samples=1):
+        return self._dps.size >= min_samples and not np.isnan(self._dps[-min_samples])
+
     def compute(self, timestamp, high, low, close):
         self._prev_dp = self._last_dp
         self._prev_dm = self._last_dm

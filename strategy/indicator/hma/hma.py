@@ -72,6 +72,13 @@ class HMAIndicator(Indicator):
     def hmas(self):
         return self._hmas
 
+    @property
+    def values(self):
+        return self._hmas
+
+    def has_values(self, min_samples=1):
+        return self._hmas.size >= min_samples and not np.isnan(self._hmas[-min_samples])
+
     @staticmethod
     def HMA_n(N, data):
         N_2 = int(N / 2)

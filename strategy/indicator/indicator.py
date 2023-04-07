@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 if TYPE_CHECKING:
     from instrument.instrument import Instrument
 
@@ -105,14 +107,28 @@ class Indicator(object):
     @property
     def compute_at_close(self) -> bool:
         """
-        Some indicator could be only computed at an OHLC close
+        Some indicator could be only computed at an OHLC close.
         """
         return self._compute_at_close
+
+    @property
+    def values(self):
+        """
+        Return the indicator main values array if available.
+        """
+        return np.array([])
+
+    def has_values(self, min_samples=1):
+        """
+        True if the last compute made a results.
+        @param min_samples At least one results or more if specified, and never NaN.
+        """
+        return False
 
     #
     # process
     #
 
     # def compute(self, timestamp: float) -> Any:
-    #     # parameters are different depending of the indicator
+    #     # parameters are different depending on the indicator
     #     return None

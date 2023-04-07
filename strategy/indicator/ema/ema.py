@@ -59,6 +59,13 @@ class EMAIndicator(Indicator):
     def emas(self):
         return self._emas
 
+    @property
+    def values(self):
+        return self._emas
+
+    def has_values(self, min_samples=1):
+        return self._emas.size >= min_samples and not np.isnan(self._emas[-min_samples])
+
     @staticmethod
     def EMA_n_sf(N, data, step=1, filtering=False):
         """ 

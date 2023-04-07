@@ -163,5 +163,10 @@
         "status": "load",
         "classpath": "strategy.indicator.cci.cci.CCIIndicator",
         "options": {}
+    },
+    "adx": {
+        "status": "load",
+        "classpath": "strategy.indicator.adx.adx.ADXIndicator",
+        "options": {}
     }
 }
