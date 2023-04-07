@@ -1,7 +1,7 @@
 SiiS : Self Investor Income System
 ==================================
 
-Copyright (c) 2018-2022 Frédéric Scherma. All rights reserved.
+Copyright (c) 2018-2023 Frédéric Scherma. All rights reserved.
 
 Abstract
 --------
@@ -75,6 +75,9 @@ Features
 * Paper-mode : simulate an exchange using live market data
   * Works with spot market, margin and positions
 * Live-mode : real trading on your broker account
+* Machine-learning :
+  * Possibility to implement a trainer (reinforcement learning, genetic algorithm)
+    * Trainer based on genetic algorithm (WIP)
 * Interactive command line interface
   * Many views available using shortcuts
   * Desktop notification on Linux (notify2 lib)
@@ -85,7 +88,7 @@ Features
   * Audio alerts
 * Support the spread, fees and commissions on the profit/loss display
 * Possibility to compute the average entry price of owned assets for spots markets
-  * [x] Binance Spot
+  * [x] Binance Spot (partially BROKEN due to some REST endpoints changes)
   * [ ] Kraken Spot (WIP)
 * Web trader and terminal screen, display :
   * Account details and assets quantities
@@ -106,6 +109,8 @@ Features
     * Donchian Channels
     * ATR, ATR based Supports Resistances
     * SAR
+    * ADX, DMI
+    * CCI
     * Ichimoku
     * SineWave
     * Pivot Point Supports/Resistances
@@ -120,11 +125,12 @@ Features
     * [x] Android application (signal, trade, account) with an external project
     * [ ] XMPP (planned)
 * 4 initials strategies serves as examples :
-    * BitcoinAlpha for serious coins
-    * CryptoAlpha for alt coins
-    * ForexAlpha for forex pairs
+    * BitcoinAlpha for big caps coins
+    * CryptoAlpha for alt-coins
+    * ForexAlpha for FOREX pairs
     * CrystalBall signal (no trading)
     * Ability to implements your own strategies or to pay for a development
+    * Please, consider developing or contact me for a serious working strategy
 * WebHook on TradingView strategies (not maintained) 
   * Uses TamperMonkey with Javascript
   * Watch the strategy trade last
@@ -333,9 +339,10 @@ The identity name must be specified, and need to be configured into the _identit
 
 * --help display command line help.
 * --version display the version number.
-* --profile=\<profile\> Use a specific profile of appliance else default loads any.
+* --profile=\<profile\> Specify the strategy profile to use from config.
 * --paper-mode instantiate paper mode trader and simulate as good as possible.
 * --backtest Process a backtesting, uses paper mode traders and data history available in the database.
+* --exit Automatically exit after a backtesting fully completed. 
 * --timestep=\<seconds\> Timestep in seconds to increment the backesting. More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal candles size uses in the backtested strategies. Default is 60 seconds.
 * --time-factor=\<factor\> in backtesting mode only allow the user to change the time factor and permit interacting during the backtesting. Default speed factor is as fast as possible.
 * --from=<YYYY-MM-DDThh:mm:ss\> define the date time from which start the backtesting, fetcher or binarizer. If omitted use whole data set (take care).
@@ -355,6 +362,7 @@ The identity name must be specified, and need to be configured into the _identit
 * --monitor Enable Web monitor HTTP socket and WebSocket. Default port is 8080.
 * --monitor-port Override the default or configured monitor HTTP port. Websocket port is monitor port+1. Default port is 8081.
 * --preprocess [WIP] Precompute some data before running the strategy.
+* --learning=\<filename\> During training use this file. 
 
 #### Related to tools ####
 

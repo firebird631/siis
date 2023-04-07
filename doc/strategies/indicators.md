@@ -25,7 +25,7 @@ or temporal results buy with a different structure than the inputs.
 
 ### SMA ###
 
-Most common and simple indicator, the smoothed moving average.
+Most common and simple indicator, the simple moving average.
 
 ...
 
@@ -62,6 +62,18 @@ Most common and simple indicator, the smoothed moving average.
 ...
 
 ### Average True Range (ATR) ###
+
+...
+
+### DMI ###
+
+...
+
+### ADX ###
+
+...
+
+### CCI ###
 
 ...
 
