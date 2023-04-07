@@ -1,0 +1,11 @@
+{
+    "dummy": {
+        "status": "load",
+        "classpath": "strategy.learning.trainer.Trainer",
+        "optimizer": {
+            "classpath": "strategy.learning.trainers.dummy.dummytrainer.DummyTrainer"
+        },
+        "options": {
+        }
+    }
+}

@@ -395,6 +395,9 @@ class Instrument(object):
     def watcher(self, watcher_type: int) -> Union[Watcher, None]:
         return self._watchers.get(watcher_type)
 
+    def watchers(self):
+        return self._watchers
+
     @property
     def symbol(self) -> str:
         return self._symbol

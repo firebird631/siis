@@ -85,9 +85,10 @@ def application(argv):
         'markets-path': './user/markets',
         'log-name': 'siis.log',
         'monitor': False,      # startup HTTP/WS monitor service
-        'monitor-port': None,  # monitoring HTTP port (WS is HTTP+1
+        'monitor-port': None,  # monitoring HTTP port (WS is HTTP+1)
         'verbose': False,      # verbose mode for tools
-        'load': False          # load user data at startup from database
+        'load': False,         # load user data at startup from database
+        'exit': False          # if True auto exit when a backtest is completed
     }
 
     # create initial siis data structure if necessary
@@ -99,13 +100,11 @@ def application(argv):
 
     # parse process command line
     if len(argv) > 1:
-        options['livemode'] = True
-
         # utc or local datetime ?
         for arg in argv:
             if arg.startswith('--'):
                 if arg == '--paper-mode':
-                    # livemode but in paper-mode
+                    # live-mode but in paper-mode (paper trading)
                     options['paper-mode'] = True            
 
                 elif arg == '--verbose':
@@ -245,6 +244,14 @@ def application(argv):
                     # profile name
                     options['profile'] = arg.split('=')[1]
 
+                elif arg.startswith('--learning='):
+                    # learning filename (for read at startup and to rewrite at exit)
+                    options['learning'] = arg.split('=')[1]
+
+                elif arg == '--exit':
+                    # auto-quit only in backtest mode
+                    options['exit'] = True
+
                 elif arg == '--version':
                     Terminal.inst().info('%s %s release %s' % (
                         APP_SHORT_NAME, '.'.join([str(x) for x in APP_VERSION]), APP_RELEASE))
@@ -261,6 +268,10 @@ def application(argv):
             if options.get('from') is None or options.get('to') is None:
                 del options['backtesting']
                 Terminal.inst().error("Backtesting need from= and to= date time")
+                sys.exit(-1)
+        else:
+            if options['exit']:
+                Terminal.inst().error("Exit (-exit) at end is only allowed in backtest mode")
                 sys.exit(-1)
 
     #
@@ -810,6 +821,11 @@ def application(argv):
                     notifier_service.sync()
 
                 Terminal.inst().update()
+
+                # only in backtesting when completed and auto exit
+                if strategy_service.backtesting:
+                    if strategy_service.completed and options['exit']:
+                        running = False
 
                 # don't waste CPU time on main thread
                 time.sleep(LOOP_SLEEP)

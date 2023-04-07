@@ -96,6 +96,7 @@ class StrategyService(Service):
         self._load_on_startup = options.get('load', False)
         self._terminate_on_exit = False
         self._save_on_exit = False
+        self._completed = False
 
         # cannot be more recent than now
         from common.utils import UTC
@@ -189,6 +190,13 @@ class StrategyService(Service):
 
     def set_terminate_on_exit(self, status):
         self._terminate_on_exit = status
+
+    @property
+    def completed(self):
+        """
+        When a backtest is completed returns True.
+        """
+        return self._completed
 
     def start(self, options: dict):
         # indicators
@@ -515,6 +523,9 @@ class StrategyService(Service):
                 logger.info("Backtested %i samples within a duration of %s" % (
                     int((self._timestep_thread.current - self._timestep_thread.begin) / self._timestep_thread.timestep),
                     format_delta(self._timestep_thread.end_ts - self._timestep_thread.begin_ts)))
+
+                # @todo write trainer output data
+                self._completed = True
 
     def notify(self, signal_type: int, source_name: str, signal_data):
         if signal_data is None:
