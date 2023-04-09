@@ -83,6 +83,7 @@ def application(argv):
         'log-path': './user/log',
         'reports-path': './user/reports',
         'markets-path': './user/markets',
+        'learning-path': './user/learning',
         'log-name': 'siis.log',
         'monitor': False,      # startup HTTP/WS monitor service
         'monitor-port': None,  # monitoring HTTP port (WS is HTTP+1)

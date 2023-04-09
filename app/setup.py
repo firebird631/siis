@@ -19,6 +19,7 @@ def install(options):
             log_path = pathlib.Path(home, '.siis', 'log')
             reports_path = pathlib.Path(home, '.siis', 'reports')
             markets_path = pathlib.Path(home, '.siis', 'markets')
+            learning_path = pathlib.Path(home, '.siis', 'learning')
         elif sys.platform == "windows":
             app_data = os.getenv('APPDATA')
 
@@ -26,11 +27,13 @@ def install(options):
             log_path = pathlib.Path(home, app_data, 'siis', 'log')
             reports_path = pathlib.Path(home, app_data, 'siis', 'reports')
             markets_path = pathlib.Path(home, app_data, 'siis', 'markets')
+            learning_path = pathlib.Path(home, app_data, 'siis', 'learning')
         else:
             config_path = pathlib.Path(home, '.siis', 'config')
             log_path = pathlib.Path(home, '.siis', 'log')
             reports_path = pathlib.Path(home, '.siis', 'reports')
             markets_path = pathlib.Path(home, '.siis', 'markets')
+            learning_path = pathlib.Path(home, '.siis', 'learning')
     else:
         # uses cwd
         home = pathlib.Path(os.getcwd())
@@ -39,6 +42,7 @@ def install(options):
         log_path = pathlib.Path(home, 'user', 'log')
         reports_path = pathlib.Path(home, 'user', 'reports')
         markets_path = pathlib.Path(home, 'user', 'markets')
+        learning_path = pathlib.Path(home, 'user', 'learning')
 
     # config/
     if not config_path.exists():
@@ -66,6 +70,12 @@ def install(options):
         reports_path.mkdir(parents=True)
 
     options['reports-path'] = str(reports_path)
+
+    # learning/
+    if not learning_path.exists():
+        learning_path.mkdir(parents=True)
+
+    options['learning-path'] = str(learning_path)
 
     # log/
     if not log_path.exists():

@@ -74,6 +74,7 @@ class StrategyService(Service):
         self._watcher_only = options.get('watcher-only', False)
         self._profile = options.get('profile', 'default')
         self._fetch_delay = options.get('delay', 0.0)
+        self._learning = options.get('learning')  # trainer input and output file
 
         self._indicators_config = utils.load_config(options, 'indicators')
         self._tradeops_config = utils.load_config(options, 'tradeops')
@@ -81,6 +82,7 @@ class StrategyService(Service):
         self._alerts_config = utils.load_config(options, 'alerts')
         self._strategies_config = utils.load_config(options, 'strategies')
         self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
+        self._learning_config = utils.load_learning(options, self._learning)
 
         # backtesting options
         self._backtesting = options.get('backtesting', False)
@@ -339,6 +341,10 @@ class StrategyService(Service):
             error_logger.error("Unknown strategy name %s. Ignored !" % strategy_profile['name'])
             return
 
+        # merge learning file options to user params before instantiate
+        if self._learning_config:
+            Strategy.merge_learning_config(parameters, self._learning_config)
+
         strategy_inst = strategy[0](
                 # strategy name
                 strategy_profile['name'],
@@ -524,7 +530,10 @@ class StrategyService(Service):
                     int((self._timestep_thread.current - self._timestep_thread.begin) / self._timestep_thread.timestep),
                     format_delta(self._timestep_thread.end_ts - self._timestep_thread.begin_ts)))
 
-                # @todo write trainer output data
+                # write trainer output data if specified
+                if self._learning:
+                    self._strategy.write_trainer_report(self._learning)
+
                 self._completed = True
 
     def notify(self, signal_type: int, source_name: str, signal_data):

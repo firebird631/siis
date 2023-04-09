@@ -70,3 +70,19 @@ def load_config(options, attr_name):
             error_logger.error("During parsing of %s : %s" % (user_file, repr(e)))
 
     return merge_parameters(default_config, user_config)
+
+
+def load_learning(options, attr_name):
+    if not attr_name:
+        return {}
+
+    user_file = pathlib.Path(options['learning-path'], attr_name + '.json')
+    if user_file.exists():
+        try:
+            with open(str(user_file), 'r') as f:
+                user_config = json.load(f)
+        except Exception as e:
+            error_logger.error("%s %s%s" % (repr(e), attr_name, '.json'))
+            error_logger.error("During parsing of %s : %s" % (user_file, repr(e)))
+
+    return user_config

@@ -1699,6 +1699,14 @@ class Strategy(Runnable):
         return None
 
     #
+    # learning
+    #
+
+    def write_trainer_report(self, filename: str):
+        logger.info("Writing results to trainer file %s..." % str)
+        pass  # @todo
+
+    #
     # static
     #
 
@@ -1756,3 +1764,43 @@ class Strategy(Runnable):
             convert(timeframe, 'timeframe')
 
         return parameters
+
+    @staticmethod
+    def merge_learning_config(parameters, learning_config):
+        strategy_params = learning_config.get('strategy', {}).get('parameters', {})
+
+        def extract_from_dictionary(dictionary, keys):
+            _value = dictionary
+
+            try:
+                for key_or_index in keys:
+                    _value = _value[key_or_index]
+                return True, _value
+
+            except TypeError:
+                return False, None
+
+        def set_to_dictionary(dictionary, l_new_value, keys):
+            _value = dictionary
+
+            try:
+                for i, key_or_index in enumerate(keys):
+                    if i == len(keys) - 1:
+                        _value[key_or_index] = l_new_value
+                        return
+
+                    _value = _value[key_or_index]
+
+            except TypeError:
+                pass
+
+        for path, new_value in strategy_params.items():
+            split_path = path.split('.')
+
+            if not split_path:
+                continue
+
+            found, value = extract_from_dictionary(parameters, split_path)
+
+            if found:
+                set_to_dictionary(parameters, new_value, split_path)
