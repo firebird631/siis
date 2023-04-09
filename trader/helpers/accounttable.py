@@ -14,7 +14,7 @@ def account_table(trader, style='', offset=None, limit=None, col_ofs=None):
     Returns a table of any followed markets.
     """
     columns = ('Broker', 'Account', 'Username', 'Email', 'Asset', 'Free Asset', 'Balance', 'Margin',
-               'Level', 'Net worth', 'Risk limit', 'Unrealized P/L', 'Asset U. P/L')
+               'Level', 'Net worth', 'Risk limit', 'Unrealized P/L', 'Asset U. P/L', 'Draw-Down (Max)')
     data = []
 
     with trader.mutex:
@@ -36,6 +36,8 @@ def account_table(trader, style='', offset=None, limit=None, col_ofs=None):
         risk_limit = trader.account.format_price(trader.account.risk_limit) + cd
         upnl = trader.account.format_price(trader.account.profit_loss) + cd
         asset_upnl = trader.account.format_price(trader.account.asset_profit_loss) + cd
+        draw_down = trader.account.draw_down
+        max_draw_down = trader.account.max_draw_down
 
         if (trader.account.currency != trader.account.alt_currency and trader.account.currency_ratio != 1.0 and
                 trader.account.currency_ratio > 0.0):
@@ -71,7 +73,8 @@ def account_table(trader, style='', offset=None, limit=None, col_ofs=None):
             net_worth,
             risk_limit,
             upnl,
-            asset_upnl
+            asset_upnl,
+            "%.2f%% (%.2f%%)" % (draw_down * 100.0, max_draw_down * 100.0)
         )
 
         if offset < 1 and limit > 0:

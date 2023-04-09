@@ -83,3 +83,5 @@ class IGAccount(Account):
                     self._margin_level = 0.0
 
             self._last_update = time.time()
+
+            self.update_draw_down()

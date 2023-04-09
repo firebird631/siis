@@ -21,6 +21,8 @@ logger = logging.getLogger('siis.trader.account')
 class Account(object):
     """
     An account object is owned by a Trader object.
+
+    @todo log equity, draw-down in an array at a defined frequency
     """
 
     TYPE_UNDEFINED = 0
@@ -74,6 +76,9 @@ class Account(object):
         self._default_risk_ratio = 2.0        # mean take profit -2x the stop loss
 
         self._guaranteed_stop = False
+
+        self._draw_down = 0.0
+        self._max_draw_down = 0.0
 
         trader_config = parent.service.trader_config()
         if trader_config:
@@ -189,6 +194,14 @@ class Account(object):
     @property
     def guaranteed_stop(self) -> bool:
         return self._guaranteed_stop
+
+    @property
+    def draw_down(self) -> float:
+        return self._draw_down
+
+    @property
+    def max_draw_down(self) -> float:
+        return self._max_draw_down
 
     @account_type.setter
     def account_type(self, account_type: int):
@@ -308,6 +321,14 @@ class Account(object):
 
         return formatted_price
 
+    def update_draw_down(self):
+        # update draw down
+        dd = (self._profit_loss + self._asset_profit_loss) / self._balance if self._balance > 0 else 0
+        if dd < 0.0:
+            self._draw_down = -dd
+
+        self._max_draw_down = max(self._max_draw_down, self._draw_down)
+
     #
     # persistence
     #
@@ -322,7 +343,9 @@ class Account(object):
             'profit-loss': self._profit_loss,
             'asset-profit-loss': self._asset_profit_loss,
             'asset-balance': self._asset_balance,
-            'free-asset-balance': self._free_asset_balance
+            'free-asset-balance': self._free_asset_balance,
+            'draw-down': self._draw_down,
+            'max-draw-down': self._max_draw_down
         }
 
     def loads(self, data: dict):
@@ -335,3 +358,5 @@ class Account(object):
         self._asset_profit_loss = data.get('asset-profit-loss', 0.0)
         self._asset_balance = data.get('asset-balance', 0.0)
         self._free_asset_balance = data.get('free-asset-balance', 0.0)
+        self._draw_down = data.get('draw-down', 0.0)
+        self._max_draw_down = data.get('max-draw-down', 0.0)

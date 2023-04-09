@@ -83,6 +83,7 @@ class StrategyService(Service):
         self._strategies_config = utils.load_config(options, 'strategies')
         self._profile_config = utils.load_config(options, "profiles/%s" % self._profile)
         self._learning_config = utils.load_learning(options, self._learning)
+        self._learning_path = options['learning-path']
 
         # backtesting options
         self._backtesting = options.get('backtesting', False)
@@ -532,7 +533,7 @@ class StrategyService(Service):
 
                 # write trainer output data if specified
                 if self._learning:
-                    self._strategy.write_trainer_report(self._learning)
+                    self._strategy.write_trainer_report(self._learning_path, self._learning, self._learning_config)
 
                 self._completed = True
 

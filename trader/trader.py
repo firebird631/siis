@@ -684,6 +684,8 @@ class Trader(Runnable):
         if risk_limit is not None:
             self.account.set_risk_limit(risk_limit)
 
+        self.account.update_draw_down()
+
         # stream
         self.notify_balance_update(
             self.timestamp,

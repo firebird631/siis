@@ -83,6 +83,8 @@ class KrakenAccount(Account):
 
             self._last_update = time.time()
 
+            self.update_draw_down()
+
     def set_margin_balance(self, margin_balance):
         self._margin_balance = margin_balance
 

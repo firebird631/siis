@@ -68,3 +68,5 @@ class FTXFuturesAccount(Account):
 
             self._net_worth = self._asset_balance
             self._last_update = time.time()
+
+            self.update_draw_down()

@@ -104,6 +104,8 @@ class BinanceAccount(Account):
             self._net_worth = self._asset_balance
             self._last_update = time.time()
 
+            self.update_draw_down()
+
         # @deprecated old way using a REST API call
         # if time.time() - self._last_update >= 60.0:
         #     # recompute the balance and free margin for each non-zero account balance

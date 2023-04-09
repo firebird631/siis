@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+import copy
+import json
+
+from datetime import datetime
+
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from watcher.service import WatcherService
     from trader.service import TraderService
     from trader.trader import Trader
@@ -28,7 +31,7 @@ from terminal.terminal import Terminal
 
 from common.runnable import Runnable
 from common.utils import timeframe_to_str, timeframe_from_str
-from config.utils import merge_parameters
+from config.utils import merge_parameters, write_learning
 
 from common.signal import Signal
 from instrument.instrument import Instrument
@@ -1702,9 +1705,73 @@ class Strategy(Runnable):
     # learning
     #
 
-    def write_trainer_report(self, filename: str):
+    def write_trainer_report(self, learning_path: str, filename: str, original_content: dict):
         logger.info("Writing results to trainer file %s..." % str)
-        pass  # @todo
+
+        new_content = copy.deepcopy(original_content)
+        new_content['revision'] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # @todo write result and new parameters
+        from strategy.helpers.aggtradedataset import get_agg_trades
+        with self._mutex:
+            agg_trades = get_agg_trades(self)
+
+        pl_sum = 0.0
+        perf_sum = 0.0
+        best_best = 0.0
+        high_sum = 0.0
+        low_sum = 0.0
+        worst_worst = 0.0
+        success_sum = 0
+        failed_sum = 0
+        roe_sum = 0
+        num_open_trades_sum = 0
+        num_actives_trades_sum = 0
+
+        sl_loss = 0
+        sl_win = 0
+        tp_loss = 0
+        tp_win = 0
+
+        for t in agg_trades:
+            pl_sum += t['pl']
+            perf_sum += t['perf']
+            best_best = max(best_best, t['best'])
+            worst_worst = min(worst_worst, t['worst'])
+            high_sum += t['high']
+            low_sum += t['low']
+            success_sum += t['success']
+            failed_sum += t['failed']
+            roe_sum += t['roe']
+            num_open_trades_sum += t['num-open-trades']
+            num_actives_trades_sum += t['num-actives-trades']
+            sl_loss += t['sl-loss']
+            tp_loss += t['tp-loss']
+            sl_win += t['sl-win']
+            tp_win += t['tp-win']
+
+        max_draw_down = self.trader().account.max_draw_down
+        equity = self.trader().account.balance
+
+        new_content['performance'] = "%.2f%%" % (perf_sum * 100.0)
+        new_content['max-draw-down'] = "%.2f%%" % (max_draw_down * 100.0)
+        new_content['end-equity'] = self.trader().account.format_price(equity)
+
+        new_content['profit-loss'] = self.trader().account.format_price(pl_sum)
+        new_content['best'] = "%.2f%%" % (best_best * 100.0)
+        new_content['worst'] = "%.2f%%" % (worst_worst * 100.0)
+        new_content['succeed-trades'] = success_sum
+        new_content['failed-trades'] = failed_sum
+        new_content['roe-trades'] = roe_sum
+        new_content['total-trades'] = success_sum + failed_sum + roe_sum
+        new_content['open-trades'] = num_open_trades_sum
+        new_content['active-trades'] = num_actives_trades_sum
+        new_content['stop-loss-in-loss'] = sl_loss
+        new_content['take-profit-in-loss'] = tp_loss
+        new_content['stop-loss-in-gain'] = sl_win
+        new_content['take-profit-in-gain'] = tp_win
+
+        write_learning(learning_path, filename, new_content)
 
     #
     # static
@@ -1769,27 +1836,37 @@ class Strategy(Runnable):
     def merge_learning_config(parameters, learning_config):
         strategy_params = learning_config.get('strategy', {}).get('parameters', {})
 
-        def extract_from_dictionary(dictionary, keys):
+        def extract_from_dictionary(dictionary, keys_or_indexes):
             _value = dictionary
 
             try:
-                for key_or_index in keys:
-                    _value = _value[key_or_index]
+                for key_or_index in keys_or_indexes:
+                    if type(_value) is dict:
+                        _value = _value[key_or_index]
+                    elif type(_value) in (list, tuple):
+                        _value = _value[int(key_or_index)]
                 return True, _value
 
             except TypeError:
                 return False, None
 
-        def set_to_dictionary(dictionary, l_new_value, keys):
+        def set_to_dictionary(dictionary, l_new_value, keys_or_indexes):
             _value = dictionary
 
             try:
-                for i, key_or_index in enumerate(keys):
-                    if i == len(keys) - 1:
-                        _value[key_or_index] = l_new_value
+                for i, key_or_index in enumerate(keys_or_indexes):
+                    if i == len(keys_or_indexes) - 1:
+                        if type(_value) is dict:
+                            _value[key_or_index] = l_new_value
+                        elif type(_value) in (list, tuple):
+                            _value[int(key_or_index)] = l_new_value
+
                         return
 
-                    _value = _value[key_or_index]
+                    if type(_value) is dict:
+                        _value = _value[key_or_index]
+                    elif type(_value) in (list, tuple):
+                        _value = _value[int(key_or_index)]
 
             except TypeError:
                 pass

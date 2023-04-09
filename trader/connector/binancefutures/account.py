@@ -102,3 +102,5 @@ class BinanceFuturesAccount(Account):
 
             self._currency_ratio = 1.0 / (self.parent.last_price(self._alt_currency+self._currency) or 1.0)
             self._last_update = time.time()
+
+            self.update_draw_down()

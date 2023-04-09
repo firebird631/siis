@@ -84,6 +84,8 @@ class BitMexAccount(Account):
         now = time.time()
         self._last_update = now
 
+        self.update_draw_down()
+
     def set_currency(self, currency, currency_display=""):
         self._currency = currency
 

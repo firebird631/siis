@@ -8,15 +8,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from watcher.service import WatcherService
     from strategy.strategytrader import StrategyTrader
     from ..service import StrategyService
 
-from config.utils import merge_parameters
-
 import copy
+
+from datetime import datetime, timedelta
 
 import logging
 logger = logging.getLogger('siis.strategy.learning.trainer')
@@ -69,13 +67,6 @@ class Trainer(object):
     def parameters(self) -> dict:
         """Configuration default merge with users"""
         return self._parameters
-
-    def specific_parameters(self, market_id: str) -> dict:
-        """Strategy trader parameters overloaded by per market-id specific if exists"""
-        if market_id in self._parameters['markets']:
-            return merge_parameters(self._parameters, self._parameters['markets'][market_id])
-        else:
-            return self._parameters
 
     #
     # internal processing
@@ -186,7 +177,7 @@ class Trainer(object):
         pass
 
     def write_strategy_parameters(self):
-        pass
+
 
     def default_cleanup(self, broker_id: str, market_id: str, before_datetime: datetime,
                         ohlc_depths: Optional[dict[float]] = None,

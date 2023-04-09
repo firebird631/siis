@@ -330,6 +330,9 @@ class PaperTrader(Trader):
 
                     self.account.set_asset_balance(balance, free_balance)
                     self.account.set_unrealized_asset_profit_loss(profit_loss)
+
+            # drawn down and max
+            self.account.update_draw_down()
         else:
             with self._mutex:
                 # not updated uPNL then always reset            

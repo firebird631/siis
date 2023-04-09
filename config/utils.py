@@ -86,3 +86,19 @@ def load_learning(options, attr_name):
             error_logger.error("During parsing of %s : %s" % (user_file, repr(e)))
 
     return user_config
+
+
+def write_learning(learning_path, attr_name, data):
+    if not attr_name:
+        return {}
+
+    user_file = pathlib.Path(learning_path, attr_name + '.json')
+    try:
+        dump = json.dumps(data, indent=4)
+
+        with open(str(user_file), 'wb') as f:
+            f.write(dump.encode('utf-8'))
+
+    except Exception as e:
+        error_logger.error("%s %s%s" % (repr(e), attr_name, '.json'))
+        error_logger.error("During writing of %s : %s" % (user_file, repr(e)))
