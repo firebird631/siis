@@ -132,6 +132,22 @@ class StrategyService(Service):
         self._worker_pool = WorkerPool()
 
     @property
+    def identity(self) -> str:
+        return self._identity
+
+    @property
+    def profile(self) -> str:
+        return self._profile
+
+    @property
+    def learning_path(self) -> str:
+        return self._learning_path
+
+    @property
+    def profile_config(self) -> str:
+        return self._profile_config
+
+    @property
     def watcher_service(self) -> WatcherService:
         return self._watcher_service
 

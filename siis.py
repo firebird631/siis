@@ -549,7 +549,9 @@ def application(argv):
 
     Terminal.inst().message("Running main loop...")
 
-    Terminal.inst().upgrade()
+    if not options['exit']:
+        Terminal.inst().upgrade()
+
     Terminal.inst().message("Steady...", view='notice')
 
     if view_service:
@@ -578,8 +580,12 @@ def application(argv):
         while running:
             # keyboard input commands
             try:
-                c = Terminal.inst().read()
-                key = Terminal.inst().key()
+                if not options['exit']:
+                    c = Terminal.inst().read()
+                    key = Terminal.inst().key()
+                else:
+                    c = None
+                    key = None
 
                 if c:
                     # split the command line

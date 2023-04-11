@@ -5,7 +5,15 @@
 
 from __future__ import annotations
 
+import threading
+import asyncio
+import base64
+import subprocess
+import time
+import uuid
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
+
+from config import utils
 
 if TYPE_CHECKING:
     from watcher.service import WatcherService
@@ -31,6 +39,8 @@ class Trainer(object):
     With trainer, it is possible to implement a genetic algorithm or any reinforcement learning machine.
 
     Finally, the strategy will re-inject the news parameters (if better are found) or just update its internal state.
+
+    @todo Executor might be join at close or killed
     """
 
     _name: str
@@ -215,3 +225,70 @@ class Trainer(object):
     @staticmethod
     def parse_parameters(parameters: dict) -> dict:
         return parameters
+
+    #
+    # caller proxy helper
+    #
+
+    @staticmethod
+    def caller(identity, profile, learning_path, strategy_trader: StrategyTrader, parameters: dict):
+        strategy = strategy_trader.strategy
+        strategy_service = strategy.service
+
+        trainer_params = {}  # @todo
+        strategy_params = {}
+
+        from_dt = "2020-01"  # @todo compute range from parameters
+        to_dt = "2020-01-02"
+        timeframe = 60
+
+        learning_filename = "learning_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
+                '/', '_').replace('+', '0')
+
+        data = {
+            'created': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            'trainer': trainer_params,
+            'strategy': strategy_params
+        }
+
+        utils.write_learning(learning_path, learning_filename, data)
+
+        cmd_opts = [
+            'python',
+            'siis.py',
+            identity,
+            '--tool=trainer',
+            '--profile=%s' % profile,
+            '--learning=%s' % learning_filename,
+            '--from=%s' % from_dt,  #.strftime("%Y-%m-%dT%H:%M:%S"),
+            '--to=%s' % to_dt,  #.strftime("%Y-%m-%dT%H:%M:%S"),
+            '--timeframe=%s' % timeframe
+        ]
+
+        class Executor(threading.Thread):
+            def run(self):
+                with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL) as p:
+                    while 1:
+                        code = p.poll()
+                        if code is not None:
+                            break
+
+                        try:
+                            stdout, stderr = p.communicate(timeout=0.1)
+                        except subprocess.TimeoutExpired:
+                            pass
+
+                    if code != 0:
+                        logger.error("Trainer process terminated with error code %s !" % p.returncode)
+
+                        utils.delete_learning(learning_path, learning_filename)
+                        return False
+                    else:
+                        logger.info("Trainer process completed, lookup for results...")
+
+                        utils.delete_learning(learning_path, learning_filename)
+                        return True
+
+        logger.info("Start trainer thread...")
+        executor = Executor()
+        executor.start()

@@ -34,7 +34,8 @@ class Trainer(Tool):
     def help(cls):
         return ("Process a training for a specific strategy.",
                 "Specify --profile, --learning, --from, --to, --timeframe",
-                "Optional --initial-fetch to fetch data before training")
+                "Optional --initial-fetch to fetch data before training",
+                "Optional --market for a single market")
 
     @classmethod
     def detailed_help(cls):
@@ -106,6 +107,8 @@ class Trainer(Tool):
         return True
 
     def run(self, options):
+        single_market = options.get('market')  # if only one at time
+
         if 'initial-fetch' in options:
             Terminal.inst().info("Starting watcher's service...")
             self._watcher_service = WatcherService(None, options)
@@ -125,6 +128,10 @@ class Trainer(Tool):
                     markets = watcher.matching_symbols_set(markets, watcher.available_instruments())
 
                     for market_id in markets:
+                        # @todo
+                        # if single_market and single_market != market_id:
+                        #     continue
+
                         Terminal.inst().info("Fetch data for market %s..." % market_id)
                         watcher._watched_instruments.add(market_id)
 
@@ -166,6 +173,12 @@ class Trainer(Tool):
             trainer_params = self._learning_config.get('trainer', {})
             strategy_params = self._learning_config.get('strategy', {})
 
+            # @todo single_market (remove others pairs from strategy and watcher)
+            if single_market:
+                # 'watchers' ''.. 'symbols[]'
+                trader = strategy_params.get('trader', {})
+                trader['symbols'] = [single_market]
+
             write_trainer_file(learning_filename, trainer_params, strategy_params)
 
             cmd_opts = [
@@ -182,8 +195,8 @@ class Trainer(Tool):
             ]
 
             print("Run sub-process %s" % sub_name)
-            with subprocess.Popen(cmd_opts) as p:
-                p.wait()
+            with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL) as p:
+                stdout, stderr = p.communicate()
                 print("-- %s Done" % sub_name)
 
             n += 1

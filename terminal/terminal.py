@@ -1278,6 +1278,9 @@ class Terminal(object):
                 _view.refresh()
 
     def update(self):
+        if self._direct_draw:
+            return
+
         # clear status message after 5 seconds
         if self._views.get('status')._content and (time.time() - self._views.get('status')._update_timestamp) > 5.0:
             self._views.get('status').clear()
@@ -1327,6 +1330,9 @@ class Terminal(object):
             view.refresh()
 
     def clear_content(self):
+        if self._direct_draw:
+            return
+
         if self._active_content:
             view = self._views.get(self._active_content)
             if view:

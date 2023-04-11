@@ -2369,6 +2369,42 @@ class SetTraderMarketLeverage(Command):
         return args, 0
 
 
+class StartStrategyTrainer(Command):
+    SUMMARY = "Start a strategy trainer for a specific market."
+    HELP = (
+        "param1: <market-id> market identifier, symbol or alias"
+    )
+
+    def __init__(self, strategy_service):
+        super().__init__('train', None)
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        # will force to try to start trainer for an instrument
+        if len(args) < 1:
+            return False, "Missing parameters"
+
+        if len(args) > 1:
+            return False, "Only one parameter is allowed"
+
+        market_id = args[0]
+
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_TRAIN, {
+            'market-id': market_id,
+        })
+
+        return self.manage_results(results, "Force train strategy on instrument %s" % args[0])
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service,
                               monitor_service, notifier_service):
     #
@@ -2407,6 +2443,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(ModifyTakeProfitCommand(strategy_service))
     commands_handler.register(AssignCommand(strategy_service))
     commands_handler.register(CommentCommand(strategy_service))
+    commands_handler.register(StartStrategyTrainer(strategy_service))
 
     #
     # strategy multi-trade operations

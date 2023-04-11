@@ -5,6 +5,7 @@
 
 import json
 import itertools
+import os
 import pathlib
 
 import logging
@@ -104,3 +105,11 @@ def write_learning(learning_path, attr_name, data):
     except Exception as e:
         error_logger.error("%s %s%s" % (repr(e), attr_name, '.json'))
         error_logger.error("During writing of %s : %s" % (user_file, repr(e)))
+
+
+def delete_learning(learning_path, attr_name):
+    if not attr_name:
+        return
+
+    user_file = pathlib.Path(learning_path, attr_name + '.json')
+    os.remove(str(user_file))
