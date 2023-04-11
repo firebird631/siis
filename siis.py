@@ -146,6 +146,9 @@ def application(argv):
                 elif arg == '--history':
                     # use the history tool
                     options['tool'] = "history"
+                elif arg == '--trainer':
+                    # use the machine learning / trainer tool
+                    options['tool'] = "trainer"
                 elif arg.startswith("--tool="):
                     # use a named tool
                     options['tool'] = arg.split('=')[1]
@@ -193,7 +196,7 @@ def application(argv):
                     options['preprocess'] = True
 
                 elif arg.startswith('--filename='):
-                    # used with import or export
+                    # used with some tools like import or export
                     options['filename'] = arg.split('=')[1]
 
                 elif arg.startswith('--from='):

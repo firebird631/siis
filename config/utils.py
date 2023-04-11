@@ -85,12 +85,14 @@ def load_learning(options, attr_name):
             error_logger.error("%s %s%s" % (repr(e), attr_name, '.json'))
             error_logger.error("During parsing of %s : %s" % (user_file, repr(e)))
 
-    return user_config
+        return user_config
+
+    return {}
 
 
 def write_learning(learning_path, attr_name, data):
     if not attr_name:
-        return {}
+        return
 
     user_file = pathlib.Path(learning_path, attr_name + '.json')
     try:

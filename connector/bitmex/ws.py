@@ -170,6 +170,10 @@ class BitMEXWebsocket(object):
         return {k: to_nearest(float(v or 0), instrument['tickSize']) for k, v in ticker.items()}
 
     def funds(self):
+        """
+        Return funds for XBt (1/100000000 XBT), USDT (1/1000000000 USDT) and BMEx (1/1000000000 BMEX)
+        @return An array of dict for any asset (XBt, USDt, BMEx).
+        """
         return self.data.get('margin', [{}])
 
     def market_depth(self, symbol):

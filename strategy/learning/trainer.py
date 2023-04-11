@@ -177,7 +177,7 @@ class Trainer(object):
         pass
 
     def write_strategy_parameters(self):
-
+        pass
 
     def default_cleanup(self, broker_id: str, market_id: str, before_datetime: datetime,
                         ohlc_depths: Optional[dict[float]] = None,
