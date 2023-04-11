@@ -305,23 +305,25 @@ class BitMexWatcher(Watcher):
                     return
 
                 funds = self.connector.ws.funds()
-                if not funds:
-                    return
+                for fund in funds:
+                    ratio = 1.0
+                    currency = fund['currency']
 
-                ratio = 1.0
-                currency = funds['currency']
+                    # convert XBt to BTC
+                    if currency == 'XBt':
+                        ratio = 1.0 / 100000000.0
+                        currency = 'XBT'
 
-                # convert XBt to BTC
-                if currency == 'XBt':
-                    ratio = 1.0 / 100000000.0
-                    currency = 'XBT'
+                    # @todo is currency and account configured on USDt
+                    if currency != "XBt":
+                        continue
 
-                # walletBalance or amount, riskLimit is max leverage
-                account_data = (
-                        funds['walletBalance']*ratio, funds['marginBalance']*ratio, funds['unrealisedPnl']*ratio,
-                        currency, funds['riskLimit']*ratio)
+                    # walletBalance or amount, riskLimit is max leverage
+                    account_data = (
+                            fund['walletBalance']*ratio, fund['marginBalance']*ratio, fund['unrealisedPnl']*ratio,
+                            currency, fund['riskLimit']*ratio)
 
-                self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
+                    self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
 
             elif (data[1] == 'liquidation') and (data[0] == 'insert'):  # action
                 # logger.debug("bitmex l226 liquidation > %s " % str(data))

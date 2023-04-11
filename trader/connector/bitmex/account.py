@@ -14,6 +14,9 @@ logger = logging.getLogger('siis.trader.bitmex')
 class BitMexAccount(Account):
     """
     BitMex trader related account.
+
+    @todo Support margin account based on USDT
+    @todo Support spot account based on USDT
     """
 
     CURRENCY = "XBT"
@@ -43,43 +46,38 @@ class BitMexAccount(Account):
 
         # get results from the data array of the WS object, but now this can be done through signals
         funds = connector.ws.funds()
-        if not funds:
-            return
+        for fund in funds:
+            if fund['currency'] == "XBt" and self._currency == "XBT":
+                self._name = fund['account']
 
-        self._currency = funds['currency']
-        self._name = funds['account']
+                self._balance = fund.get('walletBalance', 0.0)  # diff between walletBalance and amount ??
 
-        self._balance = funds.get('walletBalance', 0.0)  # diff between walletBalance and amount ??
+                # net worth : balance + unrealized profit/loss
+                self._net_worth = fund.get('amount', 0.0) + fund.get('prevUnrealisedPnl', 0.0)
 
-        # net worth : balance + unrealized profit/loss
-        self._net_worth = funds.get('amount', 0.0) + funds.get('prevUnrealisedPnl', 0.0)
+                self._margin_balance = fund.get('marginBalance', 0.0)   # free margin
+                self._risk_limit = fund.get('riskLimit', 0.0)  # risk limit
 
-        self._margin_balance = funds.get('marginBalance', 0.0)   # free margin
-        self._risk_limit = funds.get('riskLimit', 0.0)  # risk limit
+                used_margin = fund.get('walletBalance', 0.0) - fund.get('availableMargin', 0.0)
+                if used_margin > 0.0:
+                    self._margin_level = fund.get('marginBalance', 0.0) / used_margin
+                else:
+                    self._margin_level = 0.0
 
-        used_margin = funds.get('walletBalance', 0.0) - funds.get('availableMargin', 0.0)
-        if used_margin > 0.0:
-            self._margin_level = funds.get('marginBalance', 0.0) / used_margin
-        else:
-            self._margin_level = 0.0
+                self._ratio = 1.0 / 100000000
+                self._risk_limit *= self._ratio
+                self._balance *= self._ratio
+                self._net_worth *= self._ratio
+                self._margin_balance *= self._ratio
 
-        # we want account in XBt
-        if funds['currency'] == 'XBt':
-            self._ratio = 1.0 / 100000000
-            self._risk_limit *= self._ratio
-            self._balance *= self._ratio
-            self._net_worth *= self._ratio
-            self._margin_balance *= self._ratio
-        else:
-            logger.error("Unsupported bitmex.com account currency %s" % funds['currency'])
+                # update currency ratio
+                xbtusd = connector.ws.get_instrument('XBTUSD')
+                if xbtusd:
+                    self._currency_ratio = xbtusd['lastPrice']
 
-        # update currency ratio
-        xbtusd = connector.ws.get_instrument('XBTUSD')
-
-        if not xbtusd:
-            return
-
-        self._currency_ratio = xbtusd['lastPrice']
+            elif fund['currency'] == "USDt" and self._currency == "USDT":
+                # @todo
+                pass
 
         now = time.time()
         self._last_update = now

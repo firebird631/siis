@@ -1719,9 +1719,9 @@ class Strategy(Runnable):
         pl_sum = 0.0
         perf_sum = 0.0
         best_best = 0.0
+        worst_worst = 0.0
         high_sum = 0.0
         low_sum = 0.0
-        worst_worst = 0.0
         success_sum = 0
         failed_sum = 0
         roe_sum = 0
@@ -1755,7 +1755,7 @@ class Strategy(Runnable):
 
         new_content['performance'] = "%.2f%%" % (perf_sum * 100.0)
         new_content['max-draw-down'] = "%.2f%%" % (max_draw_down * 100.0)
-        new_content['end-equity'] = self.trader().account.format_price(equity)
+        new_content['final-equity'] = self.trader().account.format_price(equity)
 
         new_content['profit-loss'] = self.trader().account.format_price(pl_sum)
         new_content['best'] = "%.2f%%" % (best_best * 100.0)

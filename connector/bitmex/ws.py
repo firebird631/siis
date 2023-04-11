@@ -170,7 +170,7 @@ class BitMEXWebsocket(object):
         return {k: to_nearest(float(v or 0), instrument['tickSize']) for k, v in ticker.items()}
 
     def funds(self):
-        return self.data.get('margin', [{}])[0]
+        return self.data.get('margin', [{}])
 
     def market_depth(self, symbol):
         """
