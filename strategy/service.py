@@ -360,7 +360,7 @@ class StrategyService(Service):
 
         # merge learning file options to user params before instantiate
         if self._learning_config:
-            Strategy.merge_learning_config(parameters, self._learning_config)
+            utils.merge_learning_config(parameters, self._learning_config)
 
         strategy_inst = strategy[0](
                 # strategy name

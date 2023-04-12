@@ -77,7 +77,9 @@ def load_learning(options, attr_name):
     if not attr_name:
         return {}
 
-    user_file = pathlib.Path(options['learning-path'], attr_name + '.json')
+    learning_path = options['learning-path'] if (type(options) is dict and 'learning-path' in options) else options
+
+    user_file = pathlib.Path(learning_path, attr_name + '.json')
     if user_file.exists():
         try:
             with open(str(user_file), 'r') as f:
@@ -91,9 +93,11 @@ def load_learning(options, attr_name):
     return {}
 
 
-def write_learning(learning_path, attr_name, data):
+def write_learning(options, attr_name, data):
     if not attr_name:
         return
+
+    learning_path = options['learning-path'] if (type(options) is dict and 'learning-path' in options) else options
 
     user_file = pathlib.Path(learning_path, attr_name + '.json')
     try:
@@ -107,9 +111,61 @@ def write_learning(learning_path, attr_name, data):
         error_logger.error("During writing of %s : %s" % (user_file, repr(e)))
 
 
-def delete_learning(learning_path, attr_name):
+def delete_learning(options, attr_name):
     if not attr_name:
         return
 
+    learning_path = options['learning-path'] if (type(options) is dict and 'learning-path' in options) else options
+
     user_file = pathlib.Path(learning_path, attr_name + '.json')
     os.remove(str(user_file))
+
+
+def merge_learning_config(parameters, learning_config):
+    strategy_params = learning_config.get('strategy', {}).get('parameters', {})
+
+    def extract_from_dictionary(dictionary, keys_or_indexes):
+        _value = dictionary
+
+        try:
+            for key_or_index in keys_or_indexes:
+                if type(_value) is dict:
+                    _value = _value[key_or_index]
+                elif type(_value) in (list, tuple):
+                    _value = _value[int(key_or_index)]
+            return True, _value
+
+        except TypeError:
+            return False, None
+
+    def set_to_dictionary(dictionary, l_new_value, keys_or_indexes):
+        _value = dictionary
+
+        try:
+            for i, key_or_index in enumerate(keys_or_indexes):
+                if i == len(keys_or_indexes) - 1:
+                    if type(_value) is dict:
+                        _value[key_or_index] = l_new_value
+                    elif type(_value) in (list, tuple):
+                        _value[int(key_or_index)] = l_new_value
+
+                    return
+
+                if type(_value) is dict:
+                    _value = _value[key_or_index]
+                elif type(_value) in (list, tuple):
+                    _value = _value[int(key_or_index)]
+
+        except TypeError:
+            pass
+
+    for path, new_value in strategy_params.items():
+        split_path = path.split('.')
+
+        if not split_path:
+            continue
+
+        found, value = extract_from_dictionary(parameters, split_path)
+
+        if found:
+            set_to_dictionary(parameters, new_value, split_path)

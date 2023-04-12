@@ -4,6 +4,7 @@
 # Machine Learning / Trainer tools
 
 import base64
+import copy
 import subprocess
 import traceback
 import uuid
@@ -206,7 +207,7 @@ class Trainer(Tool):
             utils.write_learning(options['learning-path'], filename, data)
 
         def read_trainer_file(filename: str):
-            trainer_results = utils.load_learning(options['learning-path'], filename)
+            trainer_results = utils.load_learning(options, filename)
 
             if 'revision' in trainer_results:
                 return trainer_results
@@ -225,9 +226,10 @@ class Trainer(Tool):
             watchers_params = self._learning_config.get('watchers', {})
 
             # watchers data
-            strategy_params = self._learning_config.get('strategy', {})
+            strategy_params = {}
 
-            # @todo setup parameters
+            # @todo setup parameters from conditions to a trainer client
+            # @todo self._learning_config.get('strategy', {})
             # trainer
 
             write_trainer_file(learning_filename, trader_params, watchers_params, trainer_params, strategy_params)
@@ -249,22 +251,56 @@ class Trainer(Tool):
             with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   stdin=subprocess.DEVNULL) as p:
                 stdout, stderr = p.communicate()
-                Terminal.inst().info("-- %s Done, analyse results" % trainer_name)
+                Terminal.inst().info("-- %s Done, analysis results" % trainer_name)
 
                 trainer_result = read_trainer_file(learning_filename)
-                print(trainer_result)
+                if trainer_result:
+                    self._results.append(trainer_result)
+
+                utils.delete_learning(options['learning-path'], learning_filename)
 
         # debug only
         n = 5
 
         while 1:
             sub_name = "Sub-%s" % n
+            # trainer_commander.command() @todo
+
             start_trainer(sub_name)
 
             n += 1
 
             if n >= 5:
                 break
+
+        # complete
+        better_trainer_result = None
+        final_learning_config = copy.deepcopy(self._learning_config)
+        max_perf = 0.0
+        better = -1
+
+        try:
+            min_perf = float(self._learning_config.get('trainer', {}).get('min-performance', "0.00%").rstrip('%'))
+        except ValueError:
+            min_perf = 0.0
+
+        for i, result in enumerate(self._results):
+            try:
+                performance = float(result.get('performance', "0.00%").rstrip('%'))
+            except ValueError:
+                continue
+
+            if performance >= min_perf and performance > max_perf:
+                max_perf = performance
+                better = i
+
+        if better >= 0:
+            better_trainer_result = self._results[better]
+
+        if better_trainer_result:
+            # utils.merge_learning_config(final_learning_config, better_trainer_result)
+            final_learning_config = better_trainer_result  # @todo
+            utils.write_learning(options, self._learning, final_learning_config)
 
         return True
 

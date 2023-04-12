@@ -48,6 +48,8 @@ class Trainer(object):
     COMMANDER = None  # must be set to a TrainerCommander class
     CLIENT = None     # must be set to a TrainerClient class
 
+    processing = {}   # current market-id in process market-id/thread
+
     def __init__(self, strategy_trader: StrategyTrader):
         """
         @param strategy_trader: Strategy trader instance
@@ -178,11 +180,30 @@ class Trainer(object):
         strategy = strategy_trader.strategy
         strategy_service = strategy.service
 
-        trainer_params = copy.deepcopy(profile_config.get('trainer', {}))
-        strategy_params = copy.deepcopy(profile_config.get('strategy', {}))
+        market_id = strategy_trader.instrument.market_id
+
+        org_strategy_params = profile_config.get('strategy', {})
+        org_learning_params = org_strategy_params.get('parameters', {}).get('learning', {})
+
+        trainer_params = copy.deepcopy(org_learning_params.get('trainer', {}))
 
         # filters only necessary markets from watchers, trader and strategy
-        market_id = strategy_trader.instrument.market_id
+        strategy_params = copy.deepcopy(org_learning_params.get('strategy', {}))
+        strategy_params['symbols'] = [market_id]
+
+        watchers_params = {}
+        for watcher_name, watcher_config in profile_config.get('watchers', {}).items():
+            watchers_params[watcher_name] = {}
+            if market_id in watcher_config['symbols']:
+                watchers_params[watcher_name]['symbols'] = [market_id]
+            else:
+                watchers_params[watcher_name]['symbols'] = []
+
+        trader_params = {'symbols': [market_id]}
+
+        if market_id in Trainer.processing:
+            logger.warning("Unable to train market %s now because previous is still waited" % market_id)
+            return
 
         from_dt, to_dt, timeframe = Trainer.compute_period(strategy_trader, profile_config)
 
@@ -196,7 +217,9 @@ class Trainer(object):
         data = {
             'created': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
             'trainer': trainer_params,
-            'strategy': strategy_params
+            'strategy': strategy_params,
+            'watchers': watchers_params,
+            'trader': trader_params
         }
 
         utils.write_learning(learning_path, learning_filename, data)
@@ -222,6 +245,11 @@ class Trainer(object):
                 self._market_id = _market_id
 
             def run(self):
+                # register the thread (executor)
+                Trainer.processing[self._market_id] = self
+
+                msg = ""
+
                 with subprocess.Popen(cmd_opts,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
@@ -233,23 +261,31 @@ class Trainer(object):
 
                         try:
                             stdout, stderr = p.communicate(timeout=0.1)
+                            if stdout:
+                                msg = stdout.decode()
+
                         except subprocess.TimeoutExpired:
                             pass
 
                     if code != 0:
                         logger.error("Trainer process terminated with error code %s !" % p.returncode)
+                        logger.error(msg)
 
                         utils.delete_learning(learning_path, learning_filename)
+
+                        del Trainer.processing[self._market_id]
                         return False
                     else:
                         logger.info("Trainer process completed, lookup for results...")
                         self.complete()
 
                         utils.delete_learning(learning_path, learning_filename)
+
+                        del Trainer.processing[self._market_id]
                         return True
 
             def complete(self):
-                result = utils.load_learning(learning_path, learning_filename)
+                learning_result = utils.load_learning(learning_path, learning_filename)
 
                 _strategy = self._strategy_service.strategy()
                 if not _strategy:
@@ -259,31 +295,38 @@ class Trainer(object):
                 if not _strategy_trader:
                     return
 
-                performance = result.get('performance', '0.00%')
+                performance = learning_result.get('performance', '0.00%')
 
-                logger.info("Best performance for %s : %s" % (performance, _strategy_trader.instrument.market_id))
+                logger.info("Best performance for %s : %s" % (_strategy_trader.instrument.market_id, performance))
 
-                self.apply(_strategy, _strategy_trader)
+                self.apply(_strategy, _strategy_trader, learning_result)
 
-            def apply(self, _strategy: Strategy, _strategy_trader: StrategyTrader):
+            def apply(self, _strategy: Strategy, _strategy_trader: StrategyTrader, learning_result: dict):
                 logger.info("Trainer apply new parameters to %s and then restart" %
                             _strategy_trader.instrument.market_id)
 
-                # @todo load and merge new parameters, setup (and subs), finally restart it
+                new_parameters = copy.deepcopy(_strategy.parameters)
+
+                # merge new parameters
+                utils.merge_learning_config(new_parameters, learning_result)
+
+                # @todo setup (and subs) with new parameters
 
                 _strategy_trader.restart()
                 _strategy.send_initialize_strategy_trader(_strategy_trader.instrument.market_id)
 
         logger.info("Start trainer thread...")
 
-        Trainer.executor = Executor(strategy_service, market_id)
-        Trainer.executor.start()
+        executor = Executor(strategy_service, market_id)
+        executor.start()
 
     @staticmethod
     def join_executor():
-        if Trainer.executor:
-            Trainer.executor.join()
-            Trainer.executor = None
+        while Trainer.processing:
+            market_id, processor = next(iter(Trainer.processing.items()))
+            processor.join()
+
+            del Trainer.processing[market_id]
 
 
 class TrainerCommander(object):
