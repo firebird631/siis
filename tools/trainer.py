@@ -2,10 +2,13 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2023 Dream Overflow
 # Machine Learning / Trainer tools
+
 import base64
 import subprocess
+import traceback
 import uuid
 from datetime import datetime
+from importlib import import_module
 
 from config import utils
 from tools.tool import Tool
@@ -18,12 +21,15 @@ from watcher.service import WatcherService
 import logging
 logger = logging.getLogger('siis.tools.trainer')
 error_logger = logging.getLogger('siis.tools.error.trainer')
+traceback_logger = logging.getLogger('siis.tools.traceback.trainer')
 
 
 class Trainer(Tool):
     """
     Intercept training/machine learning demands and manage sub-process for backtesting, optimizing and finally
     output results for the caller.
+
+    @todo In case of some other watcher/market are used for a strategy need to prefetch them if --initial-fetch
     """
 
     @classmethod
@@ -34,8 +40,7 @@ class Trainer(Tool):
     def help(cls):
         return ("Process a training for a specific strategy.",
                 "Specify --profile, --learning, --from, --to, --timeframe",
-                "Optional --initial-fetch to fetch data before training",
-                "Optional --market for a single market")
+                "Optional --initial-fetch to fetch data before training")
 
     @classmethod
     def detailed_help(cls):
@@ -55,6 +60,8 @@ class Trainer(Tool):
 
         self._profile_config = None
         self._learning_config = None
+
+        self._trainer_clazz = None
 
     def check_options(self, options):
         if not options.get('profile'):
@@ -97,6 +104,35 @@ class Trainer(Tool):
         return True
 
     def init(self, options):
+        # trainers
+        trainers_config = utils.load_config(options, 'trainers')
+
+        trainer_name = self._learning_config.get('trainer', {}).get('name')
+        if not trainer_name:
+            return False
+
+        trainer = trainers_config.get(trainer_name)
+        if not trainer:
+            Terminal.inst().error("Cannot find trainer %s" % trainer_name)
+            return False
+
+        if trainer.get("status") is not None and trainer.get("status") == "load":
+            # retrieve the class-name and instantiate it
+            parts = trainer.get('classpath').split('.')
+
+            try:
+                module = import_module('.'.join(parts[:-1]))
+                Clazz = getattr(module, parts[-1])
+            except Exception as e:
+                traceback_logger.error(traceback.format_exc())
+                return False
+
+            if not Clazz:
+                Terminal.inst().error("Cannot load trainer %s" % trainer_name)
+                return False
+
+            self._trainer_clazz = Clazz
+
         # database manager
         Database.create(options)
         Database.inst().setup(options)
@@ -107,31 +143,32 @@ class Trainer(Tool):
         return True
 
     def run(self, options):
-        single_market = options.get('market')  # if only one at time
-
         if 'initial-fetch' in options:
             Terminal.inst().info("Starting watcher's service...")
             self._watcher_service = WatcherService(None, options)
 
             watchers_config = self._profile_config.get('watchers', {})
+            self._learning_config.get('watchers')
 
             for watcher_name, watcher_config in watchers_config.items():
+                if watcher_name in self._learning_config.get('watchers'):
+                    learning_watcher = self._learning_config.get('watchers')[watcher_name]
+
+                    if 'symbols' in learning_watcher:
+                        # overrides symbols
+                        watcher_config['symbols'] = learning_watcher['symbols']
+
                 markets = watcher_config.get('symbols', [])
 
                 Terminal.inst().info("Create watcher %s to fetch initial markets data..." % watcher_name)
                 watcher = self._watcher_service.create_watcher(options, watcher_name, markets)
                 if watcher:
                     watcher.initial_fetch = True
-
                     watcher.connect()
 
                     markets = watcher.matching_symbols_set(markets, watcher.available_instruments())
 
                     for market_id in markets:
-                        # @todo
-                        # if single_market and single_market != market_id:
-                        #     continue
-
                         Terminal.inst().info("Fetch data for market %s..." % market_id)
                         watcher._watched_instruments.add(market_id)
 
@@ -155,31 +192,35 @@ class Trainer(Tool):
             return "trainer_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
                 '/', '_').replace('+', '0')
 
-        def write_trainer_file(filename: str, _trainer_params: dict, _strategy_params: dict):
+        def write_trainer_file(filename: str, _trader_params: dict, _watcher_params: dict,
+                               _trainer_params: dict, _strategy_params: dict):
             data = {
                 'created': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                'trader': _trader_params,
+                'watchers': _watcher_params,
                 'trainer': _trainer_params,
                 'strategy': _strategy_params
             }
 
             utils.write_learning(options['learning-path'], filename, data)
 
-        n = 5  # debug only
+        # instantiate trainer and process it
+        # trainer = self._trainer_clazz()
 
-        while 1:
-            sub_name = "Sub-%s" % n
+        def start_trainer(trainer_name: str):
             learning_filename = gen_trainer_filename()
 
             trainer_params = self._learning_config.get('trainer', {})
+            trader_params = self._learning_config.get('trader', {})
+            watchers_params = self._learning_config.get('watchers', {})
+
+            # watchers data
             strategy_params = self._learning_config.get('strategy', {})
 
-            # @todo single_market (remove others pairs from strategy and watcher)
-            if single_market:
-                # 'watchers' ''.. 'symbols[]'
-                trader = strategy_params.get('trader', {})
-                trader['symbols'] = [single_market]
+            # @todo setup parameters
+            # trainer
 
-            write_trainer_file(learning_filename, trainer_params, strategy_params)
+            write_trainer_file(learning_filename, trader_params, watchers_params, trainer_params, strategy_params)
 
             cmd_opts = [
                 'python',
@@ -194,10 +235,18 @@ class Trainer(Tool):
                 '--exit'
             ]
 
-            print("Run sub-process %s" % sub_name)
-            with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL) as p:
+            Terminal.inst().info("Run sub-process %s" % trainer_name)
+            with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  stdin=subprocess.DEVNULL) as p:
                 stdout, stderr = p.communicate()
-                print("-- %s Done" % sub_name)
+                Terminal.inst().info("-- %s Done" % trainer_name)
+
+        # debug only
+        n = 5
+
+        while 1:
+            sub_name = "Sub-%s" % n
+            start_trainer(sub_name)
 
             n += 1
 
