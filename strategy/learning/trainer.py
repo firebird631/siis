@@ -6,17 +6,16 @@
 from __future__ import annotations
 
 import threading
-import asyncio
 import base64
 import subprocess
-import time
 import uuid
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
 
+from common.utils import timeframe_from_str
 from config import utils
 
 if TYPE_CHECKING:
-    from watcher.service import WatcherService
+    from strategy.strategy import Strategy
     from strategy.strategytrader import StrategyTrader
     from ..service import StrategyService
 
@@ -32,215 +31,164 @@ traceback_logger = logging.getLogger('siis.traceback.strategy.learning.trainer')
 
 class Trainer(object):
     """
-    A trainer call a separate process with a set of parameter that are back-tested with a specific strategy
-    and settings and return the performance.
+    Contains the class builder for the commander and the client.
+    It is also responsible to start the sub-process of the commander by using the trainer tool.
+    A learning file is created before starting the trainer tool to communicate parameters and get back the results.
 
-    The fitter must adjust the parameter in way to restart the process until it satisfy the requirements.
-    With trainer, it is possible to implement a genetic algorithm or any reinforcement learning machine.
-
-    Finally, the strategy will re-inject the news parameters (if better are found) or just update its internal state.
+    Then the strategy trader can be restart using the new optimized parameters by overloading the profile parameters
+    using the newly determined ones.
 
     @todo Executor might be join at close or killed
     """
 
-    _name: str
-    _strategy_service: StrategyService
+    executor = None
 
-    _parameters: Dict[str, Union[str, int, float, Tuple, Dict]]
+    NAME = ""
 
-    _autoclean: bool
+    COMMANDER = None  # must be set to a TrainerCommander class
+    CLIENT = None     # must be set to a TrainerClient class
 
-    def __init__(self, name: str,
-                 strategy_service: StrategyService,
-                 parameters: dict):
+    def __init__(self, strategy_trader: StrategyTrader):
         """
-        @param name: Trainer unique name
-        @param strategy_service: Strategy service instance
-        @param parameters: From strategy
+        @param strategy_trader: Strategy trader instance
         """
-        self._name = name
-        self._strategy_service = strategy_service
+        self._strategy_service = strategy_trader.strategy.service
 
-        self._parameters = copy.copy(parameters)
+        learning_params = strategy_trader.strategy.parameters.get('learning')
+        trainer_params = learning_params.get('trainer')
 
-        self._autoclean = self._parameters.get("autoclean", True)
+        period = timeframe_from_str(trainer_params.get('period', '1w'))
 
-    @property
-    def name(self) -> str:
-        return self._name
+        self._next_update = strategy_trader.strategy.timestamp + period
 
     @property
     def service(self) -> StrategyService:
         return self._strategy_service
 
-    @property
-    def parameters(self) -> dict:
-        """Configuration default merge with users"""
-        return self._parameters
+    def need_training(self, timestamp):
+        # @todo or performance deviation
+        if timestamp >= self._next_update:
+            self._next_update = 0.0
+            return True
 
-    #
-    # internal processing
-    #
+        return False
 
-    def iterate(self, n: int):
-        return True
-
-    def process_iterations(self):
-        return True
-
-    #
-    # processing (overload)
-    #
-
-    def prefetch_market_data(self, broker_id: str, market_id: str,
-                             from_datetime: datetime,
-                             to_datetime: datetime,
-                             ohlc_depths: Optional[dict[float]] = None,
-                             tick_depth: Optional[int] = None,
-                             order_book_depth: Optional[int] = None):
-        """
-        This method must check that data are stored locally before processing.
-        If some data are missing then a separate process must be called to fetch necessary data.
-
-        For example fetching an OHLC or trades/ticks history for the period to process the trainer.
-
-        @param broker_id str Valid broker identifier
-        @param market_id str Valid market identifier
-        @param from_datetime datetime
-        @param to_datetime datetime
-        @param ohlc_depths A dict of timeframe with an integer value depth of history or -1 for full update from
-            last stored point
-        @param tick_depth An integer of depth value of ticks/trader or -1 for full update from last stored point
-        @param order_book_depth An integer of order book size
-
-        @return: True if success. If False is return the process will not be continued.
-
-        @note Can be problematic for getting older tick/trade data because the fetcher and data storage only supports
-            appends.
-        @note For OHLC they must be fetched or built for the period of test plus the history necessary.
-        """
-        return True
-
-    def process(self):
-        """
-        This method process a separate process in way to optimize a dataset or to fit strategy parameters
-        calling a backtesting.
-
-        @return: True if success. If False is return the process will not be completed and no news parameters
-            will be injected into the strategy.
-        """
-        return True
-
-    def complete(self):
-        """
-        This method check the optimized dataset or the newly optimized parameters of the strategy and
-        finally inject them into the running strategy in live without changing the actives or pending trades.
-
-        @return: True if success. If False is return the process will be incomplete and not changes will be applied.
-        """
-        return True
-
-    def cleanup(self, broker_id: str, market_id: str, before_datetime: datetime,
-                ohlc_depths: Optional[dict[float]] = None,
-                tick_depth: Optional[int] = None,
-                order_book_depth: Optional[int] = None):
-        """
-        This method can clean up older prefetched dataset.
-        """
-        self.default_cleanup(broker_id, market_id, before_datetime, ohlc_depths, tick_depth, order_book_depth)
-
-    #
-    # helpers
-    #
-
-    def start(self, strategy_trader: StrategyTrader):
-        strategy = self._strategy_service.strategy()
-
-        if strategy_trader is None:
-            return False
-
-        market_id = strategy_trader.instrument.market_id
-
-        for watcher_type, watcher in strategy_trader.instrument.watchers().items():
-            if watcher_type == watcher.WATCHER_PRICE_AND_VOLUME:
-                from_datetime = None
-                to_datetime = None
-
-                ohlc_depths = None
-                tick_depth = None
-                order_book_depth = None
-
-                # @todo
-                self.prefetch_market_data(watcher.name, market_id,
-                                          from_datetime, to_datetime,
-                                          ohlc_depths, tick_depth, order_book_depth)
-
-                if self._autoclean:
-                    before_datetime = from_datetime
-
-                    self.cleanup(watcher.name, market_id, before_datetime,
-                                 ohlc_depths, tick_depth, order_book_depth)
-
-        return True
-
-    def read_strategy_results(self):
-        pass
-
-    def write_strategy_parameters(self):
-        pass
-
-    def default_cleanup(self, broker_id: str, market_id: str, before_datetime: datetime,
-                        ohlc_depths: Optional[dict[float]] = None,
-                        tick_depth: Optional[int] = None,
-                        order_book_depth: Optional[int] = None):
-
-        for ohlc, depth in ohlc_depths.items():
-            # @todo calculer la portion de date qui peut etre supprime pour les OHLC
-            pass
-
-        if tick_depth:
-            # @todo pareil mais pour les tick/trades et donc quel(s) fichiers peuvent etre efface
-            pass
-
-        if order_book_depth:
-            # no stored data
-            pass
-
-    def apply_to_strategy_trader(self, strategy_trader: StrategyTrader):
-        strategy = self._strategy_service.strategy()
-
-        if strategy_trader is None:
-            return False
-
-        market_id = strategy_trader.instrument.market_id
-
+    def read_learning_results(self):
         # @todo
+        pass
 
-        return True
+    # def default_cleanup(self, broker_id: str, market_id: str, before_datetime: datetime,
+    #                     ohlc_depths: Optional[dict[float]] = None,
+    #                     tick_depth: Optional[int] = None,
+    #                     order_book_depth: Optional[int] = None):
+    #
+    #     for ohlc, depth in ohlc_depths.items():
+    #         # @todo calculer la portion de date qui peut etre supprime pour les OHLC
+    #         pass
+    #
+    #     if tick_depth:
+    #         # @todo pareil mais pour les tick/trades et donc quel(s) fichiers peuvent etre efface
+    #         pass
+    #
+    #     if order_book_depth:
+    #         # no stored data
+    #         pass
+    #
+    # def apply_to_strategy_trader(self, strategy_trader: StrategyTrader):
+    #     strategy = self._strategy_service.strategy()
+    #
+    #     if strategy_trader is None:
+    #         return False
+    #
+    #     market_id = strategy_trader.instrument.market_id
+    #
+    #     # @todo
+    #
+    #     return True
+    #
+    # #
+    # # static
+    # #
+    #
+    # @staticmethod
+    # def parse_parameters(parameters: dict) -> dict:
+    #     return parameters
 
     #
-    # static
+    # class builders
     #
 
-    @staticmethod
-    def parse_parameters(parameters: dict) -> dict:
-        return parameters
+    @classmethod
+    def name(cls) -> str:
+        return cls.NAME
+
+    @classmethod
+    def create_commander(cls, profile_parameters: dict, learning_parameters: dict) -> Union[TrainerCommander, None]:
+        """
+        Override this method to return an instance of TrainerCommander to be executed by the tool Trainer.
+        @param profile_parameters: dict
+        @param learning_parameters: dict
+        @return: Instance of inherited TrainerCommander class
+        """
+        return cls.COMMANDER(profile_parameters, learning_parameters)
+
+    @classmethod
+    def create_client(cls, profile_parameters: dict, trainer_parameters: dict) -> Union[TrainerClient, None]:
+        """
+        Override this method to return an instance of TrainerClient to be executed by the strategy backtesting.
+        @param profile_parameters: dict
+        @param trainer_parameters: dict
+        @return: Instance of inherited TrainerClient class
+        """
+        return cls.CLIENT(profile_parameters, trainer_parameters)
 
     #
     # caller proxy helper
     #
 
     @staticmethod
-    def caller(identity, profile, learning_path, strategy_trader: StrategyTrader, parameters: dict):
+    def compute_period(strategy_trader: StrategyTrader, profile_config: dict):
+        learning_params = strategy_trader.strategy.parameters.get('learning')
+        trainer_params = learning_params.get('trainer')
+
+        timeframe = trainer_params.get('timeframe', 1)
+        if type(timeframe) is str:
+            timeframe = timeframe_from_str(timeframe)
+
+        period = timeframe_from_str(trainer_params.get('period', '1w'))
+
+        from_dt = datetime.utcnow() - timedelta(seconds=period)
+        to_dt = datetime.utcnow()
+
+        return from_dt, to_dt, timeframe
+
+    @staticmethod
+    def caller(identity, profile, learning_path, strategy_trader: StrategyTrader, profile_config: dict):
+        """
+        Must be called by a command manually or automatically according to some parameters like deviation from
+        performance or a minimal duration.
+
+        @param identity:
+        @param profile:
+        @param learning_path:
+        @param strategy_trader:
+        @param profile_config:
+        @return:
+        """
         strategy = strategy_trader.strategy
         strategy_service = strategy.service
 
-        trainer_params = {}  # @todo
-        strategy_params = {}
+        trainer_params = copy.deepcopy(profile_config.get('trainer', {}))
+        strategy_params = copy.deepcopy(profile_config.get('strategy', {}))
 
-        from_dt = "2020-01"  # @todo compute range from parameters
-        to_dt = "2020-01-02"
-        timeframe = 60
+        # filters only necessary markets from watchers, trader and strategy
+        market_id = strategy_trader.instrument.market_id
+
+        from_dt, to_dt, timeframe = Trainer.compute_period(strategy_trader, profile_config)
+
+        trainer_params['from'] = from_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        trainer_params['to'] = to_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        trainer_params['timeframe'] = timeframe
 
         learning_filename = "learning_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
                 '/', '_').replace('+', '0')
@@ -260,14 +208,24 @@ class Trainer(object):
             '--tool=trainer',
             '--profile=%s' % profile,
             '--learning=%s' % learning_filename,
-            '--from=%s' % from_dt,  #.strftime("%Y-%m-%dT%H:%M:%S"),
-            '--to=%s' % to_dt,  #.strftime("%Y-%m-%dT%H:%M:%S"),
+            '--from=%s' % from_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+            '--to=%s' % to_dt.strftime("%Y-%m-%dT%H:%M:%S"),
             '--timeframe=%s' % timeframe
         ]
 
         class Executor(threading.Thread):
+
+            def __init__(self, _strategy_service: StrategyService, _market_id: str):
+                super().__init__()
+
+                self._strategy_service = _strategy_service
+                self._market_id = _market_id
+
             def run(self):
-                with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL) as p:
+                with subprocess.Popen(cmd_opts,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE,
+                                      stdin=subprocess.DEVNULL) as p:
                     while 1:
                         code = p.poll()
                         if code is not None:
@@ -285,10 +243,64 @@ class Trainer(object):
                         return False
                     else:
                         logger.info("Trainer process completed, lookup for results...")
+                        self.complete()
 
                         utils.delete_learning(learning_path, learning_filename)
                         return True
 
+            def complete(self):
+                result = utils.load_learning(learning_path, learning_filename)
+
+                _strategy = self._strategy_service.strategy()
+                if not _strategy:
+                    return
+
+                _strategy_trader = strategy.strategy_trader(market_id)
+                if not _strategy_trader:
+                    return
+
+                performance = result.get('performance', '0.00%')
+
+                logger.info("Best performance for %s : %s" % (performance, _strategy_trader.instrument.market_id))
+
+                self.apply(_strategy, _strategy_trader)
+
+            def apply(self, _strategy: Strategy, _strategy_trader: StrategyTrader):
+                logger.info("Trainer apply new parameters to %s and then restart" %
+                            _strategy_trader.instrument.market_id)
+
+                # @todo load and merge new parameters, setup (and subs), finally restart it
+
+                _strategy_trader.restart()
+                _strategy.send_initialize_strategy_trader(_strategy_trader.instrument.market_id)
+
         logger.info("Start trainer thread...")
-        executor = Executor()
-        executor.start()
+
+        Trainer.executor = Executor(strategy_service, market_id)
+        Trainer.executor.start()
+
+    @staticmethod
+    def join_executor():
+        if Trainer.executor:
+            Trainer.executor.join()
+            Trainer.executor = None
+
+
+class TrainerCommander(object):
+
+    _profile_parameters: dict
+    _learning_parameters: dict
+
+    def __init__(self, profile_parameters: dict, learning_parameters: dict):
+        self._profile_parameters = profile_parameters
+        self._learning_parameters = learning_parameters
+
+
+class TrainerClient(object):
+
+    _profile_parameters: dict
+    _trainer_parameters: dict
+
+    def __init__(self, profile_parameters: dict, trainer_parameters: dict):
+        self._profile_parameters = profile_parameters
+        self._trainer_parameters = trainer_parameters

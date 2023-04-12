@@ -741,6 +741,9 @@ class StrategyTrader(object):
             self._checked = 2
 
         trader = self.strategy.trader()
+        if trader.name == "kraken.com":
+            # @fixture some strange issue, sometimes API answers no results
+            return
 
         if not trader.paper_mode:
             # do not process in paper-mode

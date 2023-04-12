@@ -62,6 +62,7 @@ class Trainer(Tool):
         self._learning_config = None
 
         self._trainer_clazz = None
+        self._results = []
 
     def check_options(self, options):
         if not options.get('profile'):
@@ -204,8 +205,17 @@ class Trainer(Tool):
 
             utils.write_learning(options['learning-path'], filename, data)
 
+        def read_trainer_file(filename: str):
+            trainer_results = utils.load_learning(options['learning-path'], filename)
+
+            if 'revision' in trainer_results:
+                return trainer_results
+
+            # not completed
+            return None
+
         # instantiate trainer and process it
-        # trainer = self._trainer_clazz()
+        trainer_commander = self._trainer_clazz.create_commander(self._profile_config, self._learning_config)
 
         def start_trainer(trainer_name: str):
             learning_filename = gen_trainer_filename()
@@ -239,7 +249,10 @@ class Trainer(Tool):
             with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   stdin=subprocess.DEVNULL) as p:
                 stdout, stderr = p.communicate()
-                Terminal.inst().info("-- %s Done" % trainer_name)
+                Terminal.inst().info("-- %s Done, analyse results" % trainer_name)
+
+                trainer_result = read_trainer_file(learning_filename)
+                print(trainer_result)
 
         # debug only
         n = 5
