@@ -302,7 +302,6 @@ class IGWatcher(Watcher):
         if market_id in self.__matching_symbols:
             # fetch from 1m to 1w, we have a problem of the 10k candle limit per week, then we only fetch current
             # plus a delta allowing the time to prefetch the data into the DB from another source
-
             # but there is a problem with the 2h, 4h, 1d, 1w and 1m, because the data are aligned to the LSE timezone
             # and siis assume all are UTC based. the error in W or M is only of 1h or 2h then its ok
 
@@ -1295,14 +1294,18 @@ class IGWatcher(Watcher):
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
-        # query must be done in Paris timezone
+        # get local timezone, assume it is the same of the account, or override by account detail
+        tzname = self._tzname or 'Europe/Paris'
+        pst = pytz.timezone(tzname)
+
+        # query must be done in account configured timezone
         if from_date:
-            # from_date = from_date.astimezone(pytz.timezone('Europe/Paris'))
-            from_date = from_date.replace(tzinfo=pytz.UTC)
+            from_date = from_date.astimezone(pst)
+            # from_date = from_date.replace(tzinfo=pytz.UTC)
 
         if to_date:
-            # to_date = to_date.astimezone(pytz.timezone('Europe/Paris'))
-            to_date = to_date.replace(tzinfo=pytz.UTC)
+            to_date = to_date.astimezone(pst)
+            # to_date = to_date.replace(tzinfo=pytz.UTC)
 
         try:
             if n_last:
@@ -1314,12 +1317,10 @@ class IGWatcher(Watcher):
             traceback_logger.error(traceback.format_exc())
 
             data = {}
-
+        logger.debug(data)
         prices = data.get('prices', [])
 
         # get local timezone, assume it is the same of the account, or override by account detail
-        tzname = self._tzname or time.tzname[0]
-        pst = pytz.timezone(tzname)
 
         for price in prices:
             dt = datetime.strptime(price['snapshotTimeUTC'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=UTC())

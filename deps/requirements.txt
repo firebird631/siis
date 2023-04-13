@@ -14,6 +14,7 @@ twisted>=18.7.0
 pyOpenSSL>=18.0.0
 service_identity>=17.0.0
 pycrypto>=2.6.1
+# pycryptodome  # for python 3.9+ 
 
 # only for named threads, look at https://pythonhosted.org/python-prctl/
 # python-prctl>=1.7

@@ -1338,9 +1338,13 @@ class Terminal(object):
             if view:
                 view.clear()
 
-    def set_mode(self, mode):
+    def set_mode(self, mode: int):
         self._mode = mode
 
     @property
-    def mode(self):
+    def direct_draw(self) -> bool:
+        return self._direct_draw
+
+    @property
+    def mode(self) -> int:
         return self._mode

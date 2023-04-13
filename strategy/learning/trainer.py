@@ -5,13 +5,15 @@
 
 from __future__ import annotations
 
+import math
+import random
 import threading
 import base64
 import subprocess
 import uuid
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
 
-from common.utils import timeframe_from_str
+from common.utils import timeframe_from_str, truncate
 from config import utils
 
 if TYPE_CHECKING:
@@ -39,6 +41,7 @@ class Trainer(object):
     using the newly determined ones.
 
     @todo Executor might be join at close or killed
+    @todo A fetcher mode doing a simple HTTP GET in place of starting process, in the case trainers are done apart
     """
 
     executor = None
@@ -328,6 +331,35 @@ class Trainer(object):
 
             del Trainer.processing[market_id]
 
+    @staticmethod
+    def setup_strategy_parameters(learning_config: dict, trainer_strategy_parameters: dict):
+        strategy_parameters = learning_config.get('strategy', {}).get('parameters', {})
+
+        for pname, pvalue in strategy_parameters.items():
+            if pname.startswith('_'):
+                # commented
+                continue
+
+            trainer_strategy_parameters[pname] = Trainer.set_rand_value(pvalue)
+
+    @staticmethod
+    def set_rand_value(param, prev=None):
+        if param.get('type') == "int":
+            return random.randrange(param.get('min', 0), param.get('max', 0) + 1, param.get('step', 1))
+
+        elif param.get('type') == "float":
+            precision = param.get('precision', 1) or 1
+            step = param.get('step', 0.01) or 0.01
+
+            number = random.randrange(
+                param.get('min', 0) * math.pow(10, precision),
+                param.get('max', 0) * math.pow(10, precision) + 1, 1) * math.pow(10, -precision)
+
+            return truncate(round(number / step) * step, precision)
+
+        else:
+            return 0
+
 
 class TrainerCommander(object):
 
@@ -337,6 +369,15 @@ class TrainerCommander(object):
     def __init__(self, profile_parameters: dict, learning_parameters: dict):
         self._profile_parameters = profile_parameters
         self._learning_parameters = learning_parameters
+
+        self._last_strategy_parameters = {}
+
+    def start(self, callback):
+        pass
+
+    @property
+    def results(self):
+        return None
 
 
 class TrainerClient(object):

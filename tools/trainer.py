@@ -5,13 +5,17 @@
 
 import base64
 import copy
+import math
+import random
 import subprocess
 import traceback
 import uuid
 from datetime import datetime
 from importlib import import_module
 
+from common.utils import truncate
 from config import utils
+from strategy.learning.trainer import Trainer
 from tools.tool import Tool
 
 from terminal.terminal import Terminal
@@ -25,7 +29,7 @@ error_logger = logging.getLogger('siis.tools.error.trainer')
 traceback_logger = logging.getLogger('siis.tools.traceback.trainer')
 
 
-class Trainer(Tool):
+class TrainerTool(Tool):
     """
     Intercept training/machine learning demands and manage sub-process for backtesting, optimizing and finally
     output results for the caller.
@@ -201,7 +205,7 @@ class Trainer(Tool):
                 'trader': _trader_params,
                 'watchers': _watcher_params,
                 'trainer': _trainer_params,
-                'strategy': _strategy_params
+                'strategy': {'parameters': _strategy_params}
             }
 
             utils.write_learning(options['learning-path'], filename, data)
@@ -224,15 +228,13 @@ class Trainer(Tool):
             trainer_params = self._learning_config.get('trainer', {})
             trader_params = self._learning_config.get('trader', {})
             watchers_params = self._learning_config.get('watchers', {})
-
-            # watchers data
             strategy_params = {}
 
             # @todo setup parameters from conditions to a trainer client
-            # @todo self._learning_config.get('strategy', {})
-            # trainer
+            Trainer.setup_strategy_parameters(self._learning_config, strategy_params)
 
             write_trainer_file(learning_filename, trader_params, watchers_params, trainer_params, strategy_params)
+            print(strategy_params)
 
             cmd_opts = [
                 'python',
@@ -244,34 +246,44 @@ class Trainer(Tool):
                 '--to=%s' % to_dt.strftime("%Y-%m-%dT%H:%M:%S"),
                 '--timeframe=%s' % timeframe,
                 '--learning=%s' % learning_filename,
-                '--exit'
+                '--no-interactive'
             ]
 
             Terminal.inst().info("Run sub-process %s" % trainer_name)
             with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   stdin=subprocess.DEVNULL) as p:
                 stdout, stderr = p.communicate()
-                Terminal.inst().info("-- %s Done, analysis results" % trainer_name)
 
                 trainer_result = read_trainer_file(learning_filename)
                 if trainer_result:
                     self._results.append(trainer_result)
+                    Terminal.inst().info("-- %s trainer success with %s" % (
+                        trainer_name, trainer_result.get('performance', "0.00%")))
+                    print(trainer_result)
+                else:
+                    Terminal.inst().info("-- %s trainer failed" % trainer_name)
 
                 utils.delete_learning(options['learning-path'], learning_filename)
 
+        trainer_commander.start(None)
+        res = trainer_commander.results
+        for r in res:
+            logger.debug(r.params)
+            logger.debug(r.fitness)
+            logger.debug("------")
         # debug only
-        n = 5
-
-        while 1:
-            sub_name = "Sub-%s" % n
-            # trainer_commander.command() @todo
-
-            start_trainer(sub_name)
-
-            n += 1
-
-            if n >= 5:
-                break
+        # n = 0
+        #
+        # while 1:
+        #     sub_name = "Sub-%s" % n
+        #     # trainer_commander.command() @todo
+        #
+        #     start_trainer(sub_name)
+        #
+        #     n += 1
+        #
+        #     if n >= 5:
+        #         break
 
         # complete
         better_trainer_result = None
@@ -316,4 +328,4 @@ class Trainer(Tool):
         return True
 
 
-tool = Trainer
+tool = TrainerTool

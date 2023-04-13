@@ -342,7 +342,7 @@ The identity name must be specified, and need to be configured into the _identit
 * --profile=\<profile\> Specify the strategy profile to use from config.
 * --paper-mode instantiate paper mode trader and simulate as good as possible.
 * --backtest Process a backtesting, uses paper mode traders and data history available in the database.
-* --exit Automatically exit after a backtesting fully completed. 
+* --no-interactive No interactive (command) mode and automatically exit after a backtesting fully completed. 
 * --timestep=\<seconds\> Timestep in seconds to increment the backesting. More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal candles size uses in the backtested strategies. Default is 60 seconds.
 * --time-factor=\<factor\> in backtesting mode only allow the user to change the time factor and permit interacting during the backtesting. Default speed factor is as fast as possible.
 * --from=<YYYY-MM-DDThh:mm:ss\> define the date time from which start the backtesting, fetcher or binarizer. If omitted use whole data set (take care).

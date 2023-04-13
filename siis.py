@@ -43,10 +43,18 @@ from app.tradingcommands import register_trading_commands
 from app.regioncommands import register_region_commands
 from app.alertcommands import register_alert_commands
 
+running = False  # main loop state
+
 
 def signal_handler(sig, frame):
     if Terminal.inst():
-        Terminal.inst().action('Type command :quit<ENTER> to exit !', view='status')
+        if Terminal.inst().direct_draw:
+            # no interactive terminal, exit on signal
+            global running
+            running = False
+        else:
+            # interactive terminal, need a command to exit
+            Terminal.inst().action('Type command :quit<ENTER> to exit !', view='status')
 
 
 def terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
@@ -85,11 +93,11 @@ def application(argv):
         'markets-path': './user/markets',
         'learning-path': './user/learning',
         'log-name': 'siis.log',
-        'monitor': False,      # startup HTTP/WS monitor service
-        'monitor-port': None,  # monitoring HTTP port (WS is HTTP+1)
-        'verbose': False,      # verbose mode for tools
-        'load': False,         # load user data at startup from database
-        'exit': False          # if True auto exit when a backtest is completed
+        'monitor': False,        # startup HTTP/WS monitor service
+        'monitor-port': None,    # monitoring HTTP port (WS is HTTP+1)
+        'verbose': False,        # verbose mode for tools
+        'load': False,           # load user data at startup from database
+        'no-interactive': False  # if True auto exit when a backtest is completed
     }
 
     # create initial siis data structure if necessary
@@ -252,9 +260,9 @@ def application(argv):
                     # learning filename (for read at startup and to rewrite at exit)
                     options['learning'] = arg.split('=')[1]
 
-                elif arg == '--exit':
+                elif arg == '--no-interactive':
                     # auto-quit only in backtest mode
-                    options['exit'] = True
+                    options['no-interactive'] = True
 
                 elif arg == '--version':
                     Terminal.inst().info('%s %s release %s' % (
@@ -274,8 +282,8 @@ def application(argv):
                 Terminal.inst().error("Backtesting need from= and to= date time")
                 sys.exit(-1)
         else:
-            if options['exit']:
-                Terminal.inst().error("Exit (-exit) at end is only allowed in backtest mode")
+            if options['no-interactive']:
+                Terminal.inst().error("No interactive mode (--no-interactive) at end is only allowed in backtest mode")
                 sys.exit(-1)
 
     #
@@ -549,7 +557,7 @@ def application(argv):
 
     Terminal.inst().message("Running main loop...")
 
-    if not options['exit']:
+    if not options['no-interactive']:
         Terminal.inst().upgrade()
 
     Terminal.inst().message("Steady...", view='notice')
@@ -569,18 +577,20 @@ def application(argv):
     LOOP_SLEEP = 0.016  # in second
     MAX_CMD_ALIVE = 5   # in second
 
+    global running
     running = True
 
     value = None
     value_changed = False
     command_timeout = 0
     prev_timestamp = 0
+    prev_progress = 0.0
 
     try:
         while running:
             # keyboard input commands
             try:
-                if not options['exit']:
+                if not options['no-interactive']:
                     c = Terminal.inst().read()
                     key = Terminal.inst().key()
                 else:
@@ -832,10 +842,19 @@ def application(argv):
 
                 Terminal.inst().update()
 
-                # only in backtesting when completed and auto exit
+                # only in backtesting when completed and auto exit (no interactive mode)
                 if strategy_service.backtesting:
-                    if strategy_service.completed and options['exit']:
-                        running = False
+                    if options['no-interactive']:
+                        if strategy_service.completed:
+                            running = False
+
+                            # to default view
+                            Terminal.inst().info("Backtesting completed")
+                        else:
+                            # to default view each percent
+                            if strategy_service.backtest_progress - prev_progress > 1:
+                                prev_progress = strategy_service.backtest_progress
+                                Terminal.inst().info("Backtesting at %.2f%%" % strategy_service.backtest_progress)
 
                 # don't waste CPU time on main thread
                 time.sleep(LOOP_SLEEP)

@@ -99,7 +99,7 @@ def display_cli_help():
     Terminal.inst().message("  --profile=<profile> Profile to instantiate.")
     Terminal.inst().message("  --paper-mode instantiate paper mode trader and simulate as best as possible.")
     Terminal.inst().message("  --backtest process a backtesting, uses paper mode traders and data history avalaible in the database.")
-    Terminal.inst().message("  --exit Automatically quit after than a backtest is fully completed.")
+    Terminal.inst().message("  --no-interactive No interactive (command) mode and automatically quit after than a backtest is fully completed.")
     Terminal.inst().message("  --timestep=<seconds> Timestep in seconds to increment the backtesting.")
     Terminal.inst().message("    More precise is more accurate but need more computing simulation. Adjust to at least fits to the minimal")
     Terminal.inst().message("    candles size uses in the backtested strategies. Default is 60 seconds.")

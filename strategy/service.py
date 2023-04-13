@@ -211,6 +211,10 @@ class StrategyService(Service):
         self._terminate_on_exit = status
 
     @property
+    def backtest_progress(self) -> float:
+        return self._backtest_progress
+
+    @property
     def completed(self):
         """
         When a backtest is completed returns True.
