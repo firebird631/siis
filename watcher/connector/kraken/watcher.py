@@ -1084,7 +1084,7 @@ class KrakenWatcher(Watcher):
 
                     exec_vol = float(trade_data['vol'])
                     exec_price = float(trade_data['price'])
-                    fee = float(trade_data['fee'])  # in quote (or base depend of order)
+                    fee = float(trade_data['fee'])  # in quote (or base depend on order)
 
                     # trade
                     order = {

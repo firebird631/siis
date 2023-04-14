@@ -1618,6 +1618,7 @@ class UserImportCommand(Command):
         # ie: ":import active siis_trades.json"
         dataset = ""
         filename = ""
+        check = False
 
         if len(args) > 2:
             return False, "Too many parameters"
@@ -1653,11 +1654,13 @@ class UserImportCommand(Command):
             results = self._trader_service.command(Trader.COMMAND_IMPORT, {
                 'dataset': dataset,
                 'filename': filename,
+                'check': check
             })
         else:
             results = self._strategy_service.command(Strategy.COMMAND_TRADER_IMPORT_ALL, {
                 'dataset': dataset,
                 'filename': filename,
+                'check': check
             })
 
         return self.manage_results(results)

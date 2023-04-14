@@ -73,6 +73,7 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
 
     data_dumps = data.get('data', [])
     dataset = data.get('dataset', "active")
+    check = data.get('check', True)
 
     if dataset == 'active':
         trader = strategy_trader.strategy.trader()
@@ -84,8 +85,8 @@ def cmd_strategy_trader_import(strategy, strategy_trader, data):
                 trade_type = trade_dump['trade']
                 operations = trade_dump.get('operations', [])
 
-                strategy_trader.loads_trade(trade_id, trade_type, trade_dump, operations, check=True)
-                if not trader.paper_mode:
+                strategy_trader.loads_trade(trade_id, trade_type, trade_dump, operations, check=check)
+                if not trader.paper_mode and check:
                     time.sleep(2)
 
             except Exception as e:
@@ -187,6 +188,7 @@ def cmd_strategy_trader_import_all(strategy, data):
 
     filename = data.get('filename', "")
     dataset = data.get('dataset', "active")
+    check = data.get('check', False)
 
     if dataset not in ('active', 'history', 'alert', 'region', 'strategy'):
         results = {'message': "Unsupported import dataset", 'error': True}
@@ -235,7 +237,8 @@ def cmd_strategy_trader_import_all(strategy, data):
         if strategy_trader:
             sub_data = {
                 'dataset': dataset,
-                'data': data_dumps
+                'data': data_dumps,
+                'check': check
             }
 
             result = cmd_strategy_trader_import(strategy, strategy_trader, sub_data)
