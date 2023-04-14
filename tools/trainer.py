@@ -198,18 +198,6 @@ class TrainerTool(Tool):
             return "trainer_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
                 '/', '_').replace('+', '0')
 
-        def write_trainer_file(filename: str, _trader_params: dict, _watcher_params: dict,
-                               _trainer_params: dict, _strategy_params: dict):
-            data = {
-                'created': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                'trader': _trader_params,
-                'watchers': _watcher_params,
-                'trainer': _trainer_params,
-                'strategy': {'parameters': _strategy_params}
-            }
-
-            utils.write_learning(options['learning-path'], filename, data)
-
         def read_trainer_file(filename: str):
             trainer_results = utils.load_learning(options, filename)
 
@@ -219,28 +207,33 @@ class TrainerTool(Tool):
             # not completed
             return None
 
-        # instantiate trainer and process it
-        trainer_commander = self._trainer_clazz.create_commander(self._profile_config, self._learning_config)
+        def fill_linked_parameters(learning_parameters: dict):
+            org_strategy_params = self._learning_config.get('strategy', {}).get('parameters', {})
+            trainer_strategy_params = learning_parameters.get('strategy', {}).get('parameters', {})
 
-        def start_trainer(trainer_name: str):
+            for pname, pvalue in org_strategy_params.items():
+                if 'linked' in pvalue and pvalue['linked']:
+                    for linked in pvalue['linked']:
+                        trainer_strategy_params[linked] = trainer_strategy_params[pname]
+
+        # instantiate trainer and process it
+        trainer_commander = self._trainer_clazz.create_commander(self._profile,
+                                                                 self._profile_config,
+                                                                 self._learning_config)
+
+        def start_trainer(learning_parameters: dict, profile_name: str):
             learning_filename = gen_trainer_filename()
 
-            trainer_params = self._learning_config.get('trainer', {})
-            trader_params = self._learning_config.get('trader', {})
-            watchers_params = self._learning_config.get('watchers', {})
-            strategy_params = {}
+            # lookup for linked parameters
+            fill_linked_parameters(learning_parameters)
 
-            # @todo setup parameters from conditions to a trainer client
-            Trainer.setup_strategy_parameters(self._learning_config, strategy_params)
-
-            write_trainer_file(learning_filename, trader_params, watchers_params, trainer_params, strategy_params)
-            print(strategy_params)
+            utils.write_learning(options['learning-path'], learning_filename, learning_parameters)
 
             cmd_opts = [
                 'python',
                 'siis.py',
                 options['identity'],
-                '--profile=%s' % self._profile,
+                '--profile=%s' % profile_name,
                 '--backtest',
                 '--from=%s' % from_dt.strftime("%Y-%m-%dT%H:%M:%S"),
                 '--to=%s' % to_dt.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -249,41 +242,37 @@ class TrainerTool(Tool):
                 '--no-interactive'
             ]
 
-            Terminal.inst().info("Run sub-process %s" % trainer_name)
+            trainer_result = None
+            fitness = 0.0
+
+            Terminal.inst().info("Run sub-process %s" % learning_filename)
             with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   stdin=subprocess.DEVNULL) as p:
                 stdout, stderr = p.communicate()
+                # if stdout:
+                #     print(stdout.decode())
 
                 trainer_result = read_trainer_file(learning_filename)
                 if trainer_result:
-                    self._results.append(trainer_result)
                     Terminal.inst().info("-- %s trainer success with %s" % (
-                        trainer_name, trainer_result.get('performance', "0.00%")))
+                        learning_filename, trainer_result.get('performance', "0.00%")))
                     print(trainer_result)
+
+                    perf = float(trainer_result.get('performance', "0.00%").rstrip('%'))
+
+                    # @todo adjust by MDD ..
+                    fitness = perf * 0.01
                 else:
-                    Terminal.inst().info("-- %s trainer failed" % trainer_name)
+                    Terminal.inst().info("-- %s trainer failed" % learning_filename)
 
                 utils.delete_learning(options['learning-path'], learning_filename)
 
-        trainer_commander.start(None)
+            return fitness, trainer_result
+
+        trainer_commander.start(start_trainer)
         res = trainer_commander.results
         for r in res:
-            logger.debug(r.params)
-            logger.debug(r.fitness)
-            logger.debug("------")
-        # debug only
-        # n = 0
-        #
-        # while 1:
-        #     sub_name = "Sub-%s" % n
-        #     # trainer_commander.command() @todo
-        #
-        #     start_trainer(sub_name)
-        #
-        #     n += 1
-        #
-        #     if n >= 5:
-        #         break
+            logger.debug(r)
 
         # complete
         better_trainer_result = None

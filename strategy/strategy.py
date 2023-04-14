@@ -1710,12 +1710,12 @@ class Strategy(Runnable):
     #
 
     def write_trainer_report(self, learning_path: str, filename: str, original_content: dict):
-        logger.info("Writing results to trainer file %s..." % str)
+        logger.info("Writing results to trainer file %s..." % filename)
 
         new_content = copy.deepcopy(original_content)
         new_content['revision'] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # @todo write result and new parameters
+        # write result and parameters
         from strategy.helpers.aggtradedataset import get_agg_trades
         with self._mutex:
             agg_trades = get_agg_trades(self)

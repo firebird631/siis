@@ -1606,7 +1606,7 @@ class UserImportCommand(Command):
         "param2: <filename> Specify the full-path filename (optional) (default siis_trades.json)"
     )
 
-    CHOICES = ("active", "history", "closed", "alert", "region", "strategy", "trader")
+    CHOICES = ("active", "history", "closed", "alert", "region", "strategy", "trader", "check")
 
     def __init__(self, strategy_service, trader_service):
         super().__init__('import', 'IM')
@@ -1620,7 +1620,7 @@ class UserImportCommand(Command):
         filename = ""
         check = False
 
-        if len(args) > 2:
+        if len(args) > 3:
             return False, "Too many parameters"
 
         if len(args) == 1:
@@ -1629,6 +1629,14 @@ class UserImportCommand(Command):
         elif len(args) == 2:
             dataset = args[0]
             filename = args[1]
+
+        elif len(args) == 3:
+            if args[1] != "check":
+                return False, "Only check option is recognized as second parameters"
+
+            dataset = args[0]
+            check = args[1] == "check"
+            filename = args[2]
 
         if not dataset or dataset not in UserImportCommand.CHOICES:
             return False, "Data-set must be specified"

@@ -120,6 +120,7 @@ def display_cli_help():
     Terminal.inst().message("  --delay=<number> Add a delay in seconds between two fetch call.")
     Terminal.inst().message("  --watcher-only Only watch and save market/candles data into the database. No trade and neither paper mode trades are performed.")
     Terminal.inst().message("  --initial-fetch Process the fetching of recent OHLCs when subscribing to a market. Default don't fetch.")
+    Terminal.inst().message("  --check-trades Check trades and order at startup and each time a strategy trader is restarted. Default do not perform check.")
     Terminal.inst().message("  --prefetch Alias for --initial-fetch.")
     Terminal.inst().message("  --store-ohlc Write OHLCs to DB. Default not stored.")
     Terminal.inst().message("  --store-trade Write tick/trade/quote to filesystem. Default not stored.")

@@ -742,14 +742,10 @@ class StrategyTrader(object):
 
         trader = self.strategy.trader()
 
-        if not trader.paper_mode:
-            # do not process in paper-mode
+        if not trader.paper_mode and self.strategy.service.check_trades_at_start:
+            # do not process in paper-mode neither if option is disabled
             with self._trade_mutex:
                 for trade in self._trades:
-                    if trader.name == "kraken.com":
-                        # @fixture some strange issue, sometimes API answers no results
-                        continue
-
                     try:
                         # check and update from order info orders/position/quantity
                         result = trade.check(trader, self.instrument)

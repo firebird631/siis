@@ -5,6 +5,7 @@
 
 import sys
 import glob
+import traceback
 
 from os.path import dirname, basename, isfile, join
 from importlib import import_module
@@ -14,6 +15,7 @@ from terminal.terminal import Terminal
 import logging
 logger = logging.getLogger('siis.tools')
 error_logger = logging.getLogger('siis.error.tools')
+traceback_logger = logging.getLogger('siis.traceback.tools')
 
 
 class Tool(object):
@@ -146,6 +148,7 @@ class Tool(object):
 
         except Exception as e:
             error_logger.error(str(e))
+            traceback_logger.error(traceback.format_exc())
             sys.exit(-1)
 
     @staticmethod

@@ -119,6 +119,8 @@ class StrategyService(Service):
         self._time_factor = 0.0
         self._backtest_progress = 0.0
 
+        self._check_trades_at_start = options.get('check-trades', False)
+
         if self._backtesting:
             # can use the time factor in backtesting only
             self._time_factor = options.get('time-factor', 0.0)
@@ -186,6 +188,10 @@ class StrategyService(Service):
     @property
     def terminate_on_exit(self) -> bool:
         return self._terminate_on_exit
+
+    @property
+    def check_trades_at_start(self) -> bool:
+        return self._check_trades_at_start
 
     def set_activity(self, status: bool):
         """

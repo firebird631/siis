@@ -55,9 +55,6 @@ Sum order :
 # WIP #
 #######
 
-- Ajouter option check sur la commande import trade
-- Finir option global --no-trade-check (at startup)
-
 #116 kraken watcher et trader :
     - fetch des positions
     - fetch des trades history et calcule des prix d'entré moyen par asset

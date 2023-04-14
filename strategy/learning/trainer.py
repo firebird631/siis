@@ -128,14 +128,17 @@ class Trainer(object):
         return cls.NAME
 
     @classmethod
-    def create_commander(cls, profile_parameters: dict, learning_parameters: dict) -> Union[TrainerCommander, None]:
+    def create_commander(cls, profile_name: str,
+                         profile_parameters: dict,
+                         learning_parameters: dict) -> Union[TrainerCommander, None]:
         """
         Override this method to return an instance of TrainerCommander to be executed by the tool Trainer.
+        @param profile_name: str
         @param profile_parameters: dict
         @param learning_parameters: dict
         @return: Instance of inherited TrainerCommander class
         """
-        return cls.COMMANDER(profile_parameters, learning_parameters)
+        return cls.COMMANDER(profile_name, profile_parameters, learning_parameters)
 
     @classmethod
     def create_client(cls, profile_parameters: dict, trainer_parameters: dict) -> Union[TrainerClient, None]:
@@ -343,6 +346,17 @@ class Trainer(object):
             trainer_strategy_parameters[pname] = Trainer.set_rand_value(pvalue)
 
     @staticmethod
+    def bind_strategy_parameters(learning_config: dict, trainer_strategy_parameters: dict):
+        strategy_parameters = learning_config.get('strategy', {}).get('parameters', {})
+
+        for pname, pvalue in strategy_parameters.items():
+            if pname.startswith('_'):
+                # commented
+                continue
+
+            trainer_strategy_parameters[pname] = pvalue
+
+    @staticmethod
     def set_rand_value(param, prev=None):
         if param.get('type') == "int":
             return random.randrange(param.get('min', 0), param.get('max', 0) + 1, param.get('step', 1))
@@ -366,11 +380,35 @@ class TrainerCommander(object):
     _profile_parameters: dict
     _learning_parameters: dict
 
-    def __init__(self, profile_parameters: dict, learning_parameters: dict):
+    def __init__(self, profile_name: str, profile_parameters: dict, learning_parameters: dict):
+        self._profile_name = profile_name
         self._profile_parameters = profile_parameters
         self._learning_parameters = learning_parameters
 
+        self._params_info = []
         self._last_strategy_parameters = {}
+
+        self.bind_parameters()
+
+    def bind_parameters(self):
+        strategy_params = self._learning_parameters.get('strategy', {}).get('parameters', {})
+
+        for p_name, p_value in strategy_params.items():
+            param = copy.copy(p_value)
+            param['name'] = p_name  # for binding
+
+            self._params_info.append(param)
+
+    def unbind_parameters(self, individu):
+        if not individu:
+            return None
+
+        strategy_params = copy.deepcopy(self._learning_parameters.get('strategy', {}).get('parameters', {}))
+
+        for i, param_info in enumerate(self._params_info):
+            strategy_params[param_info['name']] = individu.params[i]
+
+        return strategy_params
 
     def start(self, callback):
         pass

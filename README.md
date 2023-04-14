@@ -357,6 +357,7 @@ The identity name must be specified, and need to be configured into the _identit
 * --store-trade To force write of trade or tick data during the execution of the bot (default not stored).
 * --store-ohlc To force write of OHLC (candles/klines) data during the execution of the bot (default not stored).
 * --initial-fetch or --prefetch Process the fetching of recent OHLCs when subscribing to a market. Default don't fetch.
+* --check-trades Check trades and order at startup and each time a strategy trader is restarted. Default do not perform check.
 * --store-ohlc or --store-candle Write OHLCs to DB. Default not stored.")
 * --store-trade Write tick/trade/quote to filesystem. Default not stored.
 * --monitor Enable Web monitor HTTP socket and WebSocket. Default port is 8080.

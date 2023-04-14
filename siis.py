@@ -161,8 +161,8 @@ def application(argv):
                     # use a named tool
                     options['tool'] = arg.split('=')[1]
 
-                elif arg == '--no-trade-check':
-                    options['no-trade-check'] = True
+                elif arg == '--check-trades':
+                    options['check-trades'] = True
                 elif arg == '--no-conf':
                     options['no-conf'] = True
                 elif arg == '--zip':
