@@ -272,39 +272,24 @@ class TrainerTool(Tool):
         trainer_commander.start(start_trainer)
 
         # get final better results, compare, select one
-        best_result = None
-        max_perf = 0.0
+        best_result = trainer_commander.evaluate_best()
 
-        try:
-            min_perf = float(self._learning_config.get('trainer', {}).get('min-performance', "0.00%").rstrip('%'))
-        except ValueError:
-            min_perf = 0.0
+        final_learning_config = copy.deepcopy(self._learning_config)
 
-        results = trainer_commander.results
-        for result in results:
-            print(result)
-        #     logger.info(result.get('strategy').get('parameters'))
-        #
-        #     try:
-        #         performance = float(result.get('performance', "0.00%").rstrip('%'))
-        #     except ValueError:
-        #         continue
-        #
-        #     if performance >= min_perf and performance > max_perf:
-        #         max_perf = performance
-        #         best_result = result
-        #
-        # final_learning_config = copy.deepcopy(self._learning_config)
-        #
-        # if best_result:
-        #     # found best result
-        #     logger.info("Best candidate found !")
-        #     logger.info(best_result)
-        #
-        #     # @todo merge parameters
-        #     utils.merge_learning_config(final_learning_config, best_result)
-        #     final_learning_config = best_result
-        #     utils.write_learning(options, self._learning, final_learning_config)
+        if best_result:
+            # found best result
+            logger.info("Best candidate found !")
+            logger.info(best_result)
+
+            # merge strategy parameters
+            best_result_strategy_parameters = best_result.get('strategy', {}).get('parameters', {})
+            final_strategy_parameters = final_learning_config.get('strategy', {}).get('parameters', {})
+
+            for pname, value in best_result_strategy_parameters.items():
+                final_strategy_parameters[pname] = value
+
+            # and finally save the learning file (update)
+            utils.write_learning(options, self._learning, final_learning_config)
 
         return True
 

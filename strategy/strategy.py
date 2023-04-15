@@ -1754,14 +1754,17 @@ class Strategy(Runnable):
             sl_win += t['sl-win']
             tp_win += t['tp-win']
 
-        max_draw_down = self.trader().account.max_draw_down
-        equity = self.trader().account.balance
+        trader = self.trader()
+
+        max_draw_down = trader.account.max_draw_down
+        equity = trader.account.balance
 
         new_content['performance'] = "%.2f%%" % (perf_sum * 100.0)
         new_content['max-draw-down'] = "%.2f%%" % (max_draw_down * 100.0)
-        new_content['final-equity'] = self.trader().account.format_price(equity)
+        new_content['final-equity'] = trader.account.format_price(equity)
+        new_content['stats-samples'] = [x.dumps() for x in trader.account.stats_samples]
 
-        new_content['profit-loss'] = self.trader().account.format_price(pl_sum)
+        new_content['profit-loss'] = trader.account.format_price(pl_sum)
         new_content['best'] = "%.2f%%" % (best_best * 100.0)
         new_content['worst'] = "%.2f%%" % (worst_worst * 100.0)
         new_content['succeed-trades'] = success_sum

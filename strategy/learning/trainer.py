@@ -33,7 +33,7 @@ traceback_logger = logging.getLogger('siis.traceback.strategy.learning.trainer')
 
 class Trainer(object):
     """
-    Contains the class builder for the commander and the client.
+    Contains the class builder for the commander.
     It is also responsible to start the sub-process of the commander by using the trainer tool.
     A learning file is created before starting the trainer tool to communicate parameters and get back the results.
 
@@ -49,7 +49,6 @@ class Trainer(object):
     NAME = ""
 
     COMMANDER = None  # must be set to a TrainerCommander class
-    CLIENT = None     # must be set to a TrainerClient class
 
     processing = {}   # current market-id in process market-id/thread
 
@@ -78,10 +77,6 @@ class Trainer(object):
 
         return False
 
-    #
-    # class builders
-    #
-
     @classmethod
     def name(cls) -> str:
         return cls.NAME
@@ -98,16 +93,6 @@ class Trainer(object):
         @return: Instance of inherited TrainerCommander class
         """
         return cls.COMMANDER(profile_name, profile_parameters, learning_parameters)
-
-    @classmethod
-    def create_client(cls, profile_parameters: dict, trainer_parameters: dict) -> Union[TrainerClient, None]:
-        """
-        Override this method to return an instance of TrainerClient to be executed by the strategy backtesting.
-        @param profile_parameters: dict
-        @param trainer_parameters: dict
-        @return: Instance of inherited TrainerClient class
-        """
-        return cls.CLIENT(profile_parameters, trainer_parameters)
 
     #
     # caller proxy helper
@@ -293,45 +278,45 @@ class Trainer(object):
 
             del Trainer.processing[market_id]
 
-    @staticmethod
-    def setup_strategy_parameters(learning_config: dict, trainer_strategy_parameters: dict):
-        strategy_parameters = learning_config.get('strategy', {}).get('parameters', {})
+    # @staticmethod
+    # def setup_strategy_parameters(learning_config: dict, trainer_strategy_parameters: dict):
+    #     strategy_parameters = learning_config.get('strategy', {}).get('parameters', {})
+    #
+    #     for pname, pvalue in strategy_parameters.items():
+    #         if pname.startswith('_'):
+    #             # commented
+    #             continue
+    #
+    #         trainer_strategy_parameters[pname] = Trainer.set_rand_value(pvalue)
 
-        for pname, pvalue in strategy_parameters.items():
-            if pname.startswith('_'):
-                # commented
-                continue
+    # @staticmethod
+    # def bind_strategy_parameters(learning_config: dict, trainer_strategy_parameters: dict):
+    #     strategy_parameters = learning_config.get('strategy', {}).get('parameters', {})
+    #
+    #     for pname, pvalue in strategy_parameters.items():
+    #         if pname.startswith('_'):
+    #             # commented
+    #             continue
+    #
+    #         trainer_strategy_parameters[pname] = pvalue
 
-            trainer_strategy_parameters[pname] = Trainer.set_rand_value(pvalue)
-
-    @staticmethod
-    def bind_strategy_parameters(learning_config: dict, trainer_strategy_parameters: dict):
-        strategy_parameters = learning_config.get('strategy', {}).get('parameters', {})
-
-        for pname, pvalue in strategy_parameters.items():
-            if pname.startswith('_'):
-                # commented
-                continue
-
-            trainer_strategy_parameters[pname] = pvalue
-
-    @staticmethod
-    def set_rand_value(param, prev=None):
-        if param.get('type') == "int":
-            return random.randrange(param.get('min', 0), param.get('max', 0) + 1, param.get('step', 1))
-
-        elif param.get('type') == "float":
-            precision = param.get('precision', 1) or 1
-            step = param.get('step', 0.01) or 0.01
-
-            number = random.randrange(
-                param.get('min', 0) * math.pow(10, precision),
-                param.get('max', 0) * math.pow(10, precision) + 1, 1) * math.pow(10, -precision)
-
-            return truncate(round(number / step) * step, precision)
-
-        else:
-            return 0
+    # @staticmethod
+    # def set_rand_value(param):
+    #     if param.get('type') == "int":
+    #         return random.randrange(param.get('min', 0), param.get('max', 0) + 1, param.get('step', 1))
+    #
+    #     elif param.get('type') == "float":
+    #         precision = param.get('precision', 1) or 1
+    #         step = param.get('step', 0.01) or 0.01
+    #
+    #         number = random.randrange(
+    #             param.get('min', 0) * math.pow(10, precision),
+    #             param.get('max', 0) * math.pow(10, precision) + 1, 1) * math.pow(10, -precision)
+    #
+    #         return truncate(round(number / step) * step, precision)
+    #
+    #     else:
+    #         return 0
 
 
 class TrainerCommander(object):
@@ -358,30 +343,46 @@ class TrainerCommander(object):
 
             self._params_info.append(param)
 
-    def unbind_parameters(self, individu):
-        if not individu:
-            return None
-
-        strategy_params = copy.deepcopy(self._learning_parameters.get('strategy', {}).get('parameters', {}))
-
-        for i, param_info in enumerate(self._params_info):
-            strategy_params[param_info['name']] = individu.params[i]
-
-        return strategy_params
-
-    def start(self, callback):
+    def start(self, callback: callable):
+        """
+        Override this method to implement the starting of the evaluation/fitness method.
+        @param callback:
+        @return:
+        """
         pass
 
     @property
-    def results(self):
-        return None
+    def results(self) -> list:
+        """
+        Return the best evaluated candidate during the training process.
+        @return: list
+        """
+        return []
 
+    def evaluate_best(self):
+        """
+        Simple implementation to select a best candidate from the evaluated ones.
+        @return: A single candidate or None.
+        """
+        best_result = None
+        results = self.results
 
-class TrainerClient(object):
+        try:
+            min_perf = float(self._learning_parameters.get('trainer', {}).get('min-performance', "0.00%").rstrip('%'))
+        except ValueError:
+            min_perf = 0.0
 
-    _profile_parameters: dict
-    _trainer_parameters: dict
+        max_perf = min_perf
 
-    def __init__(self, profile_parameters: dict, trainer_parameters: dict):
-        self._profile_parameters = profile_parameters
-        self._trainer_parameters = trainer_parameters
+        # simple method, the best overall performance
+        for result in results:
+            try:
+                performance = float(result.get('performance', "0.00%").rstrip('%'))
+            except ValueError:
+                continue
+
+            if performance > max_perf:
+                max_perf = performance
+                best_result = result
+
+        return best_result

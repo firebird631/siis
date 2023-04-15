@@ -10,7 +10,7 @@ import random
 from datetime import datetime
 
 from common.utils import truncate
-from strategy.learning.trainer import Trainer, TrainerClient, TrainerCommander
+from strategy.learning.trainer import Trainer, TrainerCommander
 
 
 class DummyTrainerCommander(TrainerCommander):
@@ -29,7 +29,7 @@ class DummyTrainerCommander(TrainerCommander):
 
         self._finals = []
 
-    def start(self, callback):
+    def start(self, callback: callable):
         random.seed()
 
         n = 0
@@ -60,7 +60,7 @@ class DummyTrainerCommander(TrainerCommander):
                 continue
 
             if performance >= self._min_perf:
-                # @todo on criterion only
+                # keep only if min perf is reached
                 self._finals.append(trainer_result)
 
             n += 1
@@ -69,11 +69,11 @@ class DummyTrainerCommander(TrainerCommander):
                 break
 
     @property
-    def results(self):
+    def results(self) -> list:
         return self._finals
 
     @staticmethod
-    def set_rand_value(param):
+    def set_rand_value(param: dict):
         if param.get('type') == "int":
             return random.randrange(param.get('min', 0), param.get('max', 0) + 1, param.get('step', 1))
 
@@ -91,18 +91,10 @@ class DummyTrainerCommander(TrainerCommander):
             return 0
 
 
-class DummyTrainerClient(TrainerClient):
-
-    def __init__(self, profile_parameters: dict, trainer_parameters: dict):
-        super().__init__(profile_parameters, trainer_parameters)
-
-
 class DummyTrainer(Trainer):
     """
     Random based parameters generator method.
     """
 
     NAME = "dummy"
-
     COMMANDER = DummyTrainerCommander
-    CLIENT = DummyTrainerClient

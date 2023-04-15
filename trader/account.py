@@ -12,10 +12,30 @@ if TYPE_CHECKING:
 
 import threading
 
+from dataclasses import dataclass, field
 from common.utils import truncate
 
 import logging
 logger = logging.getLogger('siis.trader.account')
+
+
+@dataclass
+class AccountStatSample:
+    """
+    Account statistic sample
+    """
+
+    timestamp: float = 0.0
+    performance: float = 0.0
+    profit_loss: float = 0.0
+    draw_down: float = 0.0
+
+    def dumps(self):
+        return self.timestamp, self.performance, self.profit_loss, self.draw_down
+
+    @staticmethod
+    def builder(data):
+        return AccountStatSample(data[0], data[1], data[2], data[3])
 
 
 class Account(object):
@@ -30,6 +50,8 @@ class Account(object):
     TYPE_SPOT = 1
     TYPE_MARGIN = 2
     TYPE_SPREADBET = 4
+
+    DEFAULT_STATS_SAMPLING_TIMEFRAME = 60*60*24  # 1 day
 
     _parent: Trader
 
@@ -79,6 +101,10 @@ class Account(object):
 
         self._draw_down = 0.0
         self._max_draw_down = 0.0
+
+        self._stats_sampling_timeframe = Account.DEFAULT_STATS_SAMPLING_TIMEFRAME
+        self._last_stats_update = 0.0
+        self._stats_samples = []
 
         trader_config = parent.service.trader_config()
         if trader_config:
@@ -202,6 +228,10 @@ class Account(object):
     @property
     def max_draw_down(self) -> float:
         return self._max_draw_down
+
+    @property
+    def stats_samples(self) -> list[AccountStatSample]:
+        return self._stats_samples
 
     @account_type.setter
     def account_type(self, account_type: int):
@@ -329,6 +359,26 @@ class Account(object):
 
         self._max_draw_down = max(self._max_draw_down, self._draw_down)
 
+    def update_stats(self, timestamp: float):
+        if not self._last_stats_update:
+            # initial sample
+            self._last_stats_update = timestamp
+            self._stats_samples.append(AccountStatSample(
+                self._last_stats_update,
+                self._balance,
+                self._profit_loss,
+                self._draw_down))
+
+            return
+
+        if timestamp - self._last_stats_update >= self._stats_sampling_timeframe:
+            self._last_stats_update = self._last_stats_update + self._stats_sampling_timeframe
+            self._stats_samples.append(AccountStatSample(
+                self._last_stats_update,
+                self._balance,
+                self._profit_loss,
+                self._draw_down))
+
     #
     # persistence
     #
@@ -345,7 +395,8 @@ class Account(object):
             'asset-balance': self._asset_balance,
             'free-asset-balance': self._free_asset_balance,
             'draw-down': self._draw_down,
-            'max-draw-down': self._max_draw_down
+            'max-draw-down': self._max_draw_down,
+            'stats-samples': [x.dumps() for x in self._stats_samples]
         }
 
     def loads(self, data: dict):
@@ -360,3 +411,4 @@ class Account(object):
         self._free_asset_balance = data.get('free-asset-balance', 0.0)
         self._draw_down = data.get('draw-down', 0.0)
         self._max_draw_down = data.get('max-draw-down', 0.0)
+        self._stats_samples = [AccountStatSample.builder(d) for d in data.get('stats-samples', [])]
