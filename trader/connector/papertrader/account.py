@@ -8,7 +8,7 @@ from trader.account import Account
 
 class PaperTraderAccount(Account):
     """
-    The account currency must be defined as the real trader, same the the initial balance amount.
+    The account currency must be defined as the real trader, same the initial balance amount.
     """
 
     def __init__(self, parent):

@@ -67,7 +67,6 @@ class TrainerTool(Tool):
         self._learning_config = None
 
         self._trainer_clazz = None
-        self._results = []
 
     def check_options(self, options):
         if not options.get('profile'):
@@ -256,12 +255,12 @@ class TrainerTool(Tool):
                 if trainer_result:
                     Terminal.inst().info("-- %s trainer success with %s" % (
                         learning_filename, trainer_result.get('performance', "0.00%")))
-                    print(trainer_result)
+                    print(trainer_result.get('strategy').get('parameters'))
 
                     perf = float(trainer_result.get('performance', "0.00%").rstrip('%'))
 
                     # @todo adjust by MDD ..
-                    fitness = perf * 0.01
+                    fitness = -perf
                 else:
                     Terminal.inst().info("-- %s trainer failed" % learning_filename)
 
@@ -269,39 +268,43 @@ class TrainerTool(Tool):
 
             return fitness, trainer_result
 
+        # run training
         trainer_commander.start(start_trainer)
-        res = trainer_commander.results
-        for r in res:
-            logger.debug(r)
 
-        # complete
-        better_trainer_result = None
-        final_learning_config = copy.deepcopy(self._learning_config)
+        # get final better results, compare, select one
+        best_result = None
         max_perf = 0.0
-        better = -1
 
         try:
             min_perf = float(self._learning_config.get('trainer', {}).get('min-performance', "0.00%").rstrip('%'))
         except ValueError:
             min_perf = 0.0
 
-        for i, result in enumerate(self._results):
-            try:
-                performance = float(result.get('performance', "0.00%").rstrip('%'))
-            except ValueError:
-                continue
-
-            if performance >= min_perf and performance > max_perf:
-                max_perf = performance
-                better = i
-
-        if better >= 0:
-            better_trainer_result = self._results[better]
-
-        if better_trainer_result:
-            # utils.merge_learning_config(final_learning_config, better_trainer_result)
-            final_learning_config = better_trainer_result  # @todo
-            utils.write_learning(options, self._learning, final_learning_config)
+        results = trainer_commander.results
+        for result in results:
+            print(result)
+        #     logger.info(result.get('strategy').get('parameters'))
+        #
+        #     try:
+        #         performance = float(result.get('performance', "0.00%").rstrip('%'))
+        #     except ValueError:
+        #         continue
+        #
+        #     if performance >= min_perf and performance > max_perf:
+        #         max_perf = performance
+        #         best_result = result
+        #
+        # final_learning_config = copy.deepcopy(self._learning_config)
+        #
+        # if best_result:
+        #     # found best result
+        #     logger.info("Best candidate found !")
+        #     logger.info(best_result)
+        #
+        #     # @todo merge parameters
+        #     utils.merge_learning_config(final_learning_config, best_result)
+        #     final_learning_config = best_result
+        #     utils.write_learning(options, self._learning, final_learning_config)
 
         return True
 

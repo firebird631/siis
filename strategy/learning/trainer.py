@@ -78,47 +78,6 @@ class Trainer(object):
 
         return False
 
-    def read_learning_results(self):
-        # @todo
-        pass
-
-    # def default_cleanup(self, broker_id: str, market_id: str, before_datetime: datetime,
-    #                     ohlc_depths: Optional[dict[float]] = None,
-    #                     tick_depth: Optional[int] = None,
-    #                     order_book_depth: Optional[int] = None):
-    #
-    #     for ohlc, depth in ohlc_depths.items():
-    #         # @todo calculer la portion de date qui peut etre supprime pour les OHLC
-    #         pass
-    #
-    #     if tick_depth:
-    #         # @todo pareil mais pour les tick/trades et donc quel(s) fichiers peuvent etre efface
-    #         pass
-    #
-    #     if order_book_depth:
-    #         # no stored data
-    #         pass
-    #
-    # def apply_to_strategy_trader(self, strategy_trader: StrategyTrader):
-    #     strategy = self._strategy_service.strategy()
-    #
-    #     if strategy_trader is None:
-    #         return False
-    #
-    #     market_id = strategy_trader.instrument.market_id
-    #
-    #     # @todo
-    #
-    #     return True
-    #
-    # #
-    # # static
-    # #
-    #
-    # @staticmethod
-    # def parse_parameters(parameters: dict) -> dict:
-    #     return parameters
-
     #
     # class builders
     #
