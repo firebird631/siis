@@ -3,19 +3,19 @@
 # @license Copyright (c) 2023 Dream Overflow
 # Machine Learning / Trainer tools
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
+
 import base64
 import copy
-import math
-import random
 import subprocess
 import traceback
 import uuid
-from datetime import datetime
 from importlib import import_module
 
-from common.utils import truncate
 from config import utils
-from strategy.learning.trainer import Trainer
+from strategy.learning.trainer import TrainerJob
 from tools.tool import Tool
 
 from terminal.terminal import Terminal
@@ -35,6 +35,7 @@ class TrainerTool(Tool):
     output results for the caller.
 
     @todo In case of some other watcher/market are used for a strategy need to prefetch them if --initial-fetch
+    @todo Support for parallel option
     """
 
     @classmethod
@@ -44,8 +45,9 @@ class TrainerTool(Tool):
     @classmethod
     def help(cls):
         return ("Process a training for a specific strategy.",
-                "Specify --profile, --learning, --from, --to, --timeframe",
-                "Optional --initial-fetch to fetch data before training")
+                "Specify --profile, --learning, --from, --to, --timestep",
+                "Optional --initial-fetch to fetch data before training",
+                "Optional --parallels=<n> to parallelize many sub-process (default 1)")
 
     @classmethod
     def detailed_help(cls):
@@ -68,6 +70,9 @@ class TrainerTool(Tool):
 
         self._trainer_clazz = None
 
+        self._max_sub_process = 1
+        self._trainer_commander = None
+
     def check_options(self, options):
         if not options.get('profile'):
             Terminal.inst().error("Missing strategy profile")
@@ -85,8 +90,8 @@ class TrainerTool(Tool):
             Terminal.inst().error("Missing to datetime parameters")
             return False
 
-        if not options.get('timeframe'):
-            Terminal.inst().error("Missing backtest timeframe parameters")
+        if not options.get('timestep'):
+            Terminal.inst().error("Missing backtest timestep parameters")
             return False
 
         Terminal.inst().message("Import profile...")
@@ -105,6 +110,8 @@ class TrainerTool(Tool):
 
         self._profile = options['profile']
         self._learning = options['learning']
+
+        self._max_sub_process = options.get('parallel', 1)
 
         return True
 
@@ -192,6 +199,7 @@ class TrainerTool(Tool):
         from_dt = options.get('from')
         to_dt = options.get('to')
         timeframe = options.get('timeframe')
+        timestep = options.get('timestep')
 
         def gen_trainer_filename() -> str:
             return "trainer_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
@@ -216,11 +224,14 @@ class TrainerTool(Tool):
                         trainer_strategy_params[linked] = trainer_strategy_params[pname]
 
         # instantiate trainer and process it
-        trainer_commander = self._trainer_clazz.create_commander(self._profile,
-                                                                 self._profile_config,
-                                                                 self._learning_config)
+        self._trainer_commander = self._trainer_clazz.create_commander(self._profile,
+                                                                       self._profile_config,
+                                                                       self._learning_config)
 
-        def start_trainer(learning_parameters: dict, profile_name: str):
+        if self._max_sub_process > 1:
+            self._trainer_commander.set_parallel(self._max_sub_process)
+
+        def start_trainer(learning_parameters: dict, profile_name: str, caller: Union[TrainerJob, None]):
             learning_filename = gen_trainer_filename()
 
             # lookup for linked parameters
@@ -237,6 +248,7 @@ class TrainerTool(Tool):
                 '--from=%s' % from_dt.strftime("%Y-%m-%dT%H:%M:%S"),
                 '--to=%s' % to_dt.strftime("%Y-%m-%dT%H:%M:%S"),
                 '--timeframe=%s' % timeframe,
+                '--timestep=%s' % timestep,
                 '--learning=%s' % learning_filename,
                 '--no-interactive'
             ]
@@ -246,8 +258,12 @@ class TrainerTool(Tool):
 
             Terminal.inst().info("Run sub-process %s" % learning_filename)
             with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                  stdin=subprocess.DEVNULL) as p:
-                stdout, stderr = p.communicate()
+                                  stdin=subprocess.DEVNULL) as process:
+
+                if caller:
+                    caller.process = process
+
+                stdout, stderr = process.communicate()
                 # if stdout:
                 #     print(stdout.decode())
 
@@ -255,7 +271,7 @@ class TrainerTool(Tool):
                 if trainer_result:
                     Terminal.inst().info("-- %s trainer success with %s" % (
                         learning_filename, trainer_result.get('performance', "0.00%")))
-                    print(trainer_result.get('strategy').get('parameters'))
+                    # print(trainer_result.get('strategy').get('parameters'))
 
                     perf = float(trainer_result.get('performance', "0.00%").rstrip('%'))
 
@@ -269,10 +285,10 @@ class TrainerTool(Tool):
             return fitness, trainer_result
 
         # run training
-        trainer_commander.start(start_trainer)
+        self._trainer_commander.start(start_trainer)
 
         # get final better results, compare, select one
-        best_result = trainer_commander.evaluate_best()
+        best_result = self._trainer_commander.evaluate_best()
 
         final_learning_config = copy.deepcopy(self._learning_config)
 
@@ -285,11 +301,23 @@ class TrainerTool(Tool):
             best_result_strategy_parameters = best_result.get('strategy', {}).get('parameters', {})
             final_strategy_parameters = final_learning_config.get('strategy', {}).get('parameters', {})
 
+            # merge statistics info
+            for p, v in best_result.items():
+                if type(v) in (str, int, float, bool):
+                    final_learning_config[p] = v
+
             for pname, value in best_result_strategy_parameters.items():
                 final_strategy_parameters[pname] = value
 
-            # and finally save the learning file (update)
+            # keep others best results for further analysis
+            final_learning_config['results'] = [self._trainer_commander.results]
+
+            # and finally update the learning file
             utils.write_learning(options, self._learning, final_learning_config)
+
+        logger.debug("join commander")
+        self._trainer_commander.join()
+        self._trainer_commander = None
 
         return True
 
@@ -302,6 +330,10 @@ class TrainerTool(Tool):
         return True
 
     def forced_interrupt(self, options):
+        logger.debug("kill commander")
+        self._trainer_commander.kill()
+        self._trainer_commander = None
+
         return True
 
 

@@ -10,6 +10,7 @@ import random
 import threading
 import base64
 import subprocess
+import time
 import uuid
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
 
@@ -103,8 +104,12 @@ class Trainer(object):
         learning_params = strategy_trader.strategy.parameters.get('learning')
         trainer_params = learning_params.get('trainer')
 
-        timeframe = trainer_params.get('timeframe', 1)
-        if type(timeframe) is str:
+        timestep = trainer_params.get('timestep', 60)
+        if type(timestep) is str:
+            timestep = timeframe_from_str(timestep)
+
+        timeframe = trainer_params.get('timeframe', 0)
+        if type(timestep) is str:
             timeframe = timeframe_from_str(timeframe)
 
         period = timeframe_from_str(trainer_params.get('period', '1w'))
@@ -112,7 +117,7 @@ class Trainer(object):
         from_dt = datetime.utcnow() - timedelta(seconds=period)
         to_dt = datetime.utcnow()
 
-        return from_dt, to_dt, timeframe
+        return from_dt, to_dt, timestep
 
     @staticmethod
     def caller(identity, profile, learning_path, strategy_trader: StrategyTrader, profile_config: dict):
@@ -155,10 +160,11 @@ class Trainer(object):
             logger.warning("Unable to train market %s now because previous is still waited" % market_id)
             return
 
-        from_dt, to_dt, timeframe = Trainer.compute_period(strategy_trader, profile_config)
+        from_dt, to_dt, timestep, timeframe = Trainer.compute_period(strategy_trader, profile_config)
 
         trainer_params['from'] = from_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         trainer_params['to'] = to_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        trainer_params['timestep'] = timestep
         trainer_params['timeframe'] = timeframe
 
         learning_filename = "learning_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
@@ -183,6 +189,7 @@ class Trainer(object):
             '--learning=%s' % learning_filename,
             '--from=%s' % from_dt.strftime("%Y-%m-%dT%H:%M:%S"),
             '--to=%s' % to_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+            '--timestep=%s' % timestep,
             '--timeframe=%s' % timeframe
         ]
 
@@ -319,6 +326,54 @@ class Trainer(object):
     #         return 0
 
 
+class TrainerCaller(object):
+
+    def set_result(self, results):
+        pass
+
+
+class TrainerJob(threading.Thread):
+
+    def __init__(self, commander: TrainerCommander,
+                 caller: TrainerCaller, callback: callable,
+                 learning_parameters: dict, profile_name: str):
+
+        super().__init__()
+
+        self._commander = commander
+        self._caller = caller
+        self._callback = callback
+        self._learning_parameters = learning_parameters
+        self._profile_name = profile_name
+
+        self._results = None
+        self._completed = False
+
+        self._process = None
+
+    @property
+    def process(self):
+        return self._process
+
+    @process.setter
+    def process(self, process):
+        self._process = process
+
+    def run(self):
+        self._results = self._callback(self._learning_parameters, self._profile_name, self)
+        self._completed = True
+
+        if self._caller and self._results is not None:
+            self._caller.set_result(self._results)
+
+        self._commander.complete_job(self)
+
+    def kill_process(self):
+        if self._process:
+            self._process.kill()
+            self._process = None
+
+
 class TrainerCommander(object):
 
     _profile_parameters: dict
@@ -333,6 +388,43 @@ class TrainerCommander(object):
         self._last_strategy_parameters = {}
 
         self.bind_parameters()
+
+        self._parallel = 1
+        self._sub_processes = []  # for multi-processing
+
+    def set_parallel(self, num):
+        self._parallel = num if num > 0 else 1
+
+    @property
+    def parallel(self):
+        return self._parallel
+
+    def join(self):
+        logger.debug("join subs...")
+        while self._sub_processes:
+            self._sub_processes[0].join()
+        logger.debug("joined subs !")
+
+    def kill(self):
+        # @todo kill sub process and no the thread
+        logger.debug("kill subs jobs...")
+        while self._sub_processes:
+            self._sub_processes[0].kill_process()
+        logger.debug("killed subs jobs !")
+
+    def start_job(self, caller, callback: callable, learning_parameters: dict, profile_name: str):
+        while len(self._sub_processes) >= self._parallel:
+            # @todo optimize with a count condition
+            time.sleep(10)
+
+        job = TrainerJob(self, caller, callback, learning_parameters, profile_name)
+        self._sub_processes.append(job)
+
+        job.start()
+
+    def complete_job(self, job: TrainerJob):
+        if job in self._sub_processes:
+            self._sub_processes.remove(job)
 
     def bind_parameters(self):
         strategy_params = self._learning_parameters.get('strategy', {}).get('parameters', {})

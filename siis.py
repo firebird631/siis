@@ -261,6 +261,11 @@ def application(argv):
                 elif arg.startswith('--learning='):
                     # learning filename (for read at startup and to rewrite at exit)
                     options['learning'] = arg.split('=')[1]
+                elif arg.startswith('--parallel='):
+                    options['parallel'] = int(arg.split('=')[1])
+                    if options['parallel'] <= 0:
+                        Terminal.inst().error("Invalid 'learning' value. Must be at least 1")
+                        sys.exit(-1)
 
                 elif arg == '--no-interactive':
                     # auto-quit only in backtest mode

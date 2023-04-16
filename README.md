@@ -380,6 +380,7 @@ The identity name must be specified, and need to be configured into the _identit
 * --import or --tool=importer Market data import tool from previous export, to use with --filename= argument
 * --clean or --tool=cleaner Remove some data format the database.
 * --statistics or --tool=statistics To export some _statistics data to generate extra reports._
+* --parallel=\<number\> Must be only used by the trainer to specify the maximum number of sub-process to run at the same time (default 1).
 
 You need to define the name of the identity to use. This is related to the name defined into the identity.json file.
 Excepted for most of the tools, the name of the profile to use **--profile=\<profile-name\>** must be specified.
