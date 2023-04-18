@@ -391,15 +391,28 @@ class TrainerCommander(object):
 
         self._parallel = 1
         self._sub_processes = []  # for multi-processing
+        self._executed_jobs = 0
 
-    def set_parallel(self, num):
+    def set_parallel(self, num: int):
         self._parallel = num if num > 0 else 1
 
     @property
-    def parallel(self):
+    def parallel(self) -> int:
         return self._parallel
 
-    def estimate_duration(self, avg_job_time):
+    def estimate_duration(self, avg_job_time: float) -> float:
+        """
+        Overrides to return the remaining computation time.
+        @param avg_job_time:
+        @return:
+        """
+        return 0
+
+    def progress(self) -> float:
+        """
+        Overrides to return the remaining computation time.
+        @return: Progression in percentile.
+        """
         return 0
 
     def join(self):
@@ -414,7 +427,7 @@ class TrainerCommander(object):
             self._sub_processes[0].kill_process()
         logger.debug("killed subs jobs !")
 
-    def start_job(self, caller, callback: callable, learning_parameters: dict, profile_name: str):
+    def start_job(self, caller: TrainerCaller, callback: callable, learning_parameters: dict, profile_name: str):
         while len(self._sub_processes) >= self._parallel:
             # @todo optimize with a count condition
             time.sleep(1.0)
@@ -427,6 +440,8 @@ class TrainerCommander(object):
     def complete_job(self, job: TrainerJob):
         if job in self._sub_processes:
             self._sub_processes.remove(job)
+
+        self._executed_jobs += 1
 
     def bind_parameters(self):
         strategy_params = self._learning_parameters.get('strategy', {}).get('parameters', {})

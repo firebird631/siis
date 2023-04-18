@@ -10,10 +10,28 @@ import random
 from datetime import datetime
 
 from common.utils import truncate
-from strategy.learning.trainer import Trainer, TrainerCommander
+from strategy.learning.trainer import Trainer, TrainerCommander, TrainerCaller
+
+
+class DummyTrainerCaller(TrainerCaller):
+
+    def __init__(self):
+        self.fitness = 0.0
+        self.training_result = None
+
+    def set_result(self, results):
+        if results is not None:
+            # unpack results
+            self.fitness = results[0]
+            self.training_result = results[1]
 
 
 class DummyTrainerCommander(TrainerCommander):
+    """
+    Simple random draw as example purpose but could give sometime good results.
+
+    @todo parallelize
+    """
 
     def __init__(self, profile_name: str, profile_parameters: dict, learning_parameters: dict):
         super().__init__(profile_name, profile_parameters, learning_parameters)
@@ -27,6 +45,7 @@ class DummyTrainerCommander(TrainerCommander):
         except ValueError:
             self._min_perf = 0.0
 
+        self._results = []
         self._finals = []
 
     def start(self, callback: callable):
@@ -52,21 +71,53 @@ class DummyTrainerCommander(TrainerCommander):
             }
 
             # start training
-            fitness, trainer_result = callback(learning_parameters, self._profile_name)
+            if self._parallel > 1:
+                # async parallels
+                caller = DummyTrainerCaller()
+                self._results.append(caller)
 
-            try:
-                performance = float(trainer_result.get('performance', "0.00%").rstrip('%'))
-            except ValueError:
-                continue
+                self.start_job(caller, callback, learning_parameters, self._profile_name)
+            else:
+                # synchronous 1 by 1
+                fitness, trainer_result = callback(learning_parameters, self._profile_name, None)
+                # print(fitness)
+                # print(training_result)
 
-            if performance >= self._min_perf:
-                # keep only if min perf is reached
-                self._finals.append(trainer_result)
+                try:
+                    performance = float(trainer_result.get('performance', "0.00%").rstrip('%'))
+                except ValueError:
+                    continue
+
+                if performance >= self._min_perf:
+                    # keep only if min perf is reached
+                    self._finals.append(trainer_result)
 
             n += 1
 
             if n >= self._num_gen:
                 break
+
+        if self._parallel > 1:
+            self.join()
+
+            for result in self._results:
+                # synchronous 1 by 1
+                fitness = result.fitness
+                trainer_result = result.training_result
+                # print(fitness)
+                # print(training_result)
+
+                if not trainer_result:
+                    continue
+
+                try:
+                    performance = float(trainer_result.get('performance', "0.00%").rstrip('%'))
+                except ValueError:
+                    continue
+
+                if performance >= self._min_perf:
+                    # keep only if min perf is reached
+                    self._finals.append(trainer_result)
 
     @property
     def results(self) -> list:
@@ -89,6 +140,12 @@ class DummyTrainerCommander(TrainerCommander):
 
         else:
             return 0
+
+    def estimate_duration(self, avg_job_time: float) -> float:
+        return (self._num_gen - self._executed_jobs) / self._parallel * avg_job_time
+
+    def progress(self) -> float:
+        return self._executed_jobs / self._num_gen * 100.0
 
 
 class DummyTrainer(Trainer):

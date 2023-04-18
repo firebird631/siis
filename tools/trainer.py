@@ -76,6 +76,8 @@ class TrainerTool(Tool):
 
         self._process_times = []
         self._last_process_time = 0.0
+        self._executed_jobs = 0
+        self._last_progress = 0.0
 
     def check_options(self, options):
         if not options.get('profile'):
@@ -110,6 +112,10 @@ class TrainerTool(Tool):
         self._learning_config = utils.load_learning(options, options['learning'])
         if not self._profile_config:
             Terminal.inst().error("Miss-configured learning proxy file")
+            return False
+
+        if "revision" in self._learning_config:
+            Terminal.inst().error("This learning file is already computed")
             return False
 
         self._profile = options['profile']
@@ -205,6 +211,8 @@ class TrainerTool(Tool):
         timeframe = options.get('timeframe')
         timestep = options.get('timestep')
 
+        prev_progress = 0.0
+
         def gen_trainer_filename() -> str:
             return "trainer_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
                 '/', '_').replace('+', '0')
@@ -265,14 +273,11 @@ class TrainerTool(Tool):
                                   stdin=subprocess.DEVNULL) as process:
 
                 initial_time = time.time()
+                err = False
 
                 if caller:
                     # assign related process
                     caller.process = process
-
-                # stdout, stderr = process.communicate()
-                # # if stdout:
-                # #     print(stdout.decode())
 
                 while 1:
                     code = process.poll()
@@ -285,8 +290,9 @@ class TrainerTool(Tool):
                         logger.error("Abnormal process %s duration kill" % learning_filename)
                         process.kill()
 
-                    if self._last_process_time and now - initial_time > 1.5 * self._last_process_time:
-                        logger.warning("Abnormal process %s duration" % learning_filename)
+                    if self._last_process_time and now - initial_time > 1.5 * self._last_process_time and not err:
+                        logger.warning("Abnormal process %s duration, wait a little before kill it" % learning_filename)
+                        err = True
 
                     try:
                         stdout, stderr = process.communicate(timeout=0.1)
@@ -294,20 +300,28 @@ class TrainerTool(Tool):
                             msg = stdout.decode()
                             if "error" in msg.lower():
                                 # error during backtest kill
-                                process.kill()
                                 logger.debug(msg)
                                 logger.error("Kill process %s error" % learning_filename)
+
+                                process.kill()
 
                     except subprocess.TimeoutExpired:
                         pass
 
+                # progress log
+                progress = self._trainer_commander.progress()
+                if progress - self._last_progress > 5.0:
+                    logger.info("Progress %.2f%%" % progress)
+                    self._last_progress = progress
+
+                # output result, stats...
                 trainer_result = read_trainer_file(learning_filename)
                 if trainer_result:
                     duration = time.time() - initial_time
 
                     if not self._last_process_time and duration:
-                        total_duration_est = self._trainer_commander.estimate_duration(duration)
-                        Terminal.inst().info("Estimate total duration to %.2f minutes" % (total_duration_est / 60,))
+                        remain_duration_est = self._trainer_commander.estimate_duration(duration)
+                        Terminal.inst().info("Estimate total duration to %.2f minutes" % (remain_duration_est / 60,))
 
                     self._last_process_time = duration
 
@@ -352,7 +366,7 @@ class TrainerTool(Tool):
                 final_strategy_parameters[pname] = value
 
             # keep others best results for further analysis
-            final_learning_config['results'] = [self._trainer_commander.results]
+            final_learning_config['results'] = self._trainer_commander.results
 
             # and finally update the learning file
             utils.write_learning(options, self._learning, final_learning_config)
