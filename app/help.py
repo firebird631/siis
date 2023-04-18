@@ -126,7 +126,7 @@ def display_cli_help():
     Terminal.inst().message("  --store-trade Write tick/trade/quote to filesystem. Default not stored.")
     Terminal.inst().message("  --monitor Enable Web monitor HTTP socket and WebSocket. Default port is 8080. Websocket port is +1.")
     Terminal.inst().message("  --monitor-port Override the default or configured monitor HTTP port. Websocket is +1.")
-    Terminal.inst().message("  --trainer=<filename> Must be only used by the trainer or for debug purposes.")
+    Terminal.inst().message("  --learning=<filename> Must be only used by the trainer or for debug purposes.")
     Terminal.inst().message("  --parallel=<number> Must be only used by the trainer to specify the maximum number of sub-process to run at the same time (default 1).")
     Terminal.inst().message("")
     Terminal.inst().message("Tools :")

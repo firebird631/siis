@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
 
 import base64
@@ -72,6 +73,9 @@ class TrainerTool(Tool):
 
         self._max_sub_process = 1
         self._trainer_commander = None
+
+        self._process_times = []
+        self._last_process_time = 0.0
 
     def check_options(self, options):
         if not options.get('profile'):
@@ -260,15 +264,53 @@ class TrainerTool(Tool):
             with subprocess.Popen(cmd_opts, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   stdin=subprocess.DEVNULL) as process:
 
+                initial_time = time.time()
+
                 if caller:
+                    # assign related process
                     caller.process = process
 
-                stdout, stderr = process.communicate()
-                # if stdout:
-                #     print(stdout.decode())
+                # stdout, stderr = process.communicate()
+                # # if stdout:
+                # #     print(stdout.decode())
+
+                while 1:
+                    code = process.poll()
+                    if code is not None:
+                        break
+
+                    now = time.time()
+
+                    if self._last_process_time and now - initial_time > 3.0 * self._last_process_time:
+                        logger.error("Abnormal process %s duration kill" % learning_filename)
+                        process.kill()
+
+                    if self._last_process_time and now - initial_time > 1.5 * self._last_process_time:
+                        logger.warning("Abnormal process %s duration" % learning_filename)
+
+                    try:
+                        stdout, stderr = process.communicate(timeout=0.1)
+                        if stdout:
+                            msg = stdout.decode()
+                            if "error" in msg.lower():
+                                # error during backtest kill
+                                process.kill()
+                                logger.debug(msg)
+                                logger.error("Kill process %s error" % learning_filename)
+
+                    except subprocess.TimeoutExpired:
+                        pass
 
                 trainer_result = read_trainer_file(learning_filename)
                 if trainer_result:
+                    duration = time.time() - initial_time
+
+                    if not self._last_process_time and duration:
+                        total_duration_est = self._trainer_commander.estimate_duration(duration)
+                        Terminal.inst().info("Estimate total duration to %.2f minutes" % (total_duration_est / 60,))
+
+                    self._last_process_time = duration
+
                     Terminal.inst().info("-- %s trainer success with %s" % (
                         learning_filename, trainer_result.get('performance', "0.00%")))
                     # print(trainer_result.get('strategy').get('parameters'))

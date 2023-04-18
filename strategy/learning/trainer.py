@@ -399,6 +399,9 @@ class TrainerCommander(object):
     def parallel(self):
         return self._parallel
 
+    def estimate_duration(self, avg_job_time):
+        return 0
+
     def join(self):
         logger.debug("join subs...")
         while self._sub_processes:
@@ -406,7 +409,6 @@ class TrainerCommander(object):
         logger.debug("joined subs !")
 
     def kill(self):
-        # @todo kill sub process and no the thread
         logger.debug("kill subs jobs...")
         while self._sub_processes:
             self._sub_processes[0].kill_process()
@@ -415,7 +417,7 @@ class TrainerCommander(object):
     def start_job(self, caller, callback: callable, learning_parameters: dict, profile_name: str):
         while len(self._sub_processes) >= self._parallel:
             # @todo optimize with a count condition
-            time.sleep(10)
+            time.sleep(1.0)
 
         job = TrainerJob(self, caller, callback, learning_parameters, profile_name)
         self._sub_processes.append(job)
