@@ -95,6 +95,9 @@ Sum order :
 # Bugs #
 ########
 
+- Sur le Web trader on ne peu pas faire des reduce de quantity < à 1
+- Si on passe en pip au lieu de % ça n'affiche pas tjs bien la valeur selon le marché pour les modify SL / TP
+
 #114 Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
 
 #87 Problème sur le comptage de la quantité de sortie, et du prix moyen de sortie d'un trade
@@ -124,7 +127,8 @@ Sum order :
     - implementer order_info pour le trader bitmex et verifier
     - implementer order_info pour le trader ig et verifier
     - verifier order_info pour le trader binance
-    - verifier order_info pour le trader binancefutures
+    - verifier order_info pour le trader kraken car des bug etrangent se produisent parfois
+    - verifier order_info pour le trader binancefutures (plus possible pour l'instant)
 
 
 ##################

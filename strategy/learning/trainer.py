@@ -5,16 +5,15 @@
 
 from __future__ import annotations
 
-import math
-import random
 import threading
 import base64
 import subprocess
 import time
+import traceback
 import uuid
-from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
+from typing import TYPE_CHECKING, Union
 
-from common.utils import timeframe_from_str, truncate
+from common.utils import timeframe_from_str
 from config import utils
 
 if TYPE_CHECKING:
@@ -45,38 +44,186 @@ class Trainer(object):
     @todo A fetcher mode doing a simple HTTP GET in place of starting process, in the case trainers are done apart
     """
 
-    executor = None
-
     NAME = ""
+
+    MODE_NONE = 0
+    MODE_CALLING = 1
+    MODE_FETCHING = 2
 
     COMMANDER = None  # must be set to a TrainerCommander class
 
     processing = {}   # current market-id in process market-id/thread
 
-    def __init__(self, strategy_trader: StrategyTrader):
+    def __init__(self, strategy_trader: StrategyTrader, params):
         """
         @param strategy_trader: Strategy trader instance
         """
+        self._strategy_trader = strategy_trader
         self._strategy_service = strategy_trader.strategy.service
 
-        learning_params = strategy_trader.strategy.parameters.get('learning')
+        # keep a copy of the strategy trader parameters
+        self._strategy_trader_params = copy.deepcopy(params)
+
+        learning_params = params.get('learning')
         trainer_params = learning_params.get('trainer')
 
         period = timeframe_from_str(trainer_params.get('period', '1w'))
+        update = timeframe_from_str(trainer_params.get('update', '1w'))
 
-        self._next_update = strategy_trader.strategy.timestamp + period
+        self._period = period
+        self._update = update
+
+        timestep = trainer_params.get('timestep', 60.0)
+        timeframe = timeframe_from_str(trainer_params.get('timeframe', 't'))
+
+        self._timestep = timestep
+        self._timeframe = timeframe
+
+        self._parallel = trainer_params.get('parallel', 1)
+
+        self._next_update = strategy_trader.strategy.timestamp + update
+
+        self._mode = Trainer.MODE_NONE
+
+        if 'fetch' in trainer_params:
+            fetcher_params = trainer_params['fetch']
+
+            self._fetch_host = fetcher_params.get('host', "")
+
+            if self._fetch_host and self._update > 0:
+                self._fetching = Trainer.MODE_FETCHING
+        else:
+            if self._update > 0:
+                self._mode = Trainer.MODE_CALLING
+
+        try:
+            self._perf_deviation = float(trainer_params.get('performance-deviation', "0.00%").rstrip('%'))
+        except ValueError:
+            pass
+
+        # initial stats values for comparisons/triggers
+        self._last_perf = strategy_trader.get_stat('perf')
+        self._last_worst = strategy_trader.get_stat('worst')
+        self._last_best = strategy_trader.get_stat('best')
+        self._last_success = strategy_trader.get_stat('success')
+        self._last_failed = strategy_trader.get_stat('failed')
 
     @property
     def service(self) -> StrategyService:
         return self._strategy_service
 
-    def need_training(self, timestamp):
-        # @todo or performance deviation
-        if timestamp >= self._next_update:
-            self._next_update = 0.0
-            return True
+    @property
+    def timestep(self) -> float:
+        return self._timestep
+
+    @property
+    def timeframe(self) -> float:
+        return self._timeframe
+
+    @property
+    def parallel(self) -> int:
+        return self._parallel
+
+    @property
+    def original_strategy_trader_params(self) -> dict:
+        return self._strategy_trader_params
+
+    def update(self, timestamp: float) -> bool:
+        if timestamp < self._next_update:
+            return False
+
+        self._next_update = self._next_update + self._update
+
+        # @todo call or fetch
+        if self._mode == Trainer.MODE_FETCHING:
+            # from_dt, to_dt = self.compute_period()
+            # from_str = from_dt.strftime("%Y-%m-%dT%H:%M:%S")
+            # to_str = to_dt.strftime("%Y-%m-%dT%H:%M:%S")
+            result = self.fetch_update()
+
+            # @todo
+
+            if not result:
+                return False
+
+        elif self._mode == Trainer.MODE_CALLING:
+            strategy_service = self._strategy_service
+            result = self.start()
+
+            if not result:
+                return False
+
+        return True
+
+    def fetch_update(self) -> bool:
+        """
+        Support for HTTP, HTTPS or local file.
+        @todo rest and local file get
+        """
+        if self._fetch_host.startwith('http://') or self._fetch_host.startwith('https://'):
+            pass
+        elif self._fetch_host.startwith('file://'):
+            pass
 
         return False
+
+    def start(self) -> bool:
+        """
+        Start trainer sub-process.
+        @return:
+        """
+        strategy_trader = self._strategy_trader
+        strategy = strategy_trader.strategy
+
+        try:
+            return Trainer.caller(strategy.service.identity, strategy.service.profile, strategy.service.learning_path,
+                                  strategy_trader, strategy.service.profile_config)
+        except Exception as e:
+            logger.error(repr(e))
+
+        return False
+
+    def compute_period(self) -> tuple[datetime, datetime]:
+        strategy_trader = self._strategy_trader
+        strategy = strategy_trader.strategy
+
+        now_dt = datetime.utcfromtimestamp(strategy.timestamp)
+        from_dt = now_dt - timedelta(seconds=self._period)
+
+        return from_dt, now_dt
+
+    def complete(self, learning_result):
+        strategy_trader = self._strategy_trader
+        strategy = strategy_trader.strategy
+
+        # update stats values
+        self._last_perf = strategy_trader.get_stat('perf')
+        self._last_worst = strategy_trader.get_stat('worst')
+        self._last_best = strategy_trader.get_stat('best')
+        self._last_success = strategy_trader.get_stat('success')
+        self._last_failed = strategy_trader.get_stat('failed')
+
+        performance = learning_result.get('performance', '0.00%')
+
+        logger.info("Best performance for %s : %s" % (strategy_trader.instrument.market_id, performance))
+
+        # apply new parameters to strategy trader and restart
+        logger.info("Trainer apply new parameters to %s and then restart" % strategy_trader.instrument.market_id)
+
+        new_parameters = copy.deepcopy(self._strategy_trader_params)
+
+        # merge new parameters
+        utils.merge_learning_config(new_parameters, learning_result)
+
+        # @todo setup (and subs) with new parameters
+        # self.apply(strategy_trader.strategy, strategy_trader, learning_result)
+
+        strategy_trader.restart()
+        strategy.send_initialize_strategy_trader(strategy_trader.instrument.market_id)
+
+    #
+    # class methods
+    #
 
     @classmethod
     def name(cls) -> str:
@@ -96,31 +243,34 @@ class Trainer(object):
         return cls.COMMANDER(profile_name, profile_parameters, learning_parameters)
 
     #
+    # For strategy trader : trainer instance
+    #
+
+    @staticmethod
+    def create_trainer(strategy_trader: StrategyTrader, params: dict) -> Union[Trainer, None]:
+        try:
+            trainer = Trainer(strategy_trader, params)
+
+            # check it is configured properly else return None
+            if trainer._mode == Trainer.MODE_NONE:
+                logger.error("Miss configured strategy trainer for %s" % strategy_trader.instrument.market_id)
+                return None
+
+            logger.info("Instantiate a trainer for %s" % strategy_trader.instrument.market_id)
+            return trainer
+
+        except Exception as e:
+            logger.error(repr(e))
+            traceback_logger.error(traceback.format_exc())
+
+        return None
+
+    #
     # caller proxy helper
     #
 
     @staticmethod
-    def compute_period(strategy_trader: StrategyTrader, profile_config: dict):
-        learning_params = strategy_trader.strategy.parameters.get('learning')
-        trainer_params = learning_params.get('trainer')
-
-        timestep = trainer_params.get('timestep', 60)
-        if type(timestep) is str:
-            timestep = timeframe_from_str(timestep)
-
-        timeframe = trainer_params.get('timeframe', 0)
-        if type(timestep) is str:
-            timeframe = timeframe_from_str(timeframe)
-
-        period = timeframe_from_str(trainer_params.get('period', '1w'))
-
-        from_dt = datetime.utcnow() - timedelta(seconds=period)
-        to_dt = datetime.utcnow()
-
-        return from_dt, to_dt, timestep
-
-    @staticmethod
-    def caller(identity, profile, learning_path, strategy_trader: StrategyTrader, profile_config: dict):
+    def caller(identity: str, profile: str, learning_path: str, strategy_trader: StrategyTrader, profile_config: dict):
         """
         Must be called by a command manually or automatically according to some parameters like deviation from
         performance or a minimal duration.
@@ -133,18 +283,23 @@ class Trainer(object):
         @return:
         """
         strategy = strategy_trader.strategy
-        strategy_service = strategy.service
+        if not strategy:
+            return
+
+        trainer = strategy_trader.trainer
+        if not trainer:
+            return False
 
         market_id = strategy_trader.instrument.market_id
 
-        org_strategy_params = profile_config.get('strategy', {})
-        org_learning_params = org_strategy_params.get('parameters', {}).get('learning', {})
-
+        org_learning_params = trainer.original_strategy_trader_params.get('learning', {})
         trainer_params = copy.deepcopy(org_learning_params.get('trainer', {}))
 
         # filters only necessary markets from watchers, trader and strategy
-        strategy_params = copy.deepcopy(org_learning_params.get('strategy', {}))
-        strategy_params['symbols'] = [market_id]
+        strategy_params = {
+            'symbols': [market_id],
+            'parameters': copy.deepcopy(org_learning_params.get('strategy', {}).get('parameters', {}))
+        }
 
         watchers_params = {}
         for watcher_name, watcher_config in profile_config.get('watchers', {}).items():
@@ -158,14 +313,16 @@ class Trainer(object):
 
         if market_id in Trainer.processing:
             logger.warning("Unable to train market %s now because previous is still waited" % market_id)
-            return
+            return False
 
-        from_dt, to_dt, timestep, timeframe = Trainer.compute_period(strategy_trader, profile_config)
+        from_dt, to_dt = trainer.compute_period()
 
         trainer_params['from'] = from_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         trainer_params['to'] = to_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-        trainer_params['timestep'] = timestep
-        trainer_params['timeframe'] = timeframe
+        trainer_params['timestep'] = trainer.timestep
+
+        if trainer.timeframe:
+            trainer_params['timeframe'] = trainer.timeframe
 
         learning_filename = "learning_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
                 '/', '_').replace('+', '0')
@@ -189,9 +346,14 @@ class Trainer(object):
             '--learning=%s' % learning_filename,
             '--from=%s' % from_dt.strftime("%Y-%m-%dT%H:%M:%S"),
             '--to=%s' % to_dt.strftime("%Y-%m-%dT%H:%M:%S"),
-            '--timestep=%s' % timestep,
-            '--timeframe=%s' % timeframe
+            '--timestep=%s' % trainer.timestep
         ]
+
+        if trainer.timeframe:
+            cmd_opts.append('--timeframe=%s' % trainer.timeframe)
+
+        if trainer.parallel > 1:
+            cmd_opts.append('--parallel=%i' % trainer.parallel)
 
         class Executor(threading.Thread):
 
@@ -220,6 +382,16 @@ class Trainer(object):
                             stdout, stderr = p.communicate(timeout=0.1)
                             if stdout:
                                 msg = stdout.decode()
+                                if "error" in msg.lower():
+                                    logger.error("Error during process of training for %s" % market_id)
+                                elif "Progress " in msg:
+                                    i = msg.find("Progress")
+                                    if i >= 0:
+                                        j = msg[i+9:].find("%")
+                                        if j >= 0:
+                                            progress = msg[i+9:][:j+1]
+
+                                    logger.debug("Training progression at %s for %s" % (progress, market_id))
 
                         except subprocess.TimeoutExpired:
                             pass
@@ -234,48 +406,36 @@ class Trainer(object):
                         return False
                     else:
                         logger.info("Trainer process completed, lookup for results...")
-                        self.complete()
+
+                        # retrieve trainer
+                        _strategy = self._strategy_service.strategy()
+                        if not _strategy:
+                            return False
+
+                        _strategy_trader = _strategy.strategy_trader(self._market_id)
+                        if not _strategy_trader:
+                            return False
+
+                        _trainer = _strategy_trader.trainer
+                        if not _trainer:
+                            return False
+
+                        learning_result = utils.load_learning(learning_path, learning_filename)
+
+                        # analyse results and apply to strategy trader
+                        _trainer.complete(learning_result)
 
                         utils.delete_learning(learning_path, learning_filename)
 
                         del Trainer.processing[self._market_id]
                         return True
 
-            def complete(self):
-                learning_result = utils.load_learning(learning_path, learning_filename)
+        logger.info("Start a trainer thread...")
 
-                _strategy = self._strategy_service.strategy()
-                if not _strategy:
-                    return
-
-                _strategy_trader = strategy.strategy_trader(market_id)
-                if not _strategy_trader:
-                    return
-
-                performance = learning_result.get('performance', '0.00%')
-
-                logger.info("Best performance for %s : %s" % (_strategy_trader.instrument.market_id, performance))
-
-                self.apply(_strategy, _strategy_trader, learning_result)
-
-            def apply(self, _strategy: Strategy, _strategy_trader: StrategyTrader, learning_result: dict):
-                logger.info("Trainer apply new parameters to %s and then restart" %
-                            _strategy_trader.instrument.market_id)
-
-                new_parameters = copy.deepcopy(_strategy.parameters)
-
-                # merge new parameters
-                utils.merge_learning_config(new_parameters, learning_result)
-
-                # @todo setup (and subs) with new parameters
-
-                _strategy_trader.restart()
-                _strategy.send_initialize_strategy_trader(_strategy_trader.instrument.market_id)
-
-        logger.info("Start trainer thread...")
-
-        executor = Executor(strategy_service, market_id)
+        executor = Executor(strategy.service, market_id)
         executor.start()
+
+        return True
 
     @staticmethod
     def join_executor():
@@ -284,46 +444,6 @@ class Trainer(object):
             processor.join()
 
             del Trainer.processing[market_id]
-
-    # @staticmethod
-    # def setup_strategy_parameters(learning_config: dict, trainer_strategy_parameters: dict):
-    #     strategy_parameters = learning_config.get('strategy', {}).get('parameters', {})
-    #
-    #     for pname, pvalue in strategy_parameters.items():
-    #         if pname.startswith('_'):
-    #             # commented
-    #             continue
-    #
-    #         trainer_strategy_parameters[pname] = Trainer.set_rand_value(pvalue)
-
-    # @staticmethod
-    # def bind_strategy_parameters(learning_config: dict, trainer_strategy_parameters: dict):
-    #     strategy_parameters = learning_config.get('strategy', {}).get('parameters', {})
-    #
-    #     for pname, pvalue in strategy_parameters.items():
-    #         if pname.startswith('_'):
-    #             # commented
-    #             continue
-    #
-    #         trainer_strategy_parameters[pname] = pvalue
-
-    # @staticmethod
-    # def set_rand_value(param):
-    #     if param.get('type') == "int":
-    #         return random.randrange(param.get('min', 0), param.get('max', 0) + 1, param.get('step', 1))
-    #
-    #     elif param.get('type') == "float":
-    #         precision = param.get('precision', 1) or 1
-    #         step = param.get('step', 0.01) or 0.01
-    #
-    #         number = random.randrange(
-    #             param.get('min', 0) * math.pow(10, precision),
-    #             param.get('max', 0) * math.pow(10, precision) + 1, 1) * math.pow(10, -precision)
-    #
-    #         return truncate(round(number / step) * step, precision)
-    #
-    #     else:
-    #         return 0
 
 
 class TrainerCaller(object):

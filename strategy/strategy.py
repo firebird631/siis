@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import copy
-import json
 
 from datetime import datetime
 
@@ -1244,15 +1243,7 @@ class Strategy(Runnable):
                     # trade signal
                     self.order_signal(signal.signal_type, signal.data)
 
-        # if self.service.backtesting:
-        #     # process one more backtest step
-        #     with self._mutex:
-        #         next_bt_upd = self._next_backtest_update
-        #         self._next_backtest_update = None
-        #
-        #     if next_bt_upd:
-        #         self.backtest_update(next_bt_upd[0], next_bt_upd[1])
-        if not self.service.backtesting:  # else:
+        if not self.service.backtesting:
             # normal processing
             if do_update:
                 if len(self._strategy_traders) >= 1:

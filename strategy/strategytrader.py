@@ -32,6 +32,7 @@ from strategy.trade.strategypositiontrade import StrategyPositionTrade
 from strategy.trade.strategytrade import StrategyTrade
 
 from .strategytradercontext import StrategyTraderContext, StrategyTraderContextBuilder
+from .learning.trainer import Trainer
 
 from .indicator.models import Limits
 
@@ -115,6 +116,7 @@ class StrategyTrader(object):
     _report_filename: Union[str, None]
 
     _stats: Dict[str, Union[int, float, List, Tuple]]
+    _trainer: Union[Trainer, None]
 
     _trade_context_builder: Union[StrategyTraderContextBuilder, None]
 
@@ -188,6 +190,13 @@ class StrategyTrader(object):
 
         if self.instrument:
             self.instrument.loads_session(params.get('sessions', {}))
+
+        # specific to learning update
+        self._trainer = None
+
+        # not in backtesting to avoid recursive except if --training flag is specified
+        if not self.strategy.service.backtesting or self.strategy.service.training:
+            self._trainer = Trainer.create_trainer(self, params) if 'learning' in params else None
 
     #
     # properties
@@ -634,11 +643,11 @@ class StrategyTrader(object):
                 self._global_streamer.member('affinity').update(self._affinity)
 
     @property
-    def max_trades(self):
+    def max_trades(self) -> int:
         return self._max_trades
 
     @max_trades.setter
-    def max_trades(self, max_trades):
+    def max_trades(self, max_trades: int):
         if self._max_trades != max_trades:
             self._max_trades = max_trades
 
@@ -663,15 +672,32 @@ class StrategyTrader(object):
             self._checked = 1
 
     @property
-    def initialized(self):
+    def initialized(self) -> int:
         return self._initialized
+
+    @property
+    def trainer(self) -> Union[Trainer, None]:
+        return self._trainer
+
+    @property
+    def has_trainer(self) -> bool:
+        return self._trainer is not None
+
+    def get_stat(self, key: str) -> Union[float, int, None]:
+        """
+        Return a statistic value from key.
+        """
+        if key in self._stats:
+            return self._stats[key]
+
+        return None
 
     #
     # pre-processing
     #
 
     @property
-    def preprocessing(self):
+    def preprocessing(self) -> int:
         return self._preprocessing
 
     def preprocess_load_cache(self, from_date: datetime, to_date: datetime):
@@ -697,7 +723,7 @@ class StrategyTrader(object):
     #
 
     @property
-    def bootstrapping(self):
+    def bootstrapping(self) -> int:
         return self._bootstrapping
 
     def prepare(self):

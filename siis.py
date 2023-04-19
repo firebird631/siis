@@ -266,6 +266,9 @@ def application(argv):
                     if options['parallel'] <= 0:
                         Terminal.inst().error("Invalid 'learning' value. Must be at least 1")
                         sys.exit(-1)
+                elif arg == '--training':
+                    # allow training sub process to be called during a backtest
+                    options['training'] = True
 
                 elif arg == '--no-interactive':
                     # auto-quit only in backtest mode

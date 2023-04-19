@@ -29,8 +29,6 @@ class DummyTrainerCaller(TrainerCaller):
 class DummyTrainerCommander(TrainerCommander):
     """
     Simple random draw as example purpose but could give sometime good results.
-
-    @todo parallelize
     """
 
     def __init__(self, profile_name: str, profile_parameters: dict, learning_parameters: dict):

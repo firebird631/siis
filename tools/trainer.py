@@ -35,8 +35,8 @@ class TrainerTool(Tool):
     Intercept training/machine learning demands and manage sub-process for backtesting, optimizing and finally
     output results for the caller.
 
+    @todo --initial-fetch must be implemented to retrieve/build necessary missing data
     @todo In case of some other watcher/market are used for a strategy need to prefetch them if --initial-fetch
-    @todo Support for parallel option
     """
 
     @classmethod

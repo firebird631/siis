@@ -91,6 +91,7 @@ class StrategyService(Service):
         self._to_date = options.get('to')  # UTC tz
         self._timestep = options.get('timestep', 60.0)
         self._timeframe = options.get('timeframe', 0.0)
+        self._training = options.get('training', False)
 
         self._timestamp = 0.0  # in backtesting current processed timestamp
 
@@ -146,7 +147,7 @@ class StrategyService(Service):
         return self._learning_path
 
     @property
-    def profile_config(self) -> str:
+    def profile_config(self) -> dict:
         return self._profile_config
 
     @property
@@ -490,7 +491,7 @@ class StrategyService(Service):
 
                         if _strategy and trader:
                             while self.current < self.end + self.timestep:
-                                if not self.service._backtesting_play:
+                                if not self.service.backtesting_play:
                                     time.sleep(0.01)
                                     continue
 
@@ -632,6 +633,11 @@ class StrategyService(Service):
     def backtesting_play(self) -> bool:
         """True if backtesting playing"""
         return self._backtesting_play
+
+    @property
+    def training(self) -> bool:
+        """True if training option enable in backtesting"""
+        return self._training
 
     @property
     def from_date(self) -> datetime:

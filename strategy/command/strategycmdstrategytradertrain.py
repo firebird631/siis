@@ -15,12 +15,13 @@ def cmd_strategy_trader_train(strategy, strategy_trader, data):
         'error': False
     }
 
-    parameters = {}
-
-    result = Trainer.caller(strategy.service.identity, strategy.service.profile, strategy.service.learning_path,
-                            strategy_trader, strategy.service.profile_config)
-
-    if not result:
+    if strategy_trader.has_trainer:
+        result = strategy_trader.trainer.start()
+        if not result:
+            results['error'] = True
+            results['messages'].append("Unable to start trainer for %s" % strategy_trader.instrument.market_id)
+    else:
         results['error'] = True
+        results['messages'].append("Missing trainer config for %s" % strategy_trader.instrument.market_id)
 
     return results
