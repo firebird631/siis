@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Websocket connector for bitmex.com
+
 import time
 
 import websocket
@@ -11,6 +12,7 @@ import ssl
 from time import sleep
 import json
 import decimal
+
 from .apikeyauth import generate_nonce, generate_signature
 from urllib.parse import urlparse, urlunparse
 
@@ -467,6 +469,8 @@ class BitMEXWebsocket(object):
                 if self._callback and self.ready:
                     self._callback[1](self._callback[0], 'action', (action, table, updated, message['data']))
 
+        except websocket.WebSocketException as e:
+            error_logger.error(str(e))
         except Exception as e:
             error_logger.error(repr(e))
             traceback_logger.error(traceback.format_exc())

@@ -505,6 +505,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
 
     def loads(self, strategy_trader, params: dict):
         self.max_trades = max(0, params.get('max-trades', 0))
+        self.min_profit = max(0.0, params.get('min-profit', 0.0)) * 0.01
 
     def compile(self, strategy_trader):
         pass

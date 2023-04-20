@@ -201,7 +201,7 @@ class StrategyTrader(object):
         if not self.strategy.service.backtesting or self.strategy.service.training:
             self._trainer = Trainer.create_trainer(self, params) if 'learning' in params else None
 
-    def update_paramaters(self, params: dict):
+    def update_parameters(self, params: dict):
         """
         Called just after constructor to set up the strategy trader parameters, trading context, subs and others.
         It is also called in case of training return. Once a training process success news parameters must be applied
@@ -209,13 +209,13 @@ class StrategyTrader(object):
 
         Take care that the trading context modification must not alter theirs instance, neither their name.
         """
-        return True
+        pass
 
     #
     # strategy trade context
     #
 
-    def register_trade_context(self, ctx: Union[StrategyTraderContext, list[StrategyTraderContext]]):
+    def register_context(self, ctx: Union[StrategyTraderContext, list[StrategyTraderContext]]):
         """
         Each trade context must be registered.
         @param ctx: Single or list|tuple of trade contexts.
@@ -237,13 +237,49 @@ class StrategyTrader(object):
 
             self._trade_contexts[ctx.name] = ctx
 
-    def unregister_trade_context(self, name: str):
+    def unregister_context(self, name: str):
         """
         Each trade context must be registered. If necessary it can be unregistered.
         @param name:
         """
         if name in self._trade_contexts:
             del(self._trade_contexts[name])
+
+    def loads_contexts_for(self, params: dict, category: str, class_model):
+        contexts = []
+
+        for name, data in params.get(category, {}).items():
+            if data is None:
+                continue
+
+            try:
+                # retrieve or instantiate
+                ma_adx = self.retrieve_context(name) or class_model(name)
+                ma_adx.loads(self, data)
+
+                if ma_adx.mode != ma_adx.MODE_NONE:
+                    contexts.append(ma_adx)
+                    self.register_context(ma_adx)
+
+            except Exception as e:
+                error_logger.error("Unable to validate context %s : %s" % (name, str(e)))
+                traceback_logger.error(traceback.format_exc())
+
+        return contexts
+
+    def compiles_all_contexts(self):
+        rm_list = []
+
+        for name, ctx in self._trade_contexts.items():
+            try:
+                ctx.compile(self)
+            except Exception as e:
+                error_logger.error("Unable to compile context %s, remove it : %s" % (name, str(e)))
+                traceback_logger.error(traceback.format_exc())
+                rm_list.append(name)
+
+        for rm in rm_list:
+            del(self._trade_contexts[rm])
 
     def retrieve_context(self, name: str) -> Union[StrategyTraderContext, None]:
         """

@@ -206,8 +206,6 @@ class Trainer(object):
         performance = learning_result.get('performance', '0.00%')
 
         logger.info("Best performance for %s : %s" % (strategy_trader.instrument.market_id, performance))
-
-        # apply new parameters to strategy trader and restart
         logger.info("Trainer apply new parameters to %s and then restart" % strategy_trader.instrument.market_id)
 
         new_parameters = copy.deepcopy(self._strategy_trader_params)
@@ -215,9 +213,13 @@ class Trainer(object):
         # merge new parameters
         utils.merge_learning_config(new_parameters, learning_result)
 
-        # @todo setup (and subs) with new parameters
-        # self.apply(strategy_trader.strategy, strategy_trader, learning_result)
+        for n, v in new_parameters.items():
+            logger.info("-- %s = %s" % (n, v))
 
+        # update strategy trader with new parameters
+        strategy_trader.update_parameters(new_parameters)
+
+        # and restart (will reload necessary OHLC...)
         strategy_trader.restart()
         strategy.send_initialize_strategy_trader(strategy_trader.instrument.market_id)
 
@@ -390,8 +392,7 @@ class Trainer(object):
                                         j = msg[i+9:].find("%")
                                         if j >= 0:
                                             progress = msg[i+9:][:j+1]
-
-                                    logger.debug("Training progression at %s for %s" % (progress, market_id))
+                                            logger.debug("Training progression at %s for %s" % (progress, market_id))
 
                         except subprocess.TimeoutExpired:
                             pass
