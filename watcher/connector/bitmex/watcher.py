@@ -750,7 +750,7 @@ class BitMexWatcher(Watcher):
 
             market.market_type = Market.TYPE_CRYPTO
             market.unit_type = Market.UNIT_AMOUNT
-            market.contract_type = Market.CONTRACT_CFD if not expiry else Market.CONTRACT_FUTURE
+            market.contract_type = Market.CONTRACT_FUTURE
             market.trade = Market.TRADE_MARGIN | Market.TRADE_IND_MARGIN
 
             if bid is not None and ask is not None:

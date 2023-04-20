@@ -882,10 +882,10 @@ class PaperTrader(Trader):
             # not interested in this market
             return
 
-        if bid and ask and market.price:
-            ratio = ((bid + ask) * 0.5) / market.price
-        else:
-            ratio = 1.0
+        # if bid and ask and market.price:
+        #     ratio = ((bid + ask) * 0.5) / market.price
+        # else:
+        #     ratio = 1.0
 
         # push last price to keep a local cache of history
         if bid or ask:
@@ -922,10 +922,10 @@ class PaperTrader(Trader):
 
         # update positions profit/loss for the related market id
         if not self._unlimited:
-            if self.service.backtesting:
-                # fake values
-                market.base_exchange_rate = market.base_exchange_rate * ratio
-                market.contract_size = market.contract_size * ratio
+            # if self.service.backtesting:
+            #     # fake values
+            #     market.base_exchange_rate = market.base_exchange_rate * ratio
+            #     market.contract_size = market.contract_size * ratio
 
             if self._assets:
                 # update profit/loss (informational) for each asset

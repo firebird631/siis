@@ -102,7 +102,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             if current_position.quantity > order.quantity:
                 # first case the direction still the same, reduce the position and the margin
                 # take the profit/loss from the difference by order.quantity and adjust the entry price and quantity
-                position_gain_loss = effective_delta_price * order.quantity
+                position_gain_loss = effective_delta_price * order.quantity * contract_size
 
                 realized_position_cost = market.effective_cost(order.quantity, close_exec_price)
                 margin_cost = market.margin_cost(order.quantity, close_exec_price)
@@ -119,8 +119,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
 
             elif current_position.quantity == order.quantity:
                 # second case the position is closed, exact quantity in the opposite direction
-
-                position_gain_loss = effective_delta_price * current_position.quantity
+                position_gain_loss = effective_delta_price * current_position.quantity * contract_size
                 current_position.quantity = 0.0
 
                 realized_position_cost = market.effective_cost(order.quantity, close_exec_price)
@@ -137,6 +136,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 # third case the position is reversed
                 # 1) get the profit loss
                 position_gain_loss = effective_delta_price * current_position.quantity
+                logger.debug("l142 %s %s %s" % (position_gain_loss, effective_delta_price, current_position.quantity))
 
                 realized_position_cost = market.effective_cost(current_position.quantity, close_exec_price)
                 margin_cost = market.margin_cost(current_position.quantity, close_exec_price)

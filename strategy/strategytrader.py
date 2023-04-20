@@ -2226,8 +2226,8 @@ class StrategyTrader(object):
         if trader.has_margin(self.instrument.market_id, trade_quantity, price):
             quantity = trade_quantity
         else:
-            msg = "Not enough free margin %s, has %s but need %s" % (
-                self.instrument.quote, self.instrument.format_quantity(trader.account.margin_balance),
+            msg = "Not enough free margin in %s, has %s but need %s" % (
+                self.instrument.settlement, self.instrument.format_quantity(trader.account.margin_balance),
                 self.instrument.format_quantity(original_quantity))
 
             logger.warning(msg)
