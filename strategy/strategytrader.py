@@ -78,7 +78,6 @@ class StrategyTrader(object):
     strategy: Strategy
     instrument: Instrument
 
-    _trade_context_builder: Union[StrategyTraderContextBuilder, Any, None]
     _activity: bool
     _affinity: int
     _max_trades: int
@@ -112,13 +111,15 @@ class StrategyTrader(object):
     _alert_streamer: Union[Streamable, None]
     _region_streamer: Union[Streamable, None]
 
+    _trade_contexts: dict[str, StrategyTraderContext]
+
     _reporting: int
     _report_filename: Union[str, None]
 
     _stats: Dict[str, Union[int, float, List, Tuple]]
     _trainer: Union[Trainer, None]
 
-    _trade_context_builder: Union[StrategyTraderContextBuilder, None]
+    _trade_context_builder: Union[StrategyTraderContextBuilder, Any, None]
 
     def __init__(self, strategy: Strategy, instrument: Instrument, params: dict = None):
         self.strategy = strategy
@@ -164,6 +165,8 @@ class StrategyTrader(object):
         self._alert_streamer = None
         self._region_streamer = None
 
+        self._trade_contexts = {}  # context lookup map
+
         self._reporting = StrategyTrader.REPORTING_NONE
         self._report_filename = None
 
@@ -197,6 +200,95 @@ class StrategyTrader(object):
         # not in backtesting to avoid recursive except if --training flag is specified
         if not self.strategy.service.backtesting or self.strategy.service.training:
             self._trainer = Trainer.create_trainer(self, params) if 'learning' in params else None
+
+    def update_paramaters(self, params: dict):
+        """
+        Called just after constructor to set up the strategy trader parameters, trading context, subs and others.
+        It is also called in case of training return. Once a training process success news parameters must be applied
+        to the strategy trader, without resetting some states and keeping trades.
+
+        Take care that the trading context modification must not alter theirs instance, neither their name.
+        """
+        return True
+
+    #
+    # strategy trade context
+    #
+
+    def register_trade_context(self, ctx: Union[StrategyTraderContext, list[StrategyTraderContext]]):
+        """
+        Each trade context must be registered.
+        @param ctx: Single or list|tuple of trade contexts.
+        """
+        if ctx is None:
+            return
+
+        if type(ctx) in (list, tuple):
+            for ct in ctx:
+                if ct.name in self._trade_contexts:
+                    logger.warning("Strategy trade context %s already registered" % ct.name)
+                    return
+
+                self._trade_contexts[ct.name] = ct
+        else:
+            if ctx.name in self._trade_contexts:
+                logger.warning("Strategy trade context %s already registered" % ctx.name)
+                return
+
+            self._trade_contexts[ctx.name] = ctx
+
+    def unregister_trade_context(self, name: str):
+        """
+        Each trade context must be registered. If necessary it can be unregistered.
+        @param name:
+        """
+        if name in self._trade_contexts:
+            del(self._trade_contexts[name])
+
+    def retrieve_context(self, name: str) -> Union[StrategyTraderContext, None]:
+        """
+        Return a trade context object. Used by set_trade_context.
+        @param name:
+        @return:
+        """
+        return self._trade_contexts.get(name)
+
+    def contexts_ids(self) -> List[str]:
+        """
+        Returns the list of registered context ids.
+        """
+        return list(self._trade_contexts.keys())
+
+    def apply_trade_context(self, trade: StrategyTrade, context: StrategyTraderContext) -> bool:
+        """
+        Apply a trade context to a valid trade.
+        Overridden by subclasses TimeframeBasedStrategyTrader and TickBarBasedStrategyTrader.
+        """
+        if not trade or not context:
+            return False
+
+        return True
+
+    def set_trade_context(self, trade: StrategyTrade, name: str) -> bool:
+        """
+        Apply a trade context to a valid trade.
+        """
+        if not trade or not name:
+            return False
+
+        context = self.retrieve_context(name)
+
+        if not context:
+            return False
+
+        return self.apply_trade_context(trade, context)
+
+    def dumps_context(self, context_id: str) -> Optional[dict]:
+        """
+        Returns a dict with the normalized contexts details or None if it doesn't exist.
+        Must be overridden.
+        """
+        return None
 
     #
     # properties
@@ -1965,52 +2057,6 @@ class StrategyTrader(object):
                     return True
 
         return False
-
-    def retrieve_context(self, name) -> Optional[StrategyTraderContext]:
-        """
-        Return a trade context object. Used by set_trade_context.
-        Must be overridden.
-        """
-        return None
-
-    def apply_trade_context(self, trade: StrategyTrade, context: StrategyTraderContext) -> bool:
-        """
-        Apply a trade context to a valid trade.
-        Must be overridden.
-        """
-        if not trade or not context:
-            return False
-
-        return True
-
-    def set_trade_context(self, trade: StrategyTrade, name: str) -> bool:
-        """
-        Apply a trade context to a valid trade.
-        Must be overridden.
-        """
-        if not trade or not name:
-            return False
-
-        context = self.retrieve_context(name)
-
-        if not context:
-            return False
-
-        return self.apply_trade_context(trade, context)
-
-    def contexts_ids(self) -> List[str]:
-        """
-        Returns the list of context ids.
-        Must be overridden.
-        """
-        return []
-
-    def dumps_context(self, context_id: str) -> Optional[dict]:
-        """
-        Returns a dict with the normalized contexts details or None if don't exists.
-        Must be overridden.
-        """
-        return None
 
     #
     # signal data streaming and monitoring

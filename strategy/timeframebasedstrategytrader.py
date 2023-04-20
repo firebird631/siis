@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from .strategy import Strategy
     from instrument.instrument import Instrument
     from timeframebasedsub import TimeframeBasedSub
+    from strategytradercontext import StrategyTraderContext
+    from trade.strategytrade import StrategyTrade
 
 import copy
 
@@ -171,6 +173,22 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         exits.sort(key=lambda s: s.timeframe)
 
         return entries, exits
+
+    #
+    # context
+    #
+
+    def apply_trade_context(self, trade: StrategyTrade, context: StrategyTraderContext) -> bool:
+        if not trade or not context:
+            return False
+
+        trade.label = context.name
+        trade.timeframe = context.entry.timeframe.timeframe
+        trade.expiry = context.take_profit.timeout
+        trade.entry_timeout = context.entry.timeout
+        trade.context = context
+
+        return True
 
     #
     # streaming

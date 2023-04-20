@@ -5,14 +5,15 @@
 
 from __future__ import annotations
 
-import time
-from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
+from typing import Union
 
+import time
 import base64
 import copy
 import subprocess
 import traceback
 import uuid
+
 from importlib import import_module
 
 from config import utils
@@ -311,7 +312,7 @@ class TrainerTool(Tool):
                 # progress log
                 progress = self._trainer_commander.progress()
                 if progress - self._last_progress > 5.0:
-                    logger.info("Progress %.2f%%" % progress)
+                    Terminal.inst().info("Progress %.2f%%" % progress)
                     self._last_progress = progress
 
                 # output result, stats...

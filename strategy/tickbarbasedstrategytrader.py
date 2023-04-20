@@ -5,7 +5,11 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
+
+if TYPE_CHECKING:
+    from strategytradercontext import StrategyTraderContext
+    from trade.strategytrade import StrategyTrade
 
 import copy
 
@@ -100,6 +104,22 @@ class TickBarBasedStrategyTrader(StrategyTrader):
                 self.last_price = (self.instrument.ticks()[-1][1] + self.instrument.ticks()[-1][2]) * 0.5
 
             return ticks
+
+    #
+    # context
+    #
+
+    def apply_trade_context(self, trade: StrategyTrade, context: StrategyTraderContext) -> bool:
+        if not trade or not context:
+            return False
+
+        trade.label = context.name
+        trade.timeframe = Instrument.TF_TRADE
+        trade.expiry = context.take_profit.timeout
+        trade.entry_timeout = context.entry.timeout
+        trade.context = context
+
+        return True
 
     #
     # streaming

@@ -385,7 +385,7 @@ class Trainer(object):
                                 if "error" in msg.lower():
                                     logger.error("Error during process of training for %s" % market_id)
                                 elif "Progress " in msg:
-                                    i = msg.find("Progress")
+                                    i = msg.find("Progress ")
                                     if i >= 0:
                                         j = msg[i+9:].find("%")
                                         if j >= 0:

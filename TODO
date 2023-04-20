@@ -118,6 +118,8 @@ Sum order :
 # Urgent #
 ##########
 
+- def dumps_context(self, context_id: str) -> Union[dict, None]: doit etre generic et might use context dumps method
+
 #124 allow/deny monitoring IP list plus propre, mais attention aux conf des bots si changement de config
     - methode pour ajouter/retirer des IP une fois lancé ? mais moyen sécure ...
 
