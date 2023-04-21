@@ -60,18 +60,10 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # self.scorify = Scorify(score_trigger, score_increase_factor, score_regression_factor)
 
-        for k, timeframe in self.timeframes_parameters.items():
-            if timeframe['mode'] == 'A':
-                sub = ForexAlphaStrategySubA(self, timeframe)
-                self.timeframes[timeframe['timeframe']] = sub
-            elif timeframe['mode'] == 'B':
-                sub = ForexAlphaStrategySubB(self, timeframe)
-                self.timeframes[timeframe['timeframe']] = sub
-            elif timeframe['mode'] == 'C':
-                sub = ForexAlphaStrategySubC(self, timeframe)
-                self.timeframes[timeframe['timeframe']] = sub
-            else:
-                continue
+        self.register_timeframe('A', ForexAlphaStrategySubA)
+        self.register_timeframe('B', ForexAlphaStrategySubB)
+        self.register_timeframe('C', ForexAlphaStrategySubC)
+        self.setup_timeframes(params)
 
         self._last_filter_cache = (0, False, False)
 

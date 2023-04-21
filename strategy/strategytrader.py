@@ -214,6 +214,13 @@ class StrategyTrader(object):
     # strategy trade context
     #
 
+    def set_default_trader_context(self, model_class):
+        if not issubclass(model_class, StrategyTraderContext):
+            error_logger.error("Default trader context must be subclass of StrategyTraderContext")
+            return
+
+        self._default_trader_context_class = model_class
+
     def register_context(self, ctx: Union[StrategyTraderContext, list[StrategyTraderContext]]):
         """
         Each trade context must be registered.

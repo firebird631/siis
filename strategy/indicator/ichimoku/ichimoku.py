@@ -63,6 +63,9 @@ class IchimokuIndicator(Indicator):
         self._sbrmax_h = np.empty(0)
         self._sbrmin_l = np.empty(0)
 
+    def has_values(self, min_samples=1):
+        return self._ssas.size >= min_samples and not np.isnan(self._ssas[-min_samples])
+
     @property
     def tenkan_sen_l(self):
         return self._tenkan_sen_l

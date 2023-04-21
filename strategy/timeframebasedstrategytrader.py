@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import traceback
-from typing import TYPE_CHECKING, Tuple, List, Dict, Union
+from typing import TYPE_CHECKING, Tuple, List, Dict, Union, Any
 
 if TYPE_CHECKING:
     from .strategy import Strategy
@@ -21,7 +21,7 @@ from .strategytrader import StrategyTrader
 from .strategysignal import StrategySignal
 
 from instrument.instrument import Instrument
-from common.utils import timeframe_from_str
+from common.utils import timeframe_from_str, timeframe_to_str
 
 from monitor.streamable import Streamable, StreamMemberInt
 
@@ -42,6 +42,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     @see Strategy.base_timeframe
     """
 
+    _timeframes_registry: Dict[str, Any]
     timeframes: Dict[float, TimeframeBasedSub]
     _timeframe_streamers: Dict[float, Streamable]
 
@@ -57,11 +58,59 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         self._base_timeframe = base_timeframe
 
+        self._timeframes_registry = {}  # registry of timeframes models (mode:cls)
         self.timeframes = {}  # analyser per timeframe
         self._timeframe_streamers = {}  # data streamers per timeframe
 
         self.prev_price = 0.0
         self.last_price = 0.0
+
+    def register_timeframe(self, mode: str, class_model: Any):
+        if mode and class_model:
+            self._timeframes_registry[mode] = class_model
+
+    def setup_timeframes(self, params: dict):
+        # reload any timeframes
+        timeframes = params.get('timeframes', {})
+        logger.debug(timeframes)
+
+        for tf_name, tf_param in timeframes.items():
+            mode = tf_param.get('mode')
+            if not mode:
+                logger.warning("No mode specified for timeframe %s" % tf_name)
+                continue
+
+            clazz_model = self._timeframes_registry.get(mode)
+            if clazz_model is None:
+                error_logger.error("Unable to find timeframe model mode %s for %s" % (mode, tf_name))
+                continue
+
+            tf = tf_param.get('timeframe')
+            if tf is None:
+                error_logger.error("Missing timeframe parameter for %s" % tf_name)
+                continue
+
+            if type(tf) is str:
+                tf = timeframe_from_str(tf)
+
+            if tf is None:
+                error_logger.error("Invalid timeframe parameter for %s" % tf_name)
+                continue
+
+            try:
+                tf_inst = clazz_model(self, tf_param)
+                self.timeframes[tf] = tf_inst
+            except Exception:
+                error_logger.error("Unable to instantiate timeframe %s" % tf_name)
+                traceback_logger.error(traceback.format_exc())
+                continue
+
+            try:
+                tf_inst.loads(tf_param)
+                tf_inst.setup_indicators(tf_param)
+            except Exception:
+                error_logger.error("Unable to loads timeframe %s" % tf_name)
+                traceback_logger.error(traceback.format_exc())
 
     def update_parameters(self, params: dict):
         super().update_parameters(params)
@@ -70,16 +119,34 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         timeframes = params.get('timeframes', {})
 
         for tf_name, tf_param in timeframes.items():
-            tf = timeframe_from_str(tf_param.get('timeframe', ""))
+            tf = tf_param.get('timeframe')
+            if tf is None:
+                error_logger.error("Missing timeframe parameter for %s" % tf_name)
+                continue
+
+            if type(tf) is str:
+                tf = timeframe_from_str(tf)
+
+            if tf is None:
+                error_logger.error("Invalid timeframe parameter for %s" % tf_name)
+                continue
 
             timeframe = self.timeframes.get(tf)
-            if timeframe:
-                try:
-                    timeframe.loads(tf_param)
-                    timeframe.setup_indicators(tf_param)
-                except Exception as e:
-                    error_logger.error(repr(e))
-                    traceback_logger.error(traceback.format_exc())
+            if timeframe is None:
+                error_logger.error("Unable to retrieve timeframe instance %s" % tf_name)
+                continue
+
+            try:
+                timeframe.loads(tf_param)
+            except Exception:
+                error_logger.error("Unable to load timeframe %s" % tf_name)
+                traceback_logger.error(traceback.format_exc())
+
+            try:
+                timeframe.setup_indicators(tf_param)
+            except Exception:
+                error_logger.error("Unable to setup indicators from timeframe %s" % tf_name)
+                traceback_logger.error(traceback.format_exc())
 
     @property
     def is_timeframes_based(self) -> bool:

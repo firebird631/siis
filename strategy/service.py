@@ -46,7 +46,7 @@ traceback_logger = logging.getLogger('siis.traceback.strategy.service')
 
 class StrategyService(Service):
     """
-    Strategy service is responsible of build, initialize, load configuration, start/stop the strategy.
+    Strategy service is responsible for build, initialize, load configuration, start/stop the strategy.
     """
 
     _watcher_service: WatcherService

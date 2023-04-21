@@ -64,18 +64,10 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.sltp_timeframe = self.timeframe_from_param(params.setdefault('sltp-timeframe', '1h'))
         self.ref_timeframe = self.timeframe_from_param(params.setdefault('ref-timeframe', '1d'))
 
-        for k, timeframe in self.timeframes_parameters.items():
-            if timeframe['mode'] == 'A':
-                sub = CryptoAlphaStrategySubA(self, timeframe)
-                self.timeframes[timeframe['timeframe']] = sub
-            elif timeframe['mode'] == 'B':
-                sub = CryptoAlphaStrategySubB(self, timeframe)
-                self.timeframes[timeframe['timeframe']] = sub
-            elif timeframe['mode'] == 'C':
-                sub = CryptoAlphaStrategySubC(self, timeframe)
-                self.timeframes[timeframe['timeframe']] = sub
-            else:   
-                continue
+        self.register_timeframe('A', CryptoAlphaStrategySubA)
+        self.register_timeframe('B', CryptoAlphaStrategySubB)
+        self.register_timeframe('C', CryptoAlphaStrategySubC)
+        self.setup_timeframes(params)
 
         self._last_filter_cache = (0, False, False)
 

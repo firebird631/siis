@@ -34,12 +34,8 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
         self.min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))
         self.max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', "4h"))
 
-        for k, timeframe in self.timeframes_parameters.items():
-            if timeframe['mode'] == 'A':
-                sub = CrystalBallStrategySubA(self, timeframe)
-                self.timeframes[timeframe['timeframe']] = sub
-            else:
-                continue
+        self.register_timeframe('A', CrystalBallStrategySubA)
+        self.setup_timeframes(params)
 
         self._last_filter_cache = (0, False, False)
 

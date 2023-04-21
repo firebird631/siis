@@ -257,7 +257,7 @@ class Strategy(Runnable):
 
     @property
     def parameters(self) -> dict:
-        """Configuration default merge with users"""
+        """Configuration default merge with user config"""
         return self._parameters
 
     def specific_parameters(self, market_id: str) -> dict:
@@ -1807,7 +1807,7 @@ class Strategy(Runnable):
         # markets specifics
         parameters.setdefault('markets', {})
 
-        # for each timeframes
+        # for each timeframe
         removed_timeframes = []
 
         for k, timeframe in parameters['timeframes'].items():
