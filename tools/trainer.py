@@ -129,7 +129,6 @@ class TrainerTool(Tool):
     def init(self, options):
         # trainers
         trainers_config = utils.load_config(options, 'trainers')
-
         trainer_name = self._learning_config.get('trainer', {}).get('name')
         if not trainer_name:
             return False

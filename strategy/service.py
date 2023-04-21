@@ -211,6 +211,12 @@ class StrategyService(Service):
 
         return self._backtesting_play
 
+    def play_backtesting(self):
+        self._backtesting_play = True
+
+    def pause_backtesting(self):
+        self._backtesting_play = False
+
     def set_save_on_exit(self, status):
         self._save_on_exit = status
 
@@ -405,6 +411,11 @@ class StrategyService(Service):
             self._timestep_thread.abort = True
             self._timestep_thread.join()
             self._timestep_thread = None
+
+        # kill trainer subprocesses
+        from strategy.learning.trainer import Trainer
+        if Trainer.has_executors():
+            Trainer.kill_executors()
 
         if self._strategy:
             strategy = self._strategy

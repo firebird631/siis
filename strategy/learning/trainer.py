@@ -175,6 +175,10 @@ class Trainer(object):
         strategy_trader = self._strategy_trader
         strategy = strategy_trader.strategy
 
+        # pause during a backtesting
+        if self._strategy_service.backtesting:
+            self._strategy_service.pause_backtesting()
+
         try:
             return Trainer.caller(strategy.service.identity, strategy.service.profile, strategy.service.learning_path,
                                   strategy_trader, strategy.service.profile_config)
@@ -223,6 +227,9 @@ class Trainer(object):
         # and restart (will reload necessary OHLC...)
         strategy_trader.restart()
         strategy.send_initialize_strategy_trader(strategy_trader.instrument.market_id)
+
+        if self._strategy_service.backtesting:
+            self._strategy_service.play_backtesting()
 
     #
     # class methods
@@ -365,6 +372,12 @@ class Trainer(object):
 
                 self._strategy_service = _strategy_service
                 self._market_id = _market_id
+                self._process = None
+
+            def kill_process(self):
+                if self._process:
+                    self._process.kill()
+                    self._process = None
 
             def run(self):
                 # register the thread (executor)
@@ -375,18 +388,22 @@ class Trainer(object):
                 with subprocess.Popen(cmd_opts,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
-                                      stdin=subprocess.DEVNULL) as p:
+                                      stdin=subprocess.DEVNULL) as process:
+
+                    self._process = process
+
                     while 1:
-                        code = p.poll()
+                        code = process.poll()
                         if code is not None:
                             break
 
                         try:
-                            stdout, stderr = p.communicate(timeout=0.1)
+                            stdout, stderr = process.communicate(timeout=0.1)
                             if stdout:
                                 msg = stdout.decode()
                                 if "error" in msg.lower():
                                     logger.error("Error during process of training for %s" % market_id)
+                                    process.kill()
                                 elif "Progress " in msg:
                                     i = msg.find("Progress ")
                                     if i >= 0:
@@ -398,13 +415,16 @@ class Trainer(object):
                         except subprocess.TimeoutExpired:
                             pass
 
+                    self._process = None
+
                     if code != 0:
-                        logger.error("Trainer process terminated with error code %s !" % p.returncode)
+                        logger.error("Trainer process terminated with error code %s !" % process.returncode)
                         logger.error(msg)
 
                         utils.delete_learning(learning_path, learning_filename)
 
-                        del Trainer.processing[self._market_id]
+                        if self._market_id in Trainer.processing:
+                            del Trainer.processing[self._market_id]
                         return False
                     else:
                         logger.info("Trainer process completed, lookup for results...")
@@ -429,7 +449,8 @@ class Trainer(object):
 
                         utils.delete_learning(learning_path, learning_filename)
 
-                        del Trainer.processing[self._market_id]
+                        if self._market_id in Trainer.processing:
+                            del Trainer.processing[self._market_id]
                         return True
 
         logger.info("Start a trainer thread...")
@@ -440,10 +461,22 @@ class Trainer(object):
         return True
 
     @staticmethod
-    def join_executor():
+    def has_executors():
+        return len(Trainer.processing) > 0
+
+    @staticmethod
+    def join_executors():
         while Trainer.processing:
             market_id, processor = next(iter(Trainer.processing.items()))
             processor.join()
+
+            del Trainer.processing[market_id]
+
+    @staticmethod
+    def kill_executors():
+        while Trainer.processing:
+            market_id, processor = next(iter(Trainer.processing.items()))
+            processor.kill_process()
 
             del Trainer.processing[market_id]
 

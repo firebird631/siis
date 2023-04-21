@@ -72,7 +72,6 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     def setup_timeframes(self, params: dict):
         # reload any timeframes
         timeframes = params.get('timeframes', {})
-        logger.debug(timeframes)
 
         for tf_name, tf_param in timeframes.items():
             mode = tf_param.get('mode')
@@ -135,6 +134,10 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             if timeframe is None:
                 error_logger.error("Unable to retrieve timeframe instance %s" % tf_name)
                 continue
+
+            logger.debug(tf_name)
+            logger.debug(tf_param.get('slow_m_ma'))
+            logger.debug(tf_param.get('fast_m_ma'))
 
             try:
                 timeframe.loads(tf_param)
