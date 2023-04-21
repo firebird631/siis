@@ -55,6 +55,11 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
         self.last_timestamp = 0.0
 
+    def update_parameters(self, params: dict):
+        super().update_parameters(params)
+
+        # @todo depth... reload tickbar generator...
+
     @property
     def is_tickbars_based(self):
         return True

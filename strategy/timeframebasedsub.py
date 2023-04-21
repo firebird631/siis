@@ -80,9 +80,25 @@ class TimeframeBasedSub(object):
         self.prev_open_price = None   # previous OHLC open
         self.prev_close_price = None  # previous OHLC close
 
+    def loads(self, params: dict):
+        """
+        Reload basic parameters.
+        """
+        if 'depth' in params and params['depth'] != self.depth:
+            self.depth = params['depth']
+
+        if 'history' in params and params['history'] != self.history:
+            self.history = params['history']
+
+        if 'update-at-close' in params and params['update-at-close'] != self._update_at_close:
+            self._update_at_close = params['update-at-close']
+
+        if 'signal-at-close' in params and params['signal-at-close'] != self._signal_at_close:
+            self._signal_at_close = params['signal-at-close']
+
     def setup_indicators(self, params: dict):
         """
-        Standard implementation to instantiate and setup the indicator based on the timeframe,
+        Standard implementation to instantiate and set up the indicator based on the timeframe,
         from the parameters.
         """
         if 'indicators' not in params:
@@ -97,6 +113,8 @@ class TimeframeBasedSub(object):
                     # instantiate and setup indicator
                     indicator = self.strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:])
                     indicator.setup(self.strategy_trader.instrument)
+
+                    # @todo warning if not enough depth/history
 
                     setattr(self, ind, indicator)
                 else:
@@ -130,7 +148,7 @@ class TimeframeBasedSub(object):
     def need_signal(self, timestamp: float) -> bool:
         """
         Return True if the signal can be generated and returned at this processing.
-        If signal at close than wait for the last candle close, else always returns true.
+        If signal at close then wait for the last candle close, else always returns true.
         """
         if self._signal_at_close:
             return self._last_closed

@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from trader.trader import Trader
     from instrument.instrument import Instrument
     from strategy.strategytrader import StrategyTrader
-    from strategy.strategytradercontext import StrategyTraderContextBuilder
 
 from common.signal import Signal
 from trader.order import Order
@@ -917,9 +916,8 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         return data
 
-    def loads(self, data: dict, strategy_trader: StrategyTrader,
-              context_builder: Optional[StrategyTraderContextBuilder] = None) -> bool:
-        if not super().loads(data, strategy_trader, context_builder):
+    def loads(self, data: dict, strategy_trader: StrategyTrader) -> bool:
+        if not super().loads(data, strategy_trader):
             return False
 
         self.create_ref_oid = data.get('create-ref-oid')

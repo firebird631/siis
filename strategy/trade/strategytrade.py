@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from instrument.instrument import Instrument
     from strategy.tradeop.tradeop import TradeOp
     from strategy.strategytrader import StrategyTrader
-    from strategy.strategytradercontext import StrategyTraderContextBuilder
 
 from datetime import datetime
 
@@ -905,13 +904,12 @@ class StrategyTrade(object):
             'last-take-profit-order-time': self.last_tp_ot,
             'last-stop-loss-order-time': self.last_stop_ot,
             'statistics': self._stats,
-            'context': self.context.dumps() if self.context else None,
+            'context': self.context.name if self.context else None,  # .dumps()
             'comment': self._comment,
             'extra': self._extra,
         }
 
-    def loads(self, data: dict, strategy_trader: StrategyTrader,
-              context_builder: Optional[StrategyTraderContextBuilder] = None) -> bool:
+    def loads(self, data: dict, strategy_trader: StrategyTrader) -> bool:
         """
         Override this method to make a loads for the persistence model.
         @return True if success.
@@ -977,17 +975,29 @@ class StrategyTrade(object):
         self._comment = data.get('comment', "")
         self._extra = data.get('extra', {})
 
-        if context_builder and data.get('context'):
-            self.context = context_builder.loads(data['context'], strategy_trader)
-        else:
-            self.context = None
+        # trade context
+        self.context = None
+
+        # retrieve context by name, support advanced dict or single str
+        context = data.get('context')
+        if context:
+            context_name = None
+            if type(context) is str:
+                context_name = context
+            elif type(context) is dict:
+                context_name = context.get('name', "")
+
+            self.context = strategy_trader.retrieve_context(context_name)
+            if self.context is None:
+                logger.warning("Unable to retrieve context %s for trade %s for market %s" % (
+                    context_name, self.id, strategy_trader.instrument.market_id))
 
         return True
 
     def check(self, trader: Trader, instrument: Instrument) -> int:
         """
         Check orders and positions exists and quantities too.
-        @return 1 if success, 0 if need repair, -1 if error.
+        @return 1 if success, 0 if it needs repair, -1 if error.
         """
         return 1
 

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import traceback
 from typing import TYPE_CHECKING, Tuple, List, Dict, Union
 
 if TYPE_CHECKING:
@@ -26,6 +27,8 @@ from monitor.streamable import Streamable, StreamMemberInt
 
 import logging
 logger = logging.getLogger('siis.strategy.timeframebasedstrategytrader')
+error_logger = logging.getLogger('siis.error.strategy.timeframebasedstrategytrader')
+traceback_logger = logging.getLogger('siis.traceback.strategy.timeframebasedstrategytrader')
 
 
 class TimeframeBasedStrategyTrader(StrategyTrader):
@@ -60,6 +63,24 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         self.prev_price = 0.0
         self.last_price = 0.0
 
+    def update_parameters(self, params: dict):
+        super().update_parameters(params)
+
+        # reload any timeframes
+        timeframes = params.get('timeframes', {})
+
+        for tf_name, tf_param in timeframes.items():
+            tf = timeframe_from_str(tf_param.get('timeframe', ""))
+
+            timeframe = self.timeframes.get(tf)
+            if timeframe:
+                try:
+                    timeframe.loads(tf_param)
+                    timeframe.setup_indicators(tf_param)
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
+
     @property
     def is_timeframes_based(self) -> bool:
         return True
@@ -89,7 +110,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         @note Thread-safe method.
         """
         with self._mutex:
-            # at tick we update any timeframes because we want the non consolidated candle
+            # at tick, we update any timeframes because we want the non consolidated candle
             ticks = self.instrument.ticks()  # self.instrument.ticks_after(sub.candles_gen.last_timestamp)
 
             for tf, sub in self.timeframes.items():

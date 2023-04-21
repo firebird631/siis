@@ -43,8 +43,6 @@
             "min-vol24h": 0,
             "min-price": 0.0,
             "timeout-profit-loss": 0.1,
-            "pullback-min-profit": 0,
-            "ma-bb-min-profit": 0,
             "price-epsilon-timeframe": "5m",
             "price-epsilon-factor": 0.05,
             "max-trades": 7,

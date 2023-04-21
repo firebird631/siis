@@ -213,7 +213,8 @@ class Trainer(object):
         # merge new parameters
         utils.merge_learning_config(new_parameters, learning_result)
 
-        for n, v in new_parameters.items():
+        # display news values
+        for n, v in learning_result.get('strategy', {}).get('parameters', {}).items():
             logger.info("-- %s = %s" % (n, v))
 
         # update strategy trader with new parameters

@@ -119,6 +119,8 @@ Sum order :
 ##########
 
 - def dumps_context(self, context_id: str) -> Union[dict, None]: doit etre generic et might use context dumps method
+- supprimer les TraderContextBuilder et remplacer par la registry
+- simplifier les context, un seul type, et donc un seul "context" dans les parametres (toutes les strategies doivent être simplifiées)
 
 #124 allow/deny monitoring IP list plus propre, mais attention aux conf des bots si changement de config
     - methode pour ajouter/retirer des IP une fois lancé ? mais moyen sécure ...

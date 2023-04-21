@@ -31,7 +31,7 @@ from strategy.trade.strategymargintrade import StrategyMarginTrade
 from strategy.trade.strategypositiontrade import StrategyPositionTrade
 from strategy.trade.strategytrade import StrategyTrade
 
-from .strategytradercontext import StrategyTraderContext, StrategyTraderContextBuilder
+from .strategytradercontext import StrategyTraderContext
 from .learning.trainer import Trainer
 
 from .indicator.models import Limits
@@ -119,8 +119,6 @@ class StrategyTrader(object):
     _stats: Dict[str, Union[int, float, List, Tuple]]
     _trainer: Union[Trainer, None]
 
-    _trade_context_builder: Union[StrategyTraderContextBuilder, Any, None]
-
     def __init__(self, strategy: Strategy, instrument: Instrument, params: dict = None):
         self.strategy = strategy
         self.instrument = instrument
@@ -165,7 +163,8 @@ class StrategyTrader(object):
         self._alert_streamer = None
         self._region_streamer = None
 
-        self._trade_contexts = {}  # context lookup map
+        self._default_trader_context_class = None
+        self._trade_contexts = {}  # contexts registry
 
         self._reporting = StrategyTrader.REPORTING_NONE
         self._report_filename = None
@@ -189,8 +188,6 @@ class StrategyTrader(object):
             'sl-loss': 0       # number of trades closed at SL in loss
         }
 
-        self._trade_context_builder = None
-
         if self.instrument:
             self.instrument.loads_session(params.get('sessions', {}))
 
@@ -203,13 +200,15 @@ class StrategyTrader(object):
 
     def update_parameters(self, params: dict):
         """
-        Called just after constructor to set up the strategy trader parameters, trading context, subs and others.
-        It is also called in case of training return. Once a training process success news parameters must be applied
-        to the strategy trader, without resetting some states and keeping trades.
-
-        Take care that the trading context modification must not alter theirs instance, neither their name.
+        Called after changes occurs into the existing contexts or timeframes. Reload and rebuild contexts and
+        timeframes.
         """
-        pass
+        # reloads any contexts
+        for name, context in self._trade_contexts.items():
+            context.loads(self, params)
+
+        # and then compiles
+        self.compiles_all_contexts()
 
     #
     # strategy trade context
@@ -245,16 +244,20 @@ class StrategyTrader(object):
         if name in self._trade_contexts:
             del(self._trade_contexts[name])
 
-    def loads_contexts_for(self, params: dict, category: str, class_model):
+    def loads_contexts(self, params: dict, class_model=None):
         contexts = []
 
-        for name, data in params.get(category, {}).items():
+        context_class = self._default_trader_context_class
+        if class_model:
+            context_class = class_model
+
+        for name, data in params.get("contexts", {}).items():
             if data is None:
                 continue
 
             try:
                 # retrieve or instantiate
-                ma_adx = self.retrieve_context(name) or class_model(name)
+                ma_adx = self.retrieve_context(name) or context_class(name)
                 ma_adx.loads(self, data)
 
                 if ma_adx.mode != ma_adx.MODE_NONE:
@@ -1120,7 +1123,7 @@ class StrategyTrader(object):
             error_logger.error("During loads, unsupported trade type %i" % trade_type)
             return
 
-        trade.loads(data, self, self._trade_context_builder)
+        trade.loads(data, self)
 
         logger.debug("Load trade %s:%s" % (self.instrument.symbol, trade_id))
 

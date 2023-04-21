@@ -6,16 +6,6 @@
 from common.utils import timeframe_from_str
 
 
-class StrategyTraderContextBuilder(object):
-    """
-    To be implemented by strategy to have specific context trade persistence.
-    """
-
-    @classmethod
-    def loads(cls, data, strategy_trader):
-        return None
-
-
 class StrategyTraderContextBase(object):
     """
     Base model for any signal/trade context.
