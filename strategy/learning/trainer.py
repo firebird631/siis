@@ -80,8 +80,7 @@ class Trainer(object):
         self._timeframe = timeframe
 
         self._parallel = trainer_params.get('parallel', 1)
-
-        self._next_update = strategy_trader.strategy.timestamp + update
+        self._next_update = 0.0
 
         self._mode = Trainer.MODE_NONE
 
@@ -129,6 +128,10 @@ class Trainer(object):
         return self._strategy_trader_params
 
     def update(self, timestamp: float) -> bool:
+        # init counter
+        if self._next_update <= 0:
+            self._next_update = timestamp + self._update
+
         if timestamp < self._next_update:
             return False
 
@@ -401,18 +404,22 @@ class Trainer(object):
                             stdout, stderr = process.communicate(timeout=0.1)
                             if stdout:
                                 msg = stdout.decode()
-                                if "error" in msg.lower():
-                                    logger.error("Error during process of training for %s" % market_id)
-                                    process.kill()
-                                elif "Progress " in msg:
-                                    i = msg.find("Progress ")
-                                    if i >= 0:
-                                        j = msg[i+9:].find("%")
-                                        if j >= 0:
-                                            progress = msg[i+9:][:j+1]
-                                            logger.debug("Training progression at %s for %s" % (progress, market_id))
+                                if msg:
+                                    if "error" in msg.lower():
+                                        logger.error("Error during process of training for %s" % market_id)
+                                        process.kill()
+                                    elif "Progress " in msg:
+                                        i = msg.find("Progress ")
+                                        if i >= 0:
+                                            j = msg[i+9:].find("%")
+                                            if j >= 0:
+                                                progress = msg[i+9:][:j+1]
+                                                logger.debug("Training progression at %s for %s" % (progress, market_id))
 
                         except subprocess.TimeoutExpired:
+                            pass
+
+                        except IOError:
                             pass
 
                     self._process = None

@@ -121,7 +121,7 @@ class TimeframeBasedSub(object):
                     logger.error("Indicator %s not found for %s on timeframe %s" % (
                         param[0], ind, timeframe_to_str(self.tf)))
             else:
-                logger.info("No indicator for %s on timeframe %s" % (ind, timeframe_to_str(self.tf)))
+                # logger.info("No indicator for %s on timeframe %s" % (ind, timeframe_to_str(self.tf)))
                 setattr(self, ind, None)
 
     def init_candle_generator(self):

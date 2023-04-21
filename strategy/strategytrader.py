@@ -204,8 +204,12 @@ class StrategyTrader(object):
         timeframes.
         """
         # reloads any contexts
+        contexts_params = params.get('contexts', {})
+
         for name, context in self._trade_contexts.items():
-            context.loads(self, params)
+            context_params = contexts_params.get(name, {})
+            context.compiled = False
+            context.loads(self, context_params)
 
         # and then compiles
         self.compiles_all_contexts()

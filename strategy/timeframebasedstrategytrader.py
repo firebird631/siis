@@ -112,9 +112,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 traceback_logger.error(traceback.format_exc())
 
     def update_parameters(self, params: dict):
-        super().update_parameters(params)
-
-        # reload any timeframes
+        # reload any timeframes before contexts
         timeframes = params.get('timeframes', {})
 
         for tf_name, tf_param in timeframes.items():
@@ -135,10 +133,6 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 error_logger.error("Unable to retrieve timeframe instance %s" % tf_name)
                 continue
 
-            logger.debug(tf_name)
-            logger.debug(tf_param.get('slow_m_ma'))
-            logger.debug(tf_param.get('fast_m_ma'))
-
             try:
                 timeframe.loads(tf_param)
             except Exception:
@@ -150,6 +144,8 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             except Exception:
                 error_logger.error("Unable to setup indicators from timeframe %s" % tf_name)
                 traceback_logger.error(traceback.format_exc())
+
+        super().update_parameters(params)
 
     @property
     def is_timeframes_based(self) -> bool:

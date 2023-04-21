@@ -298,14 +298,18 @@ class TrainerTool(Tool):
                         stdout, stderr = process.communicate(timeout=0.1)
                         if stdout:
                             msg = stdout.decode()
-                            if "error" in msg.lower():
-                                # error during backtest kill
-                                logger.debug(msg)
-                                logger.error("Kill process %s error" % learning_filename)
+                            if msg:
+                                if "error" in msg.lower():
+                                    # error during backtest kill
+                                    logger.debug(msg)
+                                    logger.error("Kill process %s error" % learning_filename)
 
-                                process.kill()
+                                    process.kill()
 
                     except subprocess.TimeoutExpired:
+                        pass
+
+                    except IOError:
                         pass
 
                 # progress log
