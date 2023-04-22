@@ -232,7 +232,7 @@ def do_rebuilder(options):
             while not tick_streamer.finished():
                 ticks = tick_streamer.next(timestamp + Instrument.TF_1M)
 
-                count = len(ticks)
+                count += len(ticks)
                 total_count += len(ticks)
 
                 for data in ticks:
@@ -293,7 +293,7 @@ def do_rebuilder(options):
             while not ohlc_streamer.finished():
                 ohlcs = ohlc_streamer.next(timestamp + timeframe * 100)  # per 100
 
-                count = len(ohlcs)
+                count += len(ohlcs)
                 total_count += len(ohlcs)
 
                 for data in ohlcs:
