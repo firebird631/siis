@@ -415,6 +415,7 @@ class StrategyService(Service):
         # kill trainer subprocesses
         from strategy.learning.trainer import Trainer
         if Trainer.has_executors():
+            Terminal.inst().info("Kill trainer executors...")
             Trainer.kill_executors()
 
         if self._strategy:

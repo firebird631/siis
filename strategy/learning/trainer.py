@@ -67,6 +67,8 @@ class Trainer(object):
         learning_params = params.get('learning')
         trainer_params = learning_params.get('trainer')
 
+        self._initial = trainer_params.get('initial', False)  # does an initial training
+
         period = timeframe_from_str(trainer_params.get('period', '1w'))
         update = timeframe_from_str(trainer_params.get('update', '1w'))
 
@@ -128,9 +130,14 @@ class Trainer(object):
         return self._strategy_trader_params
 
     def update(self, timestamp: float) -> bool:
-        # init counter
+        # init counter or does an initial training
         if self._next_update <= 0:
-            self._next_update = timestamp + self._update
+            if self._initial:
+                # begin by a training
+                self._next_update = timestamp
+            else:
+                # wait after duration for the first training
+                self._next_update = timestamp + self._update
 
         if timestamp < self._next_update:
             return False
@@ -212,24 +219,28 @@ class Trainer(object):
 
         performance = learning_result.get('performance', '0.00%')
 
-        logger.info("Best performance for %s : %s" % (strategy_trader.instrument.market_id, performance))
-        logger.info("Trainer apply new parameters to %s and then restart" % strategy_trader.instrument.market_id)
+        if not learning_result.get('results', []):
+            logger.info("No results found from training, no changes to apply for %s" % strategy_trader.instrument.market_id)
+        else:
+            logger.info("Best performance for %s : %s" % (strategy_trader.instrument.market_id, performance))
+            logger.info("Trainer apply new parameters to %s and then restart" % strategy_trader.instrument.market_id)
 
-        new_parameters = copy.deepcopy(self._strategy_trader_params)
+            new_parameters = copy.deepcopy(self._strategy_trader_params)
 
-        # merge new parameters
-        utils.merge_learning_config(new_parameters, learning_result)
+            # merge new parameters
+            utils.merge_learning_config(new_parameters, learning_result)
 
-        # display news values
-        for n, v in learning_result.get('strategy', {}).get('parameters', {}).items():
-            logger.info("-- %s = %s" % (n, v))
+            # display news values
+            for n, v in learning_result.get('strategy', {}).get('parameters', {}).items():
+                logger.info("-- %s = %s" % (n, v))
 
-        # update strategy trader with new parameters
-        strategy_trader.update_parameters(new_parameters)
+            # update strategy trader with new parameters
+            strategy_trader.update_parameters(new_parameters)
 
-        # and restart (will reload necessary OHLC...)
-        strategy_trader.restart()
-        strategy.send_initialize_strategy_trader(strategy_trader.instrument.market_id)
+            # if not self._strategy_service.backtesting:
+            #     # and restart (will reload necessary OHLC...)
+            #     strategy_trader.restart()
+            #     strategy.send_initialize_strategy_trader(strategy_trader.instrument.market_id)
 
         if self._strategy_service.backtesting:
             self._strategy_service.play_backtesting()
@@ -458,6 +469,7 @@ class Trainer(object):
 
                         if self._market_id in Trainer.processing:
                             del Trainer.processing[self._market_id]
+
                         return True
 
         logger.info("Start a trainer thread...")
