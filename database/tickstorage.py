@@ -368,9 +368,9 @@ class TickStreamer(object):
                     data = self._struct.iter_unpack(arr)
 
                     if len(arr) < self._buffer_size:
-                       file_end = True
+                        file_end = True
 
-                    # speedup using numpy fromfile but its a one shot loads
+                    # speedup using numpy fromfile, but it is a one shot loads
                     # data = np.fromfile(self._file, dtype=self._tick_type)
                     # file_end = True
 

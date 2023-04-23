@@ -3,6 +3,7 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Base tools model
 
+import signal
 import sys
 import glob
 import traceback
@@ -18,14 +19,30 @@ error_logger = logging.getLogger('siis.error.tools')
 traceback_logger = logging.getLogger('siis.traceback.tools')
 
 
+def signal_handler(sig, frame, options):
+    error_logger.error("Sigterm received, terminate")
+
+    if Tool.instance:
+        Tool.instance.interrupt(options)
+    else:
+        Terminal.inst().flush()
+        Terminal.terminate()
+
+        sys.exit(-1)
+
+
 class Tool(object):
     """
     Base tools model.
     """
 
+    instance = None
+
     def __init__(self, name, options):
         self._name = name
         self._state = 0
+
+        Tool.instance = self  # register the tool
 
     @classmethod
     def alias(cls):
@@ -67,7 +84,19 @@ class Tool(object):
         """Termination step, before run."""
         return True
 
+    def signal_handler(self, options):
+        error_logger.error("Sigterm received, terminate")
+
+        self.forced_interrupt(options)
+
+        Terminal.inst().flush()
+        Terminal.terminate()
+
+        sys.exit(-1)
+
     def execute(self, options):
+        signal.signal(signal.SIGTERM, lambda x, y: signal_handler(x, y, options))
+
         try:
             self._state = 0
 
@@ -114,41 +143,44 @@ class Tool(object):
 
             self._state = 4
 
-        except KeyboardInterrupt:
-            if self._state in (0, 1, 4):
-                error_logger.error("User forced termination of tool %s before it process" % self._name)
-
-                Terminal.inst().flush()
-                Terminal.terminate()
-
-                sys.exit(-1)
-
-            elif self._state == 2:
-                error_logger.error("User forced termination of tool %s during process" % self._name)
-
-                # cleanup before exit
-                self.forced_interrupt(options)
-                self.terminate(options)
-
-                Terminal.inst().flush()
-                Terminal.terminate()
-
-                sys.exit(-1)
-
-            elif self._state == 3:
-                error_logger.error("User forced termination of tool %s after it process" % self._name)
-
-                # cleanup before exit
-                self.terminate(options)
-
-                Terminal.inst().flush()
-                Terminal.terminate()
-
-                sys.exit(-1)
+        except (KeyboardInterrupt, InterruptedError):
+            self.interrupt(options)
 
         except Exception as e:
             error_logger.error(str(e))
             traceback_logger.error(traceback.format_exc())
+            sys.exit(-1)
+
+    def interrupt(self, options):
+        if self._state in (0, 1, 4):
+            error_logger.error("User forced termination of tool %s before it process" % self._name)
+
+            Terminal.inst().flush()
+            Terminal.terminate()
+
+            sys.exit(-1)
+
+        elif self._state == 2:
+            error_logger.error("User forced termination of tool %s during process" % self._name)
+
+            # cleanup before exit
+            self.forced_interrupt(options)
+            self.terminate(options)
+
+            Terminal.inst().flush()
+            Terminal.terminate()
+
+            sys.exit(-1)
+
+        elif self._state == 3:
+            error_logger.error("User forced termination of tool %s after it process" % self._name)
+
+            # cleanup before exit
+            self.terminate(options)
+
+            Terminal.inst().flush()
+            Terminal.terminate()
+
             sys.exit(-1)
 
     @staticmethod

@@ -304,7 +304,8 @@ class TrainerTool(Tool):
                                     logger.debug(msg)
                                     logger.error("Kill process %s error" % learning_filename)
 
-                                    process.kill()
+                                    # process.kill()
+                                    process.terminate()
 
                     except subprocess.TimeoutExpired:
                         pass
@@ -312,31 +313,34 @@ class TrainerTool(Tool):
                     except IOError:
                         pass
 
-                # progress log
-                progress = self._trainer_commander.progress()
-                if progress - self._last_progress > 5.0:
-                    Terminal.inst().info("Progress %.2f%%" % progress)
-                    self._last_progress = progress
+                if self._trainer_commander:
+                    # progress log
+                    progress = self._trainer_commander.progress()
+                    if progress - self._last_progress > 5.0:
+                        Terminal.inst().info("Progress %.2f%%" % progress)
+                        self._last_progress = progress
 
-                # output result, stats...
-                trainer_result = read_trainer_file(learning_filename)
-                if trainer_result:
-                    duration = time.time() - initial_time
+                    # output result, stats...
+                    trainer_result = read_trainer_file(learning_filename)
+                    if trainer_result:
+                        duration = time.time() - initial_time
 
-                    if not self._last_process_time and duration:
-                        remain_duration_est = self._trainer_commander.estimate_duration(duration)
-                        Terminal.inst().info("Estimate total duration to %.2f minutes" % (remain_duration_est / 60,))
+                        if not self._last_process_time and duration:
+                            remain_duration_est = self._trainer_commander.estimate_duration(duration)
+                            Terminal.inst().info("Estimate total duration to %.2f minutes" % (remain_duration_est / 60,))
 
-                    self._last_process_time = duration
+                        self._last_process_time = duration
 
-                    Terminal.inst().info("-- %s trainer success with %s" % (
-                        learning_filename, trainer_result.get('performance', "0.00%")))
-                    # print(trainer_result.get('strategy').get('parameters'))
+                        Terminal.inst().info("-- %s trainer success with %s" % (
+                            learning_filename, trainer_result.get('performance', "0.00%")))
+                        # print(trainer_result.get('strategy').get('parameters'))
 
-                    perf = float(trainer_result.get('performance', "0.00%").rstrip('%'))
+                        perf = float(trainer_result.get('performance', "0.00%").rstrip('%'))
 
-                    # @todo adjust by MDD ..
-                    fitness = -perf
+                        # @todo adjust by MDD ..
+                        fitness = -perf
+                    else:
+                        Terminal.inst().info("-- %s trainer failed" % learning_filename)
                 else:
                     Terminal.inst().info("-- %s trainer failed" % learning_filename)
 
@@ -376,12 +380,17 @@ class TrainerTool(Tool):
             utils.write_learning(options, self._learning, final_learning_config)
 
         logger.debug("join commander")
-        self._trainer_commander.join()
-        self._trainer_commander = None
+        # self._trainer_commander.join()
+        # self._trainer_commander = None
 
         return True
 
     def terminate(self, options):
+        if self._trainer_commander:
+            logger.debug("Terminate commander")
+            self._trainer_commander.term()
+            self._trainer_commander = None
+
         if self._watcher_service:
             self._watcher_service.terminate()
 
@@ -390,9 +399,10 @@ class TrainerTool(Tool):
         return True
 
     def forced_interrupt(self, options):
-        logger.debug("kill commander")
-        self._trainer_commander.kill()
-        self._trainer_commander = None
+        if self._trainer_commander:
+            logger.debug("Force terminate commander")
+            self._trainer_commander.term()
+            self._trainer_commander = None
 
         return True
 

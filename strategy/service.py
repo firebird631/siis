@@ -412,11 +412,11 @@ class StrategyService(Service):
             self._timestep_thread.join()
             self._timestep_thread = None
 
-        # kill trainer subprocesses
+        # term trainer subprocesses
         from strategy.learning.trainer import Trainer
         if Trainer.has_executors():
-            Terminal.inst().info("Kill trainer executors...")
-            Trainer.kill_executors()
+            Terminal.inst().info("Terminate trainer executors...")
+            Trainer.term_executors()
 
         if self._strategy:
             strategy = self._strategy

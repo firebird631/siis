@@ -77,7 +77,7 @@ Features
 * Live-mode : real trading on your broker account
 * Machine-learning :
   * Possibility to implement a trainer (reinforcement learning, genetic algorithm)
-    * Trainer based on genetic algorithm (WIP)
+    * Trainer based on genetic algorithm (this code not published, try to contact me)
 * Interactive command line interface
   * Many views available using shortcuts
   * Desktop notification on Linux (notify2 lib)
@@ -128,9 +128,9 @@ Features
     * BitcoinAlpha for big caps coins
     * CryptoAlpha for alt-coins
     * ForexAlpha for FOREX pairs
-    * CrystalBall signal (no trading)
+    * CrystalBall signal only
     * Ability to implements your own strategies or to pay for a development
-    * Please, consider developing or contact me for a serious working strategy
+    * Please, consider developing or contacting me for a serious working strategy
 * WebHook on TradingView strategies (not maintained) 
   * Uses TamperMonkey with Javascript
   * Watch the strategy trade last
@@ -591,6 +591,18 @@ About data storage
 
 [Information about the structure and organisation of the data.](doc/organisation/dataset.md)
 
+System Requirements
+-------------------
+
+For running a single instance of SiiS a 2GB memory VPS with at least 2 (v)CPUs and 10GB of storage will suffice.
+In that condition it is tested with 100 markets on Binance Spot, and more than 10 markets on IG.
+
+The load depends on the trade updates of the exchanges and of the complexity of the strategy.
+For machine learning it needs a lot of compute resource. In that case for training it is necessary to have more cores (8 or 16)
+and more RAM.
+
+If the fitness method is done in C++ it could greatly speed up computation of backtesting and training.
+
 Note about performance, stability and scalability
 -------------------------------------------------
 
@@ -604,7 +616,7 @@ It could be interesting to use the asyncio capacities to distribute the computin
 
 Because you can execute many instances of SiiS, you can split your strategy into different instances. 
 
-For example, you trade pairs on USDT, but you distinct 4 sorts ok markets, serious coin, alt coin, shit-coin and low volume shit-coins.
+For example, you trade pairs on USDT, but you distinct 4 sorts of markets, serious coin, alt coin, shit-coin and low volume shit-coins.
 Then you could have 4 distinct profiles and then 4 instances of SiiS.
 
 Another example, an exchange offers trading on spot and some others pairs on margin, then you will start two different instances.

@@ -388,6 +388,11 @@ class Trainer(object):
                 self._market_id = _market_id
                 self._process = None
 
+            def term_process(self):
+                if self._process:
+                    self._process.terminate()
+                    self._process = None
+
             def kill_process(self):
                 if self._process:
                     self._process.kill()
@@ -499,6 +504,14 @@ class Trainer(object):
 
             del Trainer.processing[market_id]
 
+    @staticmethod
+    def term_executors():
+        while Trainer.processing:
+            market_id, processor = next(iter(Trainer.processing.items()))
+            processor.term_process()
+
+            del Trainer.processing[market_id]
+
 
 class TrainerCaller(object):
 
@@ -545,6 +558,11 @@ class TrainerJob(threading.Thread):
     def kill_process(self):
         if self._process:
             self._process.kill()
+            self._process = None
+
+    def term_process(self):
+        if self._process:
+            self._process.terminate()
             self._process = None
 
 
@@ -597,9 +615,17 @@ class TrainerCommander(object):
 
     def kill(self):
         logger.debug("kill subs jobs...")
-        while self._sub_processes:
-            self._sub_processes[0].kill_process()
+        for process in self._sub_processes:
+            process.kill_process()
+        # while self._sub_processes:
+        #     self._sub_processes[0].kill_process()
         logger.debug("killed subs jobs !")
+
+    def term(self):
+        logger.debug("term subs jobs...")
+        for process in self._sub_processes:
+            process.term_process()
+        logger.debug("Terminated subs jobs !")
 
     def start_job(self, caller: TrainerCaller, callback: callable, learning_parameters: dict, profile_name: str):
         while len(self._sub_processes) >= self._parallel:
