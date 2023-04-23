@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # SIIS and MT4, MT5 Importer tool.
+
 import signal
 import sys
 import traceback
@@ -680,7 +681,9 @@ def do_importer(options):
             if cur_timeframe == Instrument.TF_TICK:
                 # do not overwrite ticks/trades/quotes
                 cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
-                Terminal.inst().info("Start from %s..." % cur_from_date)
+
+                if cur_from_date:
+                    Terminal.inst().info("Start from %s..." % cur_from_date)
 
                 while 1:
                     row = src.readline()
@@ -728,7 +731,9 @@ def do_importer(options):
 
             if cur_timeframe == Instrument.TF_TICK:
                 cur_from_date = adjust_from_date(broker_id, market_id, cur_timeframe, cur_from_date)
-                Terminal.inst().info("Start from %s..." % cur_from_date)
+
+                if cur_from_date:
+                    Terminal.inst().info("Start from %s..." % cur_from_date)
 
                 while 1:
                     row = src.readline()

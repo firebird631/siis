@@ -176,6 +176,7 @@ def do_rebuilder(options):
 
         progression = 0.0
         prev_update = timestamp
+        iterate = 0
         count = 0
         total_count = 0
 
@@ -232,6 +233,7 @@ def do_rebuilder(options):
             while not tick_streamer.finished():
                 ticks = tick_streamer.next(timestamp + Instrument.TF_1M)
 
+                iterate += 1
                 count += len(ticks)
                 total_count += len(ticks)
 
@@ -270,11 +272,12 @@ def do_rebuilder(options):
                 if timestamp - prev_update >= progression_incr:
                     progression += 1
 
-                    Terminal.inst().info("%i%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (
-                        progression, format_datetime(timestamp), count, total_count))
+                    Terminal.inst().info("%i%% on %s, %s ticks/trades for last %s minutes, current total of %s..." % (
+                        progression, format_datetime(timestamp), count, iterate, total_count))
 
                     prev_update = timestamp
                     count = 0
+                    iterate = 0
 
                 if timestamp > to_timestamp:
                     break
@@ -286,13 +289,14 @@ def do_rebuilder(options):
                     time.sleep(TICK_STORAGE_DELAY)  # wait a little before continue
 
             if progression < 100:
-                Terminal.inst().info("100%% on %s, %s ticks/trades for 1 minute, current total of %s..." % (
-                    format_datetime(timestamp), count, total_count))
+                Terminal.inst().info("100%% on %s, %s ticks/trades for last %s minutes, current total of %s..." % (
+                    format_datetime(timestamp), count, iterate, total_count))
 
         elif timeframe > 0:
             while not ohlc_streamer.finished():
                 ohlcs = ohlc_streamer.next(timestamp + timeframe * 100)  # per 100
 
+                iterate += 1
                 count += len(ohlcs)
                 total_count += len(ohlcs)
 
@@ -326,11 +330,12 @@ def do_rebuilder(options):
                 if timestamp - prev_update >= progression_incr:
                     progression += 1
 
-                    Terminal.inst().info("%i%% on %s, %s ohlcs per bulk of 100, current total of %s..." % (
-                        progression, format_datetime(timestamp), count, total_count))
+                    Terminal.inst().info("%i%% on %s, %s OHLCs for last bulk of %s OHLCs, current total of %s..." % (
+                        progression, format_datetime(timestamp), count, iterate*100, total_count))
 
                     prev_update = timestamp
                     count = 0
+                    iterate = 0
 
                 if timestamp > to_timestamp:
                     break
@@ -339,8 +344,8 @@ def do_rebuilder(options):
                     timestamp += timeframe * 100
 
             if progression < 100:
-                Terminal.inst().info("100%% on %s, %s ohlcs per bulk of 100, current total of %s..." % (
-                    format_datetime(timestamp), count, total_count))
+                Terminal.inst().info("100%% on %s,  %s OHLCs for last bulk of %s OHLCs, current total of %s..." % (
+                    format_datetime(timestamp), count, iterate*100, total_count))
 
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 

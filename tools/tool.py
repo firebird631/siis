@@ -19,7 +19,7 @@ error_logger = logging.getLogger('siis.error.tools')
 traceback_logger = logging.getLogger('siis.traceback.tools')
 
 
-def signal_handler(sig, frame, options):
+def signal_term_handler(sig, frame, options):
     error_logger.error("Sigterm received, terminate")
 
     if Tool.instance:
@@ -84,18 +84,9 @@ class Tool(object):
         """Termination step, before run."""
         return True
 
-    def signal_handler(self, options):
-        error_logger.error("Sigterm received, terminate")
-
-        self.forced_interrupt(options)
-
-        Terminal.inst().flush()
-        Terminal.terminate()
-
-        sys.exit(-1)
-
     def execute(self, options):
-        signal.signal(signal.SIGTERM, lambda x, y: signal_handler(x, y, options))
+        # install a sig term handler
+        signal.signal(signal.SIGTERM, lambda x, y: signal_term_handler(x, y, options))
 
         try:
             self._state = 0

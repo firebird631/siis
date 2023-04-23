@@ -46,7 +46,7 @@ from app.alertcommands import register_alert_commands
 running = False  # main loop state
 
 
-def signal_handler(sig, frame):
+def signal_int_handler(sig, frame):
     if Terminal.inst():
         if Terminal.inst().direct_draw:
             # no interactive terminal, exit on signal
@@ -416,7 +416,9 @@ def application(argv):
     else:
         Terminal.inst().notice("- Using live-mode trader.")
 
-    signal.signal(signal.SIGINT, signal_handler)
+    # sig int and sig term handler
+    signal.signal(signal.SIGINT, signal_int_handler)
+    signal.signal(signal.SIGTERM, signal_int_handler)
 
     #
     # application
