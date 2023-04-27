@@ -321,7 +321,7 @@ class Trainer(object):
 
         # filters only necessary markets from watchers, trader and strategy
         strategy_params = {
-            'symbols': [market_id],
+            # 'symbols': [market_id],
             'parameters': copy.deepcopy(org_learning_params.get('strategy', {}).get('parameters', {}))
         }
 
