@@ -59,7 +59,7 @@ class StrategyTrader(object):
     """
     A strategy can manage multiple instrument. Strategy trader is on of the managed instruments.
     """
-    MARKET_TYPE_MAP = {
+    TRADE_TYPE_MAP = {
         'asset': Instrument.TRADE_SPOT,
         'spot': Instrument.TRADE_SPOT,
         'margin': Instrument.TRADE_MARGIN,

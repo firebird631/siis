@@ -1787,7 +1787,7 @@ class Strategy(Runnable):
                 _param[_key] = None
 
         parameters.setdefault('reversal', True)
-        parameters.setdefault('market-type', 0)
+        parameters.setdefault('trade-type', 0)
         parameters.setdefault('max-trades', 1)
         parameters.setdefault('min-traded-timeframe', '4h')
         parameters.setdefault('max-traded-timeframe', '4h')

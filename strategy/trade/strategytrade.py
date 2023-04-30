@@ -513,7 +513,7 @@ class StrategyTrade(object):
         """
         Return true if the trade entry timeout.
 
-        @note created timestamp t must be valid else it will timeout every time.
+        @note created timestamp t must be valid else it will time out every time.
         """
         return ((self._entry_state == StrategyTrade.STATE_OPENED) and (self.e == 0) and (self.eot > 0) and
                 timeout > 0.0 and ((timestamp - self.eot) >= timeout))
@@ -522,7 +522,7 @@ class StrategyTrade(object):
         """
         Return true if the trade timeout.
 
-        @note created timestamp t must be valid else it will timeout every time.
+        @note created timestamp t must be valid else it will time out every time.
         """
         return ((self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and
                 (self._expiry > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and
@@ -532,7 +532,7 @@ class StrategyTrade(object):
         """
         Return true if the trade timeout after given duration.
 
-        @note created timestamp t must be valid else it will timeout every time.
+        @note created timestamp t must be valid else it will time out every time.
         """
         return ((self._entry_state in (StrategyTrade.STATE_PARTIALLY_FILLED, StrategyTrade.STATE_FILLED)) and
                 (duration > 0.0) and (self.e > 0) and (self.eot > 0) and (timestamp > 0.0) and
@@ -542,9 +542,10 @@ class StrategyTrade(object):
         """
         Return true if the trade is not expired (signal still acceptable) and entry quantity not fully filled.
         """
-        return (((self._entry_state == StrategyTrade.STATE_OPENED or
-                  self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED) and
-                 (validity > 0.0) and (timestamp > 0.0) and ((timestamp - self.entry_open_time) <= validity)))
+        if timestamp > 0.0 and validity > 0.0:
+            return self.is_opening() and timestamp - self.entry_open_time <= validity
+        else:
+            return self.is_opening()
 
     def cancel_open(self, trader: Trader, instrument: Instrument) -> int:
         """
