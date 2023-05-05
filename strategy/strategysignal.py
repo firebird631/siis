@@ -206,7 +206,7 @@ class StrategySignal(object):
 
     def compare(self, _to: StrategySignal):
         """
-        Return true of the the signal have the same type in the same direction, no more.
+        Return true if the signal have the same type in the same direction, no more.
         """
         return self.signal == _to.signal and self.dir == _to.dir
 

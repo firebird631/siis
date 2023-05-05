@@ -649,7 +649,6 @@ class TrainerCommander(object):
         for p_name, p_value in strategy_params.items():
             param = copy.copy(p_value)
             param['name'] = p_name  # for binding
-
             self._params_info.append(param)
 
     def start(self, callback: callable):

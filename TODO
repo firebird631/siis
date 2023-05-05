@@ -118,6 +118,9 @@ Sum order :
 # Urgent #
 ##########
 
+- paper trader base exchange rate mais surtout contract size doit etre recalcule a chaque step en backtest
+    - pose probleme sur bitmex uniquement sinon la valeur reste a l'initiale en DB
+
 - def dumps_context(self, context_id: str) -> Union[dict, None]: doit etre generic et might use context dumps method
 - supprimer les TraderContextBuilder et remplacer par la registry
 - simplifier les context, un seul type, et donc un seul "context" dans les parametres (toutes les strategies doivent être simplifiées)

@@ -21,7 +21,8 @@ class PriceIndicator(Indicator):
     PRICE_HLC3 = 1    # return (H+L+C)/3
     PRICE_OHLC4 = 2   # return (O+H+L+C)/4
 
-    __slots__ = '_method', '_prev', '_last', '_prices', '_min', '_max', '_open', '_high', '_low', '_close', '_timestamp'
+    __slots__ = '_method', '_prev', '_last', '_prices', '_min', '_max', '_open', '_high', '_low', '_close', \
+                '_timestamp', '_last_closed_timestamp', '_consolidated'
 
     @classmethod
     def indicator_type(cls):
@@ -49,6 +50,9 @@ class PriceIndicator(Indicator):
         self._close = np.array([])
 
         self._timestamp = np.array([])
+
+        self._consolidated = False
+        self._last_closed_timestamp = 0.0
 
     @property
     def last(self):
@@ -89,6 +93,14 @@ class PriceIndicator(Indicator):
     @property
     def max(self):
         return self._max
+
+    @property
+    def consolidated(self):
+        return self._consolidated
+
+    @property
+    def ended(self):
+        return self._consolidated
 
     @staticmethod
     def Price(method, data):
@@ -160,6 +172,7 @@ class PriceIndicator(Indicator):
     def compute(self, timestamp, candles):
         # @todo could optimize with AVGPRICE, MEDPRICE, TYPPRICE
         self._prev = self._last
+        self._consolidated = False
 
         # price = PriceIndicator.Price(self._method, candles)  # , self._step, self._filtering)
         if self._method == PriceIndicator.PRICE_CLOSE:
@@ -200,6 +213,10 @@ class PriceIndicator(Indicator):
 
         # related timestamps
         self._timestamp = np.array([x.timestamp for x in candles])
+
+        if len(candles) > 1 and candles[-1].timestamp > self._last_closed_timestamp:
+            self._consolidated = True
+            self._last_closed_timestamp = candles[-1].timestamp
 
         # low/high
         self._min = min(self._prices)

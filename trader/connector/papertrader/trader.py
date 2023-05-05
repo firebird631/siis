@@ -923,9 +923,15 @@ class PaperTrader(Trader):
         # update positions profit/loss for the related market id
         if not self._unlimited:
             # if self.service.backtesting:
-            #     # fake values
-            #     market.base_exchange_rate = market.base_exchange_rate * ratio
-            #     market.contract_size = market.contract_size * ratio
+            #     # fake the values with a relative ratio
+            #     # it is wrong with forex, except with
+            #     if market.quote != self.account.currency:
+            #         if market.base_exchange_rate != 1.0:
+            #             market.base_exchange_rate *= ratio
+            #
+            #     if market.market_type != market.CONTRACT_CFD:
+            #         if market.contract_size != 1.0:
+            #             market.contract_size *= ratio
 
             if self._assets:
                 # update profit/loss (informational) for each asset

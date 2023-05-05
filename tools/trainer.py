@@ -40,6 +40,8 @@ class TrainerTool(Tool):
     @todo In case of some other watcher/market are used for a strategy need to prefetch them if --initial-fetch
     """
 
+    USE_CPP_BACKTEST = True
+
     @classmethod
     def alias(cls):
         return "train"
@@ -251,19 +253,33 @@ class TrainerTool(Tool):
 
             utils.write_learning(options['learning-path'], learning_filename, learning_parameters)
 
-            cmd_opts = [
-                'python',
-                'siis.py',
-                options['identity'],
-                '--profile=%s' % profile_name,
-                '--backtest',
-                '--from=%s' % from_dt.strftime("%Y-%m-%dT%H:%M:%S"),
-                '--to=%s' % to_dt.strftime("%Y-%m-%dT%H:%M:%S"),
-                '--timeframe=%s' % timeframe,
-                '--timestep=%s' % timestep,
-                '--learning=%s' % learning_filename,
-                '--no-interactive'
-            ]
+            if TrainerTool.USE_CPP_BACKTEST:
+                cmd_opts = [
+                    './rev/bin/strategy',
+                    # options['identity'],
+                    '-p %s.json' % profile_name,
+                    '-f %s' % from_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+                    '-t %s' % to_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+                    '-i %s' % timestep,
+                    '-b',
+                    '-x %s.json' % learning_filename,
+                    '-n',   # no interactive
+                    '-c 1'  # no thread workers
+                ]
+            else:
+                cmd_opts = [
+                    'python',
+                    'siis.py',
+                    options['identity'],
+                    '--profile=%s' % profile_name,
+                    '--backtest',
+                    '--from=%s' % from_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+                    '--to=%s' % to_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+                    '--timeframe=%s' % timeframe,
+                    '--timestep=%s' % timestep,
+                    '--learning=%s' % learning_filename,
+                    '--no-interactive'
+                ]
 
             trainer_result = None
             fitness = 0.0
@@ -286,13 +302,16 @@ class TrainerTool(Tool):
 
                     now = time.time()
 
-                    if self._last_process_time and now - initial_time > 3.0 * self._last_process_time:
-                        logger.error("Abnormal process %s duration kill" % learning_filename)
-                        process.kill()
+                    if self._last_process_time:
+                        if now - initial_time > 2.0 * self._last_process_time and not err:
+                            logger.warning("Abnormal process %s duration > %g seconds, wait a little before kill it" % (
+                                learning_filename, now - initial_time))
+                            err = True
 
-                    if self._last_process_time and now - initial_time > 1.5 * self._last_process_time and not err:
-                        logger.warning("Abnormal process %s duration, wait a little before kill it" % learning_filename)
-                        err = True
+                        if now - initial_time > 3.0 * self._last_process_time and err:
+                            logger.error("Abnormal process %s duration > %g seconds kill" % (
+                                learning_filename, now - initial_time))
+                            process.kill()
 
                     try:
                         stdout, stderr = process.communicate(timeout=0.1)

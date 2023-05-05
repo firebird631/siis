@@ -351,10 +351,12 @@ class StrategyPositionTrade(StrategyTrade):
                     self.eot = data['timestamp']
 
                 if data.get('stop-loss'):
-                    self.sl = data['stop-loss']
+                    # self.sl = data['stop-loss']
+                    self.position_stop = data['stop-loss']
 
                 if data.get('take-profit'):
-                    self.tp = data['take-profit']
+                    # self.tp = data['take-profit']
+                    self.position_limit = data['take-profit']
 
                 if self.e == 0:  # in case it occurs after position open signal
                     self._entry_state = StrategyTrade.STATE_OPENED
@@ -454,19 +456,9 @@ class StrategyPositionTrade(StrategyTrade):
             # if data.get('profit-currency'):
             #     self._stats['profit-loss-currency'] = data['profit-currency']
 
-            # gross profit/loss rate (realized or if closed at market)
-            if self.aep > 0:
-                if self.direction > 0:
-                    if self.axp > 0:
-                        self.pl = (self.axp - self.aep) / self.aep
-                    elif instrument.close_exec_price(1) > 0:
-                        self.pl = (instrument.close_exec_price(1) - self.aep) / self.aep
-
-                elif self.direction < 0:
-                    if self.axp > 0:
-                        self.pl = (self.aep - self.axp) / self.aep
-                    elif instrument.close_exec_price(-1) > 0:
-                        self.pl = (self.aep - instrument.close_exec_price(-1)) / self.aep
+            # realized profit/loss rate
+            if self.aep > 0.0 and self.x > 0.0:
+                self.pl = self.direction * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.x)
 
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
             self.position_id = data['id']  # already defined at open

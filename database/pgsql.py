@@ -894,6 +894,7 @@ class PgSql(Database):
 
                     if mk[6]:
                         # last n
+                        # @todo could be LIMIT + DESC and reverse results
                         cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s""" % (mk[1], mk[2], mk[3]))
                         count = int(cursor.fetchone()[0])
                         offset = max(0, count - mk[6])
@@ -913,12 +914,14 @@ class PgSql(Database):
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3], mk[4]))
                     elif mk[5]:
-                        # to now
+                        # last to
+                        # @warning not correct, must have an order desc + limit n, but unused
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3], mk[5]))
                     else:
                         # all
+                        # @warning should be removed, unused and dangerous
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3]))

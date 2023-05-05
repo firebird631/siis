@@ -145,6 +145,7 @@ class CandleGenerator(object):
         self._candle._close = from_tick[3]
 
         # potential spread
+        # @todo could be the max of
         self._candle._spread = from_tick[2] - from_tick[1]
 
         # keep last timestamp
