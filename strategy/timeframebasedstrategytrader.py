@@ -59,8 +59,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         self._base_timeframe = base_timeframe
 
         self._timeframes_registry = {}  # registry of timeframes models (mode:cls)
-        self.timeframes = {}  # analyser per timeframe
         self._timeframe_streamers = {}  # data streamers per timeframe
+
+        self.timeframes = {}  # analyser per timeframe
 
         self.prev_price = 0.0
         self.last_price = 0.0

@@ -5,7 +5,6 @@
 
 DEFAULT_PARAMS = {
     "reversal": True,
-    "pyramided": 0,
     "hedging": False,
     "max-trades": 1,    # max number of simultaned trades for a same market
     "trade-delay": 30,  # at least wait 30 seconds before sending another signal 

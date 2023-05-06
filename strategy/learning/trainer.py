@@ -82,6 +82,8 @@ class Trainer(object):
         self._timeframe = timeframe
 
         self._parallel = trainer_params.get('parallel', 1)
+        self._fitness = trainer_params.get('fitness', 'default')
+
         self._next_update = 0.0
 
         self._mode = Trainer.MODE_NONE
@@ -124,6 +126,10 @@ class Trainer(object):
     @property
     def parallel(self) -> int:
         return self._parallel
+
+    @property
+    def fitness(self) -> int:
+        return self._fitness
 
     @property
     def original_strategy_trader_params(self) -> dict:
@@ -344,6 +350,7 @@ class Trainer(object):
         trainer_params['from'] = from_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         trainer_params['to'] = to_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         trainer_params['timestep'] = trainer.timestep
+        trainer_params['fitness'] = trainer.fitness
 
         if trainer.timeframe:
             trainer_params['timeframe'] = trainer.timeframe

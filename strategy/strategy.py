@@ -1289,11 +1289,15 @@ class Strategy(Runnable):
 
         if trader and updated:
             # update the market instrument data before processing,
-            # but we do not have the exact base exchange rate and contract size, it is emulated in the paper trader
+            # but we do not have the exact base exchange rate and contract size
+            # sometimes it can be extrapolated by the paper trader
 
             # the feeder update the instrument price data, so use them directly
             trader.on_update_market(instrument.market_id, True, instrument.last_update_time,
                                     instrument.market_bid, instrument.market_ask, None)
+
+            # update last trade data from last tick coming from feed
+            trader.on_trade_market(instrument.market_id, instrument.ticks()[-1])
 
         # update strategy as necessary
         if updated:
@@ -1787,6 +1791,8 @@ class Strategy(Runnable):
                 _param[_key] = None
 
         parameters.setdefault('reversal', True)
+        parameters.setdefault('hedging', False)
+        parameters.setdefault('affinity', 5)
         parameters.setdefault('trade-type', 0)
         parameters.setdefault('max-trades', 1)
         parameters.setdefault('min-traded-timeframe', '4h')

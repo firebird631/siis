@@ -470,7 +470,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         if self.trades:
             with self._mutex:
-                if len(self.trades) >= self.max_trades:
+                if len(self.trades) >= self._max_trades:
                     # no more than max simultaneous trades
                     do_order = False
 

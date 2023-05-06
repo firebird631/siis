@@ -276,6 +276,8 @@ class Instrument(object):
     TF_WEEK = 60*60*24*7
     TF_1W = TF_WEEK
     TF_MONTH = 60*60*24*30
+    TF_QUARTER = 60*60*24*90
+    TF_YEAR = 60*60*24*365
 
     PRICE_OPEN = 0
     PRICE_HIGH = 1

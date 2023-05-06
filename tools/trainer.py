@@ -40,8 +40,6 @@ class TrainerTool(Tool):
     @todo In case of some other watcher/market are used for a strategy need to prefetch them if --initial-fetch
     """
 
-    USE_CPP_BACKTEST = True
-
     @classmethod
     def alias(cls):
         return "train"
@@ -75,10 +73,11 @@ class TrainerTool(Tool):
         self._trainer_clazz = None
 
         self._max_sub_process = 1
+        self._fitness = "default"
         self._trainer_commander = None
 
         self._process_times = []
-        self._last_process_time = 0.0
+        self._max_process_time = 0.0
         self._executed_jobs = 0
         self._last_progress = 0.0
 
@@ -120,6 +119,8 @@ class TrainerTool(Tool):
         if "revision" in self._learning_config:
             Terminal.inst().error("This learning file is already computed")
             return False
+
+        self._fitness = self._learning_config.get('trainer', {}).get('fitness', 'default')
 
         self._profile = options['profile']
         self._learning = options['learning']
@@ -213,8 +214,6 @@ class TrainerTool(Tool):
         timeframe = options.get('timeframe')
         timestep = options.get('timestep')
 
-        prev_progress = 0.0
-
         def gen_trainer_filename() -> str:
             return "trainer_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
                 '/', '_').replace('+', '0')
@@ -253,7 +252,7 @@ class TrainerTool(Tool):
 
             utils.write_learning(options['learning-path'], learning_filename, learning_parameters)
 
-            if TrainerTool.USE_CPP_BACKTEST:
+            if self._fitness == "revolution":
                 cmd_opts = [
                     './rev/bin/strategy',
                     # options['identity'],
@@ -302,13 +301,13 @@ class TrainerTool(Tool):
 
                     now = time.time()
 
-                    if self._last_process_time:
-                        if now - initial_time > 2.0 * self._last_process_time and not err:
+                    if self._max_process_time:
+                        if now - initial_time > 2.0 * self._max_process_time and not err:
                             logger.warning("Abnormal process %s duration > %g seconds, wait a little before kill it" % (
                                 learning_filename, now - initial_time))
                             err = True
 
-                        if now - initial_time > 3.0 * self._last_process_time and err:
+                        if now - initial_time > 3.0 * self._max_process_time and err:
                             logger.error("Abnormal process %s duration > %g seconds kill" % (
                                 learning_filename, now - initial_time))
                             process.kill()
@@ -344,11 +343,11 @@ class TrainerTool(Tool):
                     if trainer_result:
                         duration = time.time() - initial_time
 
-                        if not self._last_process_time and duration:
+                        if not self._max_process_time and duration:
                             remain_duration_est = self._trainer_commander.estimate_duration(duration)
                             Terminal.inst().info("Estimate total duration to %.2f minutes" % (remain_duration_est / 60,))
 
-                        self._last_process_time = duration
+                        self._max_process_time = max(duration, self._max_process_time)
 
                         Terminal.inst().info("-- %s trainer success with %s" % (
                             learning_filename, trainer_result.get('performance', "0.00%")))

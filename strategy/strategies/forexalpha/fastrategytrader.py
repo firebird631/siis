@@ -38,12 +38,11 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # mean when there is already a position on the same direction does not increase in the same
         # direction if 0 or increase at max N times
-        self.pyramided = params['pyramided']
         self._max_trades = params['max-trades']
-        self.hedging = params['hedging']  # only if the broker/market allow it
+        self._hedging = params['hedging']  # only if the broker/market allow it
 
-        self.min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))
-        self.max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', "4h"))
+        self._min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))
+        self._max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', "4h"))
 
         # self.score_trigger = params['score-trigger']
         # self.score_increase_factor = params['score-increase-factor']
@@ -417,7 +416,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         if not self.check_min_notional(order_quantity, order_price):
             return False
 
-        if self.has_max_trades(self.max_trades):
+        if self.has_max_trades(self._max_trades):
             return False
  
         #
@@ -546,12 +545,12 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         #         # or same direction ?
         #         current_same_qty += position.quantity
 
-        # if self.pyramided > 1:
-        #     # max pyramided positions
-        #     if quantity * self.pyramided < current_same_qty:
-        #         # open while the max of pyramided * quantity is not reached
+        # if self._max_trades > 1:
+        #     # max simultaneous positions
+        #     if quantity * self._max_trades < current_same_qty:
+        #         # open while the max of simultaneous * quantity is not reached
         #         order_quantity = quantity
         # else:
         #     if current_same_qty == 0:
-        #         # open only if there is not others positions in the same direction
+        #         # open only if there is no others positions in the same direction
         #         order_quantity = quantity       

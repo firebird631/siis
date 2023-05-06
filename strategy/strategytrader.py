@@ -81,6 +81,10 @@ class StrategyTrader(object):
     _activity: bool
     _affinity: int
     _max_trades: int
+    _min_price: float
+    _min_vol24h: float
+    _min_traded_timeframe: float
+    _max_traded_timeframe: float
 
     _initialized: int
     _check: int
@@ -124,9 +128,17 @@ class StrategyTrader(object):
         self.instrument = instrument
 
         self._mutex = threading.RLock()  # activity, global locker, region locker, instrument locker
-        self._activity = True
+        self._activity = True       # auto trading
         self._affinity = 5          # based on a linear scale [0..100]
-        self._max_trades = 0
+        self._max_trades = 0        # total max trades for this strategy trader
+
+        self._min_price = 0.0
+        self._min_vol24h = 0.0
+
+        self._min_traded_timeframe = 0
+        self._max_traded_timeframe = Instrument.TF_YEAR
+
+        self.region_allow = params['region-allow']
 
         self._initialized = 1       # initiate data before running, 1 waited, 2 in progress, 0 normal
         self._checked = 1           # check trades/orders/positions, 1 waited, 2 in progress, 0 normal
@@ -736,7 +748,7 @@ class StrategyTrader(object):
             try:
                 v = int(value)
                 if 0 <= v <= 999:
-                    self.max_trades = v
+                    self._max_trades = v
                     return True
                 else:
                     return False
@@ -795,6 +807,22 @@ class StrategyTrader(object):
 
             if self._global_streamer:
                 self._global_streamer.member('max-trades').update(self._max_trades)
+
+    @property
+    def min_price(self) -> float:
+        return self._min_price
+
+    @property
+    def min_vol24h(self) -> float:
+        return self._min_vol24h
+
+    @property
+    def min_traded_timeframe(self) -> float:
+        return self._min_traded_timeframe
+
+    @property
+    def max_traded_timeframe(self) -> float:
+        return self._max_traded_timeframe
 
     def restart(self):
         """
