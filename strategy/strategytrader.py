@@ -1574,8 +1574,8 @@ class StrategyTrader(object):
                             self._stats['perf'] += profit_loss  # total profit/loss percent
                             self._stats['best'] = max(self._stats['best'], profit_loss)  # retains the best win
                             self._stats['worst'] = min(self._stats['worst'], profit_loss)  # retain the worst loss
-                            self._stats['high'] += best_pl  # sum if all trades was closed at best price
-                            self._stats['low'] += worst_pl  # sum if all trades was closed at worst price
+                            self._stats['high'] += best_pl  # sum like as all trades was closed at best price
+                            self._stats['low'] += worst_pl  # sum like as all trades was closed at worst price
                             self._stats['closed'] += 1
                             self._stats['rpnl'] += trade.unrealized_profit_loss
 

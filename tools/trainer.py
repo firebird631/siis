@@ -262,8 +262,9 @@ class TrainerTool(Tool):
                     '-i %s' % timestep,
                     '-b',
                     '-x %s.json' % learning_filename,
-                    '-n',   # no interactive
-                    '-c 1'  # no thread workers
+                    '-n',    # no interactive
+                    '-c 1',  # no thread workers
+                    '-d 3'   # low verbosity
                 ]
             else:
                 cmd_opts = [
