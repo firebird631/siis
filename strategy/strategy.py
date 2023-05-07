@@ -188,7 +188,7 @@ class Strategy(Runnable):
         # states and parameters
         #
 
-        self._preset = False       # True once instrument are setup in both modes
+        self._preset = False       # True once instrument are set up in both modes
         self._prefetched = False   # True once strategy trader are ready in backtesting mode
         self._loaded = False       # True once strategy trader user data are loaded (can be done once)
 
@@ -481,6 +481,13 @@ class Strategy(Runnable):
         # get the related trader
         self._trader = self.trader_service.trader()
 
+        # need market data on the trader before set up process
+        if self.service.backtesting:
+            for symbol in self._trader_conf.get('symbols', []):
+                # synchronous load of market info
+                market = Database.inst().get_market_info(self._trader_conf.get('name', ""), symbol)
+                self._trader.set_market(market)
+
         for watcher_name, watcher_conf in self._watchers_conf.items():
             # retrieve the watcher instance
             watcher = self.watcher_service.watcher(watcher_name)
@@ -495,7 +502,6 @@ class Strategy(Runnable):
 
             # create an instrument per mapped symbol where to locally store received data
             for symbol in strategy_symbols:
-
                 # mapped name into the instrument as market_id
                 mapped_instrument = self.mapped_instrument(symbol)
 
@@ -528,6 +534,10 @@ class Strategy(Runnable):
                         if market:
                             # synchronize initial market data into the instrument
                             instrument.symbol = market.symbol
+
+                            instrument.market_type = market.market_type
+                            instrument.unit_type = market.unit_type
+                            instrument.contract_type = market.contract_type
 
                             instrument.trade = market.trade
                             instrument.orders = market.orders
@@ -575,7 +585,7 @@ class Strategy(Runnable):
                     if watcher.has_buy_sell_signals:
                         instrument.add_watcher(Watcher.WATCHER_BUY_SELL_SIGNAL, watcher)
 
-        # now can setup backtest or live mode global states and loads previous trades
+        # now can set up backtest or live mode global states and loads previous trades
         if self.service.backtesting:
             self._setup_backtest(self, self.service.from_date, self.service.to_date, self.service.timeframe)
         else:
@@ -959,6 +969,10 @@ class Strategy(Runnable):
                                 instrument = strategy_trader.instrument
 
                                 # put interesting market data into the instrument
+                                instrument.market_type = market.market_type
+                                instrument.unit_type = market.unit_type
+                                instrument.contract_type = market.contract_type
+
                                 instrument.trade = market.trade
                                 instrument.orders = market.orders
                                 instrument.hedging = market.hedging
@@ -1344,7 +1358,7 @@ class Strategy(Runnable):
 
     def backtest_ready(self) -> bool:
         """
-        Must return True once the strategy is ready te begin for the backtesting.
+        Must return True once the strategy is ready to begin backtesting.
         Override only if necessary. This default implementation should suffice.
         """
         if self._preset and not self._prefetched:

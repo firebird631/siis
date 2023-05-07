@@ -284,21 +284,25 @@ class Instrument(object):
     PRICE_LOW = 2
     PRICE_CLOSE = 3
 
-    CONTRACT_UNDEFINED = 0
+    CONTRACT_SPOT = 0
     CONTRACT_CFD = 1
     CONTRACT_FUTURE = 2
+    CONTRACT_OPTION = 3
+    CONTRACT_WARRANT = 4
+    CONTRACT_TURBO = 5
 
     TYPE_UNKNOWN = 0
     TYPE_CURRENCY = 1
-    TYPE_CRYPTO = 2
-    TYPE_STOCK = 3
-    TYPE_COMMODITY = 4
-    TYPE_INDICE = 5
+    TYPE_COMMODITY = 2
+    TYPE_INDICE = 3
+    TYPE_STOCK = 4
+    TYPE_RATE = 5
+    TYPE_SECTOR = 6
+    TYPE_CRYPTO = 7
 
-    UNIT_UNDEFINED = 0
-    UNIT_CONTRACT = 1     # amount is in contract size
-    UNIT_CURRENCY = 2     # amount is in currency (quote)
-    UNIT_LOT = 3          # unit of one lot, with 1 lot = 100000 of related currency
+    UNIT_AMOUNT = 0
+    UNIT_CONTRACTS = 1
+    UNIT_SHARES = 2
 
     MAKER = 0
     TAKER = 1
@@ -323,6 +327,7 @@ class Instrument(object):
     TRADE_QUANTITY_QUOTE_TO_BASE = 1
 
     __slots__ = '_watchers', '_market_id', '_symbol', '_alias', '_tradeable', \
+                '_market_type', '_contract_type', '_unit_type', \
                 '_trade_quantity', '_trade_quantity_mode', '_leverage', \
                 '_market_bid', '_market_ask', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', \
@@ -342,6 +347,10 @@ class Instrument(object):
         self._alias = alias
         self._tradeable = True
         self._expiry = "-"
+
+        self._market_type = Instrument.TYPE_UNKNOWN
+        self._unit_type = Instrument.UNIT_CONTRACTS
+        self._contract_type = Instrument.CONTRACT_SPOT
 
         self._base = ""
         self._quote = ""
@@ -427,6 +436,30 @@ class Instrument(object):
     @tradeable.setter
     def tradeable(self, status: bool):
         self._tradeable = status
+
+    @property
+    def market_type(self) -> int:
+        return self._market_type
+
+    @market_type.setter
+    def market_type(self, market_type: int):
+        self._market_type = market_type
+
+    @property
+    def unit_type(self) -> int:
+        return self._unit_type
+
+    @unit_type.setter
+    def unit_type(self, unit_type: int):
+        self._unit_type = unit_type
+
+    @property
+    def contract_type(self) -> int:
+        return self._contract_type
+
+    @contract_type.setter
+    def contract_type(self, contract_type: int):
+        self._contract_type = contract_type
 
     #
     # instrument trade type

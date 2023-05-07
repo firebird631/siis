@@ -210,7 +210,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         @note Thread-safe method.
         """
         with self._mutex:
-            # at tick we update any timeframes because we want the non consolidated candle
+            # at tick, we update any timeframes because we want the non consolidated candle
             for tf, sub in self.timeframes.items():
                 # update at candle timeframe
                 candles = self.instrument.candles_after(self._base_timeframe, sub.candles_gen.last_timestamp)

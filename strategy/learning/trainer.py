@@ -210,6 +210,16 @@ class Trainer(object):
         now_dt = datetime.utcfromtimestamp(strategy.timestamp)
         from_dt = now_dt - timedelta(seconds=self._period)
 
+        market = self._strategy_trader.strategy.trader().market(strategy_trader.instrument.market_id)
+        if market.market_type != market.TYPE_CRYPTO:
+            # not h24 market need to check for weekend or night
+            if from_dt.weekday() == 5:
+                # add two days back when starting from a saturday
+                from_dt -= timedelta(days=2)
+            elif from_dt.weekday() == 6:
+                # add one day back when starting from a sunday
+                from_dt -= timedelta(days=1)
+
         return from_dt, now_dt
 
     def complete(self, learning_result):
@@ -691,6 +701,9 @@ class TrainerCommander(object):
 
         # simple method, the best overall performance
         for result in results:
+            if not result:
+                continue
+
             try:
                 performance = float(result.get('performance', "0.00%").rstrip('%'))
             except ValueError:

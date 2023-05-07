@@ -105,7 +105,6 @@ class StrategyDataFeeder(object):
         # ticks must be ready
         if self._tick_streamer and not self._tick_streamer.finished():
             # ticks = self._tick_streamer.next(timestamp)
-
             # if ticks:
             #   self._instrument.add_ticks(ticks)
             #   updated.append(0)

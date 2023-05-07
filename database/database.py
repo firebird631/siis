@@ -533,6 +533,10 @@ class Database(object):
         """
         return None
 
+    def get_market_info(self, broker_id: str, market_id: str):
+        """Load and return market info data."""
+        return None
+
     #
     # Tick and ohlc streamer
     #

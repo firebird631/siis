@@ -3,12 +3,14 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Config parser
 
+import copy
 import json
 import itertools
 import os
 import pathlib
 
 import logging
+
 logger = logging.getLogger('siis.config')
 error_logger = logging.getLogger('siis.error.config')
 
@@ -20,7 +22,7 @@ def merge_parameters(default, user):
 
         if isinstance(a, dict) and isinstance(b, dict):
             d = dict(a)
-            d.update({k: merge(a.get(k, None), b[k]) for k in b})
+            d.update({key: merge(a.get(key, None), b[key]) for key in b if key not in ('timeframes', 'contexts')})
             return d
 
         if isinstance(a, list) and isinstance(b, list):
@@ -28,7 +30,44 @@ def merge_parameters(default, user):
 
         return a if b is None else b
 
-    return merge(default, user)
+    final_params = merge(default, user)
+
+    if 'timeframes' in default or 'timeframes' in user:
+        # special case for timeframes and contexts
+        default_timeframes = default.get('timeframes', {})
+        user_timeframes = user.get('timeframes', {})
+        final_timeframes = {}
+
+        for _k, _b in user_timeframes.items():
+            if _k not in default_timeframes:
+                # original from user
+                final_timeframes[_k] = copy.deepcopy(_b)
+            else:
+                # update from default
+                _a = default_timeframes[_k]
+                final_timeframes[_k] = merge(_a, _b)
+
+        final_params['timeframes'] = final_timeframes
+        logger.debug(final_params['timeframes'])
+
+    if 'contexts' in default or 'contexts' in user:
+        default_contexts = default.get('contexts', {})
+        user_contexts = user.get('contexts', {})
+        final_contexts = {}
+
+        for _k, _b in user_contexts.items():
+            if _k not in default_contexts:
+                # original from user
+                final_contexts[_k] = copy.deepcopy(_b)
+            else:
+                # update from default
+                _a = default_contexts[_k]
+                final_contexts[_k] = merge(_a, _b)
+
+        final_params['contexts'] = final_contexts
+        logger.debug(final_params['contexts'])
+
+    return final_params
 
 
 def identities(config_path):

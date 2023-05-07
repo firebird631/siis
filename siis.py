@@ -835,7 +835,7 @@ def application(argv):
                         mode = "paper-mode"
 
                     Terminal.inst().message("%s - %s" % (mode, datetime.fromtimestamp(
-                        strategy_service.timestamp).strftime('%Y-%m-%d %H:%M:%S')), view='notice')
+                        strategy_service.timestamp).strftime('%a %Y-%m-%d %H:%M:%S')), view='notice')
                     prev_timestamp = strategy_service.timestamp
 
                 # synchronous operations here

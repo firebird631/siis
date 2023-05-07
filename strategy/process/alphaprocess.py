@@ -337,8 +337,27 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
             # query for most recent candles per timeframe from the database
             for k, timeframe in strategy.parameters.get('timeframes', {}).items():
                 if timeframe['timeframe'] > 0:
-                    l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
+                    l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe']+1.0)
                     l_to = from_date - timedelta(seconds=1)
+
+                    # for non d7 market (any excepted crypto
+                    if instrument.market_type != instrument.TYPE_CRYPTO:
+                        # not h24 market need to check for weekend or night
+                        if l_from.weekday() == 5:
+                            # add two days back when starting from a saturday
+                            l_from -= timedelta(days=1)
+                        elif l_from.weekday() == 6:
+                            # add one day back when starting from a sunday
+                            l_from -= timedelta(days=2)
+                        l_from -= timedelta(days=2)
+
+                        # and if period is over many week add 2 days per week
+                        n_offs = int((l_to - l_from).total_seconds() / (7 * 24 * 60 * 60)) * 2
+                        l_from -= timedelta(days=n_offs)
+
+                        # need to add night for stock markets
+                        if instrument.contract_type == instrument.CONTRACT_SPOT or instrument.market_type == instrument.TYPE_STOCK:
+                            pass  # @todo
 
                     watcher.historical_data(instrument.market_id, timeframe['timeframe'],
                                             from_date=l_from, to_date=l_to)

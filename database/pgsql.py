@@ -246,6 +246,74 @@ class PgSql(Database):
 
         return user_closed_trades
 
+    def get_market_info(self, broker_id: str, market_id: str):
+        cursor = self._db.cursor()
+
+        cursor.execute("""SELECT symbol,
+                            market_type, unit_type, contract_type,
+                            trade_type, orders,
+                            base, base_display, base_precision,
+                            quote, quote_display, quote_precision,
+                            settlement, settlement_display, settlement_precision,
+                            expiry, timestamp,
+                            lot_size, contract_size, base_exchange_rate,
+                            value_per_pip, one_pip_means, margin_factor,
+                            min_size, max_size, step_size,
+                            min_notional, max_notional, step_notional,
+                            min_price, max_price, step_price,
+                            maker_fee, taker_fee, maker_commission, taker_commission FROM market
+                        WHERE broker_id = '%s' AND market_id = '%s'""" % (
+            broker_id, market_id))
+
+        row = cursor.fetchone()
+
+        if row:
+            market_info = Market(market_id, row[0])
+
+            market_info.is_open = True
+
+            market_info.market_type = row[1]
+            market_info.unit_type = row[2]
+            market_info.contract_type = row[3]
+
+            market_info.trade = row[4]
+            market_info.orders = row[5]
+
+            market_info.set_base(row[6], row[7], int(row[8]))
+            market_info.set_quote(row[9], row[10], int(row[11]))
+            market_info.set_settlement(row[12], row[13], int(row[14]))
+
+            market_info.expiry = row[15]
+            market_info.last_update_time = row[16] * 0.001
+
+            market_info.lot_size = float(row[17])
+            market_info.contract_size = float(row[18])
+            market_info.base_exchange_rate = float(row[19])
+            market_info.value_per_pip = float(row[20])
+            market_info.one_pip_means = float(row[21])
+
+            if row[22] is not None or row[22] != 'None':
+                if row[22] == '-':  # not defined mean 1.0 or no margin
+                    market_info.margin_factor = 1.0
+                else:
+                    market_info.margin_factor = float(row[22] or "1.0")
+
+            market_info.set_size_limits(float(row[23]), float(row[24]), float(row[25]))
+            market_info.set_notional_limits(float(row[26]), float(row[27]), float(row[28]))
+            market_info.set_price_limits(float(row[29]), float(row[30]), float(row[31]))
+
+            market_info.maker_fee = float(row[32])
+            market_info.taker_fee = float(row[33])
+
+            market_info.maker_commission = float(row[34])
+            market_info.taker_commission = float(row[35])
+        else:
+            market_info = None
+
+        cursor = None
+
+        return market_info
+
     #
     # Processing
     #
