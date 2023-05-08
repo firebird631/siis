@@ -959,37 +959,32 @@ class PgSql(Database):
             try:
                 for mk in mks:
                     cursor = self._db.cursor()
+                    reverse = False
 
-                    if mk[6]:
-                        # last n
-                        # @todo could be LIMIT + DESC and reverse results
-                        cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s""" % (mk[1], mk[2], mk[3]))
-                        count = int(cursor.fetchone()[0])
-                        offset = max(0, count - mk[6])
-
-                        # LIMIT should not be necessary then
-                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (
-                                            mk[1], mk[2], mk[3], mk[6], offset))
-                    elif mk[4] and mk[5]:
+                    if mk[4] == 0:
                         # from to
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[4], mk[5]))
-                    elif mk[4]:
+                                            mk[1], mk[2], mk[3], mk[5], mk[6]))
+                    elif mk[4] == 1:
+                        # last n
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp DESC LIMIT %s""" % (
+                                            mk[1], mk[2], mk[3], mk[5]))
+                        reverse = True
+                    elif mk[4] == 2:
+                        # last n to date
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp DESC LIMIT %i""" % (
+                                            mk[1], mk[2], mk[3], mk[6], mk[5]))
+                        reverse = True
+                    elif mk[4] == 3:
                         # from to now
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[4]))
-                    elif mk[5]:
-                        # last to
-                        # @warning not correct, must have an order desc + limit n, but unused
-                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3], mk[5]))
                     else:
-                        # all
-                        # @warning should be removed, unused and dangerous
+                        # all @warning should be removed, unused and dangerous
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3]))
@@ -1010,7 +1005,10 @@ class PgSql(Database):
                         if ohlc.timestamp >= Instrument.basetime(mk[3], time.time()):
                             ohlc.set_consolidated(False)  # current
 
-                        ohlcs.append(ohlc)
+                        if reverse:
+                            ohlcs.insert(0, ohlc)
+                        else:
+                            ohlcs.append(ohlc)
 
                     cursor = None
 

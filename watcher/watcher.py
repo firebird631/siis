@@ -396,9 +396,9 @@ class Watcher(Runnable):
     def historical_data(self, market_id: str, timeframe: float, from_date: Optional[datetime] = None,
                         to_date: Optional[datetime] = None, n_last: Optional[int] = None):
         """
-        Async fetch the historical candles data for an unit of time and certain a period of date.
+        Async fetch the historical candle data for a unit of time and certain a period of date.
         @param market_id Specific name of the market
-        @param timeframe Non zero time unit in second
+        @param timeframe Non-zero time unit in second
         @param from_date date object
         @param to_date date object
         @param n_last Last n data
@@ -407,8 +407,10 @@ class Watcher(Runnable):
             return
 
         if n_last:
-            Database.inst().load_market_ohlc_last_n(self.service, self.name, market_id, timeframe, n_last)
+            # n last or n last till date (to_date)
+            Database.inst().load_market_ohlc_last_n(self.service, self.name, market_id, timeframe, n_last, to_date)
         else:
+            # from date to date or from date to last (now)
             Database.inst().load_market_ohlc(self.service, self.name, market_id, timeframe, from_date, to_date)       
 
     def price_history(self, market_id: str, timestamp: float) -> Union[float, None]:

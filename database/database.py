@@ -448,7 +448,7 @@ class Database(object):
     def load_market_ohlc(self, service, broker_id: str, market_id: str, timeframe: float,
                          from_datetime: Optional[datetime] = None, to_datetime: Optional[datetime] = None):
         """
-        Load a set of market ohlc, fill the intermediates missing ohlcs if necessary
+        Load a set of market ohlc.
         @param service to be notified once done
         @param broker_id: str
         @param market_id: str
@@ -460,22 +460,28 @@ class Database(object):
             from_ts = int(from_datetime.timestamp() * 1000) if from_datetime else None
             to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
 
-            self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, from_ts, to_ts, None))
+            mode = 0 if from_ts and to_ts else 3
+            self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, mode, from_ts, to_ts))
 
         with self._condition:
             self._condition.notify()
 
-    def load_market_ohlc_last_n(self, service, broker_id: str, market_id: str, timeframe: float, last_n: int):
+    def load_market_ohlc_last_n(self, service, broker_id: str, market_id: str, timeframe: float,
+                                last_n: int, to_datetime: Optional[datetime] = None):
         """
-        Load a set of market ohlc, fill the intermediates missing ohlcs if necessary
+        Load a set of market ohlc.
         @param service to be notified once done
         @param market_id: str
         @param broker_id: str
         @param timeframe: float
-        @param last_n: int last max n ohlcs to load
+        @param last_n: int last max n OHLCs to load
+        @param to_datetime
         """
         with self._mutex:
-            self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, None, None, last_n))
+            to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
+
+            mode = 2 if to_ts else 1
+            self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, mode, last_n, to_ts))
 
         with self._condition:
             self._condition.notify()

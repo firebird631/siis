@@ -379,6 +379,20 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         return result
 
     #
+    # alerts
+    #
+
+    def process_alerts(self, timestamp):
+        # check for alert triggers
+        if self.alerts:
+            alerts = self.check_alerts(timestamp, self.instrument.market_bid, self.instrument.market_ask,
+                                       self.timeframes)
+
+            if alerts:
+                for alert, result in alerts:
+                    self.notify_alert(timestamp, alert, result)
+
+    #
     # helpers
     #
 

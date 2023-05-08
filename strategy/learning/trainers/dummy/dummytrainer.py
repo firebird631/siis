@@ -131,8 +131,8 @@ class DummyTrainerCommander(TrainerCommander):
             step = param.get('step', 0.01) or 0.01
 
             number = random.randrange(
-                param.get('min', 0) * math.pow(10, precision),
-                param.get('max', 0) * math.pow(10, precision) + 1, 1) * math.pow(10, -precision)
+                int(param.get('min', 0) * math.pow(10, precision)),
+                int(param.get('max', 0) * math.pow(10, precision)) + 1, 1) * math.pow(10, -precision)
 
             return truncate(round(number / step) * step, precision)
 

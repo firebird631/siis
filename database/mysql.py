@@ -735,34 +735,32 @@ class MySql(Database):
             try:
                 for mk in mks:
                     cursor = self._db.cursor()
+                    reverse = False
 
-                    if mk[6]:
-                        # last n
-                        cursor.execute("""SELECT COUNT(*) FROM ohlc WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s""" % (mk[1], mk[2], mk[3]))
-                        count = int(cursor.fetchone()[0])
-                        offset = max(0, count - mk[6])
-
-                        # LIMIT should not be necessary then
-                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC LIMIT %i OFFSET %i""" % (
-                                            mk[1], mk[2], mk[3], mk[6], offset))
-                    elif mk[4] and mk[5]:
+                    if mk[4] == 0:
                         # from to
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[4], mk[5]))
-                    elif mk[4]:
+                                            mk[1], mk[2], mk[3], mk[5], mk[6]))
+                    elif mk[4] == 1:
+                        # last n
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp DESC LIMIT %s""" % (
+                                            mk[1], mk[2], mk[3], mk[5]))
+                        reverse = True
+                    elif mk[4] == 2:
+                        # last n to date
+                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp DESC LIMIT %i""" % (
+                                            mk[1], mk[2], mk[3], mk[6], mk[5]))
+                        reverse = True
+                    elif mk[4] == 3:
                         # from to now
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[4]))
-                    elif mk[5]:
-                        # to now
-                        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3], mk[5]))
                     else:
-                        # all
+                        # all @warning should be removed, unused and dangerous
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
                                             mk[1], mk[2], mk[3]))
@@ -777,18 +775,16 @@ class MySql(Database):
 
                         ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-                        # if float(row[6]) <= 0:
-                        #   # prefer to ignore empty volume ohlc because it can broke volume signal and it is a no way but it could be
-                        #   # a lack of this information like on SPX500 of ig.com. So how to manage that cases...
-                        #   continue
-
                         ohlc.set_spread(float(row[5]))
                         ohlc.set_volume(float(row[6]))
 
                         if ohlc.timestamp >= Instrument.basetime(mk[3], time.time()):
                             ohlc.set_consolidated(False)  # current
 
-                        ohlcs.append(ohlc)
+                        if reverse:
+                            ohlcs.insert(0, ohlc)
+                        else:
+                            ohlcs.append(ohlc)
 
                     cursor = None
 

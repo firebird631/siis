@@ -203,6 +203,23 @@ class Trainer(object):
 
         return False
 
+    def adjust_date_and_last_n(self, from_date: datetime, to_date: datetime) -> tuple[datetime, datetime]:
+        # crypto are h24, d7, nothing to do
+        strategy_trader = self._strategy_trader
+        instrument = strategy_trader.instrument
+
+        if instrument.market_type == instrument.TYPE_CRYPTO:
+            return from_date, to_date
+
+        # there are weekend off and nationals days off
+        # but this does not count the regionals holidays
+        day_generator = (from_date + timedelta(x + 1) for x in range((to_date - from_date).days))
+        days_off = sum(1 for day in [from_date] + list(day_generator) if day.weekday() >= 5)
+
+        from_date -= timedelta(days=days_off)
+
+        return from_date, to_date
+
     def compute_period(self) -> tuple[datetime, datetime]:
         strategy_trader = self._strategy_trader
         strategy = strategy_trader.strategy
@@ -210,17 +227,7 @@ class Trainer(object):
         now_dt = datetime.utcfromtimestamp(strategy.timestamp)
         from_dt = now_dt - timedelta(seconds=self._period)
 
-        market = self._strategy_trader.strategy.trader().market(strategy_trader.instrument.market_id)
-        if market.market_type != market.TYPE_CRYPTO:
-            # not h24 market need to check for weekend or night
-            if from_dt.weekday() == 5:
-                # add two days back when starting from a saturday
-                from_dt -= timedelta(days=2)
-            elif from_dt.weekday() == 6:
-                # add one day back when starting from a sunday
-                from_dt -= timedelta(days=1)
-
-        return from_dt, now_dt
+        return self.adjust_date_and_last_n(from_dt, now_dt)
 
     def complete(self, learning_result):
         strategy_trader = self._strategy_trader
@@ -420,6 +427,7 @@ class Trainer(object):
                 Trainer.processing[self._market_id] = self
 
                 msg = ""
+                code = None
 
                 with subprocess.Popen(cmd_opts,
                                       stdout=subprocess.PIPE,
@@ -455,44 +463,48 @@ class Trainer(object):
                         except IOError:
                             pass
 
-                    self._process = None
+                self._process = None
 
-                    if code != 0:
-                        logger.error("Trainer process terminated with error code %s !" % process.returncode)
-                        logger.error(msg)
+                if self._market_id in Trainer.processing:
+                    del Trainer.processing[self._market_id]
 
+                if code is None:
+                    logger.error("Cannot run trainer process !")
+                    logger.error(msg)
+
+                    utils.delete_learning(learning_path, learning_filename)
+                    return False
+                elif code != 0:
+                    logger.error("Trainer process terminated with error code %s !" % process.returncode)
+                    logger.error(msg)
+
+                    utils.delete_learning(learning_path, learning_filename)
+                    return False
+                else:
+                    logger.info("Trainer process completed, lookup for results...")
+
+                    # retrieve trainer
+                    _strategy = self._strategy_service.strategy()
+                    if _strategy:
                         utils.delete_learning(learning_path, learning_filename)
-
-                        if self._market_id in Trainer.processing:
-                            del Trainer.processing[self._market_id]
                         return False
-                    else:
-                        logger.info("Trainer process completed, lookup for results...")
 
-                        # retrieve trainer
-                        _strategy = self._strategy_service.strategy()
-                        if not _strategy:
-                            return False
-
-                        _strategy_trader = _strategy.strategy_trader(self._market_id)
-                        if not _strategy_trader:
-                            return False
-
-                        _trainer = _strategy_trader.trainer
-                        if not _trainer:
-                            return False
-
-                        learning_result = utils.load_learning(learning_path, learning_filename)
-
-                        # analyse results and apply to strategy trader
-                        _trainer.complete(learning_result)
-
+                    _strategy_trader = _strategy.strategy_trader(self._market_id)
+                    if not _strategy_trader:
                         utils.delete_learning(learning_path, learning_filename)
+                        return False
 
-                        if self._market_id in Trainer.processing:
-                            del Trainer.processing[self._market_id]
+                    _trainer = _strategy_trader.trainer
+                    if not _trainer:
+                        utils.delete_learning(learning_path, learning_filename)
+                        return False
 
-                        return True
+                    learning_result = utils.load_learning(learning_path, learning_filename)
+                    utils.delete_learning(learning_path, learning_filename)
+
+                    # analyse results and apply to strategy trader
+                    _trainer.complete(learning_result)
+                    return True
 
         logger.info("Start a trainer thread...")
 

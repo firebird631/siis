@@ -44,11 +44,13 @@ def merge_parameters(default, user):
                 final_timeframes[_k] = copy.deepcopy(_b)
             else:
                 # update from default
-                _a = default_timeframes[_k]
-                final_timeframes[_k] = merge(_a, _b)
+                # _a = default_timeframes[_k]
+                # final_timeframes[_k] = merge(_a, _b)
+                # take user version
+                final_timeframes[_k] = copy.deepcopy(_b)
 
         final_params['timeframes'] = final_timeframes
-        logger.debug(final_params['timeframes'])
+        # logger.debug(final_params['timeframes'])
 
     if 'contexts' in default or 'contexts' in user:
         default_contexts = default.get('contexts', {})
@@ -61,11 +63,13 @@ def merge_parameters(default, user):
                 final_contexts[_k] = copy.deepcopy(_b)
             else:
                 # update from default
-                _a = default_contexts[_k]
-                final_contexts[_k] = merge(_a, _b)
+                # _a = default_contexts[_k]
+                # final_contexts[_k] = merge(_a, _b)
+                # take user version
+                final_contexts[_k] = copy.deepcopy(_b)
 
         final_params['contexts'] = final_contexts
-        logger.debug(final_params['contexts'])
+        # logger.debug(final_params['contexts'])
 
     return final_params
 

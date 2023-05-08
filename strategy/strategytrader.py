@@ -138,7 +138,7 @@ class StrategyTrader(object):
         self._min_traded_timeframe = 0
         self._max_traded_timeframe = Instrument.TF_YEAR
 
-        self.region_allow = params['region-allow']
+        self._region_allow = params['region-allow']
 
         self._initialized = 1       # initiate data before running, 1 waited, 2 in progress, 0 normal
         self._checked = 1           # check trades/orders/positions, 1 waited, 2 in progress, 0 normal

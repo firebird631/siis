@@ -8,6 +8,7 @@ import traceback
 
 from datetime import datetime, timedelta
 
+from common.utils import UTC
 from instrument.instrument import Instrument
 
 from watcher.watcher import Watcher
@@ -289,6 +290,7 @@ def initiate_strategy_trader(strategy, strategy_trader):
             watcher.subscribe(instrument.market_id, tfs, None, None)
 
             # wait to DB commit
+            # @todo todo a method to look if flushed insert
             time.sleep(1.0)
 
             # wait for timeframes before query
@@ -302,8 +304,10 @@ def initiate_strategy_trader(strategy, strategy_trader):
                     l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
                     l_to = None  # now
 
+                    l_from, l_to, n_last = adjust_date_and_last_n(instrument, timeframe, l_from, l_to)
+
                     watcher.historical_data(instrument.market_id, timeframe['timeframe'],
-                                            from_date=l_from, to_date=l_to)
+                                            from_date=l_from, to_date=l_to, n_last=n_last)
 
             # initialization processed, waiting for data be ready
             with strategy_trader._mutex:
@@ -320,6 +324,54 @@ def initiate_strategy_trader(strategy, strategy_trader):
 #
 # backtesting setup
 #
+
+
+def adjust_date_and_last_n(instrument, timeframe, from_date, to_date):
+    # crypto are h24, d7, nothing to do
+    if instrument.market_type == instrument.TYPE_CRYPTO:
+        return from_date, to_date, None
+
+    # there is multiples case, weekend off and nationals days off
+    # and the case of stocks markets closed during the local night
+    # but also some 15 min of twice on indices ...
+
+    # so many complexes cases then we try to get the max of last n OHLCs
+    # here simple direct solution but not correct in case of leaks of data
+    depth = max(timeframe['history'], timeframe['depth'])
+    n_last = depth
+
+    return None, to_date, n_last
+
+
+# def adjust_date_and_last_n(instrument, timeframe, from_date, to_date):
+#     # crypto are h24, d7, nothing to do
+#     if instrument.market_type == instrument.TYPE_CRYPTO:
+#         return from_date, to_date, None
+#
+#     # there is multiples case, weekend off and nationals days off
+#     # and the case of stocks markets closed during the local night
+#     # but also some 15 min of twice on indices ...
+#
+#     # so many complexes cases then we try to get the max of last n OHLCs
+#     # depth = max(timeframe['history'], timeframe['depth'])
+#     n_last = None
+#
+#     # but this does not count the regionals holidays
+#     day_generator = (from_date + timedelta(x + 1) for x in range((to_date - from_date).days))
+#     days_off = sum(1 for day in [from_date] + list(day_generator) if day.weekday() >= 5)
+#
+#     from_date -= timedelta(days=days_off)
+#
+#     if instrument.contract_type == instrument.CONTRACT_SPOT or instrument.market_type == instrument.TYPE_STOCK:
+#         days_on = sum(1 for day in [from_date] + list(day_generator) if day.weekday() < 5)
+#         from_date -= timedelta(seconds=days_on * (24-8)*60*60)
+#
+#     # need to add night for stock markets
+#     if instrument.contract_type == instrument.CONTRACT_SPOT or instrument.market_type == instrument.TYPE_STOCK:
+#         pass  # @todo above night data
+#
+#     return from_date, to_date, n_last
+
 
 def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.TF_TICK):
     """
@@ -340,27 +392,10 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
                     l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe']+1.0)
                     l_to = from_date - timedelta(seconds=1)
 
-                    # for non d7 market (any excepted crypto
-                    if instrument.market_type != instrument.TYPE_CRYPTO:
-                        # not h24 market need to check for weekend or night
-                        if l_from.weekday() == 5:
-                            # add two days back when starting from a saturday
-                            l_from -= timedelta(days=1)
-                        elif l_from.weekday() == 6:
-                            # add one day back when starting from a sunday
-                            l_from -= timedelta(days=2)
-                        l_from -= timedelta(days=2)
-
-                        # and if period is over many week add 2 days per week
-                        n_offs = int((l_to - l_from).total_seconds() / (7 * 24 * 60 * 60)) * 2
-                        l_from -= timedelta(days=n_offs)
-
-                        # need to add night for stock markets
-                        if instrument.contract_type == instrument.CONTRACT_SPOT or instrument.market_type == instrument.TYPE_STOCK:
-                            pass  # @todo
+                    l_from, l_to, n_last = adjust_date_and_last_n(instrument, timeframe, l_from, l_to)
 
                     watcher.historical_data(instrument.market_id, timeframe['timeframe'],
-                                            from_date=l_from, to_date=l_to)
+                                            from_date=l_from, to_date=l_to, n_last=n_last)
 
             # create a feeder per instrument and fetch ticks and candles + ticks
             feeder = StrategyDataFeeder(strategy, instrument.market_id, [], True)

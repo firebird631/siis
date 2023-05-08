@@ -363,7 +363,7 @@ class TrainerTool(Tool):
                 else:
                     Terminal.inst().info("-- %s trainer failed" % learning_filename)
 
-                utils.delete_learning(options['learning-path'], learning_filename)
+                # utils.delete_learning(options['learning-path'], learning_filename)
 
             return fitness, trainer_result
 

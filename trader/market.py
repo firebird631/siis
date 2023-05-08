@@ -549,7 +549,8 @@ class Market(object):
         self._price_limits = (min_price, max_price, step_price, price_precision)
 
     def set_leverages(self, leverages: Union[Tuple, List, Set]):
-        self._leverages = tuple(leverages)
+        if leverages:
+            self._leverages = tuple(leverages)
 
     #
     # volume
