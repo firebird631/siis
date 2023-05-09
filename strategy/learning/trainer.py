@@ -485,7 +485,7 @@ class Trainer(object):
 
                     # retrieve trainer
                     _strategy = self._strategy_service.strategy()
-                    if _strategy:
+                    if not _strategy:
                         utils.delete_learning(learning_path, learning_filename)
                         return False
 
@@ -500,6 +500,7 @@ class Trainer(object):
                         return False
 
                     learning_result = utils.load_learning(learning_path, learning_filename)
+                    logger.info(learning_result)
                     utils.delete_learning(learning_path, learning_filename)
 
                     # analyse results and apply to strategy trader
