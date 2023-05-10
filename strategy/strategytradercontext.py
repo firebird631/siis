@@ -481,7 +481,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
         self.dynamic_stop_loss = None
         self.breakeven = None
 
-        self.pre_signal = None   # runtime current pullback pre-signal
+        self.pre_signal = None   # runtime current pre-signal
         self.last_signal = None  # runtime last generated strategy signal
 
         self.long_call = None    # callable long method

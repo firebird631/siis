@@ -102,6 +102,20 @@ class PriceIndicator(Indicator):
     def ended(self):
         return self._consolidated
 
+    def cross(self, price):
+        """
+        Cross the previous and last price with a specified price (horizontal line).
+        @param price:
+        @return: -1 1 or 0 cross direction
+        """
+        if self.prev < price and self.last > price:
+            return 1
+
+        if self.prev > price and self.last < price:
+            return -1
+
+        return 0.0
+
     @staticmethod
     def Price(method, data):
         prices = []
