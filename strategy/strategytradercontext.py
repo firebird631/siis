@@ -4,6 +4,7 @@
 # Strategy trader context
 
 from common.utils import timeframe_from_str
+from instrument.instrument import Instrument
 
 
 class StrategyTraderContextBase(object):
@@ -60,7 +61,7 @@ class EntryExit(object):
 
     def __init__(self):
         self.type = StrategyTraderContext.PRICE_NONE
-        self.timeframe = "15m"
+        self.timeframe = 0.0
         self.depth = 1
         self.multi = False
         self.orientation = StrategyTraderContext.ORIENTATION_UP
@@ -73,6 +74,9 @@ class EntryExit(object):
         self.timeout_distance_value = None
         self.timeout_distance = 0.0
         self.timeout_distance_type = StrategyTraderContext.PRICE_NONE
+
+        self._consolidated = True
+        self._last_closed_timestamp = 0.0
 
     def loads(self, strategy_trader, params: dict):
         if 'type' not in params or params.get('type') not in StrategyTraderContext.PRICE:
@@ -141,6 +145,15 @@ class EntryExit(object):
                 self.timeout_distance = float(timeout_distance)
                 self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
 
+    def update(self, timestamp):
+        if self.timeframe <= 0.0:
+            return
+
+        self._consolidated = False
+        if Instrument.basetime(self.timeframe, timestamp) > self._last_closed_timestamp:
+            self._consolidated = True
+            self._last_closed_timestamp = timestamp
+
     def modify_distance(self, strategy_trader, distance):
         if type(distance) is str and distance.endswith('%'):
             # in percent from entry price or limit price
@@ -199,13 +212,6 @@ class EntryExit(object):
         return StrategyTraderContext.PRICE_FROM_STR_MAP.get(self.type)
 
     def compile(self, strategy_trader):
-        if strategy_trader.is_timeframes_based:
-            self.timeframe = strategy_trader.timeframes.get(self.timeframe)
-            if not self.timeframe:
-                raise ValueError("Timeframe model not found for 'timeframe' for %s" % self.name())
-        elif strategy_trader.is_tickbars_based:
-            self.timeframe = None
-
         # standard distance
         if self.distance_value is not None:
             if self.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
@@ -217,6 +223,21 @@ class EntryExit(object):
             if self.timeout_distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
                 # because instrument details are guarantee only at compile time
                 self.timeout_distance = self.timeout_distance_value * strategy_trader.instrument.one_pip_means
+
+    @property
+    def update_at_close(self) -> bool:
+        """
+        Meaning that that behavior must be applied at the close of the specified timeframe.
+        If no timeframe or 0 it means that behavior is computed each time.
+        """
+        return self.timeframe == 0.0
+
+    @property
+    def consolidated(self) -> bool:
+        if self.timeframe <= 0.0:
+            return True
+
+        return self._consolidated
 
     def dumps(self) -> dict:
         result = {}
@@ -358,6 +379,26 @@ class EXStopLoss(EntryExit):
 
     def __init__(self):
         super().__init__()
+
+    @staticmethod
+    def distance_from_percentile(trade, price: float) -> float:
+        if trade.stop_loss > 0.0:
+            return trade.direction * (price - trade.stop_loss) / trade.stop_loss
+
+        return 0.0
+
+    @staticmethod
+    def distance_from_price(trade, price: float) -> float:
+        if trade.stop_loss > 0.0:
+            return trade.direction * (price - trade.stop_loss)
+
+        return 0.0
+
+    def compute_stop_loss_price_fixed_distance_percentile(self, trade, close_exec_price):
+        pass
+
+    def compute_stop_loss_price_fixed_distance_price(self, trade, close_exec_price):
+        pass
 
     def loads(self, strategy_trader, params: dict):
         super().loads(strategy_trader, params)
@@ -507,6 +548,23 @@ class StrategyTraderContext(StrategyTraderContextBase):
         }
 
         return result
+
+    def update(self, timestamp):
+        # update EX
+        if self.breakeven:
+            self.breakeven.update(timestamp)
+
+        if self.stop_loss:
+            self.stop_loss.update(timestamp)
+
+        if self.take_profit:
+            self.take_profit.update(timestamp)
+
+        if self.dynamic_stop_loss:
+            self.dynamic_stop_loss.update(timestamp)
+
+        if self.dynamic_take_profit:
+            self.dynamic_take_profit.update(timestamp)
 
     def compute_quantity(self, strategy_trader) -> float:
         if self.trade_quantity_type == StrategyTraderContext.TRADE_QUANTITY_NORMAL:

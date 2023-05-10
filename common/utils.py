@@ -69,6 +69,10 @@ def timeframe_from_str(timeframe: str) -> float:
     return TIMEFRAME_FROM_STR_MAP.get(timeframe, 0.0)
 
 
+def timestamp_to_str(timestamp: float) -> str:
+    return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+
+
 def is_solid_timeframe(timeframe: float) -> bool:
     return timeframe in TIMEFRAME_TO_STR_MAP
 
