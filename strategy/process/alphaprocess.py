@@ -180,12 +180,13 @@ def tickbar_based_bootstrap(strategy, strategy_trader):
     logger.debug("%s tickbars bootstrapping done" % instrument.market_id)
 
 
-def alpha_update_strategy(strategy, strategy_trader):
+def alpha_update_strategy(strategy, strategy_trader, timestamp: float):
     """
     Compute a strategy step per instrument.
     Default implementation supports bootstrapping.
     @param strategy:
     @param strategy_trader StrategyTrader Instance of the strategy trader to process.
+    @param timestamp: last traded tick or candle timestamp (can be slightly different from strategy timestamp)
     @note Non thread-safe method.
     """
     if strategy_trader:
@@ -213,7 +214,12 @@ def alpha_update_strategy(strategy, strategy_trader):
 
             else:
                 # then : until process instrument update
-                strategy_trader.process(strategy.timestamp)
+                strategy_trader.update_time_deviation(timestamp)
+
+                if strategy.service.backtesting:
+                    strategy_trader.process(timestamp)
+                else:
+                    strategy_trader.process(timestamp)
 
         except Exception as e:
             error_logger.error(repr(e))
@@ -224,11 +230,13 @@ def alpha_update_strategy(strategy, strategy_trader):
             strategy_trader._processing = False
 
 
-def alpha_async_update_strategy(strategy, strategy_trader):
+def alpha_async_update_strategy(strategy, strategy_trader, timestamp: float):
     """
     Override this method to compute a strategy step per instrument.
     Default implementation supports bootstrapping.
+    @param strategy:
     @param strategy_trader StrategyTrader Instance of the strategy trader to process.
+    @param timestamp: last traded tick or candle timestamp (can be slightly different from strategy timestamp)
     @note Thread-safe method.
     """
     if strategy_trader:
@@ -256,7 +264,7 @@ def alpha_async_update_strategy(strategy, strategy_trader):
 
             else:
                 # then : until process instrument update
-                strategy_trader.process(strategy.timestamp)
+                strategy_trader.process(timestamp)
 
         except Exception as e:
             error_logger.error(repr(e))

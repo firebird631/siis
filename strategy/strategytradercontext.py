@@ -381,14 +381,28 @@ class EXStopLoss(EntryExit):
         super().__init__()
 
     @staticmethod
-    def distance_from_percentile(trade, price: float) -> float:
+    def percentile_distance_from_stop_price(trade, price: float) -> float:
         if trade.stop_loss > 0.0:
             return trade.direction * (price - trade.stop_loss) / trade.stop_loss
 
         return 0.0
 
     @staticmethod
-    def distance_from_price(trade, price: float) -> float:
+    def percentile_distance_from_limit_price(trade, price: float) -> float:
+        if trade.take_profit > 0.0:
+            return trade.direction * (trade.take_profit - price) / price
+
+        return 0.0
+
+    @staticmethod
+    def price_distance_from_stop(trade, price: float) -> float:
+        if trade.take_profit > 0.0:
+            return trade.direction * (trade.take_profit - price)
+
+        return 0.0
+
+    @staticmethod
+    def price_distance_from_limit(trade, price: float) -> float:
         if trade.stop_loss > 0.0:
             return trade.direction * (price - trade.stop_loss)
 

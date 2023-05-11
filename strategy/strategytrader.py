@@ -197,7 +197,8 @@ class StrategyTrader(object):
             'tp-win': 0,       # number of trades closed at TP in profit
             'tp-loss': 0,      # number of trades closed at TP in loss
             'sl-win': 0,       # number of trades closed at SL in profit
-            'sl-loss': 0       # number of trades closed at SL in loss
+            'sl-loss': 0,      # number of trades closed at SL in loss
+            'time-deviation': 0.0  # difference between query update time and last tick/candle time
         }
 
         if self.instrument:
@@ -923,6 +924,13 @@ class StrategyTrader(object):
         @param timestamp Current timestamp (or in backtest the processed time in past).
         """
         pass
+
+    def update_time_deviation(self, timestamp):
+        if self.strategy.timestamp - timestamp > self._stats['time-deviation']:
+            self._stats['time-deviation'] = self.strategy.timestamp - timestamp
+
+            logger.debug("Higher time deviation of %g seconds for %s" % (self._stats['time-deviation'],
+                                                                         self.instrument.market_id))
 
     def check_trades(self, timestamp: float):
         """

@@ -125,8 +125,8 @@ class Strategy(Runnable):
     _setup_backtest: Union[Callable[[Strategy, datetime, datetime, float], None], None]
     _setup_live: Union[Callable[[Strategy], None], None]
 
-    _update_strategy: Union[Callable[[Strategy, StrategyTrader], None], None]
-    _async_update_strategy: Union[Callable[[Strategy, StrategyTrader], None], None]
+    _update_strategy: Union[Callable[[Strategy, StrategyTrader], None], None, float]
+    _async_update_strategy: Union[Callable[[Strategy, StrategyTrader], None], None, float]
 
     _preset: bool
     _prefetched: bool
@@ -1264,11 +1264,12 @@ class Strategy(Runnable):
                     # always async update process
                     for strategy_trader in do_update:
                         # parallelize jobs on workers
-                        self.service.worker_pool.add_job(None, (self._async_update_strategy, (self, strategy_trader,)))
+                        self.service.worker_pool.add_job(None, (self._async_update_strategy, (
+                            self, strategy_trader, self.timestamp)))
                 else:
                     # no parallelization for single instrument
                     for strategy_trader in do_update:
-                        self._update_strategy(self, strategy_trader)
+                        self._update_strategy(self, strategy_trader, self.timestamp)
 
         return True
 
@@ -1315,10 +1316,9 @@ class Strategy(Runnable):
 
         # update strategy as necessary
         if updated:
-            self._update_strategy(self, strategy_trader)
+            self._update_strategy(self, strategy_trader, instrument.last_update_time)
 
     def backtest_update(self, timestamp: float, total_ts: float):
-
         """
         Process the backtesting update, for any instrument feeds candles to instrument and does the necessary updates.
         Override only if necessary. This default implementation should suffice.
@@ -1330,7 +1330,7 @@ class Strategy(Runnable):
         if not self.backtest_ready():
             return
 
-        # processing timestamp
+        # processing timestamp (until this)
         self._timestamp = timestamp
 
         if len(self._strategy_traders) > 3:
