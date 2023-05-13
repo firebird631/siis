@@ -449,7 +449,8 @@ class Trainer(object):
 
                 msg = ""
                 code = None
-
+                logger.debug("toto")
+                error_logger.error("toto")
                 with subprocess.Popen(cmd_opts,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
@@ -467,16 +468,25 @@ class Trainer(object):
                             if stdout:
                                 msg = stdout.decode()
                                 if msg:
+                                    if msg.startswith("["):
+                                        while 1:
+                                            i = msg.find("[")
+                                            if i >= 0:
+                                                j = msg.find("m", i + 1)
+                                                if j > 0:
+                                                    msg = msg[:i] + msg[j + 1:]
+                                                else:
+                                                    break
+                                            else:
+                                                break
+
                                     if "error" in msg.lower():
                                         logger.error("Error during process of training for %s" % market_id)
                                         process.kill()
                                     elif "Progress " in msg:
-                                        i = msg.find("Progress ")
-                                        if i >= 0:
-                                            j = msg[i+9:].find("%")
-                                            if j >= 0:
-                                                progress = msg[i+9:][:j+1]
-                                                logger.debug("Training progression at %s for %s" % (progress, market_id))
+                                        logger.debug("%s for %s" % (msg, market_id))
+                                    elif "Estimate total duration to " in msg:
+                                        logger.debug("%s for %s" % (msg, market_id))
 
                         except subprocess.TimeoutExpired:
                             pass

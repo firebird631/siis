@@ -92,6 +92,10 @@ class StrategySignal(object):
         return self.p
 
     @property
+    def entry_price(self) -> float:
+        return self.p
+
+    @property
     def stop_loss(self) -> float:
         return self.sl
     

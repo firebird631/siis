@@ -318,6 +318,18 @@ class TrainerTool(Tool):
                         if stdout:
                             msg = stdout.decode()
                             if msg:
+                                if msg.startswith("["):
+                                    while 1:
+                                        i = msg.find("[")
+                                        if i >= 0:
+                                            j = msg.find("m", i + 1)
+                                            if j > 0:
+                                                msg = msg[:i] + msg[j + 1:]
+                                            else:
+                                                break
+                                        else:
+                                            break
+
                                 if "error" in msg.lower():
                                     # error during backtest kill
                                     logger.debug(msg)
@@ -363,7 +375,7 @@ class TrainerTool(Tool):
                 else:
                     Terminal.inst().info("-- %s trainer failed" % learning_filename)
 
-                # utils.delete_learning(options['learning-path'], learning_filename)
+                utils.delete_learning(options['learning-path'], learning_filename)
 
             return fitness, trainer_result
 

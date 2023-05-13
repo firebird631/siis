@@ -360,6 +360,37 @@ class EXTakeProfit(EntryExit):
     def __init__(self):
         super().__init__()
 
+    @staticmethod
+    def percentile_distance_from_limit_price(trade, price: float) -> float:
+        if trade.take_profit > 0.0:
+            return trade.direction * (trade.take_profit - price) / price
+
+        return 0.0
+
+    @staticmethod
+    def price_distance_from_limit(trade, price: float) -> float:
+        if trade.stop_loss > 0.0:
+            return trade.direction * (price - trade.stop_loss)
+
+        return 0.0
+
+    def clamp_limit(self, signal_or_trade):
+        """
+        Take profit must not exceed this configured distance.
+        @param signal_or_trade: signal or trade
+        @todo for distance in price
+        """
+        if signal_or_trade and self.distance > 0.0:
+            if signal_or_trade.direction > 0:
+                if signal_or_trade.take_profit <= 0.0 or self.percentile_distance_from_limit_price(
+                        signal_or_trade, signal_or_trade.entry_price) > self.distance:
+                    signal_or_trade.take_profit = signal_or_trade.entry_price * (1.0 + self.distance)
+
+            if signal_or_trade.direction < 0:
+                if signal_or_trade.take_profit <= 0.0 or self.percentile_distance_from_limit_price(
+                        signal_or_trade, signal_or_trade.entry_price) > self.distance:
+                    signal_or_trade.take_profit = signal_or_trade.entry_price * (1.0 - self.distance)
+
     def loads(self, strategy_trader, params: dict):
         super().loads(strategy_trader, params)
 
@@ -382,15 +413,11 @@ class EXStopLoss(EntryExit):
 
     @staticmethod
     def percentile_distance_from_stop_price(trade, price: float) -> float:
+        """
+        Return the distance from a price (could be close execution price) and trade stop loss price.
+        """
         if trade.stop_loss > 0.0:
             return trade.direction * (price - trade.stop_loss) / trade.stop_loss
-
-        return 0.0
-
-    @staticmethod
-    def percentile_distance_from_limit_price(trade, price: float) -> float:
-        if trade.take_profit > 0.0:
-            return trade.direction * (trade.take_profit - price) / price
 
         return 0.0
 
@@ -401,18 +428,22 @@ class EXStopLoss(EntryExit):
 
         return 0.0
 
-    @staticmethod
-    def price_distance_from_limit(trade, price: float) -> float:
-        if trade.stop_loss > 0.0:
-            return trade.direction * (price - trade.stop_loss)
+    def clamp_stop(self, signal_or_trade):
+        """
+        Stop loss must not exceed this configured distance.
+        @param signal_or_trade: signal or trade
+        @todo for distance in price
+        """
+        if signal_or_trade and self.distance > 0.0:
+            if signal_or_trade.direction > 0:
+                if signal_or_trade.stop_loss <= 0.0 or self.percentile_distance_from_stop_price(
+                        signal_or_trade, signal_or_trade.entry_price) > self.distance:
+                    signal_or_trade.stop_loss = signal_or_trade.entry_price * (1.0 - self.distance)
 
-        return 0.0
-
-    def compute_stop_loss_price_fixed_distance_percentile(self, trade, close_exec_price):
-        pass
-
-    def compute_stop_loss_price_fixed_distance_price(self, trade, close_exec_price):
-        pass
+            if signal_or_trade.direction < 0:
+                if signal_or_trade.stop_loss <= 0.0 or self.percentile_distance_from_stop_price(
+                        signal_or_trade, signal_or_trade.entry_price) > self.distance:
+                    signal_or_trade.stop_loss = signal_or_trade.entry_price * (1.0 + self.distance)
 
     def loads(self, strategy_trader, params: dict):
         super().loads(strategy_trader, params)

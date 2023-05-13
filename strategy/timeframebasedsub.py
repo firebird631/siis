@@ -199,8 +199,8 @@ class TimeframeBasedSub(object):
         """
         Get the candles list to process.
         """
-        # candles = self.strategy_trader.instrument.last_candles(self.tf, self.depth)
-        candles = self.strategy_trader.instrument.candles(self.tf)[-self.depth:]
+        dataset = self.strategy_trader.instrument.candles(self.tf)
+        candles = dataset[-self.depth:] if dataset else []
 
         return candles
 

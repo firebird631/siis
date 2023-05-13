@@ -116,7 +116,6 @@ class TerminalHandler(logging.StreamHandler):
 
         elif record.levelno == logging.DEBUG:
             Terminal.inst().message(str(msg), view='debug') if Terminal.inst() else print(str(msg))
-
         else:
             Terminal.inst().message(str(msg), view='default') if Terminal.inst() else print(str(msg))
 
@@ -135,7 +134,7 @@ class SiisLog(object):
         # colorama.init()
 
         # stderr to terminal in info level
-        self.console = TerminalHandler()  #  logging.StreamHandler()
+        self.console = TerminalHandler()  # logging.StreamHandler()
         self.console.setLevel(logging.DEBUG)
 
         # self.term_formatter = logging.Formatter('- %(name)-12s: %(levelname)-8s %(message)s')
@@ -153,9 +152,9 @@ class SiisLog(object):
                                                maxBytes=1024*1024, backupCount=5)
         # self.file_logger = logging.FileHandler(options['log-path'] + '/' + options['log-name'])
         self.file_logger.setFormatter(self.file_formatter)
-        self.file_logger.setLevel(logging.DEBUG)
+        self.file_logger.setLevel(logging.INFO)
 
-        self.add_file_logger('siis', self.file_logger)
+        self.add_file_logger('siis', self.file_logger)  # , level=logging.INFO)
 
         # a siis logger with exec.siis.log
         # self.exec_file_logger = logging.FileHandler(options['log-path'] + '/' + "exec." + options['log-name'])
@@ -165,7 +164,7 @@ class SiisLog(object):
         self.exec_file_logger.setLevel(logging.INFO)
 
         # don't propagate execution to siis logger
-        self.add_file_logger('siis.exec', self.exec_file_logger, False)
+        self.add_file_logger('siis.exec', self.exec_file_logger)  # , level=logging.INFO, propagate=False)
 
         # a siis logger with error.siis.log
         # self.error_file_logger = logging.FileHandler(options['log-path'] + '/' + "error." + options['log-name'])
@@ -175,7 +174,7 @@ class SiisLog(object):
         self.error_file_logger.setLevel(logging.INFO)
 
         # don't propagate error trade to siis logger
-        self.add_file_logger('siis.error', self.error_file_logger, False)
+        self.add_file_logger('siis.error', self.error_file_logger)  # , level=logging.ERROR, propagate=False)
 
         # a siis logger with signal.siis.log
         # self.signal_file_logger = logging.FileHandler(options['log-path'] + '/' + "signal." + options['log-name'])
@@ -185,7 +184,7 @@ class SiisLog(object):
         self.signal_file_logger.setLevel(logging.INFO)
 
         # don't propagate signal trade to siis logger
-        self.add_file_logger('siis.signal', self.signal_file_logger, False)
+        self.add_file_logger('siis.signal', self.signal_file_logger)  # , level=logging.INFO, propagate=False)
 
         # a siis logger with order.siis.log
         # self.order_file_logger = logging.FileHandler(options['log-path'] + '/' + "order." + options['log-name'])
@@ -195,7 +194,7 @@ class SiisLog(object):
         self.order_file_logger.setLevel(logging.INFO)
 
         # don't propagate signal trade to siis logger
-        self.add_file_logger('siis.order', self.order_file_logger, False)
+        self.add_file_logger('siis.order', self.order_file_logger)  # , level=logging.INFO, propagate=False)
 
         # a siis logger with traceback.siis.log
         # self.traceback_file_logger = logging.FileHandler(options['log-path'] + '/' + "traceback." + options['log-name'])
@@ -205,7 +204,7 @@ class SiisLog(object):
         self.traceback_file_logger.setLevel(logging.INFO)
 
         # don't propagate traceback to siis logger
-        self.add_file_logger('siis.traceback', self.traceback_file_logger, False)
+        self.add_file_logger('siis.traceback', self.traceback_file_logger)  # , level=logging.ERROR, propagate=False)
 
     def add_file_logger(self, name, handler, level=logging.DEBUG, propagate=True):
         my_logger = logging.getLogger(name)
