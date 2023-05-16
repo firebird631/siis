@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING, Any, Tuple, Dict, Union, Optional, List
 
 if TYPE_CHECKING:
@@ -123,6 +124,8 @@ class StrategyTrader(object):
     _stats: Dict[str, Union[int, float, List, Tuple]]
     _trainer: Union[Trainer, None]
 
+    _initials_parameters = Dict
+
     def __init__(self, strategy: Strategy, instrument: Instrument, params: dict = None):
         self.strategy = strategy
         self.instrument = instrument
@@ -210,6 +213,9 @@ class StrategyTrader(object):
         # not in backtesting to avoid recursive except if --training flag is specified
         if not self.strategy.service.backtesting or self.strategy.service.training:
             self._trainer = Trainer.create_trainer(self, params) if 'learning' in params else None
+
+        # keep a copy of the initial parameters
+        self._initials_parameters = copy.deepcopy(params)
 
     def update_parameters(self, params: dict):
         """

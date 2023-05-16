@@ -56,6 +56,7 @@ from .command.strategycmdstrategytraderexport import cmd_strategy_trader_export,
     cmd_strategy_trader_export_all
 from .command.strategycmdstrategytraderimport import cmd_strategy_trader_import_all
 from .command.strategycmdstrategytradertrain import cmd_strategy_trader_train
+from .command.strategycmdstrategytraderparams import cmd_strategy_trader_params
 
 from .command.strategycmdtradeassign import cmd_trade_assign
 from .command.strategycmdtradeclean import cmd_trade_clean
@@ -113,6 +114,7 @@ class Strategy(Runnable):
     COMMAND_TRADER_EXPORT_ALL = 28
     COMMAND_TRADER_IMPORT_ALL = 29
     COMMAND_TRADER_TRAIN = 30
+    COMMAND_TRADER_PARAMS = 31
 
     _name: str
     _strategy_service: StrategyService
@@ -1636,6 +1638,8 @@ class Strategy(Runnable):
             return self.strategy_trader_command("export", data, cmd_strategy_trader_export)
         elif command_type == Strategy.COMMAND_TRADER_TRAIN:
             return self.strategy_trader_command("train", data, cmd_strategy_trader_train)
+        elif command_type == Strategy.COMMAND_TRADER_PARAMS:
+            return self.strategy_trader_command("params", data, cmd_strategy_trader_params)
 
         elif command_type == Strategy.COMMAND_TRADER_MODIFY_ALL:
             return cmd_strategy_trader_modify_all(self, data)

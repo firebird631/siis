@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Simple average price indicator using candle data.
+from typing import Union
 
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample
@@ -112,6 +113,20 @@ class PriceIndicator(Indicator):
             return 1
 
         if self.prev > price and self.last < price:
+            return -1
+
+        return 0.0
+
+    def cross_close(self, serie: Union[list, np.array]):
+        """
+        Cross the previous and last price with the two last values of a serie (np.array or list).
+        @param serie:
+        @return: -1 1 or 0 cross direction
+        """
+        if self.close[-2] < serie[-2] and self.close[-1] > serie[-1]:
+            return 1
+
+        if self.close[-2] > serie[-2] and self.close[-1] < serie[-1]:
             return -1
 
         return 0.0

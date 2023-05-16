@@ -2,7 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # terminal trading commands and registration
-
+import json
 import re
 import sys
 
@@ -2416,6 +2416,46 @@ class StartStrategyTrainer(Command):
         return args, 0
 
 
+class ApplyStrategyParameters(Command):
+    SUMMARY = "Define a new set of parameters to a strategy trader for a specific market."
+    HELP = (
+        "param1: <market-id> market identifier, symbol or alias"
+        "param2: <json> json formatted new parameters in dot format"
+    )
+
+    def __init__(self, strategy_service):
+        super().__init__('params', None)
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        # will force to try to start trainer for an instrument
+        if len(args) < 2:
+            return False, "Missing parameters"
+
+        market_id = args[0]
+
+        try:
+            params = json.loads(' '.join(args[1:]))
+        except ValueError:
+            return False, "Invalid JSON parameters"
+
+        results = self._strategy_service.command(Strategy.COMMAND_TRADER_PARAMS, {
+            'market-id': market_id,
+            'parameters': params
+        })
+
+        return self.manage_results(results, "Set new parameters on strategy trader %s" % args[0])
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, strategy.symbols_ids(), args, tab_pos, direction)
+
+        return args, 0
+
+
 def register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service,
                               monitor_service, notifier_service):
     #
@@ -2455,6 +2495,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(AssignCommand(strategy_service))
     commands_handler.register(CommentCommand(strategy_service))
     commands_handler.register(StartStrategyTrainer(strategy_service))
+    commands_handler.register(ApplyStrategyParameters(strategy_service))
 
     #
     # strategy multi-trade operations

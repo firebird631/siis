@@ -449,8 +449,7 @@ class Trainer(object):
 
                 msg = ""
                 code = None
-                logger.debug("toto")
-                error_logger.error("toto")
+
                 with subprocess.Popen(cmd_opts,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,

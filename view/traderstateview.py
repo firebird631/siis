@@ -10,6 +10,7 @@ import traceback
 from datetime import datetime
 
 from common.signal import Signal
+from common.utils import timeframe_to_str
 
 from terminal.terminal import Terminal, Color
 from terminal import charmap
@@ -203,9 +204,11 @@ class TraderStateView(TableView):
 
         for i, col in enumerate(members):
             if col[0] == "direction":
-                columns[i] = charmap.ARROWUPDN
-            elif col[1] == "timeframe":
-                columns[i] = "TF"
+                if col[1].lower() in ("dir", "direction"):
+                    columns[i] = charmap.ARROWUPDN
+            elif col[0] == "timeframe":
+                if col[1].lower() in ("tf", "timeframe"):
+                    columns[i] = "TF"
 
         # for title
         self._reported_activity = strategy_trader_state.get('activity', False)
@@ -233,10 +236,15 @@ class TraderStateView(TableView):
                         row[i] = Color.colorize(charmap.ARROWUP, Color.GREEN)
                     elif d == "S" or str(d) == "-1":
                         row[i] = Color.colorize(charmap.ARROWDN, Color.RED)
+                    else:
+                        row[i] = "-"
+
+                elif members[i][0] == "timeframe":
+                    row[i] = timeframe_to_str(d) if (type(d) in (float, int)) else (d if (type(d) is str) else str(d))
 
                 elif members[i][0] == "datetime":
                     row[i] = datetime.fromtimestamp(d).strftime(self._datetime_format) if (
-                            type(d) is float and d > 0) else ""
+                            type(d) in (float, int) and d > 0) else (d if (type(d) is str) else str(d))
 
             data.append(row[col_ofs:])
 
