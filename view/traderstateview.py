@@ -7,6 +7,8 @@ import time
 import threading
 import traceback
 
+import numpy as np
+
 from datetime import datetime
 
 from common.signal import Signal
@@ -240,11 +242,34 @@ class TraderStateView(TableView):
                         row[i] = "-"
 
                 elif members[i][0] == "timeframe":
-                    row[i] = timeframe_to_str(d) if (type(d) in (float, int)) else (d if (type(d) is str) else str(d))
+                    row[i] = timeframe_to_str(d) if (type(d) in (float, int, np.float64)) else (d if (type(d) is str) else str(d))
 
                 elif members[i][0] == "datetime":
-                    row[i] = datetime.fromtimestamp(d).strftime(self._datetime_format) if (
-                            type(d) in (float, int) and d > 0) else (d if (type(d) is str) else str(d))
+                    if d > 0:
+                        row[i] = datetime.fromtimestamp(d).strftime(self._datetime_format) if (
+                                type(d) in (float, int)) else (d if (type(d) is str) else str(d))
+                    else:
+                        row[i] = "-"
+
+                elif members[i][0] == "price" and type(d) in (float, np.float64):
+                    strategy_trader = strategy.strategy_trader(self._market_id)
+                    if strategy_trader and strategy_trader.instrument:
+                        row[i] = strategy_trader.instrument.format_price(d)
+
+                elif members[i][0] == "quote-price" and type(d) in (float, np.float64):
+                    strategy_trader = strategy.strategy_trader(self._market_id)
+                    if strategy_trader and strategy_trader.instrument:
+                        row[i] = strategy_trader.instrument.format_quote(d)
+
+                elif members[i][0] == "settlement-price" and type(d) in (float, np.float64):
+                    strategy_trader = strategy.strategy_trader(self._market_id)
+                    if strategy_trader and strategy_trader.instrument:
+                        row[i] = strategy_trader.instrument.format_settlement(d)
+
+                elif members[i][0] == "quantity" and type(d) in (float, np.float64):
+                    strategy_trader = strategy.strategy_trader(self._market_id)
+                    if strategy_trader and strategy_trader.instrument:
+                        row[i] = strategy_trader.instrument.format_quantity(d)
 
             data.append(row[col_ofs:])
 

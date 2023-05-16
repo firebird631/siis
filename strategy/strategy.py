@@ -1812,12 +1812,18 @@ class Strategy(Runnable):
         parameters.setdefault('hedging', False)
         parameters.setdefault('affinity', 5)
         parameters.setdefault('trade-type', 0)
+        parameters.setdefault('trade-delay', 0.0)
         parameters.setdefault('max-trades', 1)
-        parameters.setdefault('min-traded-timeframe', '4h')
-        parameters.setdefault('max-traded-timeframe', '4h')
         parameters.setdefault('min-vol24h', 0.0)
         parameters.setdefault('min-price', 0.0)
         parameters.setdefault('region-allow', True)
+        parameters.setdefault('trade-type', "asset")
+        parameters.setdefault('reporting', "none")
+
+        parameters.setdefault('min-traded-timeframe', '4h')
+        parameters.setdefault('max-traded-timeframe', '4h')
+        parameters.setdefault('price-epsilon-factor', 0.0)
+        parameters.setdefault('price-epsilon-timeframe', 't')
 
         # parse timeframes based values
         for k, param in parameters.items():
