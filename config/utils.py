@@ -203,6 +203,10 @@ def merge_learning_config(parameters, learning_config):
             pass
 
     for path, new_value in strategy_params.items():
+        if path.startswith('_'):
+            # commented
+            continue
+
         split_path = path.split('.')
 
         if not split_path:

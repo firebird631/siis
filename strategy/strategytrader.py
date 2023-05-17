@@ -1593,21 +1593,9 @@ class StrategyTrader(object):
                             self._stats['closed'] += 1
                             self._stats['rpnl'] += trade.unrealized_profit_loss
 
-                        # notification exit reason if not reported
+                        # notification exit reason if not reported assume closed at market
                         if not trade.exit_reason:
-                            if trade.direction > 0:
-                                if trade.exit_price >= trade.take_profit > 0:
-                                    trade.exit_reason = trade.REASON_TAKE_PROFIT_LIMIT
-
-                                elif trade.exit_price <= trade.stop_loss and trade.stop_loss > 0:
-                                    trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
-
-                            elif trade.direction < 0:
-                                if trade.exit_price <= trade.take_profit and trade.take_profit > 0:
-                                    trade.exit_reason = trade.REASON_TAKE_PROFIT_LIMIT
-
-                                elif trade.exit_price >= trade.stop_loss > 0:
-                                    trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
+                            trade.exit_reason = trade.REASON_CLOSE_MARKET
 
                         record = trade.dumps_notify_exit(timestamp, self)
 
