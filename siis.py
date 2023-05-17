@@ -14,7 +14,7 @@ import traceback
 
 from datetime import datetime
 
-from common.utils import parse_utc_datetime, fix_thread_set_name
+from common.utils import parse_utc_datetime, fix_thread_set_name, UTC
 
 from watcher.service import WatcherService
 
@@ -287,6 +287,10 @@ def application(argv):
 
         # backtesting
         if options.get('backtesting', False):
+            if not options.get('to'):
+                # if no 'to' datetime assume current UTC datetime
+                options['to'] = datetime.utcnow().replace(tzinfo=UTC())
+
             if options.get('from') is None or options.get('to') is None:
                 del options['backtesting']
                 Terminal.inst().error("Backtesting need from= and to= date time")

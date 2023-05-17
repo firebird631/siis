@@ -17,7 +17,7 @@ import uuid
 from importlib import import_module
 
 from config import utils
-from strategy.learning.trainer import TrainerJob
+from strategy.learning.trainer import TrainerJob, TrainerCommander
 from tools.tool import Tool
 
 from terminal.terminal import Terminal
@@ -80,6 +80,8 @@ class TrainerTool(Tool):
         self._max_process_time = 0.0
         self._executed_jobs = 0
         self._last_progress = 0.0
+
+        self._selection = TrainerCommander.BEST_PERF
 
     def check_options(self, options):
         if not options.get('profile'):
@@ -157,6 +159,10 @@ class TrainerTool(Tool):
                 return False
 
             self._trainer_clazz = Clazz
+
+        # candidate selection method
+        self._selection = TrainerCommander.SELECTION.get(trainer.get('selection', 'best-performance'),
+                                                         TrainerCommander.BEST_PERF)
 
         # database manager
         Database.create(options)
@@ -383,7 +389,7 @@ class TrainerTool(Tool):
         self._trainer_commander.start(start_trainer)
 
         # get final better results, compare, select one
-        best_result = self._trainer_commander.evaluate_best()
+        best_result = self._trainer_commander.evaluate_best(self._selection)
 
         final_learning_config = copy.deepcopy(self._learning_config)
 

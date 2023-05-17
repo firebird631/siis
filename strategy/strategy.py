@@ -1750,6 +1750,9 @@ class Strategy(Runnable):
         tp_loss = 0
         tp_win = 0
 
+        max_adj_loss = 0
+        max_adj_win = 0
+
         for t in agg_trades:
             pl_sum += t['pl']
             perf_sum += t['perf']
@@ -1766,6 +1769,8 @@ class Strategy(Runnable):
             tp_loss += t['tp-loss']
             sl_win += t['sl-win']
             tp_win += t['tp-win']
+            max_adj_loss = max(max_adj_loss, t['cont-loss'])
+            max_adj_win = max(max_adj_win, t['cont-win'])
 
         trader = self.trader()
 
@@ -1780,16 +1785,21 @@ class Strategy(Runnable):
         new_content['profit-loss'] = trader.account.format_price(pl_sum)
         new_content['best'] = "%.2f%%" % (best_best * 100.0)
         new_content['worst'] = "%.2f%%" % (worst_worst * 100.0)
+
         new_content['succeed-trades'] = success_sum
         new_content['failed-trades'] = failed_sum
         new_content['roe-trades'] = roe_sum
         new_content['total-trades'] = success_sum + failed_sum + roe_sum
         new_content['open-trades'] = num_open_trades_sum
         new_content['active-trades'] = num_actives_trades_sum
+
         new_content['stop-loss-in-loss'] = sl_loss
         new_content['take-profit-in-loss'] = tp_loss
         new_content['stop-loss-in-gain'] = sl_win
         new_content['take-profit-in-gain'] = tp_win
+
+        new_content["max-loss-serie"] = max_adj_loss
+        new_content["max-win-serie"] = max_adj_win
 
         write_learning(learning_path, filename, new_content)
 

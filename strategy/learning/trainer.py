@@ -92,9 +92,11 @@ class Trainer(object):
 
         period = period_from_str(trainer_params.get('period', '1w'))
         update = period_from_str(trainer_params.get('update', '1w'))
+        selection = trainer_params.get('selection', 'best-performance')
 
         self._period = period
         self._update = update
+        self._selection = selection
 
         timestep = trainer_params.get('timestep', 60.0)
         timeframe = timeframe_from_str(trainer_params.get('timeframe', 't'))
@@ -151,6 +153,10 @@ class Trainer(object):
     @property
     def fitness(self) -> int:
         return self._fitness
+
+    @property
+    def selection(self) -> int:
+        return self._selection
 
     @property
     def original_strategy_trader_params(self) -> dict:
@@ -389,6 +395,7 @@ class Trainer(object):
         trainer_params['to'] = to_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         trainer_params['timestep'] = trainer.timestep
         trainer_params['fitness'] = trainer.fitness
+        trainer_params['selection'] = trainer.selection
 
         if trainer.timeframe:
             trainer_params['timeframe'] = trainer.timeframe
@@ -628,6 +635,17 @@ class TrainerJob(threading.Thread):
 
 class TrainerCommander(object):
 
+    BEST_PERF = 0      # select best from the best performance only
+    BEST_WINRATE = 1   # from the best winrate (win number of loss number)
+    BEST_WORST = 2     # select best from the best worst performance (meaning limiting the worst loss)
+
+    SELECTION = {
+        'best-performance': BEST_PERF,
+        'best-perf': BEST_PERF,
+        'best-winrate': BEST_WINRATE,
+        'best-worst': BEST_WORST,
+    }
+
     _profile_parameters: dict
     _learning_parameters: dict
 
@@ -727,10 +745,11 @@ class TrainerCommander(object):
         """
         return []
 
-    def evaluate_best(self):
+    def evaluate_best(self, method=BEST_PERF):
         """
-        Simple implementation to select a best candidate from the evaluated ones.
+        Simple implementation to select the best candidate from the evaluated ones.
         @return: A single candidate or None.
+        @todo Multi criterion based selection
         """
         best_result = None
         results = self.results
@@ -741,6 +760,7 @@ class TrainerCommander(object):
             min_perf = 0.0
 
         max_perf = min_perf
+        max_sf_rate = 0.0
 
         # simple method, the best overall performance
         for result in results:
@@ -752,8 +772,27 @@ class TrainerCommander(object):
             except ValueError:
                 continue
 
-            if performance > max_perf:
-                max_perf = performance
-                best_result = result
+            # always need minimal performance
+            if performance < min_perf:
+                continue
+
+            if method == TrainerCommander.BEST_PERF:
+                # only keep the best performance
+                if performance > max_perf:
+                    max_perf = performance
+                    best_result = result
+
+            elif method == TrainerCommander.BEST_WINRATE:
+                # only keep the best win-rate
+                try:
+                    succeed = result.get('succeed-trades', 0)
+                    failed = result.get('failed-trades', 0)
+                    sf_rate = (succeed + failed) / failed if failed > 0 else 1.0
+                except ValueError:
+                    continue
+
+                if sf_rate > max_sf_rate:
+                    max_sf_rate = sf_rate
+                    best_result = result
 
         return best_result
