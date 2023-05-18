@@ -13,7 +13,7 @@ import traceback
 import uuid
 from typing import TYPE_CHECKING, Union
 
-from common.utils import timeframe_from_str
+from common.utils import timeframe_from_str, period_from_str
 from config import utils
 from instrument.instrument import Instrument
 
@@ -69,26 +69,6 @@ class Trainer(object):
         trainer_params = learning_params.get('trainer')
 
         self._initial = trainer_params.get('initial', False)  # does an initial training
-
-        def period_from_str(_period: str):
-            try:
-                if _period.endswith('s'):
-                    return float(_period[:-1]) * Instrument.TF_1S
-                if _period.endswith('m'):
-                    return float(_period[:-1]) * Instrument.TF_1M
-                if _period.endswith('h'):
-                    return float(_period[:-1]) * Instrument.TF_1H
-                elif _period.endswith('d'):
-                    return float(_period[:-1]) * Instrument.TF_1D
-                elif _period.endswith('w'):
-                    return float(_period[:-1]) * Instrument.TF_1W
-                elif _period.endswith('M'):
-                    return float(_period[:-1]) * Instrument.TF_MONTH
-                elif _period.endswith('Y'):
-                    return float(_period[:-1]) * Instrument.TF_YEAR
-                return float(_period)
-            except ValueError:
-                return 0.0
 
         period = period_from_str(trainer_params.get('period', '1w'))
         update = period_from_str(trainer_params.get('update', '1w'))
@@ -371,7 +351,6 @@ class Trainer(object):
 
         # filters only necessary markets from watchers, trader and strategy
         strategy_params = {
-            # 'symbols': [market_id],
             'parameters': copy.deepcopy(org_learning_params.get('strategy', {}).get('parameters', {}))
         }
 

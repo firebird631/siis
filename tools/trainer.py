@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timedelta
 from typing import Union
 
 import time
@@ -16,6 +18,7 @@ import uuid
 
 from importlib import import_module
 
+from common.utils import UTC, timeframe_from_str
 from config import utils
 from strategy.learning.trainer import TrainerJob, TrainerCommander
 from tools.tool import Tool
@@ -88,21 +91,16 @@ class TrainerTool(Tool):
             Terminal.inst().error("Missing strategy profile")
             return False
 
-        if not options.get('learning'):
-            Terminal.inst().error("Missing strategy learning proxy file")
-            return False
-
         if not options.get('from'):
-            Terminal.inst().error("Missing from datetime parameters")
-            return False
+            Terminal.inst().notice("Missing from datetime parameters, deduce with parameters for the last period")
 
         if not options.get('to'):
-            Terminal.inst().error("Missing to datetime parameters")
-            return False
+            options['to'] = datetime.utcnow().replace(tzinfo=UTC())
+            Terminal.inst().notice("Missing backtest 'to' datetime parameters, use now")
 
         if not options.get('timestep'):
-            Terminal.inst().error("Missing backtest timestep parameters")
-            return False
+            options['timestep'] = 1.0
+            Terminal.inst().notice("Missing backtest timestep parameters, use default to 1 second")
 
         Terminal.inst().message("Import profile...")
 
@@ -113,23 +111,88 @@ class TrainerTool(Tool):
 
         Terminal.inst().message("Import learning...")
 
-        self._learning_config = utils.load_learning(options, options['learning'])
-        if not self._profile_config:
-            Terminal.inst().error("Miss-configured learning proxy file")
-            return False
+        if 'learning' in options:
+            # proxy file to communicate between siis live/backtest process and this tool
+            self._learning_config = utils.load_learning(options, options['learning'])
+            if not self._profile_config:
+                Terminal.inst().error("Miss-configured learning proxy file")
+                return False
 
-        if "revision" in self._learning_config:
-            Terminal.inst().error("This learning file is already computed")
-            return False
+            if "revision" in self._learning_config:
+                Terminal.inst().error("This learning file is already computed")
+                return False
 
-        self._fitness = self._learning_config.get('trainer', {}).get('fitness', 'default')
+            self._learning = options['learning']
+
+        if not options.get('from'):
+            self.deduce_period(options)
+
+        if 'learning' not in options:
+            # parameters from strategy
+            self.gen_learning_config(options)
 
         self._profile = options['profile']
-        self._learning = options['learning']
 
+        self._fitness = self._learning_config.get('trainer', {}).get('fitness', 'default')
         self._max_sub_process = options.get('parallel', 1)
 
         return True
+
+    def deduce_period(self, options):
+        org_learning_params = self._profile_config.get('strategy', {}).get('parameters', {}).get('learning', {})
+
+        period = timeframe_from_str(org_learning_params.get('trainer', {}).get('period', 0.0))
+        options['from'] = options['to'] - timedelta(seconds=period)
+
+        logger.info("Deduce starting from %s to %s" % (
+            options['from'].strftime("%Y-%m-%dT%H:%M:%SZ"),
+            options['to'].strftime("%Y-%m-%dT%H:%M:%SZ")))
+
+    def gen_learning_config(self, options):
+        market_id = options.get('market', "")
+
+        if not market_id:
+            org_trader_symbols = self._profile_config.get('trader', {}).get('symbols', [])
+            market_id = org_trader_symbols[0] if org_trader_symbols else ""
+
+        org_learning_params = self._profile_config.get('strategy', {}).get('parameters', {}).get('learning', {})
+        trainer_params = copy.deepcopy(org_learning_params.get('trainer', {}))
+
+        # filters only necessary markets from watchers, trader and strategy
+        strategy_params = {
+            'parameters': copy.deepcopy(org_learning_params.get('strategy', {}).get('parameters', {}))
+        }
+
+        if 'learning' in strategy_params.get('parameters', {}):
+            del strategy_params['parameters']['learning']
+
+        watchers_params = {}
+        for watcher_name, watcher_config in self._profile_config.get('watchers', {}).items():
+            watchers_params[watcher_name] = {}
+            if market_id in watcher_config['symbols']:
+                watchers_params[watcher_name]['symbols'] = [market_id]
+            else:
+                watchers_params[watcher_name]['symbols'] = []
+
+        trader_params = {'symbols': [market_id]}
+
+        trainer_params['from'] = options['from'].strftime("%Y-%m-%dT%H:%M:%SZ")
+        trainer_params['to'] = options['to'].strftime("%Y-%m-%dT%H:%M:%SZ")
+        trainer_params['timestep'] = options['timestep']
+
+        learning_filename = "learning_" + base64.b64encode(uuid.uuid4().bytes).decode('utf8').rstrip('=\n').replace(
+                '/', '_').replace('+', '0')
+
+        data = {
+            'created': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            'trainer': trainer_params,
+            'strategy': strategy_params,
+            'watchers': watchers_params,
+            'trader': trader_params
+        }
+
+        self._learning_config = data
+        self._learning = learning_filename
 
     def init(self, options):
         # trainers
@@ -179,7 +242,6 @@ class TrainerTool(Tool):
             self._watcher_service = WatcherService(None, options)
 
             watchers_config = self._profile_config.get('watchers', {})
-            self._learning_config.get('watchers')
 
             for watcher_name, watcher_config in watchers_config.items():
                 if watcher_name in self._learning_config.get('watchers'):
@@ -396,7 +458,39 @@ class TrainerTool(Tool):
         if best_result:
             # found best result
             logger.info("Best candidate found !")
-            logger.info(best_result)
+
+            # summary
+            logger.info("Summary :")
+            logger.info("-- performance = %s" % best_result.get('performance', "0.00%"))
+            logger.info("-- max-draw-down = %s" % best_result.get('max-draw-down', "0.00%"))
+            logger.info("-- total-trades = %s" % best_result.get('total-trades', 0))
+
+            logger.info("-- best = %s" % best_result.get('best', "0.00%"))
+            logger.info("-- worst = %s" % best_result.get('worst', "0.00%"))
+
+            logger.info("-- succeed-trades = %s" % best_result.get('succeed-trades', 0))
+            logger.info("-- failed-trades = %s" % best_result.get('failed-trades', 0))
+            logger.info("-- roe-trades = %s" % best_result.get('roe-trades', 0))
+            logger.info("-- canceled-trades = %s" % best_result.get('canceled-trades', 0))
+
+            logger.info("-- max-loss-serie = %s" % best_result.get('max-loss-serie', 0))
+            logger.info("-- max-win-serie = %s" % best_result.get('max-win-serie', 0))
+
+            logger.info("-- stop-loss-in-loss = %s" % best_result.get('stop-loss-in-loss', 0))
+            logger.info("-- stop-loss-in-gain = %s" % best_result.get('canceled-trades', 0))
+            logger.info("-- take-profit-in-loss = %s" % best_result.get('take-profit-in-loss', 0))
+            logger.info("-- take-profit-in-gain = %s" % best_result.get('take-profit-in-gain', 0))
+
+            logger.info("-- open-trades = %s" % best_result.get('open-trades', 0))
+            logger.info("-- active-trades = %s" % best_result.get('active-trades', 0))
+
+            # display news values
+            logger.info("Selected parameters :")
+            for n, v in best_result.get('strategy', {}).get('parameters', {}).items():
+                logger.info("-- %s = %s" % (n, v))
+
+            logger.info("Parameters string to apply on manual usage :")
+            logger.info(json.dumps(best_result.get('strategy', {}).get('parameters', {})))
 
             # merge strategy parameters
             best_result_strategy_parameters = best_result.get('strategy', {}).get('parameters', {})
@@ -414,6 +508,7 @@ class TrainerTool(Tool):
             final_learning_config['results'] = self._trainer_commander.results
 
             # and finally update the learning file
+            logger.info("Write learning file to %s" % self._learning)
             utils.write_learning(options, self._learning, final_learning_config)
 
         logger.debug("join commander")

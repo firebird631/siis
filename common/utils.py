@@ -289,3 +289,24 @@ def parse_datetime(formatted: str) -> Union[datetime, None]:
             return None
 
     return None
+
+
+def period_from_str(period: str) -> float:
+    try:
+        if period.endswith('s'):
+            return float(period[:-1]) * 1.0
+        if period.endswith('m'):
+            return float(period[:-1]) * 60.0
+        if period.endswith('h'):
+            return float(period[:-1]) * 3600.0
+        elif period.endswith('d'):
+            return float(period[:-1]) * 3600.0 * 24
+        elif period.endswith('w'):
+            return float(period[:-1]) * 3600.0 * 24 * 7
+        elif period.endswith('M'):
+            return float(period[:-1]) * 3600.0 * 24 * 30
+        elif period.endswith('Y'):
+            return float(period[:-1]) * 3600.0 * 24 * 365
+        return float(period)
+    except ValueError:
+        return 0.0
