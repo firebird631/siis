@@ -271,12 +271,35 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
             return False
 
         trade.label = context.name
-        trade.timeframe = context.entry.timeframe.timeframe
+
+        if not trade.timeframe:
+            trade.timeframe = context.entry.timeframe
+
         trade.expiry = context.take_profit.timeout
         trade.entry_timeout = context.entry.timeout
         trade.context = context
 
         return True
+
+    def check_spread(self, signal: StrategySignal) -> bool:
+        """Compare spread from entry signal max allowed spread value, only if max-spread parameters is valid"""
+        if not signal or not signal.context:
+            return True
+
+        if signal.context.entry.max_spread <= 0.0:
+            return True
+
+        return self.instrument.market_spread <= signal.context.entry.max_spread
+
+    def check_min_profit(self, signal: StrategySignal) -> bool:
+        """Check for a minimal profit based on context parameters"""
+        if not signal or not signal.context:
+            return True
+
+        if signal.context.min_profit <= 0.0:
+            return True
+
+        return signal.profit() >= signal.context.min_profit
 
     #
     # streaming

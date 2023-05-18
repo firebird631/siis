@@ -232,6 +232,18 @@ class StrategySignal(object):
 
         return result
 
+    def check(self) -> bool:
+        if not self.p or not self.tp or not self.sl:
+            return False
+
+        if self.p == self.tp or self.p == self.sl:
+            return False
+
+        if self.p < 0 or self.tp < 0 or self.sl < 0:
+            return False
+
+        return True
+
     #
     # profit/loss
     #

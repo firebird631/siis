@@ -2341,11 +2341,24 @@ class StrategyTrader(object):
 
         if self._trades:
             with self._trade_mutex:
-                if len(self._trades) >= max_trades:
+                total_num = 0
+
+                for trade in self._trades:
+                    # only active and pending trade
+                    if trade.is_closed() or trade.is_closing():
+                        continue
+
+                    total_num += 1
+
+                if total_num >= max_trades:
                     result = "Total max trades of %s reached for %s" % (max_trades, self.instrument.symbol)
 
                 elif same_timeframe > 0 and same_timeframe_num > 0:
                     for trade in self._trades:
+                        # only active and pending trade
+                        if trade.is_closed() or trade.is_closing():
+                            continue
+
                         if trade.timeframe == same_timeframe:
                             same_timeframe_num -= 1
                             if same_timeframe_num <= 0:
@@ -2370,7 +2383,16 @@ class StrategyTrader(object):
 
         if self._trades:
             with self._trade_mutex:
-                if len(self._trades) >= max_trades:
+                total_num = 0
+
+                for trade in self._trades:
+                    # only active and pending trade
+                    if trade.is_closed() or trade.is_closing():
+                        continue
+
+                    total_num += 1
+
+                if total_num >= max_trades:
                     result = "Total max trades of %s reached for %s" % (max_trades, self.instrument.symbol)
 
                 elif same_context:
@@ -2381,6 +2403,10 @@ class StrategyTrader(object):
                         same_context_num = 0
 
                         for trade in self._trades:
+                            # only active and pending trade
+                            if trade.is_closed() or trade.is_closing():
+                                continue
+
                             if trade.context == same_context:
                                 same_context_num += 1
                                 if same_context_num >= same_context.max_trades:

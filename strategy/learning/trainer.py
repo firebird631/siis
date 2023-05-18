@@ -638,12 +638,14 @@ class TrainerCommander(object):
     BEST_PERF = 0      # select best from the best performance only
     BEST_WINRATE = 1   # from the best winrate (win number of loss number)
     BEST_WORST = 2     # select best from the best worst performance (meaning limiting the worst loss)
+    LOWER_CONT_LOSS = 3  # select the one having the lesser contiguous losses
 
     SELECTION = {
         'best-performance': BEST_PERF,
         'best-perf': BEST_PERF,
         'best-winrate': BEST_WINRATE,
         'best-worst': BEST_WORST,
+        'lower-cont-loss': LOWER_CONT_LOSS
     }
 
     _profile_parameters: dict
@@ -761,6 +763,7 @@ class TrainerCommander(object):
 
         max_perf = min_perf
         max_sf_rate = 0.0
+        min_loss_serie = 9999
 
         # simple method, the best overall performance
         for result in results:
@@ -782,14 +785,19 @@ class TrainerCommander(object):
                     max_perf = performance
                     best_result = result
 
+            elif method == TrainerCommander.LOWER_CONT_LOSS:
+                # only keep the less max contiguous losses
+                loss_serie = result.get('max-loss-serie', 0)
+
+                if loss_serie < min_loss_serie:
+                    min_loss_serie = loss_serie
+                    best_result = result
+
             elif method == TrainerCommander.BEST_WINRATE:
                 # only keep the best win-rate
-                try:
-                    succeed = result.get('succeed-trades', 0)
-                    failed = result.get('failed-trades', 0)
-                    sf_rate = (succeed + failed) / failed if failed > 0 else 1.0
-                except ValueError:
-                    continue
+                succeed = result.get('succeed-trades', 0)
+                failed = result.get('failed-trades', 0)
+                sf_rate = (succeed + failed) / failed if failed > 0 else 1.0
 
                 if sf_rate > max_sf_rate:
                     max_sf_rate = sf_rate

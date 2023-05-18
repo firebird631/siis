@@ -119,7 +119,10 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             return False
 
         trade.label = context.name
-        trade.timeframe = Instrument.TF_TRADE
+
+        if not trade.timeframe:
+            trade.timeframe = Instrument.TF_TRADE
+
         trade.expiry = context.take_profit.timeout
         trade.entry_timeout = context.entry.timeout
         trade.context = context
