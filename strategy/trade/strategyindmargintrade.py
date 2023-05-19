@@ -568,64 +568,67 @@ class StrategyIndMarginTrade(StrategyTrade):
 
     def order_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
         if signal_type == Signal.SIGNAL_ORDER_OPENED:
-            # already get at the return of create_order
-            if ref_order_id == self.create_ref_oid:
-                self.create_oid = data['id']
+            if ref_order_id:
+                if ref_order_id == self.create_ref_oid:
+                    # might already get at the return of create_order
+                    self.create_oid = data['id']
 
-                # init created timestamp at the create order open
-                if not self.eot:
-                    self.eot = data['timestamp']
+                    # init created timestamp at the create order open
+                    if not self.eot:
+                        self.eot = data['timestamp']
 
-                if data.get('stop-loss'):
-                    self.sl = data['stop-loss']
+                    if data.get('stop-loss'):
+                        self.sl = data['stop-loss']
 
-                if data.get('take-profit'):
-                    self.tp = data['take-profit']
+                    if data.get('take-profit'):
+                        self.tp = data['take-profit']
 
-                if self.e == 0:  # in case it occurs after position open signal
-                    self._entry_state = StrategyTrade.STATE_OPENED
+                    if self.e == 0:  # in case it occurs after position open signal
+                        self._entry_state = StrategyTrade.STATE_OPENED
 
-            elif ref_order_id == self.stop_ref_oid:
-                self.stop_oid = data['id']
+                elif ref_order_id == self.stop_ref_oid:
+                    self.stop_oid = data['id']
 
-                if not self.xot:
-                    self.xot = data['timestamp']
+                    if not self.xot:
+                        self.xot = data['timestamp']
 
-            elif ref_order_id == self.limit_ref_oid:
-                self.limit_oid = data['id']
+                elif ref_order_id == self.limit_ref_oid:
+                    self.limit_oid = data['id']
 
-                if not self.xot:
-                    self.xot = data['timestamp']
+                    if not self.xot:
+                        self.xot = data['timestamp']
 
         elif signal_type == Signal.SIGNAL_ORDER_DELETED:
             # order is no longer active
-            if data == self.create_oid:
-                self.create_ref_oid = None                
-                self.create_oid = None
-                self._entry_state = StrategyTrade.STATE_DELETED
+            if data:
+                if data == self.create_oid:
+                    self.create_ref_oid = None
+                    self.create_oid = None
+                    self._entry_state = StrategyTrade.STATE_DELETED
 
-            elif data == self.limit_oid:
-                self.limit_ref_oid = None
-                self.limit_oid = None
+                elif data == self.limit_oid:
+                    self.limit_ref_oid = None
+                    self.limit_oid = None
 
-            elif data == self.stop_oid:
-                self.stop_ref_oid = None
-                self.stop_oid = None
+                elif data == self.stop_oid:
+                    self.stop_ref_oid = None
+                    self.stop_oid = None
 
         elif signal_type == Signal.SIGNAL_ORDER_CANCELED:
             # order is no longer active
-            if data == self.create_oid:
-                self.create_ref_oid = None                
-                self.create_oid = None
-                self._entry_state = StrategyTrade.STATE_CANCELED
+            if data:
+                if data == self.create_oid:
+                    self.create_ref_oid = None
+                    self.create_oid = None
+                    self._entry_state = StrategyTrade.STATE_CANCELED
 
-            elif data == self.limit_oid:
-                self.limit_ref_oid = None
-                self.limit_oid = None
+                elif data == self.limit_oid:
+                    self.limit_ref_oid = None
+                    self.limit_oid = None
 
-            elif data == self.stop_oid:
-                self.stop_ref_oid = None
-                self.stop_oid = None
+                elif data == self.stop_oid:
+                    self.stop_ref_oid = None
+                    self.stop_oid = None
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price/qty modified, cannot really be used because the strategy might
@@ -637,7 +640,9 @@ class StrategyIndMarginTrade(StrategyTrade):
             # order fully or partially filled
             filled = 0
 
-            if data['id'] == self.create_oid or ref_order_id == self.create_ref_oid:
+            if (self.create_oid and data['id'] == self.create_oid) or (
+                    ref_order_id and ref_order_id == self.create_ref_oid):
+
                 prev_e = self.e
 
                 # in case of direct traded signal without open (could occur on bitmex market order)
@@ -730,8 +735,10 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
-            elif (data['id'] == self.limit_oid or data['id'] == self.stop_oid or
-                  ref_order_id == self.limit_ref_oid or ref_order_id == self.stop_ref_oid):
+            elif (self.limit_oid and data['id'] == self.limit_oid) or (
+                    self.stop_oid and data['id'] == self.stop_oid) or (
+                    ref_order_id and ref_order_id == self.limit_ref_oid) or (
+                    ref_order_id and ref_order_id == self.stop_ref_oid):
 
                 prev_x = self.x
 
@@ -855,28 +862,30 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self._stats['profit-loss-currency'] = data['profit-currency']
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
-            # no longer related position, have to clean up any related trades in case of manual close, liquidation
-            self.position_id = None
+            # filter only if the signal timestamp occurs after the creation of this trade
+            if data.get('timestamp') > self.eot:
+                # no longer related position, have to clean up any related trades in case of manual close, liquidation
+                self.position_id = None
 
-            # when position closed from outside or on liquidation but this could create side effect
-            # during a reversal the new trade can receive the deleted position signal and forced to be closed,
-            # but it might not. maybe the timestamp could help to filter
-            # if self.x < self.e:
-            #     # mean fill the rest (because qty can concerns many trades...)
-            #     filled = instrument.adjust_quantity(self.e - self.x)
-            #
-            #     if data.get('exec-price') is not None and data['exec-price'] > 0:
-            #         # increase/decrease profit/loss (over entry executed quantity)
-            #         if self.dir > 0:
-            #             self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
-            #         elif self.dir < 0:
-            #             self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
-            #
-            # if self._exit_state != StrategyTrade.STATE_FILLED:
-            #     self._exit_state = StrategyTrade.STATE_FILLED
-            #
-            #     # for stats
-            #     self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+                # when position closed from outside or on liquidation but this could create side effect
+                # during a reversal the new trade can receive the deleted position signal and forced to be closed,
+                # but it might not. maybe the timestamp could help to filter
+                if self.x < self.e:
+                    # mean fill the rest (because qty can concerns many trades...)
+                    filled = instrument.adjust_quantity(self.e - self.x)
+
+                    if data.get('exec-price') is not None and data['exec-price'] > 0:
+                        # increase/decrease profit/loss (over entry executed quantity)
+                        if self.dir > 0:
+                            self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
+                        elif self.dir < 0:
+                            self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
+
+                if self._exit_state != StrategyTrade.STATE_FILLED:
+                    self._exit_state = StrategyTrade.STATE_FILLED
+
+                    # for stats
+                    self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
     def is_target_order(self, order_id: str, ref_order_id: str) -> bool:
         if order_id and (order_id == self.create_oid or order_id == self.stop_oid or order_id == self.limit_oid):

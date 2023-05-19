@@ -471,6 +471,7 @@ class BitMEXWebsocket(object):
 
         except websocket.WebSocketException as e:
             error_logger.error(str(e))
+
         except Exception as e:
             error_logger.error(repr(e))
             traceback_logger.error(traceback.format_exc())

@@ -738,13 +738,15 @@ class StrategyMarginTrade(StrategyTrade):
                 self._stats['profit-loss-currency'] = data['profit-currency']
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
-            # no longer related position
-            self.position_id = None
+            # filter only if the signal timestamp occurs after the creation of this trade
+            if data.get('timestamp') > self.eot:
+                # no longer related position
+                self.position_id = None
 
-            if data.get('profit-loss'):
-                self._stats['unrealized-profit-loss'] = data['profit-loss']
-            if data.get('profit-currency'):
-                self._stats['profit-loss-currency'] = data['profit-currency']
+                if data.get('profit-loss'):
+                    self._stats['unrealized-profit-loss'] = data['profit-loss']
+                if data.get('profit-currency'):
+                    self._stats['profit-loss-currency'] = data['profit-currency']
 
         elif signal_type == Signal.SIGNAL_POSITION_AMENDED:
             # might not occur
