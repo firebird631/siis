@@ -1484,7 +1484,10 @@ class StrategyTrade(object):
                     self._expiry or "Never",
                     "Manual-Trade" if self._user_trade else "Auto-Trade", self.state_to_str())
 
-        data = [msg1, msg2]
+        msg3 = "Entry state : %s / Exit state : %s" % (
+            self.trade_state_to_str(self._entry_state), self.trade_state_to_str(self._exit_state))
+
+        data = [msg1, msg2, msg3]
 
         if self._comment:
             data.append("Comment: %s" % self._comment)

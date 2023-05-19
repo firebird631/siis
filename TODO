@@ -95,12 +95,20 @@ Sum order :
 # Bugs #
 ########
 
+- parfois un trade reste ouvert sur Bitmex, il reste en Waiting pourtant il a quantity filled en sortie et la position
+  est pourtant ferme
+
+- les ordres avec binance ne sont pas retire du trader (oblige de reconnect pour purger la liste)
+
+- Probleme sur le papertrader en backtest avec ind margin en cas de reversal sur la meme frame (close de trade oppose,
+  ouverture de nouveaux reversal), le trade est automatiquement ferme surement a cause de la position interne
+
 - Sur le Web trader on ne peu pas faire des reduce de quantity < à 1
 - Si on passe en pip au lieu de % ça n'affiche pas tjs bien la valeur selon le marché pour les modify SL / TP
 
-#114 Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
+- Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
 
-#87 Problème sur le comptage de la quantité de sortie, et du prix moyen de sortie d'un trade
+- Problème sur le comptage de la quantité de sortie, et du prix moyen de sortie d'un trade
     - En effet si la sortie est effectué par plusieurs ordres dans le cas du filled et exec-price, pas de problème,
         tout s'ajoute, mais si on a que cumulative-filled et avg-price alors remplacer les valeurs comme sur
         le trade d'entré va écraser les valeurs liées au trades de sorties précédents.
@@ -108,10 +116,7 @@ Sum order :
             pour une raison (stop-loss, timeout) un ordre de sortie au market (qui va devoir cancel le premier ordre)
     - Donc gérer peut être 2 compteurs pour la sortie, un temporaire lié au trade de sortie actif, et le normal
 
-#96 Valeur d'un pip pour les marchés BitMex => et corriger ainsi calcule uPnl.
-    - Enfin même question avec BinanceFutures, calcule fait sur une supposition, mais par contre reste le prob pour le uPnl
-
-#75 TD9 countdown a debug et tester
+- TD9 countdown a debug et tester
 
 
 ##########
@@ -121,16 +126,17 @@ Sum order :
 - paper trader base exchange rate mais surtout contract size doit etre recalcule a chaque step en backtest
     - pose probleme sur bitmex uniquement sinon la valeur reste a l'initiale en DB
 
-- def dumps_context(self, context_id: str) -> Union[dict, None]: doit etre generic et might use context dumps method
-- supprimer les TraderContextBuilder et remplacer par la registry
+- def dumps_context(self, context_id: str) -> Union[dict, None]: doit etre generic et doit utiliser context dumps method
+   - est ce qu'on veut vraiment dumps ca... au final c'est plus l'oeuvre de la strategy
+
 - simplifier les context, un seul type, et donc un seul "context" dans les parametres (toutes les strategies doivent être simplifiées)
 
-#124 allow/deny monitoring IP list plus propre, mais attention aux conf des bots si changement de config
+- allow/deny monitoring IP list plus propre, mais attention aux conf des bots si changement de config
     - methode pour ajouter/retirer des IP une fois lancé ? mais moyen sécure ...
 
-#122 send an error notification in case of a trade goes to ERROR state
+- send an error notification in case of a trade goes to ERROR state
 
-#57 Verification des trades par la method check :
+- Verification des trades par la method check :
     - implementer order_info pour le trader bitmex et verifier
     - implementer order_info pour le trader ig et verifier
     - verifier order_info pour le trader binance
@@ -142,17 +148,17 @@ Sum order :
 # Uniformization #
 ##################
 
-#108 Move from siis.py for the resting command part to command_handler
+- Move from siis.py for the resting command part to command_handler
 
-#89 Finir les conversion des tools avec le model Tool (binarizer, fetcher, optimizer)
+- Finir les conversion des tools avec le model Tool (binarizer, fetcher, optimizer)
 
-#119 close_position and modify_position must return Order REASON code in place of boolean
+- close_position and modify_position must return Order REASON code in place of boolean
 
-#24 Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
+- Uniformiser l'order book (bitmex, binance, binancefutures, kraken)
     - avoir un object OrderBook facile à mettre à jour et à exploiter
     - utiliser DepthCacheManager pour binance et binancefutures
 
-#60 Gérer la partie locked sur le paper trader en mode asset
+- Gérer la partie locked sur le paper trader en mode asset
     - ne pas tout gérer en free, peu important car ça n'empêche pas de fonctionner
 
 
@@ -160,22 +166,22 @@ Sum order :
 # Bonus #
 #########
 
-#118 Commande de fusion et split des trades pour un instrument donné (à réfléchir)
+- Commande de fusion et split des trades pour un instrument donné (à réfléchir)
 
-#85 Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, ainsi avoir le trigger coté bot,
+- Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, ainsi avoir le trigger coté bot,
     et ne pas bloquer les fonds coté broker
 
-#117 A chaque fois que un espace (separateur de parametre) est inséré, lors d'une commande, proposer l'entrée suivante
+- A chaque fois que un espace (separateur de parametre) est inséré, lors d'une commande, proposer l'entrée suivante
     de HELP de la commande, en fonction de l'index
 
-#115 tool withdraw (ou command) simple avec pin code (2AF) paire et addresse
+- tool withdraw (ou command) simple avec pin code (2AF) paire et addresse
     - peut utiliser un alias d'adresse ou l'adresse enregistré par défaut (wallets.json)
     - montant de la transaction
 
-#121 tool withdraw emergency (ou command) qui annule tout les buy pending ou incomplet,
+- tool withdraw emergency (ou command) qui annule tout les buy pending ou incomplet,
     et qui transfert sur les hard wallets (ou soft wallet)
 
-#117 tool withdraw emergency (ou command) comme précédente mais qui va revendre toutes les paires
+- tool withdraw emergency (ou command) comme précédente mais qui va revendre toutes les paires
     sur une seule de reference et ensuite transferer sur le le wallet de reference
         - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
 

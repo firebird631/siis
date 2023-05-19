@@ -855,26 +855,28 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self._stats['profit-loss-currency'] = data['profit-currency']
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
-            # no longer related position, have to cleanup any related trades in case of manual close, liquidation
+            # no longer related position, have to clean up any related trades in case of manual close, liquidation
             self.position_id = None
 
-            # @todo when position closed from outside ...
-            if self.x < self.e:
-                # mean fill the rest (because qty can concerns many trades...)
-                filled = instrument.adjust_quantity(self.e - self.x)
-
-                if data.get('exec-price') is not None and data['exec-price'] > 0:
-                    # increase/decrease profit/loss (over entry executed quantity)
-                    if self.dir > 0:
-                        self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
-                    elif self.dir < 0:
-                        self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
-
-            if self._exit_state != StrategyTrade.STATE_FILLED:
-                self._exit_state = StrategyTrade.STATE_FILLED
-
-                # for stats
-                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+            # when position closed from outside or on liquidation but this could create side effect
+            # during a reversal the new trade can receive the deleted position signal and forced to be closed,
+            # but it might not. maybe the timestamp could help to filter
+            # if self.x < self.e:
+            #     # mean fill the rest (because qty can concerns many trades...)
+            #     filled = instrument.adjust_quantity(self.e - self.x)
+            #
+            #     if data.get('exec-price') is not None and data['exec-price'] > 0:
+            #         # increase/decrease profit/loss (over entry executed quantity)
+            #         if self.dir > 0:
+            #             self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
+            #         elif self.dir < 0:
+            #             self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
+            #
+            # if self._exit_state != StrategyTrade.STATE_FILLED:
+            #     self._exit_state = StrategyTrade.STATE_FILLED
+            #
+            #     # for stats
+            #     self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
     def is_target_order(self, order_id: str, ref_order_id: str) -> bool:
         if order_id and (order_id == self.create_oid or order_id == self.stop_oid or order_id == self.limit_oid):
