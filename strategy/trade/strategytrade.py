@@ -492,20 +492,20 @@ class StrategyTrade(object):
 
     def is_opening(self) -> bool:
         """
-        Is entry order in progress.
+        Is entry order in progress (entry quantity is in progress).
         """
         return (self._entry_state == StrategyTrade.STATE_OPENED or
                 self._entry_state == StrategyTrade.STATE_PARTIALLY_FILLED)
 
     def is_closing(self) -> bool:
         """
-        Is close order in progress.
+        Is close order in progress (do not try to close or cancel again).
         """
         return self._closing and self._exit_state != StrategyTrade.STATE_FILLED
 
     def is_closed(self) -> bool:
         """
-        Is trade fully closed (all qty sold).
+        Is trade fully closed (all realized entry qty was sold).
         """
         return self._exit_state == StrategyTrade.STATE_FILLED
 

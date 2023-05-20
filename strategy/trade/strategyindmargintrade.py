@@ -415,7 +415,9 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self.create_ref_oid = None
                 self.create_oid = None
 
-                self._entry_state = StrategyTrade.STATE_CANCELED
+                if self.e <= 0:
+                    # only if non realized entry qty
+                    self._entry_state = StrategyTrade.STATE_CANCELED
             else:
                 data = trader.order_info(self.create_oid, instrument)
 
@@ -604,7 +606,10 @@ class StrategyIndMarginTrade(StrategyTrade):
                 if data == self.create_oid:
                     self.create_ref_oid = None
                     self.create_oid = None
-                    self._entry_state = StrategyTrade.STATE_DELETED
+
+                    if self.e <= 0:
+                        # entry state as deleted only if non (or partially) filled
+                        self._entry_state = StrategyTrade.STATE_DELETED
 
                 elif data == self.limit_oid:
                     self.limit_ref_oid = None
@@ -620,7 +625,10 @@ class StrategyIndMarginTrade(StrategyTrade):
                 if data == self.create_oid:
                     self.create_ref_oid = None
                     self.create_oid = None
-                    self._entry_state = StrategyTrade.STATE_CANCELED
+
+                    if self.e <= 0:
+                        # entry state as canceled only if non (or partially) filled
+                        self._entry_state = StrategyTrade.STATE_CANCELED
 
                 elif data == self.limit_oid:
                     self.limit_ref_oid = None
