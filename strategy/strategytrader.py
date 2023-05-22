@@ -1283,8 +1283,11 @@ class StrategyTrader(object):
     def order_signal(self, signal_type: int, data: dict):
         """
         Update quantity/filled on a trade, deleted or canceled.
+        An order signal can affect only one trade.
         """
         with self._trade_mutex:
+            remove_trade = None
+
             try:
                 for trade in self._trades:
                     # update each trade relating the order (might be a unique)
@@ -1294,9 +1297,18 @@ class StrategyTrader(object):
                     if trade.is_target_order(order_id, ref_order_id):
                         trade.order_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
 
-                        # notify update only if trade is not closed by the signal
-                        if not trade.is_closed():
+                        # notify update only if trade is not closed by the signal else let's do finalize_trade method
+                        if trade.can_delete():
+                            self.finalize_trade(self.strategy.timestamp, trade)
+                            remove_trade = trade
+                        else:
                             self.notify_trade_update(self.strategy.timestamp, trade)
+
+                        break
+
+                # remove trade immediately
+                if remove_trade:
+                    self._trades.remove(trade)
 
             except Exception as e:
                 error_logger.error(traceback.format_exc())
@@ -1305,8 +1317,11 @@ class StrategyTrader(object):
     def position_signal(self, signal_type: int, data: dict):
         """
         Update quantity/filled on a trade, delete or cancel.
+        A position signal can affect many trades.
         """
         with self._trade_mutex:
+            remove_trades = []
+
             try:
                 for trade in self._trades:
                     # update each trade relating the position (could be many)
@@ -1316,9 +1331,17 @@ class StrategyTrader(object):
                     if trade.is_target_position(position_id, ref_order_id):
                         trade.position_signal(signal_type, data[1], data[2] if len(data) > 2 else None, self.instrument)
 
-                        # notify update only if trade is not closed by the signal
-                        if not trade.is_closed():
+                        # notify update only if trade is not closed by the signal else let's do finalize_trade method
+                        if trade.is_closed():
+                            self.finalize_trade(self.strategy.timestamp, trade)
+                            remove_trades.append(trade)
+                        else:
                             self.notify_trade_update(self.strategy.timestamp, trade)
+
+                # remove trade(s) immediately
+                if remove_trades:
+                    for trade in remove_trades:
+                        self._trades.remove(trade)
 
             except Exception as e:
                 error_logger.error(traceback.format_exc())
@@ -1437,7 +1460,12 @@ class StrategyTrader(object):
 
     def update_trades(self, timestamp: float):
         """
-        Update managed trades per instruments and delete terminated trades.
+        Update active trades when price change or a volume is traded.
+        Trades are closed at stop or limit price when reached if there is no external orders.
+        It also process operation on trade for trades having operations.
+        And also process trades handlers if one or many are configured.
+        Another responsibility is to update the stop and limit orders in way to reflect the changes of quantity.
+        @note This is only called at each traded volume (or price change depending on the configured mode).
         """
         if not self._trades:
             return
@@ -1460,12 +1488,12 @@ class StrategyTrader(object):
                 #
 
                 if trade.has_operations():
-                    mutated = False
+                    op_mutated = False
 
                     for operation in trade.operations:
-                        mutated |= operation.test_and_operate(trade, self, trader)
+                        op_mutated |= operation.test_and_operate(trade, self, trader)
 
-                    if mutated:
+                    if op_mutated:
                         trade.cleanup_operations()
 
                 #
@@ -1489,7 +1517,6 @@ class StrategyTrader(object):
 
                     # process only on active trades
                     if not trade.is_active():
-                        # @todo timeout if not filled before condition...
                         continue
 
                     if trade.is_closing():
@@ -1554,96 +1581,17 @@ class StrategyTrader(object):
                         if trade.close(trader, self.instrument) > 0:
                             trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
 
-        #
-        # remove terminated, rejected, canceled and empty trades
-        #
+        self.process_handlers()
 
+    def cleanup_trades(self, timestamp):
+        """Remove terminated, rejected, canceled and empty trades."""
         mutated = False
 
         with self._trade_mutex:
             for trade in self._trades:
                 if trade.can_delete():
+                    # self.finalize_trade(timestamp, trade)
                     mutated = True
-
-                    # cleanup if necessary before deleting the trade related refs
-                    # but there might be no order or position remaining at this level
-                    trade.remove(trader, self.instrument)
-
-                    # record the trade for analysis and study
-                    if not trade.is_canceled():
-                        # last update of stats before logging (useless because no longer active and done before)
-                        trade.update_stats(self.instrument, timestamp)
-
-                        # realized profit/loss
-                        profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
-
-                        best_pl = (trade.best_price() - trade.entry_price if trade.direction > 0 else
-                                   trade.entry_price - trade.best_price()) / trade.entry_price
-
-                        worst_pl = (trade.worst_price() - trade.entry_price if trade.direction > 0 else
-                                    trade.entry_price - trade.worst_price()) / trade.entry_price
-
-                        # perf summed here it means that it is not done during partial closing
-                        if profit_loss != 0.0:
-                            self._stats['perf'] += profit_loss  # total profit/loss percent
-                            self._stats['best'] = max(self._stats['best'], profit_loss)  # retains the best win
-                            self._stats['worst'] = min(self._stats['worst'], profit_loss)  # retain the worst loss
-                            self._stats['high'] += best_pl  # sum like as all trades was closed at best price
-                            self._stats['low'] += worst_pl  # sum like as all trades was closed at worst price
-                            self._stats['closed'] += 1
-                            self._stats['rpnl'] += trade.unrealized_profit_loss
-
-                        # notification exit reason if not reported assume closed at market
-                        if not trade.exit_reason:
-                            trade.exit_reason = trade.REASON_CLOSE_MARKET
-
-                        record = trade.dumps_notify_exit(timestamp, self)
-
-                        if profit_loss < 0.0:
-                            self._stats['cont-loss'] += 1
-                            self._stats['cont-win'] = 0
-
-                            if trade.exit_reason in (trade.REASON_TAKE_PROFIT_LIMIT, trade.REASON_TAKE_PROFIT_MARKET):
-                                self._stats['tp-loss'] += 1
-                            elif trade.exit_reason in (trade.REASON_STOP_LOSS_MARKET, trade.REASON_STOP_LOSS_LIMIT):
-                                self._stats['sl-loss'] += 1
-
-                        elif profit_loss >= 0.0:
-                            self._stats['cont-loss'] = 0
-                            self._stats['cont-win'] += 1
-
-                            if trade.exit_reason in (trade.REASON_TAKE_PROFIT_LIMIT, trade.REASON_TAKE_PROFIT_MARKET):
-                                self._stats['tp-win'] += 1
-                            elif trade.exit_reason in (trade.REASON_STOP_LOSS_MARKET, trade.REASON_STOP_LOSS_LIMIT):
-                                self._stats['sl-win'] += 1
-
-                        if round(profit_loss * 1000) == 0.0:
-                            self._stats['roe'].append(record)
-                        elif profit_loss < 0:
-                            self._stats['failed'].append(record)
-                        elif profit_loss > 0:
-                            self._stats['success'].append(record)
-                        else:
-                            self._stats['roe'].append(record)
-
-                        if self._reporting == StrategyTrader.REPORTING_VERBOSE:
-                            try:
-                                self.report(trade, False)
-                            except Exception as e:
-                                error_logger.error(str(e))
-
-                        self.notify_trade_exit(timestamp, trade)
-
-                        # store for history, only for real mode
-                        if not trader.paper_mode:
-                            Database.inst().store_user_closed_trade((trader.name, trader.account.name,
-                                                                     self.instrument.market_id,
-                                                                     self.strategy.identifier, timestamp, record))
-                    else:
-                        if not trade.exit_reason:
-                            trade.exit_reason = trade.REASON_CANCELED_TIMEOUT
-
-                        self.notify_trade_exit(timestamp, trade)
 
             # recreate the list of trades
             if mutated:
@@ -1656,11 +1604,96 @@ class StrategyTrader(object):
 
                 self._trades = trades_list
 
-        #
-        # shared or local handler
-        #
+    def finalize_trade(self, timestamp: float, trade: StrategyTrade):
+        """
+        Cleanup a trade, finalize its state and statistics before removing it from manager.
+        @param timestamp: epoch timestamp in second
+        @param trade: Valid trade
+        """
+        if not trade:
+            return
 
-        self.process_handlers()
+        trader = self.strategy.trader()
+
+        # cleanup if necessary before deleting the trade related refs
+        # but there might be no order or position remaining at this level
+        trade.remove(trader, self.instrument)
+
+        # record the trade for analysis and study
+        if not trade.is_canceled():
+            # last update of stats before logging (useless because no longer active and done before)
+            trade.update_stats(self.instrument, timestamp)
+
+            # realized profit/loss
+            profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
+
+            best_pl = (trade.best_price() - trade.entry_price if trade.direction > 0 else
+                       trade.entry_price - trade.best_price()) / trade.entry_price
+
+            worst_pl = (trade.worst_price() - trade.entry_price if trade.direction > 0 else
+                        trade.entry_price - trade.worst_price()) / trade.entry_price
+
+            # perf summed here it means that it is not done during partial closing
+            if profit_loss != 0.0:
+                self._stats['perf'] += profit_loss  # total profit/loss percent
+                self._stats['best'] = max(self._stats['best'], profit_loss)  # retains the best win
+                self._stats['worst'] = min(self._stats['worst'], profit_loss)  # retain the worst loss
+                self._stats['high'] += best_pl  # sum like as all trades was closed at best price
+                self._stats['low'] += worst_pl  # sum like as all trades was closed at worst price
+                self._stats['closed'] += 1
+                self._stats['rpnl'] += trade.unrealized_profit_loss
+
+            # notification exit reason if not reported assume closed at market
+            if not trade.exit_reason:
+                trade.exit_reason = trade.REASON_CLOSE_MARKET
+
+            record = trade.dumps_notify_exit(timestamp, self)
+
+            if profit_loss < 0.0:
+                self._stats['cont-loss'] += 1
+                self._stats['cont-win'] = 0
+
+                if trade.exit_reason in (trade.REASON_TAKE_PROFIT_LIMIT, trade.REASON_TAKE_PROFIT_MARKET):
+                    self._stats['tp-loss'] += 1
+                elif trade.exit_reason in (trade.REASON_STOP_LOSS_MARKET, trade.REASON_STOP_LOSS_LIMIT):
+                    self._stats['sl-loss'] += 1
+
+            elif profit_loss >= 0.0:
+                self._stats['cont-loss'] = 0
+                self._stats['cont-win'] += 1
+
+                if trade.exit_reason in (trade.REASON_TAKE_PROFIT_LIMIT, trade.REASON_TAKE_PROFIT_MARKET):
+                    self._stats['tp-win'] += 1
+                elif trade.exit_reason in (trade.REASON_STOP_LOSS_MARKET, trade.REASON_STOP_LOSS_LIMIT):
+                    self._stats['sl-win'] += 1
+
+            if round(profit_loss * 1000) == 0.0:
+                self._stats['roe'].append(record)
+            elif profit_loss < 0:
+                self._stats['failed'].append(record)
+            elif profit_loss > 0:
+                self._stats['success'].append(record)
+            else:
+                self._stats['roe'].append(record)
+
+            if self._reporting == StrategyTrader.REPORTING_VERBOSE:
+                try:
+                    self.report(trade, False)
+                except Exception as e:
+                    error_logger.error(str(e))
+
+            self.notify_trade_exit(timestamp, trade)
+
+            # store for history, only for real mode
+            if not trader.paper_mode:
+                Database.inst().store_user_closed_trade((trader.name, trader.account.name,
+                                                         self.instrument.market_id,
+                                                         self.strategy.identifier, timestamp, record))
+        else:
+            if not trade.exit_reason:
+                trade.exit_reason = trade.REASON_CANCELED_TIMEOUT
+
+            self.notify_trade_exit(timestamp, trade)
 
     def on_received_liquidation(self, liquidation):
         """
@@ -1687,7 +1720,7 @@ class StrategyTrader(object):
     def trade_modify_take_profit(self, trade: StrategyTrade, limit_price: float, hard=True):
         """
         Modify the take-profit limit or market price of a trade.
-        @param trade: Valid trade model
+        @param trade: Valid trade
         @param limit_price: Limit price if hard else market price once reached
         @param hard: True create an order if possible depending on the market type else software order at market
             with possible slippage and at market price
@@ -1721,7 +1754,7 @@ class StrategyTrader(object):
     def trade_modify_stop_loss(self, trade: StrategyTrade, stop_price: float, hard=True):
         """
         Modify the stop-loss (or in profit) stop or market price of a trade.
-        @param trade: Valid trade model
+        @param trade: Valid trade
         @param stop_price: Stop market price if hard else market price once reached
         @param hard: True create an order if possible depending on the market type else software order at market
             with possible slippage and at market price
@@ -1750,7 +1783,6 @@ class StrategyTrader(object):
 
                 return StrategyTrade.ACCEPTED
 
-
         return StrategyTrade.NOTHING_TO_DO
 
     def trade_modify_oco(self, trade: StrategyTrade, limit_price: float, stop_price: float, hard=True):
@@ -1758,7 +1790,7 @@ class StrategyTrader(object):
         Modify the take-profit (limit or market) and stop-loss (or in profit) stop or market price of a trade.
         It will create if possible an OCO order.
 
-        @param trade: Valid trade model
+        @param trade: Valid trade
         @param limit_price: Limit price if hard else market price once reached
         @param stop_price: Stop market price if hard else market price once reached
         @param hard: True create an order if possible depending on the market type else software order at market
@@ -1793,8 +1825,8 @@ class StrategyTrader(object):
 
     def trade_reduce_quantity(self, trade: StrategyTrade, reduce_quantity: float):
         """
-        Modify the take-profit limit or market price of a trade.
-        @param trade: Valid trade model
+        Reduce the quantity of a trade or position.
+        @param trade: Valid trade
         @param reduce_quantity: Quantity to reduce from the active trade
         """
         if trade:

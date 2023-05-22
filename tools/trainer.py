@@ -510,6 +510,8 @@ class TrainerTool(Tool):
             # and finally update the learning file
             logger.info("Write learning file to %s" % self._learning)
             utils.write_learning(options, self._learning, final_learning_config)
+        else:
+            logger.info("No candidate found !")
 
         logger.debug("join commander")
         # self._trainer_commander.join()
