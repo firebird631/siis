@@ -190,7 +190,15 @@ class StrategyTrade(object):
     @property
     def direction(self) -> int:
         return self.dir
-    
+
+    @property
+    def is_long(self) -> bool:
+        return self.dir > 0
+
+    @property
+    def is_short(self) -> bool:
+        return self.dir < 0
+
     def close_direction(self) -> int:
         return -self.dir
 
@@ -1084,7 +1092,7 @@ class StrategyTrade(object):
         During the trade open, compute an estimation of the unrealized profit/loss delta in price.
         """
         # if no entry realised
-        if self.e <= 0.0:
+        if self.e <= 0.0 or self.entry_price <= 0.0:
             return 0.0
 
         # estimation at close price
@@ -1094,9 +1102,9 @@ class StrategyTrade(object):
         if not close_exec_price:
             return 0.0
 
-        if self.direction > 0 and self.entry_price > 0:
+        if self.direction > 0:
             return close_exec_price - self.entry_price
-        elif self.direction < 0 and self.entry_price > 0:
+        elif self.direction < 0:
             return self.entry_price - close_exec_price
         else:
             return 0.0
@@ -1106,12 +1114,12 @@ class StrategyTrade(object):
         Estimated take-profit rate.
         """
         # if no entry realised
-        if self.e <= 0.0:
+        if self.e <= 0.0 or self.entry_price <= 0.0:
             return 0.0
 
-        if self.direction > 0 and self.entry_price > 0:
+        if self.direction > 0:
             profit_loss = (self.tp - self.entry_price) / self.entry_price
-        elif self.direction < 0 and self.entry_price > 0:
+        elif self.direction < 0:
             profit_loss = (self.entry_price - self.tp) / self.entry_price
         else:
             profit_loss = 0.0
@@ -1129,12 +1137,12 @@ class StrategyTrade(object):
         Estimated stop-loss rate.
         """
         # if no entry realised
-        if self.e <= 0.0:
+        if self.e <= 0.0 or self.entry_price <= 0.0:
             return 0.0
 
-        if self.direction > 0 and self.entry_price > 0:
+        if self.direction > 0:
             profit_loss = (self.entry_price - self.sl) / self.entry_price
-        elif self.direction < 0 and self.entry_price > 0:
+        elif self.direction < 0:
             profit_loss = (self.sl - self.entry_price) / self.entry_price
         else:
             profit_loss = 0.0
@@ -1152,7 +1160,7 @@ class StrategyTrade(object):
         During the trade open, compute an estimation of the unrealized profit/loss rate.
         """
         # if no entry realised
-        if self.e <= 0.0:
+        if self.e <= 0.0 or self.entry_price <= 0.0:
             return 0.0
 
         # estimation at close price
@@ -1162,9 +1170,9 @@ class StrategyTrade(object):
         if not close_exec_price:
             return 0.0
 
-        if self.direction > 0 and self.entry_price > 0:
+        if self.direction > 0:
             profit_loss = (close_exec_price - self.entry_price) / self.entry_price
-        elif self.direction < 0 and self.entry_price > 0:
+        elif self.direction < 0:
             profit_loss = (self.entry_price - close_exec_price) / self.entry_price
         else:
             profit_loss = 0.0
