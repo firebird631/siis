@@ -110,11 +110,6 @@ class HttpWebSocketServer(object):
         reactor.callFromThread(listen, self, self._port, factory)
 
     def publish(self, stream_category, stream_group, stream_name, content):
-        # insert category, group and stream name
-        content['c'] = stream_category
-        content['g'] = stream_group
-        content['s'] = stream_name
-
         ServerProtocol.broadcast_message(content)
 
     def stop(self):

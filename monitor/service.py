@@ -21,8 +21,10 @@ traceback_logger = logging.getLogger('siis.traceback.monitor')
 
 class MonitorService(Service):
     """
-    Monitoring web service.
-    It also manage user installed scripts.
+    Monitoring Web service.
+    Support HTTP REST and WebSocket channel for command and supervision.
+    It also supports a REDIS channel streaming (read-only) to publish signals, charting data, performance.
+    And it is responsible to manage the user installed scripts.
     """
 
     MODE_NONE = 0
@@ -64,6 +66,24 @@ class MonitorService(Service):
         'trader-close-position': PERM_TRADER_CLOSE_POSITION,
     }
 
+    REDIS_DATA_NONE = 0
+    REDIS_DATA_STATUS = 1
+    REDIS_DATA_STRATEGY_TRADER = 2
+    REDIS_DATA_STRATEGY_TRADE_EX = 4
+    REDIS_DATA_STRATEGY_TRADE_UPDATE = 8
+    REDIS_DATA_INSTRUMENT_INFO = 16
+    REDIS_DATA_STRATEGY_CHART = 32
+
+    REDIS_DEFAULT_PORT = 6379
+    REDIS_STREAMS = {
+        "strategy-info": REDIS_DATA_STRATEGY_TRADER,
+        "strategy-trade-ex": REDIS_DATA_STRATEGY_TRADE_EX,
+        "strategy-trade-update": REDIS_DATA_STRATEGY_TRADE_UPDATE,
+        "instrument-info": REDIS_DATA_INSTRUMENT_INFO,
+        "status": REDIS_DATA_STATUS,
+        "strategy-chart": REDIS_DATA_STRATEGY_CHART
+    }
+
     def __init__(self, options):
         super().__init__("monitor", options)
 
@@ -77,8 +97,11 @@ class MonitorService(Service):
 
         self._thread = None
         self._thread_ws = None
+        self._thread_redis = None
+
         self._running = False
         self._running_ws = False
+        self._running_redis = False
 
         self._strategy_service = None
         self._trader_service = None
@@ -87,6 +110,7 @@ class MonitorService(Service):
 
         self._http = None
         self._ws = None
+        self._redis = None
 
         # host, port, allowed host, order, deny... from config
         self._mode = None
@@ -101,20 +125,21 @@ class MonitorService(Service):
         if options.get('monitor-port'):
             self._port = options['monitor-port']
 
+        # admin/managers api key/secret
         self.__api_key = self._monitoring_config.get('api-key', "")
         self.__api_secret = self._monitoring_config.get('api-secret', "")
 
-        # allow deny rules
-        allowdeny = self._monitoring_config.get('allowdeny', "any")
+        # allow / deny rules
+        allow_deny = self._monitoring_config.get('allow-deny', "any")
 
         self._allowed_ips = None
         self._denied_ips = None
 
-        if allowdeny == "allow":
+        if allow_deny == "allow":
             self._allowed_ips = self._monitoring_config.get('list', [])
-        elif allowdeny == "any":
+        elif allow_deny == "any":
             self._allowed_ips = None
-        elif allowdeny == "deny":
+        elif allow_deny == "deny":
             self._denied_ips = self._monitoring_config.get('list', [])
 
         # permissions
@@ -129,6 +154,26 @@ class MonitorService(Service):
         for perm in permissions:
             if perm in MonitorService.PERMISSIONS:
                 self._permissions |= MonitorService.PERMISSIONS[perm]
+
+        # REDIS
+        self._use_redis = False
+        self._redis_host = "127.0.0.1"
+        self._redis_port = MonitorService.REDIS_DEFAULT_PORT
+        self._redis_pwd = ""
+        self._redis_data = 0
+
+        if 'redis' in self._monitoring_config:
+            self._redis_host = self._monitoring_config['redis'].get('host', "127.0.0.1")
+            self._redis_port = self._monitoring_config['redis'].get('port', MonitorService.REDIS_DEFAULT_PORT)
+            self._redis_pwd = self._monitoring_config['redis'].get('password', "")
+
+            redis_data = self._monitoring_config['redis'].get('data', list(MonitorService.REDIS_STREAMS.keys()))
+
+            for data in redis_data:
+                if data in MonitorService.REDIS_STREAMS:
+                    self._redis_data |= MonitorService.REDIS_STREAMS[data]
+
+            self._use_redis = True
 
         self._client_ws_auth_token = {}
 
@@ -187,6 +232,26 @@ class MonitorService(Service):
     @property
     def has_trader_balance_view_perm(self):
         return self._permissions & MonitorService.PERM_TRADER_BALANCE_VIEW == MonitorService.PERM_TRADER_BALANCE_VIEW
+
+    @property
+    def redis_stream_strategy_trade_ex(self):
+        return self._redis_data & MonitorService.REDIS_DATA_STRATEGY_TRADE_EX == MonitorService.REDIS_DATA_STRATEGY_TRADE_EX
+
+    @property
+    def redis_stream_strategy_trade_update(self):
+        return self._redis_data & MonitorService.REDIS_DATA_STRATEGY_TRADE_UPDATE == MonitorService.REDIS_DATA_STRATEGY_TRADE_UPDATE
+
+    @property
+    def redis_stream_strategy_trader(self):
+        return self._redis_data & MonitorService.REDIS_DATA_STRATEGY_TRADER == MonitorService.REDIS_DATA_STRATEGY_TRADER
+
+    @property
+    def redis_stream_status(self):
+        return self._redis_data & MonitorService.REDIS_DATA_STATUS == MonitorService.REDIS_DATA_STATUS
+
+    @property
+    def redis_stream_strategy_chart(self):
+        return self._redis_data & MonitorService.REDIS_DATA_STRATEGY_CHART == MonitorService.REDIS_DATA_STRATEGY_CHART
 
     def permissions_str(self):
         """
@@ -291,10 +356,22 @@ class MonitorService(Service):
                 self._thread_ws = threading.Thread(name="monitor-ws", target=self.run_ws)
                 self._thread_ws.start()
 
+            if self._use_redis:
+                from .redis.redisclient import RedisClient
+
+                self._redis = RedisClient(self._redis_host, self._redis_port, self._redis_pwd,
+                                          self, self._strategy_service, self._trader_service,
+                                          self._watcher_service, self._view_service)
+
+                self._running_redis = True
+                self._thread_redis = threading.Thread(name="monitor-redis", target=self.run_redis)
+                self._thread_redis.start()
+
     def terminate(self):
-        # remove any streamables
+        # remove any streamable
         self._running = False
         self._running_ws = False
+        self._running_redis = False
 
         if self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
             if self._ws:
@@ -322,6 +399,20 @@ class MonitorService(Service):
             self._http = None
             self._ws = None
 
+        if self._use_redis:
+            if self._redis:
+                self._redis.stop()
+
+            if self._thread_redis:
+                try:
+                    self._thread_redis.join()
+                except:
+                    pass
+
+                self._thread_redis = None
+
+            self._redis = None
+
         # user scripts
         for k, script in self._scripts.items():
             try:
@@ -338,6 +429,13 @@ class MonitorService(Service):
     def run_http(self):
         self._http.start()
 
+    def run_redis(self):
+        self._redis.start()
+
+    #
+    # auth token
+    #
+
     def register_ws_auth_token(self, auth_token, ws_auth_token):
         self._client_ws_auth_token[auth_token] = ws_auth_token
 
@@ -348,14 +446,31 @@ class MonitorService(Service):
         if auth_token in self._client_ws_auth_token:
             del (self._client_ws_auth_token[auth_token])
 
+    #
+    # messages publisher
+    #
+
     def publish(self, stream_category, stream_group, stream_name, content):
+        # insert category, group and stream name before publish
+        content['c'] = stream_category
+        content['g'] = stream_group
+        content['s'] = stream_name
+
         try:
             if self._mode == MonitorService.MODE_HTTP_WEBSOCKET:
                 if self._running_ws:
                     self._ws.publish(stream_category, stream_group, stream_name, content)
 
+            if self._use_redis:
+                if self._running_redis:
+                    self._redis.publish(stream_category, stream_group, stream_name, content)
+
         except Exception as e:
             error_logger.error(repr(e))
+
+    #
+    # users scripts
+    #
 
     def has_script(self, name):
         return name in self._scripts

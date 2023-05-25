@@ -138,6 +138,10 @@ class StrategyTrader(object):
         self._min_price = 0.0
         self._min_vol24h = 0.0
 
+        self._hedging = False
+        self._reversal = True
+        self._dual = False
+
         self._min_traded_timeframe = 0
         self._max_traded_timeframe = Instrument.TF_YEAR
 

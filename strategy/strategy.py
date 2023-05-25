@@ -1820,6 +1820,7 @@ class Strategy(Runnable):
 
         parameters.setdefault('reversal', True)
         parameters.setdefault('hedging', False)
+        parameters.setdefault('dual', False)
         parameters.setdefault('affinity', 5)
         parameters.setdefault('trade-type', 0)
         parameters.setdefault('trade-delay', 0.0)
