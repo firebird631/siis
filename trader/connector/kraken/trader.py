@@ -145,7 +145,7 @@ class KrakenTrader(Trader):
 
     def update(self):
         """
-        Here we use the WS API so its only a simple sync we process here.
+        Here we use the WS API so it is only a simple sync we process here.
         """
         if not super().update():
             return False

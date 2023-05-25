@@ -24,6 +24,7 @@ class RedisClient(object):
         self._db = None
         self._conn_str = ""
         self.redis = import_module('redis', package='')
+        self._running = False
 
         self._host = host
         self._port = port
@@ -37,7 +38,7 @@ class RedisClient(object):
 
         self._stream_groups = set()
 
-    def start(self):
+    def connect(self):
         try:
             self._db = self.redis.Redis(host=self._host, port=self._port, password=self._password)
 
@@ -52,7 +53,26 @@ class RedisClient(object):
         except Exception as e:
             error_logger.error(str(e))
 
+    def start(self):
+        self.connect()
+
+        self._running = True
+
+        now = time.time()
+        last_ping = time.time()
+
+        while self._running:
+            if now - last_ping > 1.0:
+                try:
+                    self._db.ping()
+                except Exception as e:
+                    self.connect()
+
+            time.sleep(0.01)
+
     def stop(self):
+        self._running = False
+
         if self._db:
             self.cleanup()
             self._db = None
