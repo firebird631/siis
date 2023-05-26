@@ -276,10 +276,24 @@ class Watcher(Runnable):
         """
         return self._watched_instruments
 
-    def subscribe(self, market_id: str, ohlc_depths: Optional[dict[float]] = None,
-                  tick_depth: Optional[int] = None, order_book_depth: Optional[int] = None):
+    def prefetch(self, market_id: str, ohlc_depths: Optional[dict[float]] = None,
+                 tick_depth: Optional[int] = None, order_book_depth: Optional[int] = None):
         """
-        Subscribes for receiving data from price source for a market and a timeframe.
+        Prefetch history market data for a market and multiples timeframes.
+q
+        @param market_id str Valid market identifier
+        @param ohlc_depths A dict of timeframe with an integer value depth of history or -1 for full update from
+            last stored point
+        @param tick_depth An integer of depth value of ticks/trader or -1 for full update from last stored point
+        @param order_book_depth An integer of order book size
+        """
+        pass
+
+    def subscribe(self, market_id: str, ohlc_depths: Optional[dict[float]] = None,
+                  tick_depth: Optional[int] = None, order_book_depth: Optional[int] = None) -> bool:
+        """
+        Subscribes for receiving data from price source for a market and multiples timeframes.
+        It calls first prefetch and then realtime subscription (WS...)
 
         @param market_id str Valid market identifier
         @param ohlc_depths A dict of timeframe with an integer value depth of history or -1 for full update from

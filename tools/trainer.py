@@ -20,7 +20,9 @@ from importlib import import_module
 
 from common.utils import UTC, timeframe_from_str
 from config import utils
+from config.utils import merge_parameters
 from strategy.learning.trainer import TrainerJob, TrainerCommander
+from strategy.strategy import Strategy
 from tools.tool import Tool
 
 from terminal.terminal import Terminal
@@ -242,6 +244,12 @@ class TrainerTool(Tool):
             self._watcher_service = WatcherService(None, options)
 
             watchers_config = self._profile_config.get('watchers', {})
+            user_parameters = self._profile_config.get('strategy', {}).get('parameters', {})
+
+            # strategy_parameters = Strategy.parse_parameters(merge_parameters(default_parameters, user_parameters))
+            strategy_parameters = Strategy.parse_parameters(user_parameters)
+
+            # @todo need overrides (if market specific)
 
             for watcher_name, watcher_config in watchers_config.items():
                 if watcher_name in self._learning_config.get('watchers'):
@@ -265,11 +273,17 @@ class TrainerTool(Tool):
                         Terminal.inst().info("Fetch data for market %s..." % market_id)
                         watcher._watched_instruments.add(market_id)
 
+                        tfs = {tf['timeframe']: tf['history'] for tf in strategy_parameters.get(
+                            'timeframes', {}).values() if tf['timeframe'] > 0}
+
                         try:
                             watcher.update_markets_info()
-                            # @todo prefetch
+                            watcher.prefetch(market_id, tfs, None, None)
                         except Exception as e:
                             error_logger.error(str(e))
+
+                        # wait to DB commit
+                        time.sleep(1.0)
 
                     watcher.disconnect()
 
@@ -380,7 +394,6 @@ class TrainerTool(Tool):
                             logger.error("Abnormal process %s duration > %g seconds kill" % (
                                 learning_filename, now - initial_time))
                             process.kill()
-
                     try:
                         stdout, stderr = process.communicate(timeout=0.1)
                         if stdout:

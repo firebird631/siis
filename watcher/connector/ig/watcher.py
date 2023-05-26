@@ -298,55 +298,63 @@ class IGWatcher(Watcher):
     # instruments
     #
 
-    def subscribe(self, market_id, ohlc_depths=None, tick_depth=None, order_book_depth=None):
+    def prefetch(self, market_id: str, ohlc_depths=None, tick_depth=None, order_book_depth=None) -> bool:
+        """
+        fetch from 1m to 1w, we have a problem of the 10k candle limit per week, then we only fetch current
+        plus a delta allowing the time to prefetch the data into the DB from another source
+        but there is a problem with the 2h, 4h, 1d, 1w and 1m, because the data are aligned to the LSE timezone
+        and siis assume all are UTC based. the error in W or M is only of 1h or 2h then it is ok
+
+        for the 2h and 4h they are generated from the 1h candles,
+        so they are aligned to UTC, but the OHLC open time is still in LSE timezone
+
+        we could manage a time-offset for the stocks exchanges
+        """
+        if market_id not in self.__matching_symbols:
+            return False
+
+        if ohlc_depths:
+            try:
+                # sync to recent OHLCs
+                for timeframe, depth in ohlc_depths.items():
+                    # its 60 req/min max, but we cannot wait to long else there is a buffer
+                    # overflow with the tickers
+                    if timeframe in (Instrument.TF_1M,  Instrument.TF_2M, Instrument.TF_3M):
+                        self.fetch_and_generate(market_id, Instrument.TF_1M, 120, None)
+
+                    elif timeframe in (Instrument.TF_5M, Instrument.TF_10M):
+                        self.fetch_and_generate(market_id, Instrument.TF_5M, 120, None)
+
+                    elif timeframe == Instrument.TF_15M:
+                        self.fetch_and_generate(market_id, Instrument.TF_15M, 120, None)
+
+                    elif timeframe == Instrument.TF_30M:
+                        self.fetch_and_generate(market_id, Instrument.TF_30M, 120, None)
+
+                    elif timeframe in (Instrument.TF_1H, Instrument.TF_2H, Instrument.TF_3H, Instrument.TF_4H,
+                                       Instrument.TF_6H, Instrument.TF_8H, Instrument.TF_12H):
+                        self.fetch_and_generate(market_id, Instrument.TF_1H, 120, Instrument.TF_4H)
+
+                    elif timeframe in (Instrument.TF_1D, Instrument.TF_2D, Instrument.TF_3D):
+                        self.fetch_and_generate(market_id, Instrument.TF_1D, 7, None)
+
+                    elif timeframe == Instrument.TF_1W:
+                        self.fetch_and_generate(market_id, Instrument.TF_1W, 1, None)
+
+                    elif timeframe == Instrument.TF_MONTH:
+                        self.fetch_and_generate(market_id, Instrument.TF_MONTH, 1, None)
+
+            except:
+                # exceed of quota...
+                pass
+
+        return True
+
+    def subscribe(self, market_id: str, ohlc_depths=None, tick_depth=None, order_book_depth=None) -> bool:
         if market_id in self.__matching_symbols:
-            # fetch from 1m to 1w, we have a problem of the 10k candle limit per week, then we only fetch current
-            # plus a delta allowing the time to prefetch the data into the DB from another source
-            # but there is a problem with the 2h, 4h, 1d, 1w and 1m, because the data are aligned to the LSE timezone
-            # and siis assume all are UTC based. the error in W or M is only of 1h or 2h then its ok
-
-            # for the 2h and 4h they are generated from the 1h candles,
-            # so they are aligned to UTC, but the OHLC open time is still in LSE timezone
-
-            # we could manage a time-offset for the stocks exchanges
-
             if self._initial_fetch:
                 logger.info("%s prefetch for %s" % (self.name, market_id))
-
-                if ohlc_depths:
-                    try:
-                        # sync to recent OHLCs
-                        for timeframe, depth in ohlc_depths.items():
-                            # its 60 req/min max, but we cannot wait to long else there is a buffer
-                            # overflow with the tickers
-                            if timeframe in (Instrument.TF_1M,  Instrument.TF_2M, Instrument.TF_3M):
-                                self.fetch_and_generate(market_id, Instrument.TF_1M, 120, None)
-
-                            elif timeframe in (Instrument.TF_5M, Instrument.TF_10M):
-                                self.fetch_and_generate(market_id, Instrument.TF_5M, 120, None)
-
-                            elif timeframe == Instrument.TF_15M:
-                                self.fetch_and_generate(market_id, Instrument.TF_15M, 120, None)
-
-                            elif timeframe == Instrument.TF_30M:
-                                self.fetch_and_generate(market_id, Instrument.TF_30M, 120, None)
-
-                            elif timeframe in (Instrument.TF_1H, Instrument.TF_2H, Instrument.TF_3H, Instrument.TF_4H,
-                                               Instrument.TF_6H, Instrument.TF_8H, Instrument.TF_12H):
-                                self.fetch_and_generate(market_id, Instrument.TF_1H, 120, Instrument.TF_4H)
-
-                            elif timeframe in (Instrument.TF_1D, Instrument.TF_2D, Instrument.TF_3D):
-                                self.fetch_and_generate(market_id, Instrument.TF_1D, 7, None)
-
-                            elif timeframe == Instrument.TF_1W:
-                                self.fetch_and_generate(market_id, Instrument.TF_1W, 1, None)
-
-                            elif timeframe == Instrument.TF_MONTH:
-                                self.fetch_and_generate(market_id, Instrument.TF_MONTH, 1, None)
-
-                    except:
-                        # exceed of quota...
-                        pass
+                self.prefetch(market_id, ohlc_depths, tick_depth, order_book_depth)
 
             with self._mutex:
                 self.insert_watched_instrument(market_id, [0])

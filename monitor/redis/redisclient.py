@@ -17,6 +17,18 @@ traceback_logger = logging.getLogger('siis.traceback.monitor.redisclient')
 
 
 class RedisClient(object):
+    """
+    Redis connector. Connect to a local or distant Redis server to publish some info :
+        - trade entry/exit
+        - trade update
+        - strategy chart
+        - strategy info
+        - instrument details
+        - watchers, trader, strategy status
+
+    @todo Connection is ping every second but for now message during connection loss are lost. Could be logged and
+          send at reconnection
+    """
 
     def __init__(self, host: str, port: int, password: str, monitor_service,
                  strategy_service, trader_service, watcher_service, view_service):
