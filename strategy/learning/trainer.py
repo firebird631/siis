@@ -614,17 +614,19 @@ class TrainerJob(threading.Thread):
 
 class TrainerCommander(object):
 
-    BEST_PERF = 0      # select best from the best performance only
-    BEST_WINRATE = 1   # from the best winrate (win number of loss number)
-    BEST_WORST = 2     # select best from the best worst performance (meaning limiting the worst loss)
-    LOWER_CONT_LOSS = 3  # select the one having the lesser contiguous losses
+    BEST_PERF = 0          # select best from the best performance only
+    BEST_WINRATE = 1       # from the best win-rate (win number of loss number)
+    BEST_WORST = 2         # select best from the best worst performance (meaning limiting the worst loss)
+    LOWER_CONT_LOSS = 3    # select the one having the lesser contiguous losses
+    TAKE_PROFIT_RATIO = 4  # select the one having the best ratio of trade exit at take profit versus other exits
 
     SELECTION = {
         'best-performance': BEST_PERF,
         'best-perf': BEST_PERF,
         'best-winrate': BEST_WINRATE,
         'best-worst': BEST_WORST,
-        'lower-cont-loss': LOWER_CONT_LOSS
+        'lower-cont-loss': LOWER_CONT_LOSS,
+        'take-profit-ratio': TAKE_PROFIT_RATIO
     }
 
     _profile_parameters: dict
@@ -743,6 +745,7 @@ class TrainerCommander(object):
         max_perf = min_perf
         max_sf_rate = 0.0
         min_loss_serie = 9999
+        best_take_profit_rate = 0.0
 
         # simple method, the best overall performance
         for result in results:
@@ -776,10 +779,20 @@ class TrainerCommander(object):
                 # only keep the best win-rate
                 succeed = result.get('succeed-trades', 0)
                 failed = result.get('failed-trades', 0)
-                sf_rate = (succeed + failed) / failed if failed > 0 else 1.0
+                sf_rate = succeed / failed if failed > 0 else 1.0
 
                 if sf_rate > max_sf_rate:
                     max_sf_rate = sf_rate
+                    best_result = result
+
+            elif method == TrainerCommander.TAKE_PROFIT_RATIO:
+                # only keep the best number of trade at take-profit
+                tp_gain = result.get('take-profit-in-gain', 0)
+                total_trades = result.get('total-trades', 0)
+                take_profit_rate = tp_gain / total_trades if total_trades > 0 else 0.0
+
+                if take_profit_rate > best_take_profit_rate:
+                    best_take_profit_rate = take_profit_rate
                     best_result = result
 
         return best_result

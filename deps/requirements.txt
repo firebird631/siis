@@ -21,6 +21,7 @@ pycryptodome>=3.18.0
 twisted>=22
 autobahn>=23
 pyOpenSSL>=23
+service_identity>=21
 
 # only for named threads, look at https://pythonhosted.org/python-prctl/
 # python-prctl>=1.7

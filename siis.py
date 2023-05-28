@@ -376,9 +376,6 @@ def application(argv):
 
             tool = ToolClazz(options)
 
-            if not tool.check_options(options):
-                sys.exit(-1)
-
             if ToolClazz.need_identity():
                 Terminal.inst().info("Starting SIIS %s using %s identity..." % (
                     options.get('tool'), options['identity']))

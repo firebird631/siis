@@ -136,6 +136,8 @@ class TrainerTool(Tool):
         self._profile = options['profile']
 
         self._fitness = self._learning_config.get('trainer', {}).get('fitness', 'default')
+        self._selection = TrainerCommander.SELECTION.get(
+            self._learning_config.get('trainer', {}).get('selection', 'best-performance'), TrainerCommander.BEST_PERF)
         self._max_sub_process = options.get('parallel', 1)
 
         return True
@@ -224,10 +226,6 @@ class TrainerTool(Tool):
                 return False
 
             self._trainer_clazz = Clazz
-
-        # candidate selection method
-        self._selection = TrainerCommander.SELECTION.get(trainer.get('selection', 'best-performance'),
-                                                         TrainerCommander.BEST_PERF)
 
         # database manager
         Database.create(options)
@@ -449,8 +447,38 @@ class TrainerTool(Tool):
 
                         perf = float(trainer_result.get('performance', "0.00%").rstrip('%'))
 
-                        # @todo adjust by MDD ..
-                        fitness = -perf
+                        if self._selection == TrainerCommander.BEST_WINRATE:
+                            # fitness is global performance multiply by best win-rate
+                            succeed = trainer_result.get('succeed-trades', 0)
+                            failed = trainer_result.get('failed-trades', 0)
+                            sf_rate = succeed / failed if failed > 0 else 1.0
+
+                            if sf_rate < 0.5:
+                                # poor win rate, penalty
+                                fitness = 9999
+                            else:
+                                fitness = -(perf * sf_rate)
+                        elif self._selection == TrainerCommander.BEST_WORST:
+                            # fitness is global performance multiply by inverted rate of number contiguous loss
+                            # @todo
+                            fitness = -perf
+                        elif self._selection == TrainerCommander.LOWER_CONT_LOSS:
+                            # fitness is global performance multiply by inverted rate of number contiguous loss
+                            # @todo
+                            fitness = -perf
+                        elif self._selection == TrainerCommander.TAKE_PROFIT_RATIO:
+                            # fitness is global performance multiply by rate of number in winning take profit
+                            tp_gain = trainer_result.get('take-profit-in-gain', 0)
+                            total_trades = trainer_result.get('total-trades', 0)
+                            tp_win_rate = tp_gain / total_trades if total_trades > 0 else 0
+
+                            # if tp_win_rate < 0.25:
+                            #     fitness = 9999
+                            # else:
+                            fitness = -(perf * ((1.0 + tp_win_rate) ** 2))
+                        else:
+                            # default : best performance
+                            fitness = -perf
                     else:
                         Terminal.inst().info("-- %s trainer failed" % learning_filename)
                 else:
