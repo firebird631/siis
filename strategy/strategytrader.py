@@ -84,6 +84,11 @@ class StrategyTrader(object):
     _max_trades: int
     _min_price: float
     _min_vol24h: float
+    _hedging: bool
+    _reversal: bool
+    _dual: bool
+    _trade_short: bool
+    _allow_short: bool
     _min_traded_timeframe: float
     _max_traded_timeframe: float
 
@@ -142,10 +147,13 @@ class StrategyTrader(object):
         self._reversal = True
         self._dual = False
 
+        self._trade_short = False
+        self._allow_short = params.get('allow-short', True)
+
         self._min_traded_timeframe = 0
         self._max_traded_timeframe = Instrument.TF_YEAR
 
-        self._region_allow = params['region-allow']
+        self._region_allow = params.get('region-allow', False)
 
         self._initialized = 1       # initiate data before running, 1 waited, 2 in progress, 0 normal
         self._checked = 1           # check trades/orders/positions, 1 waited, 2 in progress, 0 normal
@@ -834,6 +842,30 @@ class StrategyTrader(object):
     @property
     def max_traded_timeframe(self) -> float:
         return self._max_traded_timeframe
+
+    @property
+    def hedging(self) -> bool:
+        return self._hedging
+
+    @property
+    def reversal(self) -> bool:
+        return self._reversal
+
+    @property
+    def dual(self) -> bool:
+        return self._dual
+
+    @property
+    def allow_short(self) -> bool:
+        return self._allow_short
+
+    @property
+    def trade_short(self) -> bool:
+        return self._trade_short
+
+    @property
+    def region_allow(self) -> bool:
+        return self._region_allow
 
     def restart(self):
         """
