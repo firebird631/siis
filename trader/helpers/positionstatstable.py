@@ -1,4 +1,4 @@
-# @date 2022-03-13
+# @date 2022-03-13watcher
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2022 Dream Overflow
 # Trader display table formatter helpers for views or notifiers

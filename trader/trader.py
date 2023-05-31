@@ -801,6 +801,7 @@ class Trader(Runnable):
             position = Position(self)
             position.set_position_id(position_data['id'])
             position.set_key(self.service.gen_key())
+            position.created_time = position_data.get('timestamp', 0.0)
 
             position.entry(
                 position_data['direction'],

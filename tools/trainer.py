@@ -18,9 +18,8 @@ import uuid
 
 from importlib import import_module
 
-from common.utils import UTC, timeframe_from_str
+from common.utils import UTC, period_from_str
 from config import utils
-from config.utils import merge_parameters
 from strategy.learning.trainer import TrainerJob, TrainerCommander
 from strategy.strategy import Strategy
 from tools.tool import Tool
@@ -145,7 +144,7 @@ class TrainerTool(Tool):
     def deduce_period(self, options):
         org_learning_params = self._profile_config.get('strategy', {}).get('parameters', {}).get('learning', {})
 
-        period = timeframe_from_str(org_learning_params.get('trainer', {}).get('period', 0.0))
+        period = period_from_str(org_learning_params.get('trainer', {}).get('period', 0.0))
         options['from'] = options['to'] - timedelta(seconds=period)
 
         logger.info("Deduce starting from %s to %s" % (

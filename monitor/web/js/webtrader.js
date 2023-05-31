@@ -525,21 +525,21 @@ $(window).ready(function() {
             'type': 'market'
         },
         'best+1': {
-            'label': 'Best +1',
+            'label': 'Best +1 (L/M)',
             'type': 'best+1'
         },
-        // 'best+2': {
-        //     'label': 'Best +2',
-        //     'type': 'best+2'
-        // },
+        'best+2': {
+            'label': 'Best +2 (L/M)',
+            'type': 'best+2'
+        },
         'best-1': {
-            'label': 'Best -1',
+            'label': 'Best -1 (L/T)',
             'type': 'best-1'
         },
-        // 'best-2': {
-        //     'label': 'Best -2',
-        //     'type': 'best-2'
-        // },
+        'best-2': {
+            'label': 'Best -2 (L/T)',
+            'type': 'best-2'
+        },
         'percent-0.05': {
             'label': '0.05%',
             'distance': 0.05,

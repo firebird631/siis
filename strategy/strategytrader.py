@@ -406,7 +406,7 @@ class StrategyTrader(object):
             if not k:
                 return "Invalid option format"
 
-        if keys[0] not in ('max-trades', 'context', 'mode'):
+        if keys[0] not in ('max-trades', 'context', 'mode', 'allow-short', 'region-allow'):
             return "Invalid option %s" % keys[0]
 
         if keys[0] == 'context':
@@ -529,9 +529,19 @@ class StrategyTrader(object):
 
         elif keys[0] == 'max-trades':
             try:
-                int(value)
+                v = int(value)
+                if v > 999 or v < 0:
+                    return "Value must be in range 0..999"
             except ValueError:
                 return "Value must be integer"
+
+        elif keys[0] in ('allow-short', 'region-allow'):
+            try:
+                v = int(value)
+                if v > 1 or v < 0:
+                    return "Value must be 0 or 1"
+            except ValueError:
+                return "Value must be 0 or 1"
 
         return None
 
@@ -554,7 +564,7 @@ class StrategyTrader(object):
             if not k:
                 return False
 
-        if keys[0] not in ('max-trades', 'context', 'mode'):
+        if keys[0] not in ('max-trades', 'context', 'mode', 'allow-short', 'region-allow'):
             return False
 
         if keys[0] == 'context':
@@ -768,6 +778,28 @@ class StrategyTrader(object):
                 v = int(value)
                 if 0 <= v <= 999:
                     self._max_trades = v
+                    return True
+                else:
+                    return False
+            except ValueError:
+                return False
+
+        elif keys[0] == 'allow-short':
+            try:
+                v = int(value)
+                if 0 <= v <= 1:
+                    self._allow_short = bool(v)
+                    return True
+                else:
+                    return False
+            except ValueError:
+                return False
+
+        elif keys[0] == 'region-allow':
+            try:
+                v = int(value)
+                if 0 <= v <= 1:
+                    self._region_allow = bool(v)
                     return True
                 else:
                     return False
