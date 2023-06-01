@@ -2174,6 +2174,9 @@ class StrategyTrader(object):
         """
         Cancel entry if take-profit price is reached before filling the entry.
         """
+        if trade is None:
+            return False
+
         if trade.is_opened() and trade.tp > 0.0:
             if trade.direction > 0:
                 if self.instrument.close_exec_price(trade.direction) >= trade.tp:
@@ -2195,6 +2198,12 @@ class StrategyTrader(object):
         """
         Timeout then can cancel a non-filled trade if exit signal occurs before timeout (timeframe).
         """
+        if trade is None:
+            return False
+
+        if timeout <= 0.0 or timestamp <= 0.0:
+            return False
+
         if trade.is_entry_timeout(timestamp, timeout):
             trader = self.strategy.trader()
             if trade.cancel_open(trader, self.instrument) > 0:
@@ -2208,6 +2217,9 @@ class StrategyTrader(object):
         Close a profitable trade that has passed its expiry.
         """
         if not trade:
+            return False
+
+        if timestamp <= 0.0:
             return False
 
         trade_profit_loss = trade.estimate_profit_loss(self.instrument)
