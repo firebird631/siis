@@ -17,6 +17,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
     Execute the order for indivisible margin position.
     @todo update to support only indivisible margin order
     @todo partial reduce position (avg exit price, qty of position)
+    @warning commission amount cannot be correct if commission/settlement currency is not stable (contract size missing)
     """
     current_position = None
     positions = []
@@ -190,7 +191,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             commission_amount = realized_position_cost * market.maker_fee + market.maker_commission
 
         # fees are realized loss
-        trader.account.use_balance(commission_amount)
+        # trader.account.use_balance(commission_amount)
 
         # unlock before notify signals
         trader.unlock()
@@ -237,8 +238,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             'stop-loss': order.stop_loss,
             'take-profit': order.take_profit,
             'time-in-force': order.time_in_force,
-            'commission-amount': commission_amount,
-            'commission-asset': commission_asset
+            # 'commission-amount': commission_amount,
+            # 'commission-asset': commission_asset
         }
 
         trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
@@ -356,7 +357,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             commission_amount = realized_position_cost * market.maker_fee + market.maker_commission
 
         # fees are realized loss
-        trader.account.use_balance(commission_amount)
+        # trader.account.use_balance(commission_amount)
 
         # unlock before notify signals
         trader.unlock()
@@ -403,8 +404,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             'stop-loss': order.stop_loss,
             'take-profit': order.take_profit,
             'time-in-force': order.time_in_force,
-            'commission-amount': commission_amount,
-            'commission-asset': commission_asset
+            # 'commission-amount': commission_amount,
+            # 'commission-asset': commission_asset
         }
 
         # logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))

@@ -1544,12 +1544,17 @@ class StrategyTrader(object):
         # for each trade check if the TP or SL is reached and trigger if necessary
         #
 
+        mutated = False
+
         with self._trade_mutex:
             for trade in self._trades:
 
                 # cannot manage a trade in state error
                 if trade.is_error():
                     continue
+
+                if trade.can_delete():
+                    mutated = True
 
                 #
                 # managed operation
@@ -1648,6 +1653,19 @@ class StrategyTrader(object):
                         # close a long or a short position at stop-loss level at market (taker fee)
                         if trade.close(trader, self.instrument) > 0:
                             trade.exit_reason = trade.REASON_STOP_LOSS_MARKET
+
+            if mutated:
+                # recreate the list of trades because a trade stay buy might not be here
+                trades_list = []
+
+                for trade in self._trades:
+                    if not trade.can_delete():
+                        # keep only active and pending trades
+                        trades_list.append(trade)
+
+                self._trades = trades_list
+
+                self.cleanup_trades(timestamp)
 
         self.process_handlers()
 
@@ -2170,7 +2188,7 @@ class StrategyTrader(object):
     # misc
     #
 
-    def check_entry_canceled(self, trade):
+    def check_entry_canceled(self, trade: StrategyTrade) -> bool:
         """
         Cancel entry if take-profit price is reached before filling the entry.
         """
@@ -2194,7 +2212,7 @@ class StrategyTrader(object):
 
         return False
 
-    def check_entry_timeout(self, trade, timestamp, timeout):
+    def check_entry_timeout(self, trade: StrategyTrade, timestamp: float, timeout: float) -> bool:
         """
         Timeout then can cancel a non-filled trade if exit signal occurs before timeout (timeframe).
         """
@@ -2212,7 +2230,7 @@ class StrategyTrader(object):
 
         return False
 
-    def check_trade_timeout(self, trade, timestamp):
+    def check_trade_timeout(self, trade: StrategyTrade, timestamp: float) -> bool:
         """
         Close a profitable trade that has passed its expiry.
         """
@@ -2254,7 +2272,7 @@ class StrategyTrader(object):
     # signal data streaming and monitoring
     #
 
-    def create_chart_streamer(self, timeframe) -> Union[Streamable, None]:
+    def create_chart_streamer(self, timeframe: float) -> Union[Streamable, None]:
         """
         Create a streamer for the chart at a specific timeframe.
         Must be overridden.
@@ -2281,7 +2299,7 @@ class StrategyTrader(object):
     def unsubscribe_info(self) -> bool:
         return False
 
-    def report_state(self, mode=0):
+    def report_state(self, mode=0) -> dict:
         """
         Collect the state of the strategy trader (instant) and return a dataset.
         Default only return a basic dataset, it must be overridden per strategy.

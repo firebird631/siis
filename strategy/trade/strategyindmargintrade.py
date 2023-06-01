@@ -717,8 +717,11 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                     # realized fees
                     if filled > 0:
-                        self._stats['entry-fees'] += filled * (
-                            instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
+                        self._stats['entry-fees'] = (instrument.maker_fee if maker else instrument.taker_fee) * (
+                                    self.aep * self.e)
+
+                        # self._stats['entry-fees'] += filled * (
+                        #     instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
 
                 #
                 # cleanup
@@ -828,8 +831,11 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                     # realized fees
                     if filled > 0:
-                        self._stats['exit-fees'] += filled * (
-                            instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
+                        self._stats['exit-fees'] = (instrument.maker_fee if maker else instrument.taker_fee) * (
+                                self.axp * self.x)
+
+                        # self._stats['exit-fees'] += filled * (
+                        #     instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
 
                 #
                 # cleanup

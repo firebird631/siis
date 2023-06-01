@@ -760,8 +760,8 @@ class BitMexWatcher(Watcher):
             market.base_exchange_rate, market.contract_size, market.value_per_pip = self.compute_market_data(
                 base_market, base_market_id, symbol, base_symbol, quote_symbol, instrument, xbtusd_instrument)
 
-            market.maker_fee = instrument.get('makerFee', 0.0)
-            market.taker_fee = instrument.get('takerFee', 0.0)
+            market.maker_fee = instrument.get('makerFee', 0.02)
+            market.taker_fee = instrument.get('takerFee', 0.075)
 
             # store the last market info to be used for backtesting
             Database.inst().store_market_info((
