@@ -162,7 +162,7 @@ class MonitorService(Service):
         self._redis_pwd = ""
         self._redis_data = 0
 
-        if 'redis' in self._monitoring_config:
+        if self._monitoring_config.get('redis', {}):
             self._redis_host = self._monitoring_config['redis'].get('host', "127.0.0.1")
             self._redis_port = self._monitoring_config['redis'].get('port', MonitorService.REDIS_DEFAULT_PORT)
             self._redis_pwd = self._monitoring_config['redis'].get('password', "")

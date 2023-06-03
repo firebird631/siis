@@ -124,6 +124,9 @@ class RedisClient(object):
         if not content:
             return
 
+        if not self._db:
+            return
+
         key = ""
 
         if stream_category == Streamable.STREAM_STRATEGY_TRADE:
