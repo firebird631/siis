@@ -37,7 +37,8 @@ from .learning.trainer import Trainer
 
 from .indicator.models import Limits
 
-from common.utils import timeframe_to_str, UTC, check_yes_no_opt, yes_no_opt, integer_opt, check_integer_opt
+from common.utils import timeframe_to_str, UTC, check_yes_no_opt, yes_no_opt, integer_opt, check_integer_opt, float_opt, \
+    check_float_opt
 from strategy.strategysignal import StrategySignal
 from terminal.terminal import Terminal
 
@@ -464,14 +465,12 @@ class StrategyTrader(object):
                             return "Timeout distance must be a float with an optional suffix '%' or 'pip'"
 
                     elif keys[3] == "multi":
-                        if value not in (0, 1):
-                            return "Multi must be 0 or 1"
+                        if not check_yes_no_opt(value):
+                            return "Value must be one of : 0, 1, false, true, yes, no"
 
                     elif keys[3] == "depth":
-                        try:
-                            v = int(value)
-                        except ValueError:
-                            return "Depth must be an integer"
+                        if not check_integer_opt(value, 1, 20):
+                            return "Depth must be an integer between 1 and 20"
 
                     elif keys[3] == "orientation":
                         choices = ('up', 'upper', 'high', 'higher', 'dn', 'down', 'low', 'lower', 'both')
@@ -492,20 +491,13 @@ class StrategyTrader(object):
                             return "Type must be one of %s" % ' '.join(choices)
 
                     elif keys[3] == 'quantity':
-                        try:
-                            v = float(value)
-                            if v < 0.0:
-                                return "Value must be greater or equal to zero"
-                        except ValueError:
-                            return "Value must be float"
+                        if not check_float_opt(value, 0.0, 10000000.0):
+                            return "Value must be a decimal greater than 0"
 
                     elif keys[3] == 'step':
-                        try:
-                            v = float(value)
-                            if v < 0.0:
-                                return "Value must be greater or equal to zero"
-                        except ValueError:
-                            return "Value must be float"
+                        if not check_float_opt(value, 0.0, 10000000.0):
+                            return "Value must be a decimal greater than 0"
+
                 else:
                     return "Invalid option %s" % keys[2]
 
@@ -661,19 +653,19 @@ class StrategyTrader(object):
                         return True
 
                     elif keys[3] == "multi":
-                        if value not in (0, 1):
+                        v = yes_no_opt(value)
+                        if v is None:
                             return False
 
                         if not hasattr(ex_entry_exit, 'multi'):
                             return False
 
-                        ex_entry_exit.multi = True if value else False
+                        ex_entry_exit.multi = v
                         return True
 
                     elif keys[3] == "depth":
-                        try:
-                            v = int(value)
-                        except ValueError:
+                        v = integer_opt(value, 0, 20)
+                        if v is None:
                             return False
 
                         if not hasattr(ex_entry_exit, 'depth'):
@@ -716,20 +708,18 @@ class StrategyTrader(object):
                         return context.modify_trade_quantity_type(self.instrument, value, quantity)
 
                     elif keys[3] == 'quantity':
-                        try:
-                            quantity = float(value)
-                        except ValueError:
+                        quantity = float_opt(value, 0.0, 10000000.0)
+                        if quantity is None:
                             return False
 
                         return context.modify_trade_quantity(quantity)
 
                     elif keys[3] == 'step':
-                        try:
-                            step = float(value)
-                        except ValueError:
+                        qty_step = float_opt(value, 0.0, 10000000.0)
+                        if qty_step is None:
                             return False
 
-                        return context.modify_trade_step(step)
+                        return context.modify_trade_step(qty_step)
 
                 else:
                     return False
@@ -748,12 +738,8 @@ class StrategyTrader(object):
                         if keys[4] not in ('specific', 'increment-step'):
                             return False
 
-                        try:
-                            quantity = float(value)
-                        except ValueError:
-                            return False
-
-                        if quantity < 0:
+                        quantity = float_opt(value, 0.0, 10000000.0)
+                        if quantity is None:
                             return False
 
                         return context.modify_trade_quantity_type(self.instrument, keys[4], quantity)

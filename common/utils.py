@@ -411,7 +411,7 @@ def check_float_opt(param: Union[str, float, int], min_value: float, max_value: 
     return False
 
 
-def float_opt(param: Union[str, float, int], min_value: int, max_value: int) -> Union[float, None]:
+def float_opt(param: Union[str, float, int], min_value: float, max_value: float) -> Union[float, None]:
     """
     Parse a float option from str, int or float.
     Return True if the option has a valid format and value from the range min/max.
