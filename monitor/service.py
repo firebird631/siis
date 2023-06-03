@@ -173,7 +173,8 @@ class MonitorService(Service):
                 if data in MonitorService.REDIS_STREAMS:
                     self._redis_data |= MonitorService.REDIS_STREAMS[data]
 
-            self._use_redis = True
+            if self._redis_host and self._redis_port and self._redis_data:
+                self._use_redis = True
 
         self._client_ws_auth_token = {}
 

@@ -35,7 +35,12 @@ class RedisClient(object):
 
         self._db = None
         self._conn_str = ""
-        self.redis = import_module('redis', package='')
+
+        try:
+            self.redis = import_module('redis', package='')
+        except Exception:
+            self.redis = None
+
         self._running = False
 
         self._host = host
@@ -51,11 +56,14 @@ class RedisClient(object):
         self._stream_groups = set()
 
     def connect(self):
+        if not self.redis:
+            return
+
         try:
             self._db = self.redis.Redis(host=self._host, port=self._port, password=self._password)
 
             # over SSL
-            # self._db = redis.Redis.from_url(url='rediss://:password@hostname:port/0',
+            # self._db = self.redis.Redis.from_url(url='rediss://:password@hostname:port/0',
             #                          password='password',
             #                          ssl_keyfile='path_to_keyfile',
             #                          ssl_certfile='path_to_certfile',
