@@ -310,3 +310,126 @@ def period_from_str(period: str) -> float:
         return float(period)
     except ValueError:
         return 0.0
+
+
+def check_yes_no_opt(param: Union[str, int, bool]) -> bool:
+    """
+    Parse and verify a yes/no option from str, int or direct bool.
+    Return True if the option has a valid format and value.
+    """
+    if type(param) is str:
+        return param.lower() in ("yes", "no", "0", "1", "true", "false")
+
+    elif type(param) is int:
+        return 0 <= param <= 1
+
+    elif type(param) is bool:
+        return True
+
+    return False
+
+
+def yes_no_opt(param: Union[str, int, bool]) -> Union[bool, None]:
+    """
+    Parse a yes/no option from str, int or direct bool.
+    Return True or False if respectively value means Yes or No else return None if invalid format or value.
+    """
+    if type(param) is str:
+        if param.lower() in ("yes", "true", "1"):
+            return True
+        elif param.lower() in ("no", "false", "0"):
+            return False
+
+    elif type(param) is int:
+        if 0 <= param <= 1:
+            return bool(param)
+
+    elif type(param) is bool:
+        return param
+
+    return None
+
+
+def check_integer_opt(param: Union[str, int], min_value: int, max_value: int) -> bool:
+    """
+    Parse and verify an integer option from str or int.
+    Return True if the option has a valid format and value from the range min/max.
+    """
+    if type(param) is str:
+        try:
+            v = int(param)
+            if min_value <= v <= max_value:
+                return True
+        except ValueError:
+            return False
+
+    elif type(param) is int:
+        return min_value <= param <= max_value
+
+    return False
+
+
+def integer_opt(param: Union[str, int], min_value: int, max_value: int) -> Union[int, None]:
+    """
+    Parse an integer option from str or int.
+    Return True the integer value if option has a valid format and value from the range min/max.
+    """
+    if type(param) is str:
+        try:
+            v = int(param)
+            if min_value <= v <= max_value:
+                return v
+        except ValueError:
+            return None
+
+    elif type(param) is int:
+        if min_value <= param <= max_value:
+            return param
+
+    return None
+
+
+def check_float_opt(param: Union[str, float, int], min_value: float, max_value: float) -> bool:
+    """
+    Parse and verify an float option from str, int or float.
+    Return True if the option has a valid format and value from the range min/max.
+    """
+    if type(param) is str:
+        try:
+            v = float(param)
+            if min_value <= v <= max_value:
+                return True
+        except ValueError:
+            return False
+
+    elif type(param) is float:
+        return min_value <= param <= max_value
+
+    elif type(param) is int:
+        return min_value <= float(param) <= max_value
+
+    return False
+
+
+def float_opt(param: Union[str, float, int], min_value: int, max_value: int) -> Union[float, None]:
+    """
+    Parse a float option from str, int or float.
+    Return True if the option has a valid format and value from the range min/max.
+    """
+    if type(param) is str:
+        try:
+            v = float(param)
+            if min_value <= v <= max_value:
+                return v
+        except ValueError:
+            return None
+
+    elif type(param) is float:
+        if min_value <= param <= max_value:
+            return param
+
+    elif type(param) is int:
+        if min_value <= float(param) <= max_value:
+            return param
+
+    return None

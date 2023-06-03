@@ -37,7 +37,7 @@ from .learning.trainer import Trainer
 
 from .indicator.models import Limits
 
-from common.utils import timeframe_to_str, UTC
+from common.utils import timeframe_to_str, UTC, check_yes_no_opt, yes_no_opt, integer_opt, check_integer_opt
 from strategy.strategysignal import StrategySignal
 from terminal.terminal import Terminal
 
@@ -425,12 +425,8 @@ class StrategyTrader(object):
                     return "Forbidden, changes on this context are locked by a handler."
 
                 if keys[2] == 'max-trades':
-                    try:
-                        v = int(value)
-                        if not 0 <= v <= 999:
-                            return "Value must be between 0..999"
-                    except ValueError:
-                        return "Value must be integer"
+                    if not check_integer_opt(value, 0, 999):
+                        return "Value must be an integer between 0 and 999"
 
                 elif keys[2] == 'mode':
                     if value not in context.MODE:
@@ -528,20 +524,12 @@ class StrategyTrader(object):
                             return "Type must be one of %s" % ' '.join(choices)
 
         elif keys[0] == 'max-trades':
-            try:
-                v = int(value)
-                if v > 999 or v < 0:
-                    return "Value must be in range 0..999"
-            except ValueError:
-                return "Value must be integer"
+            if not check_integer_opt(value, 0, 999):
+                return "Value must be an integer between 0 and 999"
 
         elif keys[0] in ('allow-short', 'region-allow'):
-            try:
-                v = int(value)
-                if v > 1 or v < 0:
-                    return "Value must be 0 or 1"
-            except ValueError:
-                return "Value must be 0 or 1"
+            if not check_yes_no_opt(value):
+                return "Value must be one of : 0, 1, false, true, yes, no"
 
         return None
 
@@ -584,15 +572,12 @@ class StrategyTrader(object):
                     return False
 
                 if keys[2] == 'max-trades':
-                    try:
-                        v = int(value)
-                        if 0 <= v <= 999:
-                            context.max_trades = v
-                            return True
-                        else:
-                            return False
-                    except ValueError:
+                    v = integer_opt(value, 0, 999)
+                    if v is None:
                         return False
+
+                    context.max_trades = v
+                    return True
 
                 elif keys[2] == 'mode':
                     if value not in context.MODE:
@@ -774,37 +759,28 @@ class StrategyTrader(object):
                         return context.modify_trade_quantity_type(self.instrument, keys[4], quantity)
 
         elif keys[0] == 'max-trades':
-            try:
-                v = int(value)
-                if 0 <= v <= 999:
-                    self._max_trades = v
-                    return True
-                else:
-                    return False
-            except ValueError:
+            v = integer_opt(value, 0, 999)
+            if v is None:
                 return False
+
+            self._max_trades = v
+            return True
 
         elif keys[0] == 'allow-short':
-            try:
-                v = int(value)
-                if 0 <= v <= 1:
-                    self._allow_short = bool(v)
-                    return True
-                else:
-                    return False
-            except ValueError:
+            v = yes_no_opt(value)
+            if v is None:
                 return False
 
+            self._allow_short = v
+            return True
+
         elif keys[0] == 'region-allow':
-            try:
-                v = int(value)
-                if 0 <= v <= 1:
-                    self._region_allow = bool(v)
-                    return True
-                else:
-                    return False
-            except ValueError:
+            v = yes_no_opt(value)
+            if v is None:
                 return False
+
+            self._region_allow = v
+            return True
 
         return False
 
