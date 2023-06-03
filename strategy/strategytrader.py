@@ -1376,7 +1376,7 @@ class StrategyTrader(object):
 
                 # remove trade immediately
                 if remove_trade:
-                    self._trades.remove(trade)
+                    self._trades.remove(remove_trade)
 
             except Exception as e:
                 error_logger.error(traceback.format_exc())
@@ -1530,7 +1530,7 @@ class StrategyTrader(object):
         """
         Update active trades when price change or a volume is traded.
         Trades are closed at stop or limit price when reached if there is no external orders.
-        It also process operation on trade for trades having operations.
+        It also processes operations on each trade having operations.
         And also process trades handlers if one or many are configured.
         Another responsibility is to update the stop and limit orders in way to reflect the changes of quantity.
         @note This is only called at each traded volume (or price change depending on the configured mode).

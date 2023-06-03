@@ -457,8 +457,8 @@ class StrategyTrade(object):
             # entry rejected
             return True
 
-        if ((self._entry_state == StrategyTrade.STATE_CANCELED or
-             self._entry_state == StrategyTrade.STATE_DELETED) and self.e <= 0):
+        if ((self._entry_state == StrategyTrade.STATE_CANCELED or self._entry_state == StrategyTrade.STATE_DELETED)
+                and self.e <= 0):
             # entry canceled or deleted and empty
             return True
 
@@ -549,6 +549,7 @@ class StrategyTrade(object):
     def is_valid(self, timestamp: float, validity: float) -> bool:
         """
         Return true if the trade is not expired (signal still acceptable) and entry quantity not fully filled.
+        @deprecated
         """
         if timestamp > 0.0 and validity > 0.0:
             return self.is_opening() and timestamp - self.entry_open_time <= validity
@@ -1488,7 +1489,7 @@ class StrategyTrade(object):
         msg2 = "Timeframe %s, Label %s, Entry timeout %s, Expiry %s, %s, Status %s." % (
                     timeframe_to_str(self._timeframe),
                     self._label,
-                    timeframe_to_str(self._entry_timeout),
+                    timeframe_to_str(self._entry_timeout) if self._entry_timeout > 0 else "Never",
                     self._expiry or "Never",
                     "Manual-Trade" if self._user_trade else "Auto-Trade", self.state_to_str())
 
