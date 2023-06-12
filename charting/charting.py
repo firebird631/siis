@@ -10,19 +10,16 @@ import threading
 import numpy as np
 import matplotlib
 
-matplotlib.use('Qt5Agg')
+# matplotlib.use('QtAgg')
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-import matplotlib.animation as animation
+
+import mplfinance as mpl
 
 from datetime import datetime, timedelta
+
 from matplotlib.dates import date2num
-
-from mpl_finance import candlestick_ohlc, candlestick2_ohlc, volume_overlay2
-
-from terminal.terminal import Terminal
 
 
 class SubChart(object):
@@ -127,8 +124,10 @@ class SubChart(object):
 
 				plt.ylabel(d[2])
 
-		if self.candles:
-			candlestick_ohlc(ax, self.candles[0], width=self.candles[1] or 0.0003, colorup='#aaaaaa', colordown='#444444', alpha=1.0)
+		# if self.candles:
+		# 	ax.plot(self.candles[0], type='candle', style='charles', volume=True, width=self.candles[1] or 0.0003)
+		# # 	ax.plot(self.candles[0], style='charles', volume=True)#, width=self.candles[1] or 0.0003)
+		# # 	# candlestick_ohlc(ax, self.candles[0], width=self.candles[1] or 0.0003, colorup='#aaaaaa', colordown='#444444', alpha=1.0)
 
 		for d in self.hlines:
 			if d is not None:
@@ -271,7 +270,7 @@ class Chart(object):
 		self.lock()
 
 		self._fig, self._ax = plt.subplots(nrows=nrows, ncols=1)
-		self._fig.canvas.set_window_title(self._name)
+		self._fig.canvas.setWindowTitle(self._name)
 		# self._fig.canvas.manager.window.setGeometry(0, Chart.DEFAULT_H-Chart.DEFAULT_H*(self._uid%2)+((1-(self._uid%2))*50), Chart.DEFAULT_W, Chart.DEFAULT_H)
 		self._fig.canvas.manager.window.setGeometry(0, 0, Chart.DEFAULT_W, Chart.DEFAULT_H)
 		# self._fig.canvas.manager.window.wm_geometry("+%d+%d" % (0, Chart.DEFAULT_H*self._uid))
@@ -543,12 +542,11 @@ class Chart(object):
 					break
 
 
-class Charting(threading.Thread):
+class Charting(object):
 	"""
 	Multiple chart but not at a time.
-	@todo need to create a stream of charting data and a websocket server to recast thoose stream to a webclient with more efficient plotting capacities
-	@todo need a display window where the data are sent, and adjust them as they goes outstide of the memory window, so need a memory + a display window
-	@todo but the best solution is sending data stream/update throught monitor and then a webclient with good charting API will using a WS display data
+	@todo need a display window where the data are sent, and adjust them as they goes outside of the memory window,
+	so need a memory + a display window
 	"""
 	__instance = None
 
@@ -562,21 +560,18 @@ class Charting(threading.Thread):
 	@classmethod
 	def terminate(cls):
 		if Charting.__instance is not None:
-			Charting.__instance.stop()
 			Charting.__instance = None
 
 	def __init__(self):
-		super().__init__(name="charting")
-
 		Charting.__instance = self
 
 		self._mutex = threading.RLock()
+		self._running = False
 
 		self._show = False
 		self._hide = False
 		self._render = False
 		self._visible = False
-		self._running = False
 		self._rendering = False
 
 		self._charts = {}
@@ -634,10 +629,12 @@ class Charting(threading.Thread):
 		return self._visible
 
 	def run(self):
+		self._running = True
+
 		plt.ion()
 
 		# remove the default figure
-		#plt.close(1)
+		# plt.close(1)
 		# fig = plt.gcf()
 		# plt.close(fig.number)
 
@@ -690,7 +687,7 @@ class Charting(threading.Thread):
 				if self._rendering and len(self._charts):
 					# plt.show(block=False)
 					try:
-						# that suck but it's like it is
+						# that suck, but it's like it is
 						# plt.pause(2.0)
 						my_pause(5.0)
 						pass
@@ -705,22 +702,14 @@ class Charting(threading.Thread):
 		plt.ioff()
 		plt.close('all')
 
-	def start(self):
-		if not self._running:
-			self._running = True
-			self.setDaemon(True)
-			super().start()
-
 	def stop(self):
 		if self._running:
 			self._running = False
 
-			if self.is_alive():
-				self.join()
-
 	@property
 	def running(self):
 		return self._running
+
 
 def my_pause(interval):
 	backend = plt.rcParams['backend']

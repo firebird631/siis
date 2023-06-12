@@ -7,6 +7,7 @@ import json
 import base64
 import uuid
 
+from common.utils import timeframe_from_str
 from monitor.service import MonitorService
 
 from twisted.web import server, resource, static
@@ -283,13 +284,32 @@ class StrategyInfoRestAPI(resource.Resource):
         try:
             content = json.loads(request.content.read().decode("utf-8"))
             command = content.get('command', "")
+            typename = content.get('type', "")
+            market_id = content.get('market-id', "")
+            timeframe = content.get('timeframe', "")
+
+            if self._strategy_service.strategy():
+                with self._strategy_service.strategy().mutex:
+                    strategy_trader = self._strategy_service.strategy().strategy_traders.get(market_id)
+                    if strategy_trader is None:
+                        return NoResource("Unknown market-id %s" % market_id)
 
             if command == "subscribe":
-                pass  # @todo
-                # results =
+                if typename == "chart":
+                    if not strategy_trader.subscribe_stream(timeframe_from_str(timeframe)):
+                        results['error'] = True
+                else:
+                    results['messages'].append("Missing type.")
+                    results['error'] = True
+
             elif command == "unsubscribe":
-                pass  # @todo
-                # results =
+                if typename == "chart":
+                    if not strategy_trader.unsubscribe_stream(timeframe_from_str(timeframe)):
+                        results['error'] = True
+                else:
+                    results['messages'].append("Missing type.")
+                    results['error'] = True
+
             else:
                 results['messages'].append("Missing command.")
                 results['error'] = True

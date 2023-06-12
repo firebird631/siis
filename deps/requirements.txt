@@ -28,7 +28,7 @@ service_identity>=21
 
 # for deprecated charting client
 matplotlib>=3.5.1
-mpl_finance>=0.10.0
+mplfinance>=0.12
 
 # for FTX client
 # websockets>=10.3

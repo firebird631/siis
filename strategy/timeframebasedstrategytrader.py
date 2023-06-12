@@ -311,6 +311,11 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     def stream(self):
         super().stream()
 
+        with self._mutex:
+            for k, timeframe in self.timeframes.items():
+                if timeframe.tf in self._timeframe_streamers:
+                    timeframe.stream(self._timeframe_streamers[timeframe.tf])
+
     def create_chart_streamer(self, timeframe: TimeframeBasedSub) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
                               self.strategy.identifier, "%s:%i" % (self.instrument.market_id, timeframe.tf))

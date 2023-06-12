@@ -126,17 +126,8 @@ class UnaliasCommand(Command):
 
 
 def register_general_commands(commands_handler):
-    cmd = HelpCommand(commands_handler)
-    commands_handler.register(cmd)
-
-    cmd = UserHelpCommand(commands_handler)
-    commands_handler.register(cmd)
-
-    cmd = VersionCommand()
-    commands_handler.register(cmd)
-
-    cmd = AliasCommand(commands_handler)
-    commands_handler.register(cmd)
-
-    cmd = UnaliasCommand(commands_handler)
-    commands_handler.register(cmd)
+    commands_handler.register(HelpCommand(commands_handler))
+    commands_handler.register(UserHelpCommand(commands_handler))
+    commands_handler.register(VersionCommand())
+    commands_handler.register(AliasCommand(commands_handler))
+    commands_handler.register(UnaliasCommand(commands_handler))

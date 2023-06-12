@@ -2,7 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
 # Stream dispatcher
-
+import time
 import traceback
 
 from monitor.streamable import Streamable
@@ -10,7 +10,7 @@ from monitor.client.strategy.strategychart import StrategyChart
 from monitor.client.strategy.strategyinfo import StrategyInfo
 
 import logging
-logger = logging.getLogger('siis.client.dispatcher')
+logger = logging.getLogger('siis.monitor.client.dispatcher')
 
 
 class Dispatcher(object):
@@ -32,7 +32,7 @@ class Dispatcher(object):
                 if strategy_info:
                     strategy_info.on_info(msg)
 
-                # this case is for strategy signals data but we want to display them on charts
+                # this case is for strategy signals data, but we want to display them on charts
                 for k, chart in self._charts.items():
                     if k.startswith(key+':'):
                         # propagate on each chart of this instrument

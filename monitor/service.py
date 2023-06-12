@@ -36,7 +36,7 @@ class MonitorService(Service):
     PERM_NONE = 0
     PERM_DEBUG = 1
     PERM_ADMIN = 2
-    
+
     PERM_STRATEGY_VIEW = 4
     PERM_STRATEGY_CLEAN_TRADE = 8
     PERM_STRATEGY_CLOSE_TRADE = 16
