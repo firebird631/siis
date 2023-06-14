@@ -51,6 +51,9 @@ class BitMexWatcher(Watcher):
 
         self._connector = None
 
+        self.__configured_symbols = set()  # cache for configured symbols set
+        self.__matching_symbols = set()  # cache for matching symbols
+
     def connect(self):
         super().connect()
 
@@ -67,7 +70,7 @@ class BitMexWatcher(Watcher):
                             self.service,
                             identity.get('api-key'),
                             identity.get('api-secret'),
-                            self.configured_symbols(),  # want WS subscribes to some instruments or all if ['*']
+                            [],
                             identity.get('host'),
                             (self, BitMexWatcher._ws_message))
                     else:
@@ -84,9 +87,28 @@ class BitMexWatcher(Watcher):
 
                     # get list of all available instruments, and list of subscribed
                     self._available_instruments = set(self._connector.all_instruments)
-                    self._watched_instruments = set(self._connector.watched_instruments)
+                    configured_symbols = self.configured_symbols()
 
-                    # any markets are watched by default WS connection
+                    matching_symbols = self.matching_symbols_set(
+                        configured_symbols, self._connector.all_instruments)
+
+                    # always XBTUSD as needed for others pairs or computing
+                    if 'XBTUSD' not in matching_symbols:
+                        matching_symbols.add('XBTUSD')
+
+                    # cache them
+                    self.__configured_symbols = configured_symbols
+                    self.__matching_symbols = matching_symbols
+
+                    # retry the previous subscriptions
+                    if self._watched_instruments:
+                        logger.debug("%s subscribe to markets data stream..." % self.name)
+
+                        for market_id in self._watched_instruments:
+                            try:
+                                self._connector.subscribe(market_id)
+                            except Exception as e:
+                                error_logger.error(str(e))
 
                     self._ready = True
                     self._connecting = False
@@ -110,7 +132,7 @@ class BitMexWatcher(Watcher):
                 if self._connector:
                     self._connector.disconnect()
                     self._connector = None
-            
+
                 self._ready = False
                 self._connecting = False
 
@@ -201,6 +223,9 @@ class BitMexWatcher(Watcher):
     #
 
     def prefetch(self, market_id: str, ohlc_depths=None, tick_depth=None, order_book_depth=None) -> bool:
+        if market_id not in self.__matching_symbols:
+            return False
+
         if ohlc_depths:
             for timeframe, depth in ohlc_depths.items():
                 if timeframe == Instrument.TF_1M:
@@ -248,29 +273,46 @@ class BitMexWatcher(Watcher):
         return True
 
     def subscribe(self, market_id: str, ohlc_depths=None, tick_depth=None, order_book_depth=None) -> bool:
-        if market_id in self._watched_instruments:
-            # subscribed instrument
-            self.insert_watched_instrument(market_id, [0])
+        if market_id not in self.__matching_symbols:
+            return False
 
-            # fetch from source
-            if self._initial_fetch:
-                logger.info("%s prefetch for %s" % (self.name, market_id))
-                self.prefetch(market_id, ohlc_depths, tick_depth, order_book_depth)
+        # already subscribed
+        # if market_id in self._watched_instruments:
+        #     return False
 
-            # connector by default any
-            # nothing to do, see connector
+        # subscribed instrument
+        self.insert_watched_instrument(market_id, [0])
 
-            return True
+        # fetch from source
+        if self._initial_fetch:
+            logger.info("%s prefetch for %s" % (self.name, market_id))
+            self.prefetch(market_id, ohlc_depths, tick_depth, order_book_depth)
 
-        return False
+        # WS stream
+        try:
+            self._connector.subscribe(market_id)
+        except Exception as e:
+            error_logger.error(str(e))
+            return False
+
+        return True
 
     def unsubscribe(self, market_id, timeframe):
         with self._mutex:
             if market_id in self._watched_instruments:
-                # connector by default any
-                return True
-            else:
-                return False
+                instruments = self._available_instruments
+
+                if market_id in instruments:
+                    # WS stream
+                    try:
+                        self._connector.unsubscribe(market_id)
+                    except Exception as e:
+                        error_logger.error(str(e))
+                        return False
+
+                    return True
+
+        return False
 
     #
     # private
@@ -292,7 +334,7 @@ class BitMexWatcher(Watcher):
             #
             # account data update
             #
-            
+
             if data[1] == 'margin':
                 if not self.connector or not self.connector.ws:
                     return
@@ -416,7 +458,7 @@ class BitMexWatcher(Watcher):
                     else:
                         exec_logger.info("bitmex.com position deleted %s" % str(ld))
 
-                        # empty quantity no open order qty, position deleted
+                        # empty quantity no open order qty, position deleted. it occurs even after an order qty !
                         self.service.notify(Signal.SIGNAL_POSITION_DELETED, self.name, (
                             symbol, position_data, ref_order_id))
 
@@ -647,7 +689,7 @@ class BitMexWatcher(Watcher):
                         vol24h = instrument.get('volume24h')
                         vol24hquote = instrument.get('foreignNotional24h')
 
-                        market_data = (market_id, tradeable, update_time, bid, ask, base_exchange_rate, 
+                        market_data = (market_id, tradeable, update_time, bid, ask, base_exchange_rate,
                                        contract_size, value_per_pip, vol24h, vol24hquote)
 
                         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
@@ -655,7 +697,7 @@ class BitMexWatcher(Watcher):
             #
             # order book L2 top 25
             #
-            
+
             elif data[1] == 'orderBookL2_25' and data[2]:
                 pass
                 # for market_id in data[2]:
@@ -902,7 +944,7 @@ class BitMexWatcher(Watcher):
             error_logger.error(traceback.format_exc())
 
         count = 0
-        
+
         for candle in candles:
             count += 1
             # store (timestamp, open, high, low, close, spread, volume)

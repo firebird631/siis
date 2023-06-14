@@ -877,7 +877,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
             # filter only if the signal timestamp occurs after the creation of this trade
-            if data.get('timestamp') > self.eot:
+            if data.get('timestamp') > self.eot and self.e > 0.0:
                 # no longer related position, have to clean up any related trades in case of manual close, liquidation
                 self.position_id = None
 

@@ -61,6 +61,7 @@ class BitMEXWebsocket(object):
         self.exited = False
 
         self.symbols = []
+        self.subscriptions = []
         self.should_auth = False
 
         self.__reset()
@@ -73,27 +74,21 @@ class BitMEXWebsocket(object):
         Connect to the websocket and initialize data stores.
         """
         if symbols is None:
-            symbols = ["XBTUSD"]
+            symbols = []
 
         self.symbols = symbols
         self.should_auth = should_auth
 
         self._message_last_time = 0.0
 
+        # initials subscriptions
         subscriptions = []
 
-        # We can subscribe right in the connection querystring, so let's build that.
-        # Subscribe to all pertinent endpoints
-        for symbol in symbols:
-            subscriptions += [sub + ':' + symbol for sub in ["quote", "trade", "liquidation"]]
-            # , BitMEXWebsocket.PREFERRED_ORDER_BOOK]]
-    
-        subscriptions += ["instrument"]  # We want all of them
+        # any instruments data
+        subscriptions += ["instrument"]
 
         if self.should_auth:
-            for symbol in symbols:
-                subscriptions += [sub + ':' + symbol for sub in ["order", "execution"]]
-    
+            # user margin and positions
             subscriptions += ["margin", "position"]
 
         # Get WS URL and connect.
@@ -101,9 +96,6 @@ class BitMEXWebsocket(object):
         url_parts[0] = url_parts[0].replace('http', 'ws')
         url_parts[2] = "/realtime?subscribe=" + ",".join(subscriptions)
         ws_url = urlunparse(url_parts)
-
-        # @todo or
-        # wsURL = self.__get_url(endpoint)
 
         logger.debug("BitMex connecting to %s" % ws_url)
         try:
@@ -114,6 +106,12 @@ class BitMEXWebsocket(object):
 
         # Connected. Wait for partials
         if self._connected:
+            logger.info('- BitMex connected to WS. Subscribing for initials symbols ...')
+
+            if self.symbols:
+                for symbol in self.symbols:
+                    self.subscribe(symbol)
+
             logger.debug('- BitMex connected to WS. Waiting for data images, this may take a moment...')
 
             self.__wait_for_symbol(symbols)
@@ -121,6 +119,47 @@ class BitMEXWebsocket(object):
                 self.__wait_for_account()
 
             logger.info('- BitMex got account and market data. Running.')
+
+    def subscribe(self, symbol: str):
+        """
+        Subscribe to a symbol with or without user data depending on what was specified at initial connection.
+        """
+        if symbol and self.ws:
+            subscriptions = []
+
+            subscriptions += [sub + ':' + symbol for sub in ["quote", "trade", "liquidation"]]
+                # , BitMEXWebsocket.PREFERRED_ORDER_BOOK]]
+
+            if self.should_auth:
+                subscriptions += [sub + ':' + symbol for sub in ["order", "execution"]]
+
+            self.ws.send(json.dumps({
+                'op': 'subscribe',
+                'args': subscriptions
+            }))
+
+            # is case of connection lost
+            self.symbols.append(symbol)
+
+    def unsubscribe(self, symbol):
+        """
+        Unsubscribe from a symbol including or not user data.
+        """
+        if symbol and self.ws:
+            subscriptions = []
+
+            subscriptions += [sub + ':' + symbol for sub in ["quote", "trade", "liquidation"]]
+                # , BitMEXWebsocket.PREFERRED_ORDER_BOOK]]
+
+            if self.should_auth:
+                subscriptions += [sub + ':' + symbol for sub in ["order", "execution"]]
+
+            self.ws.send(json.dumps({
+                'op': 'unsubscribe',
+                'args': subscriptions
+            }))
+
+            self.symbols.remove(symbol)
 
     #
     # Data methods
@@ -335,22 +374,30 @@ class BitMEXWebsocket(object):
 
     @property
     def ready(self):
-        return {'margin', 'position', 'order', 'instrument', 'trade', 'quote'} <= set(self.data)
+        return self.data  # {'margin', 'position', 'order', 'instrument', 'trade', 'quote'} <= set(self.data)
 
     def __wait_for_account(self, timeout=0.1):
         """
         On subscribe, this data will come down. Wait for it.
         """
         # Wait for the keys to show up from the ws
-        while not {'margin', 'position', 'order'} <= set(self.data):
-            sleep(timeout)
+        if self.should_auth and self.symbols:
+            while not {'margin', 'position', 'order'} <= set(self.data):
+                sleep(timeout)
+        else:
+            while not {'margin', 'position'} <= set(self.data):
+                sleep(timeout)
 
     def __wait_for_symbol(self, symbol, timeout=0.1):
         """
         On subscribe, this data will come down. Wait for it.
         """
-        while not {'instrument', 'trade', 'quote'} <= set(self.data):
-            sleep(timeout)
+        if self.should_auth and self.symbols:
+            while not {'instrument', 'trade', 'quote'} <= set(self.data):
+                sleep(timeout)
+        else:
+            while not {'instrument'} <= set(self.data):
+                sleep(timeout)
 
     def __send_command(self, command, args):
         """

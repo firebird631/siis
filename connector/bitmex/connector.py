@@ -42,12 +42,8 @@ class Connector(object):
         self._timeout = 7
         self._retries = 0  # initialize counter
 
-        self._watched_symbols = symbols or set()  # followed instruments
+        self._watched_symbols = set(symbols) or set()  # followed instruments
         self._all_instruments = []   # available listed instruments
-
-        # always XBTUSD as needed for others pairs or computing
-        if 'XBTUSD' not in self._watched_symbols:
-            self._watched_symbols.add('XBTUSD')
 
         self.__api_key = api_key
         self.__api_secret = api_secret
@@ -82,23 +78,11 @@ class Connector(object):
                 self._ws = BitMEXWebsocket(self.__api_key, self.__api_secret, self._callback)
 
             if self._ws is not None and not self._ws.connected:
-                # only subscribe to available instruments
-                symbols = []
+                self._ws.connect("wss://" + self._host, [], should_auth=True)
 
-                if '*' in self._watched_symbols:
-                    # follow any
-                    self._watched_symbols = self._all_instruments
-                else:
-                    # follow only listed symbols
-                    for symbol in self._watched_symbols:
-                        if symbol in self._all_instruments:
-                            symbols.append(symbol)
-                        else:
-                            logger.warning('- BitMex instrument %s is not available.' % (symbol,))
-
-                    self._watched_symbols = symbols
-
-                self._ws.connect("wss://" + self._host, symbols, should_auth=True)
+                # on reconnect
+                for symbol in self._watched_symbols:
+                    self._ws.subscribe(symbol)
 
     def disconnect(self):
         if self._ws:
@@ -109,6 +93,18 @@ class Connector(object):
 
         if self._session:
             self._session = None
+
+    def subscribe(self, symbol: str):
+        if self._ws and self._ws.connected:
+            if symbol not in self._watched_symbols:
+                self._ws.subscribe(symbol)
+                self._watched_symbols.add(symbol)
+
+    def unsubscribe(self, symbol: str):
+        if self._ws and self._ws.connected:
+            if symbol not in self._watched_symbols:
+                self._ws.unsubscribe(symbol)
+                self._watched_symbols.remove(symbol)
 
     @property
     def authenticated(self) -> bool:
