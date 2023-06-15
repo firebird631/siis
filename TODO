@@ -166,6 +166,9 @@ Sum order :
 # Bonus #
 #########
 
+- Ne pas utiliser l'api-key/auth en paper-mode a finir pour binance et binancefutures
+- Ne pas utiliser l'api-key/auth en paper-mode a finir pour bitmex
+
 - Commande de fusion et split des trades pour un instrument donné (à réfléchir)
 
 - Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, ainsi avoir le trigger coté bot,

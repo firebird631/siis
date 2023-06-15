@@ -52,7 +52,7 @@ class Connector(object):
         self._session = None
         self._ws = None
 
-    def connect(self, use_ws=True):
+    def connect(self, use_ws=True, user_data=True):
         # Prepare HTTPS session
         if self._session is None:
             self._session = requests.Session()
@@ -78,7 +78,7 @@ class Connector(object):
                 self._ws = BitMEXWebsocket(self.__api_key, self.__api_secret, self._callback)
 
             if self._ws is not None and not self._ws.connected:
-                self._ws.connect("wss://" + self._host, [], should_auth=True)
+                self._ws.connect("wss://" + self._host, [], should_auth=user_data)
 
                 # on reconnect
                 for symbol in self._watched_symbols:

@@ -64,6 +64,9 @@ class BitMEXWebsocket(object):
         self.subscriptions = []
         self.should_auth = False
 
+        self.ws = None
+        self._connected = False
+
         self.__reset()
 
     def __del__(self):
@@ -258,11 +261,9 @@ class BitMEXWebsocket(object):
     #
 
     def error(self, err):
+        logger.error(str(err))
+
         self._error = err
-
-        logger.error(repr(err))
-        traceback_logger.error(traceback.format_exc())
-
         self.exit()
 
     def exit(self):

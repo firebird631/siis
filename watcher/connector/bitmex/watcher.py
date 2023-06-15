@@ -42,6 +42,7 @@ class BitMexWatcher(Watcher):
     Month code = F (jan) G H J K M N Q U V X Z (dec)
 
     @ref https://www.bitmex.com/app/wsAPI#All-Commands
+    @todo no user data in paper-mode to be completed in ws.__connect method
     """
 
     EXPIRY_RE = re.compile(r'^(.{3})([FGHJKMNQUVXZ])(\d\d)$')
@@ -82,8 +83,11 @@ class BitMexWatcher(Watcher):
                         self._store_ohlc = False
                         self._store_trade = False
 
+                    # user data only in real mode
+                    user_data = not self.service.paper_mode
+
                     if not self._connector.connected or not self._connector.ws_connected:
-                        self._connector.connect()
+                        self._connector.connect(use_ws=True, user_data=user_data)
 
                     # get list of all available instruments, and list of subscribed
                     self._available_instruments = set(self._connector.all_instruments)

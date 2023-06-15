@@ -43,6 +43,7 @@ class BinanceFuturesWatcher(Watcher):
     @todo Finish order book events.
     @todo Once a market is not longer found (market update) we could remove it from watched list,
         and even have a special signal to strategy, and remove the subscriber, and markets data from watcher and trader
+    @todo no user data in paper-mode
 
     @note A single connection can listen to a maximum of 200 streams.
     @note WebSocket connections have a limit of 10 incoming messages per second.

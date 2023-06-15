@@ -40,11 +40,10 @@ class BinanceWatcher(Watcher):
 
     @todo Margin trading, get position from REST API + WS events.
     @todo Finish order book events.
-    @todo Update base_exchange_rate as price change.
+    @todo Update base_exchange_rate as price change (not always necessary).
     @todo Once a market is not longer found (market update) we could remove it from watched list,
         and even have a special signal to strategy, and remove the subscriber, and markets data from watcher and trader
-
-    @todo does the subscriptions renegotiated by the ws client at reconnection
+    @todo no user data in paper-mode
 
     @note A single connection can listen to a maximum of 200 streams.
     @note WebSocket connections have a limit of 10 incoming messages per second.

@@ -51,7 +51,9 @@ class Trainer(object):
     MODE_CALLING = 1
     MODE_FETCHING = 2
 
-    COMMANDER = None  # must be set to a TrainerCommander class
+    MAX_TRAINER = 1         # Maximum trainer running at the same time (specially on local to keep a fair CPU load)
+    RETRY_DELAY = 2.0 * 60  # Delay to wait before retry
+    COMMANDER = None        # must be set to a TrainerCommander class
 
     processing = {}   # current market-id in process market-id/thread
 
@@ -250,7 +252,11 @@ class Trainer(object):
         performance = learning_result.get('performance', '0.00%')
 
         if not learning_result.get('results', []):
-            logger.info("No results found from training, no changes to apply for %s" % strategy_trader.instrument.market_id)
+            logger.info("No results found from training, no changes to apply for %s. Set in pause !" %
+                        strategy_trader.instrument.market_id)
+
+            # no results meaning undetermined ability then pause the market until manual or next training
+            strategy_trader.set_activity(False)
         else:
             logger.info("Best performance for %s : %s" % (strategy_trader.instrument.market_id, performance))
             logger.info("Trainer apply new parameters to %s and then restart" % strategy_trader.instrument.market_id)
@@ -271,6 +277,10 @@ class Trainer(object):
             #     # and restart (will reload necessary OHLC...)
             #     strategy_trader.restart()
             #     strategy.send_initialize_strategy_trader(strategy_trader.instrument.market_id)
+
+            if not strategy_trader.activity:
+                logger.info("Was in pause, now enable it !" % strategy_trader.instrument.market_id)
+                strategy_trader.set_activity(True)
 
         if self._strategy_service.backtesting:
             self._strategy_service.play_backtesting()
@@ -366,6 +376,13 @@ class Trainer(object):
 
         if market_id in Trainer.processing:
             logger.warning("Unable to train market %s now because previous is still waited" % market_id)
+            return False
+
+        if len(Trainer.processing) >= Trainer.MAX_TRAINER:
+            logger.debug("Current %i/%i trainer(s) are in progress. Retry in %s seconds to train market %s" % (
+                len(Trainer.processing), Trainer.MAX_TRAINER, Trainer.RETRY_DELAY, market_id))
+
+            trainer._next_update = time.time() + Trainer.RETRY_DELAY
             return False
 
         from_dt, to_dt = trainer.compute_period()
