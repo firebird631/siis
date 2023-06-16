@@ -77,6 +77,10 @@ class BitMexTrader(Trader):
     def on_watcher_connected(self, watcher_name: str):
         super().on_watcher_connected(watcher_name)
 
+        if not self._watcher.connector:
+            error_logger.error("Trader %s refuse to retrieve market info because of missing connector" % self.name)
+            return
+
         logger.info("- Trader bitmex.com retrieving data...")
 
         for symbol in self._watcher.connector.watched_instruments:
@@ -533,14 +537,14 @@ class BitMexTrader(Trader):
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
                 # no longer exist, accepts as ok
-                error_logger.warning("%s rejected cancel order %s %s - cause : no longer exists !" % (self.name,
-                                                                                                      order_id, symbol))
+                error_logger.warning("%s rejected cancel order %s %s - cause : no longer exists !" % (
+                    self.name, order_id, symbol))
 
                 # @todo question
                 return Order.REASON_OK
             else:
-                error_logger.error("%s rejected cancel order %s %s - cause : %s !" % (self.name, order_id,
-                                                                                      symbol, str(e)))
+                error_logger.error("%s rejected cancel order %s %s - cause : %s !" % (
+                    self.name, order_id, symbol, str(e)))
 
                 # @todo error to reason
                 return Order.REASON_ERROR
