@@ -33,6 +33,17 @@
     <link rel="stylesheet" href="css/deps/bootstrap-slider.min.css">
     <script src="js/deps/bootstrap-slider.min.js"></script>
 
+    <!-- Charting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.17/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.17/dist/sweetalert2.all.min.js" crossorigin="anonymous"></script>
+
     <link rel="stylesheet" href="css/webtrader.css">
     <script src="js/webtrader.js"></script>
     <script src="js/websocket.js"></script>
@@ -528,40 +539,40 @@
     </div>
 
     <div class="container-fluid charts">
-        <div class="chart-buttons">
+        <div class="chart-buttons" style="height: 15px;">
         </div>
 
-        <div class="row chart-1x1">
+        <div class="row chart-1x1 chart-template" style="height: 100%;">
           <div class="col-sm-12 chart chart1"></div>
         </div>
 
-        <div class="row chart-2x1">
+        <div class="row chart-2x1 chart-template" style="height: 100%;">
           <div class="col-sm-6 chart chart1"></div>
           <div class="col-sm-6 chart chart2"></div>
         </div>
 
-        <div class="row chart-1x2">
+        <div class="row chart-1x2 chart-template" style="height: 50%;">
           <div class="col-sm-6 chart chart1"></div>
         </div>
-        <div class="row chart-1x2">
+        <div class="row chart-1x2 chart-template" style="height: 50%;">
           <div class="col-sm-6 chart chart2"></div>
         </div>
 
-        <div class="row chart-2x2">
+        <div class="row chart-2x2 chart-template" style="height: 50%;">
           <div class="col-sm-6 chart chart1"></div>
           <div class="col-sm-6 chart chart2"></div>
         </div>
-        <div class="row chart-2x2">
+        <div class="row chart-2x2 chart-template" style="height: 50%;">
           <div class="col-sm-6 chart chart3"></div>
           <div class="col-sm-6 chart chart4"></div>
         </div>
 
-        <div class="row chart-3x2">
+        <div class="row chart-3x2 chart-template" style="height: 50%;">
           <div class="col-sm-4 chart chart1"></div>
           <div class="col-sm-4 chart chart2"></div>
           <div class="col-sm-4 chart chart3"></div>
         </div>
-        <div class="row chart-3x2">
+        <div class="row chart-3x2 chart-template" style="height: 50%;">
           <div class="col-sm-4 chart chart4"></div>
           <div class="col-sm-4 chart chart5"></div>
           <div class="col-sm-4 chart chart6"></div>

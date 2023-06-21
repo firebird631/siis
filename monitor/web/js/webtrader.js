@@ -2051,7 +2051,7 @@ function add_long_short_actions(id, market_id, to) {
     });
 
     chart_btn.on('click', function(elt) {
-        notify({'message': " TODO", 'title': 'feature', 'type': 'warning'});
+        open_chart_view(elt);
     });
 };
 
@@ -2120,6 +2120,37 @@ function open_trading_view(elt) {
             window.open('https://fr.tradingview.com/chart?symbol=' + btv[0] + '%3A' + market_id + btv[1]);
         }
     }
+};
+
+function open_chart_view(elt) {
+    let market_id = retrieve_symbol(elt);
+    let timeframe = "5m";
+
+    show_charts_view(market_id, timeframe);
+/*
+    let endpoint = "strategy/chart";
+    let url = base_url() + '/' + endpoint + '?symbol=' + market_id + '&timeframe=' + timeframe;
+
+    if (!window.server['connected']) {
+        return;
+    }
+
+    // let url = server['protocol'] + "//" + server['host'] + ':' + server['port'] + "/charting.html";
+    const viewFile = async (url) => {
+        // Change this to use your HTTP client
+        fetch(url, {headers: {
+            'TWISTED_SESSION': server.session,
+            'Authorization': "Bearer " + server['auth-token']}})
+        .then((response) => response.blob())
+        .then((blob) => { // RETRIEVE THE BLOB AND CREATE LOCAL URL
+              var _url = window.URL.createObjectURL(blob);
+              window.open(_url, "_blank").focus(); // window.open + focus
+          }).catch((err) => {
+            console.log(err);
+          });
+    };
+
+    viewFile(url);*/
 };
 
 function on_change_symbol(elt) {
@@ -2487,6 +2518,9 @@ function maximize_trade_list_view() {
 
     let traders = $('div.traders');
     traders.css('height', '0px');
+
+    let charts = $('div.charts');
+    charts.css('display', 'none');
 }
 
 function restore_trade_list_view() {
@@ -2500,6 +2534,40 @@ function restore_trade_list_view() {
 
     let traders = $('div.traders');
     traders.css('height', '75vh');
+
+    let charts = $('div.charts');
+    charts.css('height', '75vh');
+    if (traders.css('display') == 'none') {
+        charts.css('display', 'block');
+    }
+}
+
+function show_charts_view(market_id, timeframe) {
+    let charts = $('div.charts');
+    charts.css('display', 'block');
+
+    let chartx = $('div.chart-template');
+    chartx.css('display', 'none');
+
+    let chart1x1 = $('div.chart-1x1');
+    chart1x1.css('display', 'block');
+
+    let traders = $('div.traders');
+    traders.css('display', 'none');
+
+    setup_charting(chart1x1, market_id, timeframe);
+}
+
+function show_traders_view() {
+    let charts = $('div.charts');
+    charts.css('display', 'none');
+
+    let chart1x1 = $('div.chart-1x1');
+
+    let traders = $('div.traders');
+    traders.css('display', 'block');
+
+    remove_charting();
 }
 
 function set_conn_state(state) {

@@ -149,7 +149,10 @@ class MonitorService(Service):
             "strategy-view",
             "strategy-open-trade", "strategy-close-trade", "strategy-modify-trade", "strategy-clean-trade",
             "strategy-trader",
-            "trader-balance-view"))
+            "trader-balance-view",
+            "strategy-chart"
+        ))
+        logger.debug(permissions)
 
         for perm in permissions:
             if perm in MonitorService.PERMISSIONS:

@@ -97,6 +97,18 @@ div.charts {
     display: none;
 }
 
+div.chart {
+    height: 100%;
+}
+
+canvas.chart {
+    height: 100%;
+}
+
+div.chart-performance {
+    display: none;
+}
+
 div.trader {
     height: 235px;
     margin-top: 15px;

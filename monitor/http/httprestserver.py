@@ -1006,16 +1006,17 @@ class Charting(resource.Resource):
         if not check_auth_token(request):
             return json.dumps({'error': True, 'messages': ['invalid-auth-token']}).encode("utf-8")
 
-        if not self._allow_chart:
-            return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
+        # if not self._allow_chart:
+        #     return json.dumps({'error': True, 'messages': ['permission-not-allowed']}).encode("utf-8")
 
-        uri = request.uri.split('/')
+        uri = request.uri.decode("utf-8").split('/')
         result = {}
 
         # @todo fill template
         result = ""
 
-        return json.dumps(result).encode("utf-8")
+        return self._template
+        # return json.dumps(result).encode("utf-8")
 
     def render_POST(self, request):
         if not check_auth_token(request):

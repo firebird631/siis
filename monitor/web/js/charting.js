@@ -12,7 +12,7 @@ function on_chart_data_serie(market_id, timestamp, value) {
 function subscribe_chart(market_id, timeframe) {
     let key = market_id + ':' + timeframe;
 
-    if (!window.charts.get(key) || !window.charts[key].subscribed) {
+    if (!(key in window.charts) || !window.charts[key].subscribed) {
         let endpoint = "strategy/chart";
         let url = base_url() + '/' + endpoint;
 
@@ -91,6 +91,7 @@ function unsubscribe_chart(market_id, timeframe) {
                 }
             } else {
                 notify({'message': "Success", 'title': 'Unsubscribe Chart', 'type': 'success'});
+                delete(window.charts[key]);
             }
         })
         .fail(function(data) {
@@ -99,4 +100,111 @@ function unsubscribe_chart(market_id, timeframe) {
             }
         });
     }
+}
+
+function setup_charting(elt, market_id, timeframe) {
+    if (window.charts.mode) {
+        // remove current and replace
+        remove_charting();
+    }
+
+    subscribe_chart(market_id, timeframe);
+
+    let canvas = $('<canvas id="chart1" class="chart"></canvas>');
+    $(elt).children('div.chart').append(canvas);
+
+    let label = market_id; // @todo
+    let timeframeUnit = "minute";
+
+    create_chart(canvas, label, timeframeUnit);
+}
+
+function remove_charting() {
+    // remove charting configuration
+    if (!window.charts) {
+        return;
+    }
+
+    let subs = [];
+
+    for (let key in window.charts) {
+        let v = window.charts[key];
+        const [market_id, timeframe] = key.split(':');
+        subs.push([market_id, timeframe]);
+    }
+
+    for (let i = 0; i < subs.length; ++i) {
+        unsubscribe_chart(subs[i][0], subs[i][1]);
+    }
+
+    $("canvas.chart").remove();
+}
+
+function create_chart(canvas, label, timeframeUnit) {
+    let candleData = [];
+
+    let ctx = canvas[0].getContext('2d');
+    let chart = new Chart(ctx, {
+      type: 'candlestick',
+      data: {
+        datasets: [{
+          label: label,
+          data: candleData,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              parser: 'luxon',
+              tooltipFormat: 'yyyy-MM-dd HH:mm:ss',
+              unit: timeframeUnit,
+              displayFormats: {
+                second: 'HH:mm:ss',
+              },
+              adapter: {
+                date: luxon.DateTime,
+                formats: {
+                  datetime: 'yyyy-MM-dd HH:mm:ss',
+                },
+              },
+            },
+          },
+        },
+        plugins: {
+          annotation: {
+            annotations: []
+          },
+          legend: {
+              display: false
+          },
+          zoom: {
+            pan: {
+              rangeMin: {
+                  x: null,
+                  y: null,
+              },
+              rangeMax: {
+                  x: null,
+                  y: null,
+              },
+              enabled: true,
+              mode: 'xy',
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+              },
+              pinch: {
+                enabled: true
+              },
+              mode: 'xy',
+           },
+        }
+      },
+      },
+    });
 }

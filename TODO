@@ -123,6 +123,9 @@ Sum order :
 # Urgent #
 ##########
 
+- auto unsubscribe chart at web client close
+- auto unsubscribe charts when no web client connected on server
+
 - paper trader base exchange rate mais surtout contract size doit etre recalcule a chaque step en backtest
     - pose probleme sur bitmex uniquement sinon la valeur reste a l'initiale en DB
 
