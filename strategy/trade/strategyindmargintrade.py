@@ -711,17 +711,16 @@ class StrategyIndMarginTrade(StrategyTrade):
                         else:
                             maker = False
 
-                    if filled > 0 and prev_e == 0:
-                        # initial fill we count the commission fee
-                        self._stats['entry-fees'] = instrument.maker_commission if maker else instrument.taker_commission
-
                     # realized fees
                     if filled > 0:
                         self._stats['entry-fees'] = (instrument.maker_fee if maker else instrument.taker_fee) * (
-                                    self.aep * self.e)
-
+                                    self.aep * self.e) * instrument.contract_size
                         # self._stats['entry-fees'] += filled * (
                         #     instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
+
+                        if prev_e == 0:
+                            # initial fill we count the commission fee
+                            self._stats['entry-fees'] += instrument.maker_commission if maker else instrument.taker_commission
 
                 #
                 # cleanup
@@ -825,17 +824,16 @@ class StrategyIndMarginTrade(StrategyTrade):
                         else:
                             maker = False
 
-                    if filled > 0 and prev_x == 0:
-                        # initial fill we count the commission fee
-                        self._stats['exit-fees'] = instrument.maker_commission if maker else instrument.taker_commission
-
                     # realized fees
                     if filled > 0:
                         self._stats['exit-fees'] = (instrument.maker_fee if maker else instrument.taker_fee) * (
-                                self.axp * self.x)
-
+                                self.axp * self.x) * instrument.contract_size
                         # self._stats['exit-fees'] += filled * (
                         #     instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
+
+                        if prev_x == 0:
+                            # initial fill we count the commission fee
+                            self._stats['exit-fees'] += instrument.maker_commission if maker else instrument.taker_commission
 
                 #
                 # cleanup
@@ -1071,22 +1069,22 @@ class StrategyIndMarginTrade(StrategyTrade):
             if last_price <= 0:
                 return
 
-            upnl = 0.0  # unrealized PNL
-            rpnl = 0.0  # realized PNL
+            u_pnl = 0.0  # unrealized PNL
+            r_pnl = 0.0  # realized PNL
 
             # non realized quantity
             nrq = self.e - self.x
 
             if self.dir > 0:
-                upnl = (last_price - self.aep) * nrq * instrument.contract_size
-                rpnl = (self.axp - self.aep) * self.x * instrument.contract_size
+                u_pnl = (last_price - self.aep) * nrq * instrument.contract_size
+                r_pnl = (self.axp - self.aep) * self.x * instrument.contract_size
             elif self.dir < 0:
-                upnl = (self.aep - last_price) * nrq * instrument.contract_size
-                rpnl = (self.aep - self.axp) * self.x * instrument.contract_size
+                u_pnl = (self.aep - last_price) * nrq * instrument.contract_size
+                r_pnl = (self.aep - self.axp) * self.x * instrument.contract_size
 
             # including fees and realized profit and loss
-            self._stats['unrealized-profit-loss'] = instrument.adjust_quote(
-                upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
+            self._stats['unrealized-profit-loss'] = instrument.adjust_settlement(
+                u_pnl + r_pnl - self._stats['entry-fees'] - self._stats['exit-fees'])
 
     def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
         data = list(super().info_report(strategy_trader))

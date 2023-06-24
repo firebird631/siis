@@ -5,6 +5,8 @@
 
 import time
 import json
+from typing import Union
+
 import requests
 
 from datetime import datetime, timedelta
@@ -257,7 +259,7 @@ class Connector(object):
         return response.json()
 
     @property
-    def ws(self):
+    def ws(self) -> Union[BitMEXWebsocket, None]:
         return self._ws
 
     @property
@@ -265,7 +267,7 @@ class Connector(object):
         return self._session is not None
 
     @property
-    def ws_connected(self):
+    def ws_connected(self) -> bool:
         return self._ws is not None and self._ws.connected
 
     @property

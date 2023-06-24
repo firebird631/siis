@@ -279,7 +279,7 @@ class Trainer(object):
             #     strategy.send_initialize_strategy_trader(strategy_trader.instrument.market_id)
 
             if not strategy_trader.activity:
-                logger.info("Was in pause, now enable it !" % strategy_trader.instrument.market_id)
+                logger.info("Strategy trader %s was in pause, now enable it !" % strategy_trader.instrument.market_id)
                 strategy_trader.set_activity(True)
 
         if self._strategy_service.backtesting:

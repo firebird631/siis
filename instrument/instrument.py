@@ -1264,6 +1264,22 @@ class Instrument(object):
         # adjusted quote price at precision and by step of pip meaning
         return truncate(round(quote / tick_size) * tick_size, precision)
 
+    def adjust_settlement(self, settlement: float) -> float:
+        """
+        Format the quote according to the precision.
+        """
+        if settlement is None:
+            settlement = 0.0
+
+        if not self._settlement:
+            return self.adjust_quote(settlement)
+
+        precision = self._settlement_precision or 8
+        tick_size = pow(10, -precision)
+
+        # adjusted quote price at precision and by step of pip meaning
+        return truncate(round(settlement / tick_size) * tick_size, precision)
+
     def format_price(self, price: float) -> str:
         """
         Format the price according to the precision.

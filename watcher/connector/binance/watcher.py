@@ -38,10 +38,9 @@ class BinanceWatcher(Watcher):
 
     @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/margin-api.md
 
-    @todo Margin trading, get position from REST API + WS events.
     @todo Finish order book events.
     @todo Update base_exchange_rate as price change (not always necessary).
-    @todo Once a market is not longer found (market update) we could remove it from watched list,
+    @todo Once a market is no longer found (market update) we could remove it from watched list,
         and even have a special signal to strategy, and remove the subscriber, and markets data from watcher and trader
     @todo no user data in paper-mode
 
@@ -475,8 +474,6 @@ class BinanceWatcher(Watcher):
             market.value_per_pip = 1.0
             market.contract_size = 1.0
             market.lot_size = 1.0
-
-            # @todo add margin support
             market.margin_factor = 1.0
 
             size_limits = ["1.0", "0.0", "1.0"]
@@ -505,10 +502,12 @@ class BinanceWatcher(Watcher):
             market.trade = 0
             if symbol.get('isSpotTradingAllowed', False):
                 market.trade |= Market.TRADE_ASSET
-            if symbol.get('isMarginTradingAllowed', False):
-                market.trade |= Market.TRADE_IND_MARGIN
 
-            # @todo orders capacities
+            # not supported
+            # if symbol.get('isMarginTradingAllowed', False):
+            #     market.trade |= Market.TRADE_IND_MARGIN
+
+            # orders capacities @todo
             # symbol['orderTypes'] in ['LIMIT', 'LIMIT_MAKER', 'MARKET', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT']
             # market.orders = 
 
@@ -539,12 +538,10 @@ class BinanceWatcher(Watcher):
             else:
                 market.base_exchange_rate = 1.0
 
-            market.contract_size = 1.0 / mid_price
+            # @todo
             market.value_per_pip = market.contract_size / mid_price
 
-            # volume 24h
-
-            # in client.get_ticker but cost is 40 for any symbols then wait it at all-tickers WS event
+            # volume 24h : in client.get_ticker but cost is 40 for any symbols then wait it at all-tickers WS event
             # vol24_base = ticker24h('volume')
             # vol24_quote = ticker24h('quoteVolume')
 
@@ -905,7 +902,6 @@ class BinanceWatcher(Watcher):
                 return
 
             event_timestamp = float(data['E']) * 0.001
-            cid = data['c']
 
             if data['x'] == 'REJECTED':  # and data['X'] == '?':
                 client_order_id = str(data['c'])

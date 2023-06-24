@@ -23,16 +23,6 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
     def __init__(self, strategy, instrument, params):
         super().__init__(strategy, instrument, Instrument.TF_TICK, params)
 
-        # mean when there is already a position on the same direction does not increase in the
-        # same direction if 0 or increase at max N times
-        self._max_trades = params['max-trades']
-
-        self._min_price = params['min-price']
-        self._min_vol24h = params['min-vol24h']
-
-        self._min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))
-        self._max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', "4h"))
-
         self.register_timeframe('A', CrystalBallStrategySubA)
         self.setup_timeframes(params)
 

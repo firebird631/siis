@@ -50,16 +50,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # mean when there is already a position on the same direction does not increase in the
         # same direction if 0 or increase at max N times
-        self._max_trades = params['max-trades']
-        self.trade_delay = params['trade-delay']
-
-        self.min_price = params['min-price']
-        self.min_vol24h = params['min-vol24h']
-
-        self.min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))
-        self.max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', "4h"))
-
-        self.region_allow = params['region-allow']
+        self._trade_delay = params['trade-delay']
 
         self.sltp_timeframe = self.timeframe_from_param(params.setdefault('sltp-timeframe', '1h'))
         self.ref_timeframe = self.timeframe_from_param(params.setdefault('ref-timeframe', '1d'))
@@ -426,7 +417,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         # date_time = datetime.fromtimestamp(timestamp)
         # date_str = date_time.strftime('%Y-%m-%d %H:%M:%S')
 
-        # ajust max quantity according to free asset of quote, and convert in asset base quantity
+        # adjust max quantity according to free asset of quote, and convert in asset base quantity
         if trader.has_asset(self.instrument.quote):
             # quantity = min(quantity, trader.asset(self.instrument.quote).free) / self.instrument.market_ask
             if trader.has_quantity(self.instrument.quote, self.instrument.trade_quantity):

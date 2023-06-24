@@ -47,6 +47,8 @@ class BitMexWatcher(Watcher):
 
     EXPIRY_RE = re.compile(r'^(.{3})([FGHJKMNQUVXZ])(\d\d)$')
 
+    _connector : Union[Connector, None]
+
     def __init__(self, service):
         super().__init__("bitmex.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
 
@@ -405,14 +407,19 @@ class BitMexWatcher(Watcher):
                     ref_order_id = ""
                     symbol = ld['symbol']
 
-                    # 'leverage': 10, 'crossMargin': False
-
                     if ld.get('currentQty') is None:
                         # no position
                         continue
 
+                    # ld = self._connector.ws.position(symbol)
                     # exec_logger.info("bitmex.com position %s" % str(ld))
 
+                    # non supported properties :
+                    # 'leverage': 10, 'crossMargin': False
+                    # 'execQty': ?? 'execBuyQty', 'execSellQty': ??
+                    # 'commission': 0.00075 'execComm': 0 ?? 'currentComm': 0
+
+                    # determine direction
                     if ld.get('currentQty', 0) != 0:
                         direction = Order.SHORT if ld['currentQty'] < 0 else Order.LONG
                     elif ld.get('openOrderBuyQty', 0) > 0:
@@ -422,11 +429,16 @@ class BitMexWatcher(Watcher):
                     else:
                         direction = 0
 
-                    operation_time = self._parse_datetime(ld.get('timestamp')).replace(tzinfo=UTC()).timestamp()
-                    quantity = abs(float(ld['currentQty']))
+                    # timestamp
+                    if ld.get('transactTime'):
+                        operation_time = self._parse_datetime(ld['transactTime']).replace(tzinfo=UTC()).timestamp()
+                    elif ld.get('timestamp'):
+                        operation_time = self._parse_datetime(ld['timestamp']).replace(tzinfo=UTC()).timestamp()
+                    else:
+                        operation_time = time.time()
 
-                    # 'execQty': ?? 'execBuyQty', 'execSellQty': ??
-                    # 'commission': 0.00075 'execComm': 0 ?? 'currentComm': 0
+                    # active qty
+                    quantity = abs(float(ld['currentQty']))
 
                     position_data = {
                         'id': symbol,
@@ -453,13 +465,16 @@ class BitMexWatcher(Watcher):
 
                         self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (
                             symbol, position_data, ref_order_id))
+
                     elif quantity > 0:
                         # current qty updated
                         # exec_logger.info("bitmex.com position updated %s" % str(ld))
 
                         self.service.notify(Signal.SIGNAL_POSITION_UPDATED, self.name, (
                             symbol, position_data, ref_order_id))
-                    else:
+
+                    elif not ld.get('isOpen', True):
+                        # need isOpen flag to false
                         exec_logger.info("bitmex.com position deleted %s" % str(ld))
 
                         # empty quantity no open order qty, position deleted. it occurs even after an order qty !
@@ -836,6 +851,9 @@ class BitMexWatcher(Watcher):
     def compute_market_data(self, base_market, base_market_id,
                             symbol, base_symbol, quote_symbol,
                             instrument, xbtusd_instrument) -> Tuple[float, float, float]:
+        """
+        Based on data from https://www.bitmex.com/app/contract
+        """
         base_exchange_rate = 1.0
         contract_size = 1.0
         value_per_pip = 1.0
@@ -855,15 +873,26 @@ class BitMexWatcher(Watcher):
             if xbtusd_instrument:
                 # market.base_exchange_rate = xbtusd_market.get('lastPrice', 1.0)  # quoted in USD
 
-                if base_symbol == 'ETH':
-                    # ETHUSD Contract Size 0,001 mXBT per 1 USD
-                    contract_size = 0.001 * 0.001 # * instrument.get('lastPrice', 1.0)  # * (xbtusd_instrument.get('lastPrice', 1.0) * 0.001)
-                elif base_symbol == 'ADA':
+                if base_symbol == 'ADA':
                     # ADAUSD Contract Size 0,0001 XBT per 1 USD
-                    contract_size = 0.0001 # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
+                    contract_size = 0.0001  # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
+
+                elif base_symbol == 'BCH':
+                    # BCHUSD Contract Size 0,001 mXBT per 1 USD
+                    contract_size = 0.001 * 0.001  # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
+
+                elif base_symbol == 'ETH':
+                    # ETHUSD Contract Size 0,001 mXBT per 1 USD
+                    contract_size = 0.001 * 0.001  # * instrument.get('lastPrice', 1.0)  # * (xbtusd_instrument.get('lastPrice', 1.0) * 0.001)
+
+                elif base_symbol == 'LTC':
+                    # LTCUSD Contact Size 0,002 mXBT per 1 USD
+                    # (Currently 0,00017266 XBT per contract)
+                    contract_size = 0.002 * 0.001  # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
+
                 elif base_symbol == 'XRP':
                     # XRPUSD Contract Size 0,0002 XBT per 1 USD
-                    contract_size = 0.0002 # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
+                    contract_size = 0.0002  # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
                 else:
                     # @todo others markets
                     contract_size = 1.0
@@ -875,15 +904,26 @@ class BitMexWatcher(Watcher):
                 base_exchange_rate = 1.0  # quoted in XBT
                 value_per_pip = 1.0
 
-                if base_symbol == 'ETH':
-                    # ETH Contract Size 0.00001 ETH
-                    contract_size = 0.00001 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
-                elif base_symbol == 'ADA':
+                if base_symbol == 'ADA':
                     # ADA Contract Size 0,01 ADA
                     contract_size = 0.0001 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
+
+                elif base_symbol == 'BCH':
+                    # BCH Contract Size 0.00001 BCH
+                    contract_size = 0.00001 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
+
+                elif base_symbol == 'ETH':
+                    # ETH Contract Size 0.00001 ETH
+                    contract_size = 0.00001 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
+
+                elif base_symbol == 'LTC':
+                    # LTC Contract Size 0,01 LTC
+                    contract_size = 0.01 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
+
                 elif base_symbol == 'XRP':
                     # XRP Contract Size 0,01 XRP
                     contract_size = 0.01 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
+
                 else:
                     # @todo others markets
                     contract_size = 1.0

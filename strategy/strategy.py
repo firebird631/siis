@@ -1821,6 +1821,7 @@ class Strategy(Runnable):
         parameters.setdefault('reversal', True)
         parameters.setdefault('hedging', False)
         parameters.setdefault('dual', False)
+        parameters.setdefault('activity', True)
         parameters.setdefault('affinity', 5)
         parameters.setdefault('trade-type', 0)
         parameters.setdefault('trade-delay', 0.0)
@@ -1831,8 +1832,9 @@ class Strategy(Runnable):
         parameters.setdefault('trade-type', "asset")
         parameters.setdefault('reporting', "none")
 
-        parameters.setdefault('min-traded-timeframe', '4h')
-        parameters.setdefault('max-traded-timeframe', '4h')
+        parameters.setdefault('min-traded-timeframe', 't')
+        parameters.setdefault('max-traded-timeframe', '1M')
+
         parameters.setdefault('price-epsilon-factor', 0.0)
         parameters.setdefault('price-epsilon-timeframe', 't')
 

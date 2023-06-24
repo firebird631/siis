@@ -137,24 +137,32 @@ class StrategyTrader(object):
         self.instrument = instrument
 
         self._mutex = threading.RLock()  # activity, global locker, region locker, instrument locker
-        self._activity = True       # auto trading
-        self._affinity = 5          # based on a linear scale [0..100]
-        self._max_trades = 0        # total max trades for this strategy trader
 
-        self._min_price = 0.0
-        self._min_vol24h = 0.0
+        #
+        # options
+        #
 
-        self._hedging = False
-        self._reversal = True
-        self._dual = False
+        self._max_trades = params.get('max-trades', 1)  # total max trades for this strategy trader
 
-        self._trade_short = False
+        self._min_price = params.get('min-price', 0.0)
+        self._min_vol24h = params.get('min-vol24h', 0.0)
+
+        self._region_allow = params.get('region-allow', True)
+        self._hedging = params.get('hedging', False)
+        self._reversal = params.get('reversal', True)
+        self._dual = params.get('dual', False)
+
+        self._activity = params.get('activity', True)  # auto trading
+        self._affinity = params.get('affinity', 5)     # based on a linear scale [0..100]
+
         self._allow_short = params.get('allow-short', True)
 
-        self._min_traded_timeframe = 0
-        self._max_traded_timeframe = Instrument.TF_YEAR
+        self._min_traded_timeframe = params.get('min-traded-timeframe', Instrument.TF_TICK)
+        self._max_traded_timeframe = params.get('max-traded-timeframe', Instrument.TF_MONTH)
 
-        self._region_allow = params.get('region-allow', False)
+        #
+        # states
+        #
 
         self._initialized = 1       # initiate data before running, 1 waited, 2 in progress, 0 normal
         self._checked = 1           # check trades/orders/positions, 1 waited, 2 in progress, 0 normal
@@ -169,6 +177,7 @@ class StrategyTrader(object):
         self._bootstrapping = 1      # 1 waited, 2 in progress, 0 normal, done from loaded OHLCs history
 
         self._processing = False   # True during processing
+        self._trade_short = False  # short are supported by market/strategy
 
         self._trade_mutex = threading.RLock()   # trades locker
         self._trades = []
@@ -1673,7 +1682,7 @@ class StrategyTrader(object):
             trade.update_stats(self.instrument, timestamp)
 
             # realized profit/loss
-            profit_loss = trade.profit_loss - trade.entry_fees_rate() - trade.exit_fees_rate()
+            profit_loss = trade.profit_loss - trade.entry_fees_rate(self.instrument) - trade.exit_fees_rate(self.instrument)
 
             best_pl = (trade.best_price() - trade.entry_price if trade.direction > 0 else
                        trade.entry_price - trade.best_price()) / trade.entry_price

@@ -255,7 +255,7 @@ class Statistic(Tool):
         # 'exit-open-time': self.dump_timestamp(self.xot),
         # 'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
         # 'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
-        # 'profit-loss-pct': round((self.pl - self.entry_fees_rate() - self.exit_fees_rate()) * 100.0, 2),  # minus fees
+        # 'profit-loss-pct': round((self.pl - self.entry_fees_rate(strategy_trader.instrument) - self.exit_fees_rate(strategy_trader.instrument)) * 100.0, 2),  # minus fees
         # 'num-exit-trades': len(self.exit_trades),
         # 'stats': {
         #     'best-price': strategy_trader.instrument.format_price(self._stats['best-price']),
@@ -271,7 +271,7 @@ class Statistic(Tool):
         #     'profit-loss': self._stats['unrealized-profit-loss'],  # @todo
         #     'entry-fees': self._stats['entry-fees'],
         #     'exit-fees': self._stats['exit-fees'],
-        #     'fees-pct': round((self.entry_fees_rate() + self.exit_fees_rate()) * 100.0, 2),
+        #     'fees-pct': round((self.entry_fees_rate(strategy_trader.instrument) + self.exit_fees_rate(strategy_trader.instrument)) * 100.0, 2),
         #     'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
         # }
 

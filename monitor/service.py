@@ -152,7 +152,6 @@ class MonitorService(Service):
             "trader-balance-view",
             "strategy-chart"
         ))
-        logger.debug(permissions)
 
         for perm in permissions:
             if perm in MonitorService.PERMISSIONS:

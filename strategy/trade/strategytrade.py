@@ -33,6 +33,8 @@ class StrategyTrade(object):
     It can only have on entry order. The exit works with the entry quantity. When the entry order is not fully filled,
     the exit order are later adjusted.
 
+    The pl field does not measure the entry and exit fees.
+
     @todo Take care to do not try to serialize objects from extra dict.
     """
 
@@ -264,6 +266,9 @@ class StrategyTrade(object):
 
     @property
     def profit_loss(self) -> float:
+        """
+        Profit loss rate.
+        """
         return self.pl
 
     @property
@@ -1070,10 +1075,10 @@ class StrategyTrade(object):
         """Realized entry fees cost (not rate)"""
         return self._stats['entry-fees']
 
-    def entry_fees_rate(self) -> float:
+    def entry_fees_rate(self, instrument: Instrument) -> float:
         """Realized entry fees rate"""
         if self.e > 0 and self.aep > 0:
-            return self._stats['entry-fees'] / (self.aep * self.e)
+            return self._stats['entry-fees'] / (self.aep * self.e * instrument.contract_size)
 
         return 0.0
 
@@ -1081,10 +1086,10 @@ class StrategyTrade(object):
         """Realized exit fees cost (not rate)"""
         return self._stats['exit-fees']
 
-    def exit_fees_rate(self) -> float:
+    def exit_fees_rate(self, instrument: Instrument) -> float:
         """Realized entry fees rate"""
         if self.x > 0 and self.axp > 0:
-            return self._stats['exit-fees'] / (self.axp * self.x)
+            return self._stats['exit-fees'] / (self.axp * self.x * instrument.contract_size)
 
         return 0.0
 
@@ -1126,7 +1131,7 @@ class StrategyTrade(object):
             profit_loss = 0.0
 
         # minus realized entry fees rate
-        profit_loss -= self.entry_fees_rate()
+        profit_loss -= self.entry_fees_rate(instrument)
 
         # and estimation of the exit fees rate
         profit_loss -= self.estimate_exit_fees_rate(instrument)
@@ -1149,7 +1154,7 @@ class StrategyTrade(object):
             profit_loss = 0.0
 
         # minus realized entry fees rate
-        profit_loss -= self.entry_fees_rate()
+        profit_loss -= self.entry_fees_rate(instrument)
 
         # and estimation of the exit fees rate
         profit_loss -= self.estimate_exit_fees_rate(instrument)
@@ -1179,7 +1184,7 @@ class StrategyTrade(object):
             profit_loss = 0.0
 
         # minus realized entry fees rate
-        profit_loss -= self.entry_fees_rate()
+        profit_loss -= self.entry_fees_rate(instrument)
 
         # and estimation of the exit fees rate
         profit_loss -= self.estimate_exit_fees_rate(instrument)
@@ -1208,7 +1213,7 @@ class StrategyTrade(object):
     def set(self, key: str, value):
         """
         Add a key:value pair in the extra member dict of the trade.
-        It allow to add you internal trade data, states you want to keep during the live of the trade and even in
+        It allows to add you internal trade data, states you want to keep during the life of the trade and even in
         persistence.
         """
         self._extra[key] = value
@@ -1339,7 +1344,7 @@ class StrategyTrade(object):
             'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
             'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
             # minus fees
-            'profit-loss-pct': round((self.pl - self.entry_fees_rate() - self.exit_fees_rate()) * 100.0, 2),
+            'profit-loss-pct': round((self.pl - self.entry_fees_rate(strategy_trader.instrument) - self.exit_fees_rate(strategy_trader.instrument)) * 100.0, 2),
             'num-exit-trades': len(self.exit_trades),
             'comment': self._comment,
             'stats': {
@@ -1356,7 +1361,7 @@ class StrategyTrade(object):
                 'profit-loss': self._stats['unrealized-profit-loss'],  # use the last computed or updated
                 'entry-fees': self._stats['entry-fees'],
                 'exit-fees': self._stats['exit-fees'],
-                'fees-pct': round((self.entry_fees_rate() + self.exit_fees_rate()) * 100.0, 2),
+                'fees-pct': round((self.entry_fees_rate(strategy_trader.instrument) + self.exit_fees_rate(strategy_trader.instrument)) * 100.0, 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
                 'close-exec-price': strategy_trader.instrument.format_price(
                     strategy_trader.instrument.close_exec_price(self.dir)),
@@ -1413,7 +1418,7 @@ class StrategyTrade(object):
                 'profit-loss': self._stats['unrealized-profit-loss'],
                 'entry-fees': self._stats['entry-fees'],
                 'exit-fees': self._stats['exit-fees'],
-                'fees-pct': round((self.entry_fees_rate() + self.exit_fees_rate()) * 100.0, 2),
+                'fees-pct': round((self.entry_fees_rate(strategy_trader.instrument) + self.exit_fees_rate(strategy_trader.instrument)) * 100.0, 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
                 'close-exec-price': strategy_trader.instrument.format_price(
                     strategy_trader.instrument.close_exec_price(self.dir)),

@@ -36,14 +36,6 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     def __init__(self, strategy: Strategy, instrument: Instrument, params: dict):
         super().__init__(strategy, instrument, Instrument.TF_TICK, params)
 
-        # mean when there is already a position on the same direction does not increase in the same
-        # direction if 0 or increase at max N times
-        self._max_trades = params['max-trades']
-        self._hedging = params['hedging']  # only if the broker/market allow it
-
-        self._min_traded_timeframe = self.timeframe_from_param(params.get('min-traded-timeframe', "15m"))
-        self._max_traded_timeframe = self.timeframe_from_param(params.get('max-traded-timeframe', "4h"))
-
         # self.score_trigger = params['score-trigger']
         # self.score_increase_factor = params['score-increase-factor']
         # self.score_regression_factor = params['score-regression-factor']

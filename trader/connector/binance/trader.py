@@ -44,12 +44,6 @@ class BinanceTrader(Trader):
     
     @note __update_asset use the last tick price in way to compute the average price of the owned asset quantity,
         but querying the prices cost an extra API credit plus an important latency we cannot offer during live.
-
-    @todo Will support soon margin trading on majors pairs.
-    @todo It seems sometimes that the quantity of the quote is not correctly adjusted on trade update,
-        then having a warning of adjustment at the balance update just after, so its not a major problem except
-        it can compute a wrong average entry price for the related quote asset
-    @todo OCO orders
     """
 
     COMPUTE_ASSET_PRICE = False
@@ -1116,7 +1110,9 @@ class BinanceTrader(Trader):
 
     @Trader.mutexed
     def on_asset_updated(self, asset_name: str, locked: float, free: float):
-        # @todo update as kraken trader
+        """
+        @todo update as kraken trader
+        """
         asset = self.__get_or_add_asset(asset_name)
         if asset is not None:
             # significant deviation...
@@ -1147,10 +1143,9 @@ class BinanceTrader(Trader):
 
         @todo fix it
         """
-        curr_price = asset.price   # might be in BTC
+        curr_price = asset.price
         curr_qty = asset.quantity
 
-        # base price in BTC, time in seconds
         base_precision = market.base_precision if market else 8
         quote_price = 1.0
 
@@ -1240,25 +1235,18 @@ class BinanceTrader(Trader):
 
         @note Consume 1 API credit to get the asset quote price at the time of the trade.
         """
-        market = self._markets.get(order_data['symbol'])
-
+        market = self._markets.get(market_id)
         if market is None:
             # not interested in this market
             return
 
-        base_asset = self.__get_or_add_asset(market.base)
-        quote_asset = self.__get_or_add_asset(market.quote)
-
-        quote_market = None
-
         order = self._orders.get(order_data['id'])
-
         if order is None:
             # not found (might not occur)
             order = Order(self, order_data['symbol'])
             order.set_order_id(order_data['id'])
 
-            # its might be the creation timestamp but it will be the trade execution
+            # its might be the creation timestamp, but it will be the trade execution
             order.created_time = order_data['timestamp']
 
             order.direction = order_data['direction']
@@ -1270,15 +1258,26 @@ class BinanceTrader(Trader):
             order.price = order_data.get('price')
             order.stop_price = order_data.get('stop-price')
 
-            self._orders[order.order_id] = order
+            self._orders[order_data['id']] = order
 
         order.executed += order_data['filled']
+
+        if order_data.get('fully-filled', False):
+            # fully filled, mean to delete
+            if order_data['id'] in self._orders:
+                del self._orders[order_data['id']]
 
         #
         # compute avg price and new qty
         #
 
         if order_data['trade-id']:
+            # need assets and market info
+            base_asset = self.__get_or_add_asset(market.base)
+            quote_asset = self.__get_or_add_asset(market.quote)
+
+            quote_market = None
+
             # same asset used for commission
             buy_or_sell = order_data['direction'] == Order.LONG
 
@@ -1335,11 +1334,6 @@ class BinanceTrader(Trader):
                 self.__update_asset(Order.ORDER_MARKET, commission_asset, commission_asset_market, None,
                                     quote_exec_price, order_data['commission-amount'], False, order_data['timestamp'])
 
-        if order_data.get('fully-filled', False):
-            # fully filled, need to delete
-            if order.order_id in self._orders:
-                del self._orders[order.order_id]
-
     def on_order_deleted(self, market_id: str, order_id: str, ref_order_id: str):
         with self._mutex:
             if order_id in self._orders:
@@ -1355,8 +1349,8 @@ class BinanceTrader(Trader):
     #
 
     def asset_quantities(self) -> List[Tuple[str, float, float]]:
-        """²²
-        Returns a list of triplet with (symbol, locked qty, free qty) for any of the non empty balance of assets.
+        """
+        Returns a list of triplet with (symbol, locked qty, free qty) for any non-empty balance of assets.
         """
         with self._mutex:
             balances = [(k, asset.locked, asset.free) for k, asset in self._assets.items()]

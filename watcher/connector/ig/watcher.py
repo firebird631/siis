@@ -66,7 +66,7 @@ class IGWatcher(Watcher):
         - Only for forex, indices, commodities, but no history for stocks !
 
     @todo get vol24 in base and quote unit
-    @todo base_exchange_rate must be updated as price changes
+    @todo base_exchange_rate must be updated as quote price changes
     @todo does the subscriptions renegotiated by the ws client at reconnection ?
     """
 
