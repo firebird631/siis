@@ -1337,7 +1337,7 @@ function on_open_new_trade(elt, direction) {
     });
 }
 
-function on_apply_modify_active_trade_take_profit() {
+function on_apply_modify_active_trade_take_profit(method="price") {
     let key = $('#modify_trade_take_profit').attr('trade-key');
 
     let parts = key.split(':');
@@ -1360,6 +1360,7 @@ function on_apply_modify_active_trade_take_profit() {
             'trade-id': trade_id,
             'command': "trade-modify",
             'action': "take-profit",
+            'method': method,
             'take-profit': take_profit_price,
             'force': true
         };

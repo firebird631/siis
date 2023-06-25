@@ -1123,7 +1123,7 @@ class ModifyTakeProfitCommand(Command):
     HELP = (
         "param1: <market-id> Market identifier",
         "param2: <trade-id> Trade identifier",
-        "param3: [ep|m|EP|M][+|-]<take-profit-price><%><pip(s)> EP: relative to entry-price, M to market-price, "
+        "param3: [ep|m|EP|M|l|L][+|-]<take-profit-price><%><pip(s)> EP: relative to entry-price, M to market-price, L to best nearest price"
         "else to last take-profit price, + or - for relative change, in price or percent",
         "param4: [force] to force to realize the order if none (optional)",
     )
@@ -1194,6 +1194,15 @@ class ModifyTakeProfitCommand(Command):
                     method = 'market-delta-price'
                     take_profit = float(args[2][1:])
 
+            elif args[2].startswith("L+") or args[2].startswith("l+"):
+                # limit-price at first order-book or first + a spread (to ensure maker)
+                dist = int(args[2][2:])
+
+                if dist < 1 or dist > 500:
+                    return False, "Bid depth must be from 1 to 500"
+
+                method = 'best+%s' % dist
+                take_profit = 0.0
             else:
                 take_profit = float(args[2])
 

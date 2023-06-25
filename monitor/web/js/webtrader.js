@@ -765,7 +765,19 @@ $(window).ready(function() {
     });
 
     $('#apply_modify_trade_take_profit').on('click', function(e) {
-        on_apply_modify_active_trade_take_profit();
+        on_apply_modify_active_trade_take_profit("price");
+
+        $('#apply_modify_trade_take_profit').modal('hide');
+    });
+
+    $('#apply_b1_trade_take_profit').on('click', function(e) {
+        on_apply_modify_active_trade_take_profit("best+1");
+
+        $('#apply_modify_trade_take_profit').modal('hide');
+    });
+
+    $('#apply_b2_trade_take_profit').on('click', function(e) {
+        on_apply_modify_active_trade_take_profit("best+2");
 
         $('#apply_modify_trade_take_profit').modal('hide');
     });

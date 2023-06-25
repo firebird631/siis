@@ -128,7 +128,7 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
                 # method, default is a price
                 method = data.get('method', "price")
 
-                if method not in ("price",
+                if method not in ("price", "best+1", "best+2",
                                   "delta-percent", "delta-price", "delta-pip",
                                   "entry-delta-percent", "entry-delta-price", "entry-delta-pip",
                                   "market-delta-percent", "market-delta-price", "market-delta-pip"):
@@ -170,6 +170,13 @@ def cmd_trade_modify(strategy: Strategy, strategy_trader: StrategyTrader, data: 
 
                 elif method == "price" and data['take-profit'] >= 0.0:
                     take_profit_price = data['take-profit']
+
+                elif method == "best+1":
+                    take_profit_price = strategy_trader.instrument.close_exec_price(trade.direction, True)
+
+                elif method == "best+2":
+                    take_profit_price = strategy_trader.instrument.close_exec_price(trade.direction, True) + \
+                                        strategy_trader.instrument.market_spread * trade.direction
 
                 else:
                     results['error'] = True
