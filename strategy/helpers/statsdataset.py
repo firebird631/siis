@@ -60,7 +60,7 @@ def get_stats(strategy):
 
                     market = trader.market(strategy_trader.instrument.market_id) if trader else None
                     for trade in strategy_trader.trades:
-                        trade_pl = trade.estimate_profit_loss(strategy_trader.instrument)
+                        trade_pl = trade.estimate_profit_loss_rate(strategy_trader.instrument)
 
                         trades.append({
                             'id': trade.id,

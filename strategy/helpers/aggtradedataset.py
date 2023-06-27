@@ -57,7 +57,7 @@ def get_agg_trades(strategy):
 
                     for trade in strategy_trader.trades:
                         # current UPNL %
-                        pl += trade.estimate_profit_loss(strategy_trader.instrument)
+                        pl += trade.estimate_profit_loss_rate(strategy_trader.instrument)
 
                         if trade.is_active():
                             num_actives_trades += 1

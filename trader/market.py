@@ -875,7 +875,6 @@ class Market(object):
     def effective_cost(self, quantity: float, price: float) -> float:
         """
         Effective cost, not using the margin factor, for a quantity at specific price.
-        In contracts size, the price has no effect.
         """
         if self._unit_type == Market.UNIT_AMOUNT:
             return quantity * (self._lot_size * self._contract_size) * price  # in quote currency

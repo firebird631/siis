@@ -549,6 +549,7 @@ class Strategy(Runnable):
 
                             instrument.value_per_pip = market.value_per_pip
                             instrument.one_pip_means = market.one_pip_means
+                            instrument.lot_size = market.lot_size
                             instrument.contract_size = market.contract_size
 
                             instrument.set_base(market.base)
@@ -987,6 +988,7 @@ class Strategy(Runnable):
 
                                 instrument.value_per_pip = market.value_per_pip
                                 instrument.one_pip_means = market.one_pip_means
+                                instrument.lot_size = market.lot_size
                                 instrument.contract_size = market.contract_size
 
                                 instrument.set_price_limits(market.min_price, market.max_price, market.step_price)

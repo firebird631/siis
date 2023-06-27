@@ -1682,7 +1682,7 @@ class StrategyTrader(object):
             trade.update_stats(self.instrument, timestamp)
 
             # realized profit/loss
-            profit_loss = trade.profit_loss - trade.entry_fees_rate(self.instrument) - trade.exit_fees_rate(self.instrument)
+            net_profit_loss_rate = trade.net_profit_loss_rate()
 
             best_pl = (trade.best_price() - trade.entry_price if trade.direction > 0 else
                        trade.entry_price - trade.best_price()) / trade.entry_price
@@ -1691,10 +1691,10 @@ class StrategyTrader(object):
                         trade.entry_price - trade.worst_price()) / trade.entry_price
 
             # perf summed here it means that it is not done during partial closing
-            if profit_loss != 0.0:
-                self._stats['perf'] += profit_loss  # total profit/loss percent
-                self._stats['best'] = max(self._stats['best'], profit_loss)  # retains the best win
-                self._stats['worst'] = min(self._stats['worst'], profit_loss)  # retain the worst loss
+            if net_profit_loss_rate != 0.0:
+                self._stats['perf'] += net_profit_loss_rate  # total profit/loss percent
+                self._stats['best'] = max(self._stats['best'], net_profit_loss_rate)  # retains the best win
+                self._stats['worst'] = min(self._stats['worst'], net_profit_loss_rate)  # retain the worst loss
                 self._stats['high'] += best_pl  # sum like as all trades was closed at best price
                 self._stats['low'] += worst_pl  # sum like as all trades was closed at worst price
                 self._stats['closed'] += 1
@@ -1706,7 +1706,7 @@ class StrategyTrader(object):
 
             record = trade.dumps_notify_exit(timestamp, self)
 
-            if profit_loss < 0.0:
+            if net_profit_loss_rate < 0.0:
                 self._stats['cont-loss'] += 1
                 self._stats['cont-win'] = 0
 
@@ -1715,7 +1715,7 @@ class StrategyTrader(object):
                 elif trade.exit_reason in (trade.REASON_STOP_LOSS_MARKET, trade.REASON_STOP_LOSS_LIMIT):
                     self._stats['sl-loss'] += 1
 
-            elif profit_loss >= 0.0:
+            elif net_profit_loss_rate >= 0.0:
                 self._stats['cont-loss'] = 0
                 self._stats['cont-win'] += 1
 
@@ -1724,11 +1724,11 @@ class StrategyTrader(object):
                 elif trade.exit_reason in (trade.REASON_STOP_LOSS_MARKET, trade.REASON_STOP_LOSS_LIMIT):
                     self._stats['sl-win'] += 1
 
-            if round(profit_loss * 1000) == 0.0:
+            if round(net_profit_loss_rate * 1000) == 0.0:
                 self._stats['roe'].append(record)
-            elif profit_loss < 0:
+            elif net_profit_loss_rate < 0:
                 self._stats['failed'].append(record)
-            elif profit_loss > 0:
+            elif net_profit_loss_rate > 0:
                 self._stats['success'].append(record)
             else:
                 self._stats['roe'].append(record)
@@ -2211,7 +2211,7 @@ class StrategyTrader(object):
         if timestamp <= 0.0:
             return False
 
-        trade_profit_loss = trade.estimate_profit_loss(self.instrument)
+        trade_profit_loss = trade.estimate_profit_loss_rate(self.instrument)
 
         if trade_profit_loss >= 0.0:
             if (trade.context and trade.context.take_profit and trade.context.take_profit.timeout > 0 and
@@ -2749,6 +2749,10 @@ class StrategyTrader(object):
                 self._global_streamer.publish()
 
     def stream_trade_update(self, timestamp: float, trade: StrategyTrade):
+        # not during backtesting to do not flood stream and save CPU
+        if self.strategy.service.backtesting:
+            return
+
         if self._trade_update_streamer:
             try:
                 self._trade_update_streamer.member('trade-update').update(self, trade, timestamp)

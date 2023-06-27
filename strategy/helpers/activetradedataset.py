@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy helper to get dataset
+
 import traceback
 
 from common.utils import timeframe_to_str
@@ -50,7 +51,7 @@ def get_all_active_trades(strategy):
             for k, strategy_trader in strategy._strategy_traders.items():
                 with strategy_trader._mutex:
                     for trade in strategy_trader.trades:
-                        profit_loss = trade.estimate_profit_loss(strategy_trader.instrument)
+                        profit_loss_rate = trade.estimate_profit_loss_rate(strategy_trader.instrument)
 
                         results.append({
                             'mid': strategy_trader.instrument.market_id,
@@ -78,10 +79,10 @@ def get_all_active_trades(strategy):
                             'bt': trade.best_price_timestamp(),
                             'wt': trade.worst_price_timestamp(),
                             'label': trade.label,
-                            'pl': profit_loss,
+                            'pl': profit_loss_rate,
                             'upnl': strategy_trader.instrument.format_settlement(trade.unrealized_profit_loss),
                             'pnlcur': trade.profit_loss_currency,
-                            'fees': trade.entry_fees_rate(strategy_trader.instrument) + trade.estimate_exit_fees_rate(strategy_trader.instrument),
+                            'fees': trade.entry_fees_rate() + trade.margin_fees_rate() + trade.estimate_exit_fees_rate(strategy_trader.instrument),
                             'leop': strategy_trader.instrument.format_price(
                                 strategy_trader.instrument.open_exec_price(trade.direction)),
                             'qs': strategy_trader.instrument.format_quote(trade.invested_quantity)

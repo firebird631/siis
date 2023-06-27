@@ -37,6 +37,8 @@ class StrategyIndMarginTrade(StrategyTrade):
 
     @todo fill the exit_trades and update the x and axp each time and compute the axg and x correctly,
         specially with bitmex which only returns a cumulative filled
+    @todo fix exit fees, fees rate must be computed related to rpnl+upnl
+    @todo position maintenance funding fees, but how to ?
     """
 
     __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', \
@@ -691,6 +693,9 @@ class StrategyIndMarginTrade(StrategyTrade):
                     # probably need to update exit orders
                     self._dirty = True
 
+                    # update notional value of the position
+                    self._stats['notional-value'] = instrument.effective_cost(self.e, self.aep)
+
                 #
                 # fees/commissions
                 #
@@ -713,9 +718,9 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                     # realized fees
                     if filled > 0:
-                        self._stats['entry-fees'] = (instrument.maker_fee if maker else instrument.taker_fee) * (
-                                    self.aep * self.e) * instrument.contract_size
-                        # self._stats['entry-fees'] += filled * (
+                        self._stats['entry-fees'] = self._stats['notional-value'] * (
+                            instrument.maker_fee if maker else instrument.taker_fee)
+                        # self._stats['entry-fees'] += self._stats['notional-value'] * (
                         #     instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
 
                         if prev_e == 0:
@@ -826,10 +831,10 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                     # realized fees
                     if filled > 0:
-                        self._stats['exit-fees'] = (instrument.maker_fee if maker else instrument.taker_fee) * (
-                                self.axp * self.x) * instrument.contract_size
-                        # self._stats['exit-fees'] += filled * (
-                        #     instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
+                        self._stats['exit-fees'] = self._stats['notional-value'] * (self.axp/self.aep) * (
+                            instrument.maker_fee if maker else instrument.taker_fee)
+                        # self._stats['exit-fees'] += instrument.effective_cost(filled, self.axp) * (
+                        #     self.axp/self.aep) * (instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
 
                         if prev_x == 0:
                             # initial fill we count the commission fee
@@ -1084,7 +1089,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
             # including fees and realized profit and loss
             self._stats['unrealized-profit-loss'] = instrument.adjust_settlement(
-                u_pnl + r_pnl - self._stats['entry-fees'] - self._stats['exit-fees'])
+                u_pnl + r_pnl - self._stats['entry-fees'] - self._stats['exit-fees'] - self._stats['margin-fees'])
 
     def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
         data = list(super().info_report(strategy_trader))

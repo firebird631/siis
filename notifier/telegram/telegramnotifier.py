@@ -644,7 +644,7 @@ class TelegramNotifier(Notifier):
                 if aep:
                     instrument = self.service.strategy_service.strategy().find_instrument(symbol)
 
-                    upnl = Notifier.estimate_profit_loss(instrument, t)
+                    upnl = Notifier.estimate_profit_loss_rate(instrument, t)
                     messages.append("- Unrealized-PNL %.2f%%" % (upnl * 100.0,))
 
             elif trade_id in canceled_trades:

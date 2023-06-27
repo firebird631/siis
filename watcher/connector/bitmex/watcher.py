@@ -341,7 +341,7 @@ class BitMexWatcher(Watcher):
             # account data update
             #
 
-            if data[1] == 'margin':
+            if data[1] == 'margin':  # action insert/update
                 if not self.connector or not self.connector.ws:
                     return
 
@@ -366,7 +366,7 @@ class BitMexWatcher(Watcher):
 
                     self.service.notify(Signal.SIGNAL_ACCOUNT_DATA, self.name, account_data)
 
-            elif (data[1] == 'liquidation') and (data[0] == 'insert'):  # action
+            elif data[1] == 'liquidation' and data[0] == 'insert':
                 # logger.debug("bitmex l226 liquidation > %s " % str(data))
 
                 for ld in data[3]:
@@ -393,16 +393,52 @@ class BitMexWatcher(Watcher):
             # orders partial execution
             #
 
-            if (data[1] == 'execution') and data[2]:
-                pass
-                # for ld in data[3]:
-                #     logger.debug("bitmex l185 execution > %s" % str(ld))
+            if (data[1] == 'execution') and data[2] == 'insert':
+                for ld in data[3]:
+                    # @ref https://www.bitmex.com/api/explorer/#/Execution
+                    exec_logger.debug("bitmex l185 execution > %s" % str(ld))
+
+                    # "side": "Sell", "lastQty": 1, "lastPx": 1134.37, "underlyingLastPx": null, "lastMkt": "XBME",
+                    # "lastLiquidityInd": "RemovedLiquidity", "simpleOrderQty": null, "orderQty": 1, "price": 1134.37, "displayQty": null,
+                    # "stopPx": null, "pegOffsetValue": null, "pegPriceType": "", "currency": "USD", "settlCurrency": "XBt",
+                    # "execType": "Trade", "ordType": "Limit", "timeInForce": "ImmediateOrCancel", "execInst": "",
+                    # "contingencyType": "", "exDestination": "XBME", "ordStatus": "Filled", "triggered": "", "workingIndicator": false,
+                    # "ordRejReason": "", "simpleLeavesQty": 0, "leavesQty": 0, "simpleCumQty": 0.001, "cumQty": 1, "avgPx": 1134.37,
+                    # "commission": 0.00075, "tradePublishIndicator": "DoNotPublishTrade", "multiLegReportingType": "SingleSecurity",
+                    # "text": "Liquidation", "trdMatchID": "7f4ab7f6-0006-3234-76f4-ae1385aad00f", "execCost": 88155, "execComm": 66,
+                    # "homeNotional": -0.00088155, "foreignNotional": 1
+
+                    # ref_order_id = ""
+                    # symbol = ld['symbol']
+
+                    # timestamp
+                    # if ld.get('transactTime'):
+                    #     operation_time = self._parse_datetime(ld['transactTime']).replace(tzinfo=UTC()).timestamp()
+                    # elif ld.get('timestamp'):
+                    #     operation_time = self._parse_datetime(ld['timestamp']).replace(tzinfo=UTC()).timestamp()
+                    # else:
+                    #     operation_time = time.time()
+
+                    # order = {
+                    #     'id': ld['orderID'],
+                    #     'symbol': symbol,
+                    #     'timestamp': operation_time,
+                    #     'quantity': ld.get('orderQty', None),
+                    #     'price': ld.get('price'),
+                    #     'stop-price': ld.get('stopPx'),
+                    #     'stop-loss': None,
+                    #     'take-profit': None
+                    # }
+
+                    # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (
+                    #     symbol, order, ld.get('clOrdID', "")))
 
             #
             # positions
             #
 
-            elif data[1] == 'position':  # action
+            elif data[1] == 'position':  # action insert/update/delete
+                # @ref https://www.bitmex.com/api/explorer/#!/Position/Position_get
                 for ld in data[3]:
                     ref_order_id = ""
                     symbol = ld['symbol']
@@ -453,7 +489,7 @@ class BitMexWatcher(Watcher):
                         'cumulative-filled': quantity,
                         'filled': None,  # no have
                         'liquidation-price': ld.get('liquidationPrice'),
-                        'commission': ld.get('commission', 0.0),
+                        'cumulative-commission': ld.get('currentComm', 0.0),
                         # 'profit-currency': ld.get('currency'),
                         # 'profit-loss': ld.get('unrealisedPnl'),
                         # 'profit-loss-rate': ld.get('unrealisedPnlPcnt')
@@ -599,7 +635,7 @@ class BitMexWatcher(Watcher):
                         # 'currency': 'XBT', 'settlCurrency': 'XBt', 'triggered': '', 'simpleLeavesQty': None,
                         # 'leavesQty': 10000, 'simpleCumQty': None, 'cumQty': 0, 'avgPx': None, ...
 
-                        # side could by missing...
+                        # side could be missing...
                         if 'side' in ld:
                             direction = Order.LONG if ld['side'] == 'Buy' else Order.SHORT
                         else:
@@ -667,7 +703,7 @@ class BitMexWatcher(Watcher):
                             if candle is not None:
                                 self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
 
-            elif (data[1] == 'instrument' or data[1] == 'quote') and data[0] == 'insert' or data[0] == 'update':
+            elif (data[1] == 'instrument' or data[1] == 'quote') and (data[0] == 'insert' or data[0] == 'update'):
                 for market_id in data[2]:
                     try:
                         instrument = self.connector.ws.get_instrument(market_id)

@@ -33,7 +33,7 @@ class StrategyMarginTrade(StrategyTrade):
         if we use cumulative-filled and avg-price we have the same problem here too.
     @todo have to check about position_updated qty with direction maybe or take care to have trade signal and 
         distinct entry from exit
-    @todo fees and commissions
+    @todo fees and commissions like as strategyindmargintrade
     """
 
     __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', \

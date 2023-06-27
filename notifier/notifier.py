@@ -187,7 +187,7 @@ class Notifier(Runnable):
             return dt.strftime('%Y-%m-%d %H:%M:%S (UTC)') if dt else ''
 
     @staticmethod
-    def estimate_profit_loss(instrument, trade) -> float:
+    def estimate_profit_loss_rate(instrument, trade) -> float:
         """
         Estimate PLN without fees.
         """

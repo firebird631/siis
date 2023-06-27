@@ -25,17 +25,15 @@ logger = logging.getLogger('siis.strategy.trade')
 
 class StrategyTrade(object):
     """
-    Strategy trade base abstract class. A trade is related to entry and and one or many exit order.
-    It can be created from an automated or manual signal, and having some initial conditions, timeframe, expiry,
-    and they are managed according to the policy of a strategy trade manager, or from some other operations added
-    manually for semi-automated trading.
+    Strategy trade base abstract class. A trade is related to one entry and one or many exit orders.
+    It can be created from an automated or manual signal, and having a timeframe, expiry, and they are managed
+    according to the policy of a strategy trade manager, or from some other operations added manually in case of
+    semi-automated trading.
 
-    It can only have on entry order. The exit works with the entry quantity. When the entry order is not fully filled,
-    the exit order are later adjusted.
+    It can only have a single entry order. The exit works with the entry quantity.
+    When the entry order is not fully filled, the exit order are later adjusted.
 
-    The pl field does not measure the entry and exit fees.
-
-    @todo Take care to do not try to serialize objects from extra dict.
+    The pl field does not measure the fees neither commissions. It is a raw profit and loss rate.
     """
 
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', \
@@ -148,8 +146,9 @@ class StrategyTrade(object):
             'profit-loss-currency': "",
             'entry-fees': 0.0,
             'exit-fees': 0.0,
-            'exit-reason': StrategyTrade.REASON_NONE,
-            'conditions': {}
+            'margin-fees': 0.0,
+            'notional-value': 0.0,
+            'exit-reason': StrategyTrade.REASON_NONE
         }
 
         self._extra = {}
@@ -187,7 +186,7 @@ class StrategyTrade(object):
 
     @property
     def exit_state(self) -> int:
-        return self._exit_state   
+        return self._exit_state
 
     @property
     def direction(self) -> int:
@@ -233,14 +232,14 @@ class StrategyTrade(object):
         else:
             return 0.0
 
-    @property  
+    @property
     def order_price(self) -> float:
         return self.op
 
     @property
     def take_profit(self) -> float:
         return self.tp
-    
+
     @property
     def stop_loss(self) -> float:
         return self.sl
@@ -256,7 +255,7 @@ class StrategyTrade(object):
     @property
     def exec_entry_qty(self) -> float:
         return self.e
-    
+
     @property
     def exec_exit_qty(self) -> float:
         return self.x
@@ -265,11 +264,17 @@ class StrategyTrade(object):
         return self.e - self.x
 
     @property
-    def profit_loss(self) -> float:
+    def raw_profit_loss_rate(self) -> float:
         """
-        Profit loss rate.
+        Raw profit loss rate. Does not count trades and positions fees neither commissions.
         """
         return self.pl
+
+    def net_profit_loss_rate(self) -> float:
+        """
+        Net profit loss rate. Count trades and positions fees and commissions.
+        """
+        return self.pl - self.entry_fees_rate() - self.exit_fees_rate() - self.margin_fees()
 
     @property
     def timeframe(self) -> float:
@@ -761,7 +766,7 @@ class StrategyTrade(object):
         elif self._entry_state == StrategyTrade.STATE_FILLED and self._exit_state == StrategyTrade.STATE_FILLED:
             # entry and exit are completed
             return 'closed'
-        elif self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0: 
+        elif self._entry_state == StrategyTrade.STATE_CANCELED and self.e <= 0:
             # not entry quantity and entry order canceled
             return 'canceled'
         elif self._entry_state == StrategyTrade.STATE_FILLED:
@@ -967,7 +972,7 @@ class StrategyTrade(object):
 
         self.exit_trades = data.get('exit-trades', {})
 
-        self._stats = data.get('statistics', {
+        self._stats.update(data.get('statistics', {
             'best-price': 0.0,
             'best-timestamp': 0.0,
             'worst-price': 0.0,
@@ -984,8 +989,9 @@ class StrategyTrade(object):
             'exit-reason': StrategyTrade.REASON_NONE,
             'entry-fees': 0.0,
             'exit-fees': 0.0,
-            'conditions': {}
-        })
+            'margin-fees': 0.0,
+            'notional-value': 0.0
+        }))
 
         self._comment = data.get('comment', "")
         self._extra = data.get('extra', {})
@@ -993,7 +999,7 @@ class StrategyTrade(object):
         # trade context
         self.context = None
 
-        # retrieve context by name, support advanced dict or single str
+        # retrieve context by name, support advanced dict (deprecated) or single str
         context = data.get('context')
         if context:
             context_name = None
@@ -1065,20 +1071,14 @@ class StrategyTrade(object):
     def get_stats(self) -> dict:
         return self._stats
 
-    def add_condition(self, name: str, data):
-        self._stats['conditions'][name] = data
-
-    def get_conditions(self):
-        return self._stats['conditions']
-
     def entry_fees(self) -> float:
         """Realized entry fees cost (not rate)"""
         return self._stats['entry-fees']
 
-    def entry_fees_rate(self, instrument: Instrument) -> float:
-        """Realized entry fees rate"""
-        if self.e > 0 and self.aep > 0:
-            return self._stats['entry-fees'] / (self.aep * self.e * instrument.contract_size)
+    def entry_fees_rate(self) -> float:
+        """Realized entry fees rate over entry notional size"""
+        if self._stats['entry-fees'] != 0.0 and self._stats['notional-value'] > 0:
+            return self._stats['entry-fees'] / self._stats['notional-value']
 
         return 0.0
 
@@ -1086,12 +1086,39 @@ class StrategyTrade(object):
         """Realized exit fees cost (not rate)"""
         return self._stats['exit-fees']
 
-    def exit_fees_rate(self, instrument: Instrument) -> float:
-        """Realized entry fees rate"""
-        if self.x > 0 and self.axp > 0:
-            return self._stats['exit-fees'] / (self.axp * self.x * instrument.contract_size)
+    def exit_fees_rate(self) -> float:
+        """Realized entry fees rate over entry notional size"""
+        if self._stats['exit-fees'] != 0.0 and self._stats['notional-value'] > 0:
+            return self._stats['exit-fees'] / self._stats['notional-value']
 
         return 0.0
+
+    def margin_fees(self):
+        """Realized margin fees (not rate)"""
+        return self._stats['margin-fees']
+
+    def margin_fees_rate(self):
+        """Realized margin fees rate over entry notional size"""
+        if self._stats['margin-fees'] != 0.0 and self._stats['notional-value'] > 0:
+            return self._stats['margin-fees'] / self._stats['notional-value']
+
+        return 0.0
+
+    def total_fees(self):
+        """Sum of different fees and commissions (not rate)"""
+        return self._stats['entry-fees'] + self._stats['exit-fees'] + self._stats['margin-fees']
+
+    def total_fees_rate(self):
+        """Sum of different fees and commissions rate over entry notional size"""
+        total_fees = self.total_fees()
+
+        if total_fees and self._stats['notional-value'] > 0:
+            return total_fees / self._stats['notional-value']
+
+        return 0.0
+
+    def notional_value(self) -> float:
+        return self._stats['notional-value']
 
     def profit_loss_delta(self, instrument: Instrument) -> float:
         """
@@ -1124,19 +1151,14 @@ class StrategyTrade(object):
             return 0.0
 
         if self.direction > 0:
-            profit_loss = (self.tp - self.entry_price) / self.entry_price
+            raw_profit_loss = (self.tp - self.entry_price) / self.entry_price
         elif self.direction < 0:
-            profit_loss = (self.entry_price - self.tp) / self.entry_price
+            raw_profit_loss = (self.entry_price - self.tp) / self.entry_price
         else:
-            profit_loss = 0.0
+            raw_profit_loss = 0.0
 
-        # minus realized entry fees rate
-        profit_loss -= self.entry_fees_rate(instrument)
-
-        # and estimation of the exit fees rate
-        profit_loss -= self.estimate_exit_fees_rate(instrument)
-
-        return profit_loss
+        # minus realized entry fees rate and estimation of the exit fees rate
+        return raw_profit_loss - self.entry_fees_rate() - self.estimate_exit_fees_rate(instrument, raw_profit_loss)
 
     def estimate_stop_loss(self, instrument: Instrument) -> float:
         """
@@ -1147,23 +1169,19 @@ class StrategyTrade(object):
             return 0.0
 
         if self.direction > 0:
-            profit_loss = (self.entry_price - self.sl) / self.entry_price
+            raw_profit_loss = (self.entry_price - self.sl) / self.entry_price
         elif self.direction < 0:
-            profit_loss = (self.sl - self.entry_price) / self.entry_price
+            raw_profit_loss = (self.sl - self.entry_price) / self.entry_price
         else:
-            profit_loss = 0.0
+            raw_profit_loss = 0.0
 
-        # minus realized entry fees rate
-        profit_loss -= self.entry_fees_rate(instrument)
+        # minus realized entry fees rate and estimation of the exit fees rate
+        return raw_profit_loss - self.entry_fees_rate() - self.estimate_exit_fees_rate(instrument, raw_profit_loss)
 
-        # and estimation of the exit fees rate
-        profit_loss -= self.estimate_exit_fees_rate(instrument)
-
-        return profit_loss
-
-    def estimate_profit_loss(self, instrument: Instrument) -> float:
+    def estimate_profit_loss_rate(self, instrument: Instrument) -> float:
         """
         During the trade open, compute an estimation of the unrealized profit/loss rate.
+        Minus the entry and margin fees and estimate the exit fees.
         """
         # if no entry realised
         if self.e <= 0.0 or self.entry_price <= 0.0:
@@ -1177,32 +1195,30 @@ class StrategyTrade(object):
             return 0.0
 
         if self.direction > 0:
-            profit_loss = (close_exec_price - self.entry_price) / self.entry_price
+            raw_profit_loss = (close_exec_price - self.entry_price) / self.entry_price
         elif self.direction < 0:
-            profit_loss = (self.entry_price - close_exec_price) / self.entry_price
+            raw_profit_loss = (self.entry_price - close_exec_price) / self.entry_price
         else:
-            profit_loss = 0.0
+            raw_profit_loss = 0.0
 
-        # minus realized entry fees rate
-        profit_loss -= self.entry_fees_rate(instrument)
+        # minus realized entry fees rate and estimation of the exit fees rate
+        return raw_profit_loss - self.entry_fees_rate() - self.estimate_exit_fees_rate(instrument, raw_profit_loss)
 
-        # and estimation of the exit fees rate
-        profit_loss -= self.estimate_exit_fees_rate(instrument)
-
-        return profit_loss
-
-    def estimate_exit_fees_rate(self, instrument: Instrument) -> float:
+    def estimate_exit_fees_rate(self, instrument: Instrument, pl: Optional[float] = None) -> float:
         """
-        Return the estimate fees rate for the exit order.
+        Return the estimate fees rate for the remaining quantity at exit order according to current PNL.
         """
+        if pl is None:
+            pl = self.pl
+
         # count the exit fees related to limit order type
         if self._stats['take-profit-order-type'] in (Order.ORDER_LIMIT, Order.ORDER_STOP_LIMIT,
                                                      Order.ORDER_TAKE_PROFIT_LIMIT):
-            return instrument.maker_fee
+            return instrument.maker_fee * (1.0 + pl)
 
         elif self._stats['take-profit-order-type'] in (Order.ORDER_MARKET, Order.ORDER_STOP,
                                                        Order.ORDER_TAKE_PROFIT):
-            return instrument.taker_fee
+            return instrument.taker_fee * (1.0 + pl)
 
         return 0.0
 
@@ -1307,6 +1323,8 @@ class StrategyTrade(object):
                 'entry-order-type': order_type_to_str(self._stats['entry-order-type']),
                 'close-exec-price': strategy_trader.instrument.format_price(
                     strategy_trader.instrument.close_exec_price(self.dir)),
+                'entry-fees': self._stats['entry-fees'],
+                'notional-value': strategy_trader.instrument.format_settlement(self._stats['notional-value'])
             }
         }
 
@@ -1343,8 +1361,7 @@ class StrategyTrade(object):
             'exit-open-time': self.dump_timestamp(self.xot),
             'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
             'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
-            # minus fees
-            'profit-loss-pct': round((self.pl - self.entry_fees_rate(strategy_trader.instrument) - self.exit_fees_rate(strategy_trader.instrument)) * 100.0, 2),
+            'profit-loss-pct': round(self.net_profit_loss_rate() * 100.0, 2),  # net rate
             'num-exit-trades': len(self.exit_trades),
             'comment': self._comment,
             'stats': {
@@ -1361,10 +1378,12 @@ class StrategyTrade(object):
                 'profit-loss': self._stats['unrealized-profit-loss'],  # use the last computed or updated
                 'entry-fees': self._stats['entry-fees'],
                 'exit-fees': self._stats['exit-fees'],
-                'fees-pct': round((self.entry_fees_rate(strategy_trader.instrument) + self.exit_fees_rate(strategy_trader.instrument)) * 100.0, 2),
+                'margin-fees': self._stats['margin-fees'],
+                'fees-pct': round((self.total_fees_rate() * 100.0), 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
                 'close-exec-price': strategy_trader.instrument.format_price(
                     strategy_trader.instrument.close_exec_price(self.dir)),
+                'notional-value': strategy_trader.instrument.format_settlement(self._stats['notional-value'])
             }
         }
 
@@ -1401,7 +1420,7 @@ class StrategyTrade(object):
             'exit-open-time': self.dump_timestamp(self.xot),
             'filled-entry-qty': strategy_trader.instrument.format_quantity(self.e),
             'filled-exit-qty': strategy_trader.instrument.format_quantity(self.x),
-            'profit-loss-pct': round(self.estimate_profit_loss(strategy_trader.instrument) * 100.0, 2),
+            'profit-loss-pct': round(self.estimate_profit_loss_rate(strategy_trader.instrument) * 100.0, 2),
             'num-exit-trades': len(self.exit_trades),
             'comment': self._comment,
             'stats': {
@@ -1418,10 +1437,12 @@ class StrategyTrade(object):
                 'profit-loss': self._stats['unrealized-profit-loss'],
                 'entry-fees': self._stats['entry-fees'],
                 'exit-fees': self._stats['exit-fees'],
-                'fees-pct': round((self.entry_fees_rate(strategy_trader.instrument) + self.exit_fees_rate(strategy_trader.instrument)) * 100.0, 2),
+                'margin-fees': self._stats['margin-fees'],
+                'fees-pct': round((self.total_fees_rate() * 100.0), 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
                 'close-exec-price': strategy_trader.instrument.format_price(
                     strategy_trader.instrument.close_exec_price(self.dir)),
+                'notional-value': strategy_trader.instrument.format_settlement(self._stats['notional-value'])
             }
         }
 
