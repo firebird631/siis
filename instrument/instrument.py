@@ -224,8 +224,6 @@ class Instrument(object):
     @member symbol str Common usual name (ex: EURUSD, BTCUSD).
     @member market_id str Unique broker identifier.
     @member alias str A secondary or display name.
-
-    @todo may we need hedging, leverage limits, contract_size, lot_size ?
     """
 
     TF_TICK = 0
@@ -303,6 +301,7 @@ class Instrument(object):
     UNIT_AMOUNT = 0
     UNIT_CONTRACTS = 1
     UNIT_SHARES = 2
+    UNIT_INVERSE = 3
 
     MAKER = 0
     TAKER = 1
@@ -1427,15 +1426,40 @@ class Instrument(object):
     def effective_cost(self, quantity: float, price: float) -> float:
         """
         Effective cost, not using the margin factor, for a quantity at specific price.
+        Return a value that can be in quote or settlement currency (depends on how is defined contract size) or in
+        unit of base in case of contracts
         """
+        if quantity <= 0.0 or price <= 0.0:
+            return 0.0
+
         if self._unit_type == Instrument.UNIT_AMOUNT:
-            return quantity * (self._lot_size * self._contract_size) * price  # in quote currency
+            return quantity * (self._lot_size * self._contract_size) * price
         elif self._unit_type == Instrument.UNIT_CONTRACTS:
             return quantity * (self._lot_size * self._contract_size / self._value_per_pip * price)
         elif self._unit_type == Instrument.UNIT_SHARES:
-            return quantity * price  # in quote currency
+            return quantity * price
+        elif self._unit_type == Instrument.UNIT_INVERSE:
+            return quantity * (self._lot_size * self._contract_size) / price
         else:
-            return quantity * (self._lot_size * self._contract_size) * price  # in quote currency
+            return quantity * (self._lot_size * self._contract_size) * price
+
+    def compute_pnl(self, quantity: float, direction: int, initial_price: float, last_price: float) -> float:
+        """
+        Compute the profit or loss according to the market unit type.
+        """
+        if quantity <= 0.0 or initial_price <= 0.0 or last_price <= 0.0:
+            return 0.0
+
+        if self._unit_type == Instrument.UNIT_AMOUNT:
+            return quantity * (self._lot_size * self._contract_size) * direction * (last_price - initial_price)
+        elif self._unit_type == Instrument.UNIT_CONTRACTS:
+            return quantity * (self._lot_size * self._contract_size / self._value_per_pip * direction * (last_price - initial_price))
+        elif self._unit_type == Instrument.UNIT_SHARES:
+            return quantity * (last_price - initial_price)
+        elif self._unit_type == Instrument.UNIT_INVERSE:
+            return quantity * (self._lot_size * self._contract_size) * direction * (1.0 / initial_price - 1.0 / last_price)
+        else:
+            return quantity * (self._lot_size * self._contract_size) * direction * (last_price - initial_price)
 
     #
     # configuration

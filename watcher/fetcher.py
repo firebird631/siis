@@ -317,6 +317,8 @@ class Fetcher(object):
                 market.unit_type = Market.UNIT_CONTRACTS
             elif market_data['unit'] == 'shares':
                 market.unit_type = Market.UNIT_SHARES
+            elif market_data['unit'] == 'inverse':
+                market.unit_type = Market.UNIT_INVERSE
             else:
                 market.unit_type = Market.UNIT_CONTRACTS
         else:
@@ -429,7 +431,7 @@ class Fetcher(object):
 
     def fetch_closed_orders(self, from_date, to_date):
         """
-        Retrieve the historical orders data for a certain a period of date.
+        Retrieve the historical order data for a certain a period of date.
         @param from_date
         @param to_date
         @return list of dict or None if error

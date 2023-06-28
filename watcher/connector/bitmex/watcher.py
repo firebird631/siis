@@ -843,6 +843,10 @@ class BitMexWatcher(Watcher):
             market.contract_type = Market.CONTRACT_FUTURE
             market.trade = Market.TRADE_MARGIN | Market.TRADE_IND_MARGIN
 
+            # inverse perpetual contract
+            if base_symbol == "XBT" and quote_symbol in ("USD", "USDT"):
+                market.unit_type = Market.UNIT_INVERSE
+
             if bid is not None and ask is not None:
                 market.bid = bid
                 market.ask = ask
@@ -894,72 +898,65 @@ class BitMexWatcher(Watcher):
         contract_size = 1.0
         value_per_pip = 1.0
 
-        # contract_size need to be updated as price changes
-        if quote_symbol == 'USD' and base_market_id == symbol:  # XBTUSD (xbt perpetual)
-            # market.base_exchange_rate = instrument.get('lastPrice', 1.0)  # quoted in USD
-            contract_size = 1.0 / instrument.get('lastPrice', 1.0) ** 2
+        if quote_symbol == 'USD':  # perpetual contract over XBT
+            if base_symbol == 'XBT':  # 1 USD inverse contract
+                contract_size = 1.0  # 1.0 / instrument.get('lastPrice', 1.0) ** 2
+            elif base_symbol == 'ADA':  # ADAUSD Contract Size 0,0001 XBT per 1 USD
+                contract_size = 0.0001
+            elif base_symbol == 'BCH':  # BCHUSD Contract Size 0,001 mXBT per 1 USD
+                contract_size = 0.001 * 0.001
+            elif base_symbol == 'ETH':  # ETHUSD Contract Size 0,001 mXBT per 1 USD
+                contract_size = 0.001 * 0.001
+            elif base_symbol == 'LTC':  # LTCUSD Contact Size 0,002 mXBT per 1 USD
+                contract_size = 0.002 * 0.001
+            elif base_symbol == 'XRP':  # XRPUSD Contract Size 0,0002 XBT per 1 USD
+                contract_size = 0.0002
+            else:
+                # @todo others markets
+                contract_size = 1.0
+
+            value_per_pip = contract_size
+
+        elif quote_symbol == 'USDT':  # perpetuals contracts over USDT
             value_per_pip = 1.0
 
-        elif base_market_id == symbol:  # XBTU19 (xbt futures)
-            # market.base_exchange_rate = xbtusd_market.get('lastPrice', 1.0)  # quoted in USD
-            contract_size = 1.0 / instrument.get('lastPrice', 1.0) ** 2
+            if base_symbol == 'XBT':  # 1 USD inverse contract
+                contract_size = 0.000001
+            # elif base_symbol == 'ADA':
+            #     contract_size = 0.0001
+            # elif base_symbol == 'BCH':
+            #     contract_size = 0.001 * 0.001
+            # elif base_symbol == 'ETH':
+            #     contract_size = 0.001 * 0.001
+            # elif base_symbol == 'LTC':
+            #     contract_size = 0.002 * 0.001
+            # elif base_symbol == 'XRP':
+            #     contract_size = 0.0002
+            else:
+                # @todo others markets
+                contract_size = 1.0
+
+        elif quote_symbol == "XBT":  # ETHXBT, BCHXBT... (perpetual futures over XBT)
+            # @todo
+            pass
+
+        else:  # XBT<M><YY>, XRP<M><YY>... (non perpetuals futures)
+            base_exchange_rate = 1.0  # quoted in XBT
             value_per_pip = 1.0
 
-        elif quote_symbol == 'USD' and base_market_id != symbol:  # ETHUSD, XRPUSD... (alts perpetuals)
-            if xbtusd_instrument:
-                # market.base_exchange_rate = xbtusd_market.get('lastPrice', 1.0)  # quoted in USD
-
-                if base_symbol == 'ADA':
-                    # ADAUSD Contract Size 0,0001 XBT per 1 USD
-                    contract_size = 0.0001  # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
-
-                elif base_symbol == 'BCH':
-                    # BCHUSD Contract Size 0,001 mXBT per 1 USD
-                    contract_size = 0.001 * 0.001  # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
-
-                elif base_symbol == 'ETH':
-                    # ETHUSD Contract Size 0,001 mXBT per 1 USD
-                    contract_size = 0.001 * 0.001  # * instrument.get('lastPrice', 1.0)  # * (xbtusd_instrument.get('lastPrice', 1.0) * 0.001)
-
-                elif base_symbol == 'LTC':
-                    # LTCUSD Contact Size 0,002 mXBT per 1 USD
-                    # (Currently 0,00017266 XBT per contract)
-                    contract_size = 0.002 * 0.001  # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
-
-                elif base_symbol == 'XRP':
-                    # XRPUSD Contract Size 0,0002 XBT per 1 USD
-                    contract_size = 0.0002  # * instrument.get('lastPrice', 1.0)  # * xbtusd_instrument.get('lastPrice', 1.0)
-                else:
-                    # @todo others markets
-                    contract_size = 1.0
-
-                value_per_pip = contract_size  # * instrument.get('tickSize', 1.0)
-
-        elif base_market and base_market_id != symbol:  # ADAZ18... (alts futures)
-            if xbtusd_instrument:
-                base_exchange_rate = 1.0  # quoted in XBT
-                value_per_pip = 1.0
-
-                if base_symbol == 'ADA':
-                    # ADA Contract Size 0,01 ADA
+            if base_symbol == 'XBT':  # 1 USD inverse contract
+                contract_size = 1.0  # 1.0 / instrument.get('lastPrice', 1.0) ** 2
+            elif instrument and xbtusd_instrument:
+                if base_symbol == 'ADA':  # ADA Contract Size 0,01 ADA
                     contract_size = 0.0001 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
-
-                elif base_symbol == 'BCH':
-                    # BCH Contract Size 0.00001 BCH
+                elif base_symbol == 'BCH':  # BCH Contract Size 0.00001 BCH
                     contract_size = 0.00001 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
-
-                elif base_symbol == 'ETH':
-                    # ETH Contract Size 0.00001 ETH
+                elif base_symbol == 'ETH':  # ETH Contract Size 0.00001 ETH
                     contract_size = 0.00001 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
-
-                elif base_symbol == 'LTC':
-                    # LTC Contract Size 0,01 LTC
+                elif base_symbol == 'LTC':  # LTC Contract Size 0,01 LTC
                     contract_size = 0.01 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
-
-                elif base_symbol == 'XRP':
-                    # XRP Contract Size 0,01 XRP
+                elif base_symbol == 'XRP':  # XRP Contract Size 0,01 XRP
                     contract_size = 0.01 * instrument.get('lastPrice', 1.0) / xbtusd_instrument.get('lastPrice', 1.0)
-
                 else:
                     # @todo others markets
                     contract_size = 1.0

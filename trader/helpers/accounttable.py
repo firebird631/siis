@@ -13,8 +13,7 @@ def account_table(trader, style='', offset=None, limit=None, col_ofs=None):
     """
     Returns a table of any followed markets.
     """
-    columns = ('Broker', 'Account', 'Username', 'Email', 'Asset', 'Free Asset', 'Balance', 'Margin',
-               'Level', 'Net worth', 'Risk limit', 'Unrealized P/L', 'Asset U. P/L', 'Draw-Down (Max)')
+    columns = ('Name', 'Value')
     data = []
 
     with trader.mutex:
@@ -43,41 +42,44 @@ def account_table(trader, style='', offset=None, limit=None, col_ofs=None):
                 trader.account.currency_ratio > 0.0):
             acd = trader.account.alt_currency_display or trader.account.alt_currency
 
-            asset_balance += " (%s)" % trader.account.format_price(
+            asset_balance += " (%s)" % trader.account.format_alt_price(
                 trader.account.asset_balance * trader.account.currency_ratio) + acd
-            free_asset_balance += " (%s)" % trader.account.format_price(
+            free_asset_balance += " (%s)" % trader.account.format_alt_price(
                 trader.account.free_asset_balance * trader.account.currency_ratio) + acd
-            balance += " (%s)" % trader.account.format_price(
+            balance += " (%s)" % trader.account.format_alt_price(
                 trader.account.balance * trader.account.currency_ratio) + acd
-            margin_balance += " (%s)" % trader.account.format_price(
+            margin_balance += " (%s)" % trader.account.format_alt_price(
                 trader.account.margin_balance * trader.account.currency_ratio) + acd
             net_worth += " (%s)" % trader.account.format_alt_price(
                 trader.account.net_worth * trader.account.currency_ratio) + acd
-            risk_limit += " (%s)" % trader.account.format_price(
+            risk_limit += " (%s)" % trader.account.format_alt_price(
                 trader.account.risk_limit * trader.account.currency_ratio) + acd
             upnl += " (%s)" % trader.account.format_alt_price(
                 trader.account.profit_loss * trader.account.currency_ratio) + acd
             asset_upnl += " (%s)" % trader.account.format_alt_price(
                 trader.account.asset_profit_loss * trader.account.currency_ratio) + acd
 
-        row = (
-            trader.name,
-            trader.account.name,
-            trader.account.username,
-            trader.account.email,
-            asset_balance,
-            free_asset_balance,
-            balance,
-            margin_balance,
-            "%.2f%%" % (trader.account.margin_level * 100.0),
-            net_worth,
-            risk_limit,
-            upnl,
-            asset_upnl,
-            "%.2f%% (%.2f%%)" % (draw_down * 100.0, max_draw_down * 100.0)
-        )
+        def add_row(row):
+            data.append(row[col_ofs:])
 
-        if offset < 1 and limit > 0:
-            data.append(row[0:2] + row[2+col_ofs:])
+        add_row(("Broker", trader.name))
+        add_row(("Account", trader.account.name))
+        add_row(("Username", trader.account.username or "-"))
+        add_row(("Email", trader.account.email or "-"))
+        add_row(("---------------", "---------------"))
+        add_row(("Asset", asset_balance))
+        add_row(("Free Asset", free_asset_balance))
+        add_row(("---------------", "---------------"))
+        add_row(("Margin", balance))
+        add_row(("Level", "%.2f%%" % (trader.account.margin_level * 100.0)))
+        add_row(("Net worth", net_worth))
+        add_row(("Risk limit", risk_limit))
+        add_row(("---------------", "---------------"))
+        add_row(("Unrealized P/L", upnl))
+        add_row(("Asset U. P/L", asset_upnl))
+        add_row(("---------------", "---------------"))
+        add_row(("Draw-Down (Max)", "%.2f%% (%.2f%%)" % (draw_down * 100.0, max_draw_down * 100.0)))
 
-    return columns[0:2] + columns[2+col_ofs:], data, (len(columns), 1)
+    data = data[offset:limit]
+
+    return columns[col_ofs:], data, (len(columns), len(data))

@@ -218,7 +218,6 @@ class PaperTrader(Trader):
                         if market:
                             # managed position take-profit and stop-loss
                             if market.has_position and (position.take_profit or position.stop_loss):
-                                open_exec_price = market.close_exec_price(position.direction)
                                 close_exec_price = market.close_exec_price(position.direction)
 
                                 order_type = None
@@ -269,9 +268,9 @@ class PaperTrader(Trader):
                         # only for non-empty positions
                         if market and position.quantity > 0.0:
                             # manually compute here because of paper trader
-                            profit_loss += position.raw_profit_loss / market.base_exchange_rate
-                            used_margin += position.margin_cost(market) / market.base_exchange_rate
+                            used_margin += position.margin_cost(market)  # in account currency if BRE is up-to-date
                             used_cost += position.position_cost(market) / market.base_exchange_rate
+                            profit_loss += position.raw_profit_loss / market.base_exchange_rate
 
                     self.account.set_used_margin(used_margin-profit_loss)
                     self.account.set_unrealized_profit_loss(profit_loss)
@@ -924,14 +923,9 @@ class PaperTrader(Trader):
         if not self._unlimited:
             # if self.service.backtesting:
             #     # fake the values with a relative ratio
-            #     # it is wrong with forex, except with
             #     if market.quote != self.account.currency:
             #         if market.base_exchange_rate != 1.0:
             #             market.base_exchange_rate *= ratio
-            #
-            #     if market.market_type != market.CONTRACT_CFD:
-            #         if market.contract_size != 1.0:
-            #             market.contract_size *= ratio
 
             if self._assets:
                 # update profit/loss (informational) for each asset

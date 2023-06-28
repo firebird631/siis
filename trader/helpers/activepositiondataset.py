@@ -62,8 +62,8 @@ def get_active_positions(trader):
                         'mpl': position.profit_loss_market_rate,
                         'mpnl': market.format_settlement(position.profit_loss_market),
                         'pnlcur': market.settlement_display or market.settlement or market.quote_display or market.quote,
-                        'cost': market.format_quantity(position.position_cost(market)),
-                        'margin': market.format_quantity(position.margin_cost(market)),
+                        'cost': market.format_settlement(position.position_cost(market)),
+                        'margin': market.format_settlement(position.margin_cost(market)),
                         'key': position.key
                     })
         except Exception as e:

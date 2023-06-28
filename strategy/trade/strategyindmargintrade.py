@@ -35,9 +35,6 @@ class StrategyIndMarginTrade(StrategyTrade):
 
     We prefers here to update on trade order signal. A position deleted mean any related trades closed.
 
-    @todo fill the exit_trades and update the x and axp each time and compute the axg and x correctly,
-        specially with bitmex which only returns a cumulative filled
-    @todo fix exit fees, fees rate must be computed related to rpnl+upnl
     @todo position maintenance funding fees, but how to ?
     """
 
@@ -1074,18 +1071,11 @@ class StrategyIndMarginTrade(StrategyTrade):
             if last_price <= 0:
                 return
 
-            u_pnl = 0.0  # unrealized PNL
-            r_pnl = 0.0  # realized PNL
-
             # non realized quantity
             nrq = self.e - self.x
 
-            if self.dir > 0:
-                u_pnl = (last_price - self.aep) * nrq * instrument.contract_size
-                r_pnl = (self.axp - self.aep) * self.x * instrument.contract_size
-            elif self.dir < 0:
-                u_pnl = (self.aep - last_price) * nrq * instrument.contract_size
-                r_pnl = (self.aep - self.axp) * self.x * instrument.contract_size
+            u_pnl = instrument.compute_pnl(nrq, self.dir, self.aep, last_price)
+            r_pnl = instrument.compute_pnl(self.x, self.dir, self.aep, self.axp)
 
             # including fees and realized profit and loss
             self._stats['unrealized-profit-loss'] = instrument.adjust_settlement(

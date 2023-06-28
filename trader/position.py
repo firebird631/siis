@@ -331,11 +331,16 @@ class Position(Keyed):
         if self.entry_price is None:
             return
 
-        delta_price = self.price_diff(market)
         position_cost = self.position_cost(market)
 
-        # raw_profit_loss = self.quantity * (delta_price / (market.one_pip_means or 1.0)) * market.value_per_pip
-        raw_profit_loss = self.quantity * delta_price * market.contract_size
+        if self.direction == Position.LONG:
+            last_price = market.bid
+        elif self.direction == Position.SHORT:
+            last_price = market.ask
+        else:
+            last_price = self.entry_price
+
+        raw_profit_loss = market.compute_pnl(self.quantity, self.direction, self.entry_price, last_price)
 
         # without fees neither commissions
         self._raw_profit_loss = raw_profit_loss
@@ -372,26 +377,22 @@ class Position(Keyed):
 
     def position_cost(self, market: Market) -> float:
         """
-        Return the cost of the position in base currency. It does not take care about the margin factor / leverage.
+        Helper to return the cost of the position in market specified currency (depends on the unit type).
         """
         if market is None:
             return 0.0
 
-        # @todo not sure lot_size should be here
-        # return self.quantity * (market.lot_size * market.contract_size) * self._entry_price
-        return self.quantity * market.contract_size * self._entry_price
+        return market.effective_cost(self.quantity, self._entry_price)
 
     def margin_cost(self, market: Market) -> float:
         """
-        Return the used margin in base currency (using margin factor). Have to divide per base exchange rate to have
-        it in account base currency. But in backtesting we don't have all the rate from base pair to base account.
+        Return the used margin in account currency using margin factor and base exchange rate.
+        @note During backtest BRE could not be up-to-date.
         """
         if market is None:
             return 0.0
 
-        # @todo not sure lot_size should be here
-        # return self.quantity * (market.lot_size * market.contract_size) * market.margin_factor * self._entry_price
-        return self.quantity * market.contract_size * market.margin_factor * self._entry_price
+        return market.margin_cost(self.quantity, self._entry_price)
 
     def direction_to_str(self) -> str:
         if self._direction > 0:

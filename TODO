@@ -66,7 +66,7 @@ Sum order :
 #103 WebTrader
     - HTTP :
         - POST/GET reinvest-gain handler
-        - POST/GET dca handler
+        - POST/GET DCA handler
     - WS :
         - notify/wt-read strategy-trader context data
         - notify/wt-read strategy-trader regions hit
@@ -75,19 +75,19 @@ Sum order :
         - read/modify max-trade
         - read/modify contexts
     - charting :
-        - charting OHLC et ticks (streaming) + performance
+        - charting OHLC et ticks (streaming) + performance (WIP)
         - goto charting historique sur un trade passé
         - ticker WS, basé sur quoi ? trader ticker ? strategy instrument ?
             - plutôt sur le trader car pas besoin de surcharger encore le strategy trader
     - session expiry message to renew
     - toggle audio et alt sound alerts (et save conf)
     - listes :
-        - tiers par (% pnl+-, market+-, date+-, upnl+-)
+        - trier par (% pnl+-, market+-, date+-, upnl+-)
         - paginer si list > 100 élements
     - menu + modal pour créer une alerte price-cross
-    - menu + model pour créer une range region
-    - menu + model pour créer une trend region
-    - recevoir stream de bid/ask, abonnement/resiliation
+    - menu + modal pour créer une range region
+    - menu + modal pour créer une trend region
+    - recevoir stream de bid/ask, abonnement/resiliation en vue graphique
     - calculer r:r sur open trade, calcule % et montant risqué selon stop-loss
 
 
@@ -95,16 +95,10 @@ Sum order :
 # Bugs #
 ########
 
-- parfois un trade reste ouvert sur Bitmex, il reste en Waiting pourtant il a quantity filled en sortie et la position
-  est pourtant ferme
-
 - les ordres avec binance ne sont pas retire du trader (oblige de reconnect pour purger la liste)
 
-- Probleme sur le papertrader en backtest avec ind margin en cas de reversal sur la meme frame (close de trade oppose,
-  ouverture de nouveaux reversal), le trade est automatiquement ferme surement a cause de la position interne
-
-- Sur le Web trader on ne peu pas faire des reduce de quantity < à 1
-- Si on passe en pip au lieu de % ça n'affiche pas tjs bien la valeur selon le marché pour les modify SL / TP
+- WebTrader : on ne peu pas faire des reduce de quantity < à 1
+- WebTrader : Si on passe en pip au lieu de % ça n'affiche pas tjs bien la valeur selon le marché pour les modify SL / TP
 
 - Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
 
@@ -127,17 +121,11 @@ Sum order :
 - auto unsubscribe charts when no web client connected on server
 
 - paper trader base exchange rate mais surtout contract size doit etre recalcule a chaque step en backtest
-    - pose probleme sur bitmex uniquement sinon la valeur reste a l'initiale en DB
+    - pose probleme sur bitmex XTBUSD => 1/price**2 uniquement sinon la valeur reste a l'initiale en DB
+    - devrait ajouter un MARKET TYPE INVERSE (PERPETUAL) et donc calculer 1/price et contract_size = 1
 
 - def dumps_context(self, context_id: str) -> Union[dict, None]: doit etre generic et doit utiliser context dumps method
    - est ce qu'on veut vraiment dumps ca... au final c'est plus l'oeuvre de la strategy
-
-- simplifier les context, un seul type, et donc un seul "context" dans les parametres (toutes les strategies doivent être simplifiées)
-
-- allow/deny monitoring IP list plus propre, mais attention aux conf des bots si changement de config
-    - methode pour ajouter/retirer des IP une fois lancé ? mais moyen sécure ...
-
-- send an error notification in case of a trade goes to ERROR state
 
 - Verification des trades par la method check :
     - implementer order_info pour le trader bitmex et verifier

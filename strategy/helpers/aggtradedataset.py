@@ -43,7 +43,7 @@ def get_agg_trades(strategy):
                     sl_win = strategy_trader._stats['sl-win']
                     sl_loss = strategy_trader._stats['sl-loss']
 
-                    rpnl = strategy_trader.instrument.adjust_quote(strategy_trader._stats['rpnl'])
+                    rpnl = strategy_trader.instrument.adjust_settlement(strategy_trader._stats['rpnl'])
 
                     success = len(strategy_trader._stats['success'])
                     failed = len(strategy_trader._stats['failed'])
@@ -78,7 +78,7 @@ def get_agg_trades(strategy):
                         'low': low,
                         'num-closed-trades': closed,
                         'rpnl': rpnl,
-                        'rpnl-currency': strategy_trader.instrument.quote,
+                        'rpnl-currency': strategy_trader.instrument.settlement or strategy_trader.instrument.quote,
                         'num-actives-trades': num_actives_trades,
                         'tp-win': tp_win,
                         'tp-loss': tp_loss,

@@ -15,13 +15,12 @@ logger = logging.getLogger('siis.trader.papertrader.indmargin')
 def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_price):
     """
     Execute the order for indivisible margin position.
+    @note No hedging possible.
     @todo update to support only indivisible margin order
     @todo partial reduce position (avg exit price, qty of position)
     @warning commission amount cannot be correct if commission/settlement currency is not stable (contract size missing)
     """
     current_position = None
-    positions = []
-    result = False
 
     trader.lock()
 
@@ -30,41 +29,6 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         current_position = trader._positions.get(order.symbol)
 
     if current_position and current_position.is_opened():
-        # increase or reduce the current position
-        org_quantity = current_position.quantity
-        exec_price = 0.0
-
-        #
-        # and adjust the position quantity (no possible hedging)
-        #
-
-        # price difference depending on the direction
-        delta_price = 0
-        if current_position.direction == Position.LONG:
-            delta_price = close_exec_price - current_position.entry_price
-            # logger.debug("cl", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
-        elif current_position.direction == Position.SHORT:
-            delta_price = current_position.entry_price - close_exec_price
-            # logger.debug("cs", delta_price, " use ", close_exec_price, " other ", open_exec_price, close_exec_price < open_exec_price)
-
-        # keep for percent calculation
-        prev_entry_price = current_position.entry_price or close_exec_price
-        leverage = order.leverage
-
-        # most of those data rarely change except the base_exchange_rate
-        value_per_pip = market.value_per_pip
-        contract_size = market.contract_size
-        lot_size = market.lot_size
-        one_pip_means = market.one_pip_means
-        base_exchange_rate = market.base_exchange_rate
-        margin_factor = market.margin_factor
-
-        # logger.debug(order.symbol, bid_price, ask_price, open_exec_price, close_exec_price, delta_price, current_position.entry_price, order.price)
-        realized_position_cost = 0.0  # realized cost of the position in base currency
-
-        # effective meaning of delta price in base currency
-        effective_delta_price = delta_price  # (delta_price / one_pip_means) * value_per_pip
-
         # in base currency
         position_gain_loss = 0.0
 
@@ -99,11 +63,12 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             # increase used margin
             trader.account.use_margin(margin_cost)
         else:
-            # different direction
+            # opposite direction
             if current_position.quantity > order.quantity:
                 # first case the direction still the same, reduce the position and the margin
                 # take the profit/loss from the difference by order.quantity and adjust the entry price and quantity
-                position_gain_loss = effective_delta_price * order.quantity * contract_size
+                position_gain_loss = market.compute_pnl(order.quantity, current_position.direction,
+                                                        current_position.entry_price, close_exec_price)
 
                 realized_position_cost = market.effective_cost(order.quantity, close_exec_price)
                 margin_cost = market.margin_cost(order.quantity, close_exec_price)
@@ -120,14 +85,15 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
 
             elif current_position.quantity == order.quantity:
                 # second case the position is closed, exact quantity in the opposite direction
-                position_gain_loss = effective_delta_price * current_position.quantity * contract_size
-                current_position.quantity = 0.0
+                position_gain_loss = market.compute_pnl(order.quantity, current_position.direction,
+                                                        current_position.entry_price, close_exec_price)
 
                 realized_position_cost = market.effective_cost(order.quantity, close_exec_price)
                 margin_cost = market.margin_cost(order.quantity, close_exec_price)
 
                 # average position entry price does not move because only reduce
                 # directly executed quantity
+                current_position.quantity = 0.0
                 order.executed = order.quantity
                 exec_price = close_exec_price
 
@@ -135,9 +101,9 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
                 trader.account.free_margin(margin_cost)
             else:
                 # third case the position is reversed
-                # 1) get the profit loss
-                position_gain_loss = effective_delta_price * current_position.quantity
-                logger.debug("l142 %s %s %s" % (position_gain_loss, effective_delta_price, current_position.quantity))
+                # 1) get the profit/loss
+                position_gain_loss = market.compute_pnl(current_position.quantity, current_position.direction,
+                                                        current_position.entry_price, close_exec_price)
 
                 realized_position_cost = market.effective_cost(current_position.quantity, close_exec_price)
                 margin_cost = market.margin_cost(current_position.quantity, close_exec_price)
@@ -166,21 +132,18 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         # order.set_position_id(current_position.position_id)
 
         if position_gain_loss != 0.0 and realized_position_cost > 0.0:
-            # ratio
-            gain_loss_rate = position_gain_loss / realized_position_cost
-            relative_gain_loss_rate = delta_price / prev_entry_price
+            # compute position rates
+            raw_gain_loss_rate = position_gain_loss / realized_position_cost
 
-            # if maker close (limit+post-order) (for now same as market)
+            # if maker close (limit+post-order) @todo estimate fees
             current_position.profit_loss = position_gain_loss
-            current_position.profit_loss_rate = gain_loss_rate
+            current_position.profit_loss_rate = raw_gain_loss_rate
 
-            # if taker close (market)
+            # if taker close (market) @todo estimate fees
             current_position.profit_loss_market = position_gain_loss
-            current_position.profit_loss_market_rate = gain_loss_rate
+            current_position.profit_loss_market_rate = raw_gain_loss_rate
 
-            trader.account.add_realized_profit_loss(position_gain_loss / base_exchange_rate)
-        else:
-            gain_loss_rate = 0.0
+            trader.account.add_realized_profit_loss(position_gain_loss / market.base_exchange_rate)
 
         # retain the fee on the account currency
         commission_asset = trader.account.currency
@@ -191,7 +154,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             commission_amount = realized_position_cost * market.maker_fee + market.maker_commission
 
         # fees are realized loss
-        # trader.account.use_balance(commission_amount)
+        trader.account.use_balance(commission_amount / market.base_exchange_rate)
 
         # unlock before notify signals
         trader.unlock()
@@ -292,14 +255,6 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         if current_position.quantity <= 0.0:
             # take care this does not make an issue
             current_position.exit(exec_price)
-
-            # don't a next update
-            # trader.lock()
-
-            # if current_position.symbol in trader._positions:
-            #     del trader._positions[current_position.symbol]
-
-            # trader.unlock()
     else:
         # unique position per market
         position_id = market.market_id
@@ -334,7 +289,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
         # long are open on ask and short on bid
         exec_price = open_exec_price
         position.entry_price = exec_price
-        # logger.debug("%s %f %f %f %i" % ("el" if position.direction>0 else "es", position.entry_price, market.bid, market.ask, market.bid < market.ask))
+        # logger.debug("%s %f %f %f %i" % ("el" if position.direction>0 else "es",
+        #     position.entry_price, market.bid, market.ask, market.bid < market.ask))
 
         # transaction time is creation position date time
         order.transact_time = position.created_time
@@ -357,7 +313,7 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
             commission_amount = realized_position_cost * market.maker_fee + market.maker_commission
 
         # fees are realized loss
-        # trader.account.use_balance(commission_amount)
+        trader.account.use_balance(commission_amount / market.base_exchange_rate)
 
         # unlock before notify signals
         trader.unlock()

@@ -38,9 +38,10 @@ class Market(object):
     TYPE_SECTOR = 6
     TYPE_CRYPTO = 7
 
-    UNIT_AMOUNT = 0
-    UNIT_CONTRACTS = 1
-    UNIT_SHARES = 2
+    UNIT_AMOUNT = 0        # for linear contracts, (used as default value for spot)
+    UNIT_CONTRACTS = 1     # for some CFD contracts
+    UNIT_SHARES = 2        # for some CFD shares
+    UNIT_INVERSE = 3       # for inverses futures contract only
 
     CONTRACT_SPOT = 0
     CONTRACT_CFD = 1
@@ -875,31 +876,51 @@ class Market(object):
     def effective_cost(self, quantity: float, price: float) -> float:
         """
         Effective cost, not using the margin factor, for a quantity at specific price.
+        Return a value that can be in quote or settlement currency (depends on how is defined contract size) or in
+        unit of base in case of contracts
         """
+        if quantity <= 0.0 or price <= 0.0:
+            return 0.0
+
         if self._unit_type == Market.UNIT_AMOUNT:
-            return quantity * (self._lot_size * self._contract_size) * price  # in quote currency
+            return quantity * (self._lot_size * self._contract_size) * price
         elif self._unit_type == Market.UNIT_CONTRACTS:
             return quantity * (self._lot_size * self._contract_size / self._value_per_pip * price)
         elif self._unit_type == Market.UNIT_SHARES:
-            return quantity * price  # in quote currency
+            return quantity * price
+        elif self._unit_type == Market.UNIT_INVERSE:
+            return quantity * (self._lot_size * self._contract_size) / price
         else:
-            return quantity * (self._lot_size * self._contract_size) * price  # in quote currency
+            return quantity * (self._lot_size * self._contract_size) * price
 
     def margin_cost(self, quantity: float, price: float) -> float:
         """
         Cost in margin, using the margin factor, for a quantity at specific price.
         In contracts size, the price has no effect.
         """
-        if self._unit_type == Market.UNIT_AMOUNT:
-            realized_position_cost = quantity * (self._lot_size * self._contract_size) * price  # in quote currency
-        elif self._unit_type == Market.UNIT_CONTRACTS:
-            realized_position_cost = quantity * (self._lot_size * self._contract_size / self._value_per_pip * price)
-        elif self._unit_type == Market.UNIT_SHARES:
-            realized_position_cost = quantity * price  # in quote currency
-        else:
-            realized_position_cost = quantity * (self._lot_size * self._contract_size) * price  # in quote currency
+        if self._margin_factor <= 0.0 or self._base_exchange_rate <= 0.0:
+            return 0.0
 
-        return realized_position_cost * self._margin_factor / self._base_exchange_rate  # in account currency
+        # return a margin cost in account currency (could not be exact during backtest)
+        return self.effective_cost(quantity, price) * self._margin_factor / self._base_exchange_rate
+
+    def compute_pnl(self, quantity: float, direction: int, initial_price: float, last_price: float) -> float:
+        """
+        Compute the profit or loss according to the market unit type.
+        """
+        if quantity <= 0.0 or initial_price <= 0.0 or last_price <= 0.0:
+            return 0.0
+
+        if self._unit_type == Market.UNIT_AMOUNT:
+            return quantity * (self._lot_size * self._contract_size) * direction * (last_price - initial_price)
+        elif self._unit_type == Market.UNIT_CONTRACTS:
+            return quantity * (self._lot_size * self._contract_size / self._value_per_pip * direction * (last_price - initial_price))
+        elif self._unit_type == Market.UNIT_SHARES:
+            return quantity * (last_price - initial_price)
+        elif self._unit_type == Market.UNIT_INVERSE:
+            return quantity * (self._lot_size * self._contract_size) * direction * (1.0 / initial_price - 1.0 / last_price)
+        else:
+            return quantity * (self._lot_size * self._contract_size) * direction * (last_price - initial_price)
 
     def clamp_leverage(self, leverage: float) -> float:
         low = min(self._leverages)
@@ -922,6 +943,8 @@ class Market(object):
             return "contracts"
         elif self._unit_type == Market.UNIT_SHARES:
             return "shares"
+        elif self._unit_type == Market.UNIT_INVERSE:
+            return "inverse"
 
         return "undefined"
 
