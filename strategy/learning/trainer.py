@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Union
 from common.utils import timeframe_from_str, period_from_str
 from config import utils
 from instrument.instrument import Instrument
+from terminal.terminal import Terminal
 
 if TYPE_CHECKING:
     from strategy.strategy import Strategy
@@ -259,7 +260,32 @@ class Trainer(object):
             strategy_trader.set_activity(False)
         else:
             logger.info("Best performance for %s : %s" % (strategy_trader.instrument.market_id, performance))
-            logger.info("Trainer apply new parameters to %s and then restart" % strategy_trader.instrument.market_id)
+
+            # summary
+            logger.info("Summary :")
+            logger.info("-- max-draw-down = %s" % learning_result.get('max-draw-down', "0.00%"))
+            logger.info("-- total-trades = %s" % learning_result.get('total-trades', 0))
+
+            logger.info("-- best = %s" % learning_result.get('best', "0.00%"))
+            logger.info("-- worst = %s" % learning_result.get('worst', "0.00%"))
+
+            logger.info("-- succeed-trades = %s" % learning_result.get('succeed-trades', 0))
+            logger.info("-- failed-trades = %s" % learning_result.get('failed-trades', 0))
+            logger.info("-- roe-trades = %s" % learning_result.get('roe-trades', 0))
+            logger.info("-- canceled-trades = %s" % learning_result.get('canceled-trades', 0))
+
+            logger.info("-- max-loss-serie = %s" % learning_result.get('max-loss-serie', 0))
+            logger.info("-- max-win-serie = %s" % learning_result.get('max-win-serie', 0))
+
+            logger.info("-- stop-loss-in-loss = %s" % learning_result.get('stop-loss-in-loss', 0))
+            logger.info("-- stop-loss-in-gain = %s" % learning_result.get('canceled-trades', 0))
+            logger.info("-- take-profit-in-loss = %s" % learning_result.get('take-profit-in-loss', 0))
+            logger.info("-- take-profit-in-gain = %s" % learning_result.get('take-profit-in-gain', 0))
+
+            logger.info("-- open-trades = %s" % learning_result.get('open-trades', 0))
+            logger.info("-- active-trades = %s" % learning_result.get('active-trades', 0))
+
+            logger.info("Trainer apply new parameters to %s." % strategy_trader.instrument.market_id)
 
             new_parameters = copy.deepcopy(self._strategy_trader_params)
 
@@ -466,8 +492,12 @@ class Trainer(object):
                             break
 
                         try:
-                            stdout, stderr = process.communicate(timeout=0.1)
-                            if stdout:
+                            while 1:
+                                # stdout, stderr = process.communicate(timeout=0.1)
+                                stdout = process.stdout.readline()
+                                if not stdout:
+                                    break
+
                                 msg = stdout.decode()
                                 if msg:
                                     if msg.startswith("["):
@@ -486,9 +516,9 @@ class Trainer(object):
                                         logger.error("Error during process of training for %s" % market_id)
                                         process.kill()
                                     elif "Progress " in msg:
-                                        logger.debug("%s for %s" % (msg, market_id))
+                                        Terminal.inst().message("%s for %s" % (msg.rstrip('\n'), market_id), view='default')
                                     elif "Estimate total duration to " in msg:
-                                        logger.debug("%s for %s" % (msg, market_id))
+                                        logger.debug("%s for %s" % (msg.rstrip('\n'), market_id))
 
                         except subprocess.TimeoutExpired:
                             pass
@@ -795,8 +825,8 @@ class TrainerCommander(object):
             elif method == TrainerCommander.BEST_WINRATE:
                 # only keep the best win-rate
                 succeed = result.get('succeed-trades', 0)
-                failed = result.get('failed-trades', 0)
-                sf_rate = succeed / failed if failed > 0 else 1.0
+                total_trades = result.get('total-trades', 0)
+                sf_rate = succeed / total_trades if total_trades > 0 else 0.0
 
                 if sf_rate > max_sf_rate:
                     max_sf_rate = sf_rate

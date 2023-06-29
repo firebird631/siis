@@ -392,8 +392,12 @@ class TrainerTool(Tool):
                                 learning_filename, now - initial_time))
                             process.kill()
                     try:
-                        stdout, stderr = process.communicate(timeout=0.1)
-                        if stdout:
+                        while 1:
+                            # stdout, stderr = process.communicate(timeout=0.1)
+                            stdout = process.stdout.readline()
+                            if not stdout:
+                                break
+
                             msg = stdout.decode()
                             if msg:
                                 if msg.startswith("["):
@@ -410,7 +414,7 @@ class TrainerTool(Tool):
 
                                 if "error" in msg.lower():
                                     # error during backtest kill
-                                    logger.debug(msg)
+                                    logger.debug(msg.rstrip('\n'))
                                     logger.error("Kill process %s error" % learning_filename)
 
                                     # process.kill()
@@ -449,14 +453,14 @@ class TrainerTool(Tool):
                         if self._selection == TrainerCommander.BEST_WINRATE:
                             # fitness is global performance multiply by best win-rate
                             succeed = trainer_result.get('succeed-trades', 0)
-                            failed = trainer_result.get('failed-trades', 0)
-                            sf_rate = succeed / failed if failed > 0 else 1.0
+                            total_trades = trainer_result.get('total-trades', 0)
+                            sf_rate = succeed / total_trades if total_trades > 0 else 0.0
 
-                            if sf_rate < 0.5:
+                            if sf_rate < 0.45:
                                 # poor win rate, penalty
                                 fitness = 9999
                             else:
-                                fitness = -(perf * sf_rate)
+                                fitness = -(perf * ((0.55 + sf_rate) ** 2))
                         elif self._selection == TrainerCommander.BEST_WORST:
                             # fitness is global performance multiply by inverted rate of number contiguous loss
                             # @todo
@@ -471,10 +475,10 @@ class TrainerTool(Tool):
                             total_trades = trainer_result.get('total-trades', 0)
                             tp_win_rate = tp_gain / total_trades if total_trades > 0 else 0
 
-                            # if tp_win_rate < 0.25:
-                            #     fitness = 9999
-                            # else:
-                            fitness = -(perf * ((1.0 + tp_win_rate) ** 2))
+                            if tp_win_rate < 0.45:
+                                fitness = 9999
+                            else:
+                                fitness = -(perf * ((0.55 + tp_win_rate) ** 2))
                         else:
                             # default : best performance
                             fitness = -perf

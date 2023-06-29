@@ -112,13 +112,13 @@ class Indicator(object):
         return self._compute_at_close
 
     @property
-    def values(self):
+    def values(self) -> np.array:
         """
         Return the indicator main values array if available.
         """
         return np.array([])
 
-    def has_values(self, min_samples=1):
+    def has_values(self, min_samples=1) -> bool:
         """
         True if the last compute made a results.
         @param min_samples At least one results or more if specified, and never NaN.

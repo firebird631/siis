@@ -143,7 +143,7 @@ class DummyTrainerCommander(TrainerCommander):
         return (self._num_gen - self._executed_jobs) / self._parallel * avg_job_time
 
     def progress(self) -> float:
-        return self._executed_jobs / self._num_gen * 100.0
+        return min(self._executed_jobs / self._num_gen * 100.0, 100.0)
 
 
 class DummyTrainer(Trainer):

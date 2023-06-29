@@ -35,22 +35,26 @@ class ADXIndicator(Indicator):
         self._adxs = np.empty(0)
 
     @property
-    def prev(self):
+    def length(self) -> int:
+        return self._length
+
+    @property
+    def prev(self) -> float:
         return self._prev
 
     @property
-    def last(self):
+    def last(self) -> float:
         return self._last
 
     @property
-    def adxs(self):
+    def adxs(self) -> np.array:
         return self._adxs
 
     @property
-    def values(self):
+    def values(self) -> np.array:
         return self._adxs
 
-    def has_values(self, min_samples=1):
+    def has_values(self, min_samples=1) -> bool:
         return self._adxs.size >= min_samples and not np.isnan(self._adxs[-min_samples])
 
     def compute(self, timestamp, high, low, close):
