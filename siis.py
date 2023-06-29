@@ -59,6 +59,7 @@ def signal_int_handler(sig, frame):
 
 def terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
               view_service, notifier_service):
+
     if watcher_service:
         watcher_service.terminate()
     if trader_service:
@@ -76,6 +77,21 @@ def terminate(watchdog_service, watcher_service, trader_service, strategy_servic
 
     if watchdog_service:
         watchdog_service.terminate()
+
+    MonitorService.stop_reactor()
+
+    Terminal.inst().info("Flushing database...")
+    Terminal.inst().flush()
+
+    Database.terminate()
+    Terminal.inst().info("Database done !")
+
+    watchdog_service.terminate() if watchdog_service else None
+
+    Terminal.inst().info("Bye (could wait a little...) !")
+    Terminal.inst().flush()
+
+    Terminal.terminate()
 
 
 def application(argv):

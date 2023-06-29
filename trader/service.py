@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union
 
+from strategy.strategyexception import StrategyServiceException
+
 if TYPE_CHECKING:
     from .trader import Trader
     from common.watchdog import WatchdogService
@@ -90,17 +92,15 @@ class TraderService(Service):
         trader_config = self._trader_config
 
         if not trader_config:
-            Terminal.inst().error("Missing trader config")
-            return
+            raise StrategyServiceException("Missing trader config")
 
         if self._trader is not None:
-            Terminal.inst().error("Trader %s already started" % self._trader.name)
-            return
+            raise StrategyServiceException("Trader %s already started" % self._trader.name)
 
         profile_trader_config = self.profile()
         if not profile_trader_config:
             # ignore trader missing from the profile
-            return
+            raise StrategyServiceException("Trader config missing into profile")
 
         if trader_config.get("status") is not None and trader_config.get("status") == "load":
             # retrieve the class-name and instantiate it
