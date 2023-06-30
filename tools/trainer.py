@@ -517,8 +517,8 @@ class TrainerTool(Tool):
             logger.info("-- roe-trades = %s" % best_result.get('roe-trades', 0))
             logger.info("-- canceled-trades = %s" % best_result.get('canceled-trades', 0))
 
-            logger.info("-- max-loss-serie = %s" % best_result.get('max-loss-serie', 0))
-            logger.info("-- max-win-serie = %s" % best_result.get('max-win-serie', 0))
+            logger.info("-- max-loss-series = %s" % best_result.get('max-loss-series', 0))
+            logger.info("-- max-win-series = %s" % best_result.get('max-win-series', 0))
 
             logger.info("-- stop-loss-in-loss = %s" % best_result.get('stop-loss-in-loss', 0))
             logger.info("-- stop-loss-in-gain = %s" % best_result.get('canceled-trades', 0))
@@ -579,7 +579,7 @@ class TrainerTool(Tool):
     def forced_interrupt(self, options):
         if self._trainer_commander:
             logger.debug("Force terminate commander")
-            self._trainer_commander.term()
+            self._trainer_commander.kill()
             self._trainer_commander = None
 
         return True

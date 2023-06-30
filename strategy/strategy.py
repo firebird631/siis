@@ -1800,8 +1800,8 @@ class Strategy(Runnable):
         new_content['stop-loss-in-gain'] = sl_win
         new_content['take-profit-in-gain'] = tp_win
 
-        new_content["max-loss-serie"] = max_adj_loss
-        new_content["max-win-serie"] = max_adj_win
+        new_content["max-loss-series"] = max_adj_loss
+        new_content["max-win-series"] = max_adj_win
 
         write_learning(learning_path, filename, new_content)
 

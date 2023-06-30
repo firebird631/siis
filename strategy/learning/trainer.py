@@ -274,8 +274,8 @@ class Trainer(object):
             logger.info("-- roe-trades = %s" % learning_result.get('roe-trades', 0))
             logger.info("-- canceled-trades = %s" % learning_result.get('canceled-trades', 0))
 
-            logger.info("-- max-loss-serie = %s" % learning_result.get('max-loss-serie', 0))
-            logger.info("-- max-win-serie = %s" % learning_result.get('max-win-serie', 0))
+            logger.info("-- max-loss-series = %s" % learning_result.get('max-loss-series', 0))
+            logger.info("-- max-win-series = %s" % learning_result.get('max-win-series', 0))
 
             logger.info("-- stop-loss-in-loss = %s" % learning_result.get('stop-loss-in-loss', 0))
             logger.info("-- stop-loss-in-gain = %s" % learning_result.get('canceled-trades', 0))
@@ -492,8 +492,9 @@ class Trainer(object):
                             break
 
                         try:
+                            # stdout, stderr = process.communicate(timeout=0.1)
+
                             while 1:
-                                # stdout, stderr = process.communicate(timeout=0.1)
                                 stdout = process.stdout.readline()
                                 if not stdout:
                                     break
@@ -816,7 +817,7 @@ class TrainerCommander(object):
 
             elif method == TrainerCommander.LOWER_CONT_LOSS:
                 # only keep the less max contiguous losses
-                loss_serie = result.get('max-loss-serie', 0)
+                loss_serie = result.get('max-loss-series', 0)
 
                 if loss_serie < min_loss_serie:
                     min_loss_serie = loss_serie
