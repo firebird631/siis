@@ -87,8 +87,8 @@ class Connector(object):
     ===========
 
     Request limits are determined from cost associated with each API call. Clients can spend up to 500 every 10 seconds.
-    @ref https://support.kraken.com/hc/en-us/articles/206548367-What-are-the-API-rate-limits-
-    @ref https://support.kraken.com/hc/en-us/articles/360045239571
+    @see https://support.kraken.com/hc/en-us/articles/206548367-What-are-the-API-rate-limits-
+    @see https://support.kraken.com/hc/en-us/articles/360045239571
 
     @todo Private rate limit by call cost but need a global lock for multiple call
 
@@ -98,11 +98,11 @@ class Connector(object):
 
     Order/cancel does not affect the same counter, they are per market and for any API keys.
 
-    # https://api.kraken.com/0/private/QueryTrades
-    # https://api.kraken.com/0/private/TradeVolume
+    @see https://api.kraken.com/0/private/QueryTrades
+    @see https://api.kraken.com/0/private/TradeVolume
 
-    # @ref REST https://www.kraken.com/features/api
-    # @ref WSS https://www.kraken.com/en-us/features/websocket-api
+    @see REST https://www.kraken.com/features/api
+    @see WSS https://www.kraken.com/en-us/features/websocket-api
 
     Public WS errors :
         "Already subscribed"

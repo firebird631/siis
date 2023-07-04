@@ -41,13 +41,67 @@ class BitMexWatcher(Watcher):
 
     Month code = F (jan) G H J K M N Q U V X Z (dec)
 
-    @ref https://www.bitmex.com/app/wsAPI#All-Commands
+    @see https://www.bitmex.com/app/wsAPI#All-Commands
+
     @todo no user data in paper-mode to be completed in ws.__connect method
+    @todo complete for non perpetual futures contracts (market data)
     """
 
     EXPIRY_RE = re.compile(r'^(.{3})([FGHJKMNQUVXZ])(\d\d)$')
 
-    _connector : Union[Connector, None]
+    PERPETUAL_USD_CONTRACT_SIZE = {
+        # 'XBT': 1.0 / XBTUSD inverse perpetual
+        '1TAIDOGE': 0.001 * 0.001,  # 1TAIDOGEUSD 0,001 mXBT per 1 USD
+        'ADA': 0.0001,          # ADAUSD 0,0001 XBT per 1 USD
+        'APT': 0.01 * 0.001,    # APTUSD 0,010 mXBT per 1 USD
+        'ARB': 0.01 * 0.001,    # ARBUSD 0,010 mXBT per 1 USD
+        'AVAX': 0.01 * 0.001,   # AVAXUSD 0,010 mXBT per 1 USD
+        'AXS': 0.001 * 0.001,   # AXSUSD 0,001 mXBT per 1 USD
+        'BCH': 0.001 * 0.001,   # BCHUSD 0,001 mXBT per 1 USD
+        'BMEX': 0.01 * 0.001,   # BMEXUSD 0,010 mXBT per 1 USD
+        'BLUR': 0.0001,         # BLURUSD 0,0001 XBT per 1 USD
+        'BNB': 0.001 * 0.001,   # BNBUSD 0,001 mXBT per 1 USD
+        'BOB': 0.1,             # BOBUSD 0,1000 XBT per 1 USD
+        'CRO': 0.001,           # CROUSD 0,0010 XBT per 1 USD
+        'DOGE': 0.001,          # DOGEUSD 0,0010 XBT per 1 USD
+        'DOT': 0.01 * 0.001,    # DOTUSD 0,010 mXBT per 1 USD
+        'EOS': 0.0001,          # EOSUSD 1,0000 XBT per 1 USD
+        'ETH': 0.001 * 0.001,   # ETHUSD 0,001 mXBT per 1 USD
+        'FLOKI': 1.0,           # FLOKIUSD 1,0000 XBT per 1 USD
+        'FLR': 0.0001,          # FLRUSD 0,0001 XBT per 1 USD
+        'GMT': 0.0001,          # GMTUSD 0,0001 XBT per 1 USD
+        'GMX': 0.001 * 0.001,   # GMXUSD 0,001 mXBT per 1 USD
+        'KLAY': 0.001,          # KLAYUSD 0,0010 XBT per 1 USD
+        'LINK': 0.01 * 0.001,   # LINKUSD 0,010 mXBT per 1 USD
+        'LTC': 0.002 * 0.001,   # LTCUSD 0,002 mXBT per 1 USD
+        'LUNA': 0.0001,         # LUNAUSD 0,0001 XBT per 1 USD
+        'NEAR': 0.0001,         # NEARUSD 0,0001 XBT per 1 USD
+        'ORDI': 0.01 * 0.001,   # 0,010 mXBT per 1 USD
+        'PEPE': 10.0,           # PEPEUSD 10,0000 XBT per 1 USD
+        'RND': 0.010 * 0.001,   # RNDUSD 0,010 mXBT per 1 USD
+        'SOL': 0.001 * 0.001,   # SOLUSD 0,001 mXBT per 1 USD
+        'SUI': 0.010 * 0.001,   # SUI 0,010 mXBT per 1 USD
+        'TURBO': 0.0100,        # TURBOUSD 0,0100 XBT per 1 USD
+        'XRP': 0.0002,          # XRPUSD 0,0002 XBT per 1 USD
+    }
+
+    PERPETUAL_XBT_CONTRACT_SIZE = {
+        # @todo examples ADAXBT, BCHXBT...
+        # 'asset': value
+    }
+
+    PERPETUAL_USDT_CONTRACT_SIZE = {
+        'ADA': 0.01,          # ADAUSDT 0,01 ADA
+        # @todo others https://www.bitmex.com/app/contract/
+        'XBT': 0.000001,      # XBTUSDT 0.000001 XBT
+    }
+
+    NON_PERPETUAL_USD_CONTRACT_SIZE = {
+        # @todo examples XBTU18, ADAF23...
+        # 'asset': value
+    }
+
+    _connector: Union[Connector, None]
 
     def __init__(self, service):
         super().__init__("bitmex.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
@@ -395,7 +449,7 @@ class BitMexWatcher(Watcher):
 
             if (data[1] == 'execution') and data[2] == 'insert':
                 for ld in data[3]:
-                    # @ref https://www.bitmex.com/api/explorer/#/Execution
+                    # @see https://www.bitmex.com/api/explorer/#/Execution
                     exec_logger.debug("bitmex l185 execution > %s" % str(ld))
 
                     # "side": "Sell", "lastQty": 1, "lastPx": 1134.37, "underlyingLastPx": null, "lastMkt": "XBME",
@@ -438,7 +492,7 @@ class BitMexWatcher(Watcher):
             #
 
             elif data[1] == 'position':  # action insert/update/delete
-                # @ref https://www.bitmex.com/api/explorer/#!/Position/Position_get
+                # @see https://www.bitmex.com/api/explorer/#!/Position/Position_get
                 for ld in data[3]:
                     ref_order_id = ""
                     symbol = ld['symbol']
@@ -742,10 +796,10 @@ class BitMexWatcher(Watcher):
                             instrument, xbtusd_instrument)
 
                         vol24h = instrument.get('volume24h')
-                        vol24hquote = instrument.get('foreignNotional24h')
+                        vol24h_quote = instrument.get('foreignNotional24h')
 
                         market_data = (market_id, tradeable, update_time, bid, ask, base_exchange_rate,
-                                       contract_size, value_per_pip, vol24h, vol24hquote)
+                                       contract_size, value_per_pip, vol24h, vol24h_quote)
 
                         self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 
@@ -763,17 +817,21 @@ class BitMexWatcher(Watcher):
         """
         Fetch and cache it. It rarely changes, except for base exchange rate, so assume it once for all.
         @todo min/max/step/min_notional
+        @todo ratio if currency and account configured on USDt
+        @todo settlement symbol if configured on USDt
         """
         instrument = self.connector.ws.get_instrument(market_id)
         # funds = self.connector.ws.funds()  # to get account base currency (if XBt or XBT)
         xbt_usd = self.connector.ws.get_instrument("XBTUSD")
 
         if instrument:
+            logger.info(instrument)
+
             # tickSize is the minimum price increment (0.5USD for XBTUSD)
             tradeable = instrument.get('state', 'Closed') == 'Open'
             update_time = self._parse_datetime(instrument.get('timestamp')).replace(tzinfo=UTC()).timestamp()
             symbol = instrument.get('symbol', '')
-            base_symbol = instrument.get('rootSymbol', '')
+            base_symbol = instrument.get('rootSymbol', '')   # XBT for XBTUSD, XRP for XRPUSD ...
             quote_symbol = symbol[-3:]
 
             # if funds['currency'] == 'XBt':
@@ -804,35 +862,37 @@ class BitMexWatcher(Watcher):
             base_market = self.connector.ws.get_instrument(base_market_id)
             xbtusd_instrument = self.connector.ws.get_instrument("XBTUSD")
 
-            # @todo 'multiplier', 'riskStep', 'riskLimit'
+            # @todo 'fundingRate': 7.3e-05, 'indicativeFundingRate': 0.0001 (for XBTUSD)
 
             # limits
-            min_notional = 1.0  # $
+            min_notional = 1.0  # USD
 
             if quote_symbol != "USD" and base_market_id != "XBT":
                 # any contract on future XBT quote
                 min_notional = 0.0001
 
             # BCHXBT 'maxOrderQty': 100000000, 'maxPrice': 10, 'lotSize': 1, 'tickSize': 0.0001,
-            # XBCUSD 'maxOrderQty': 10000000, 'maxPrice': 1000000, 'lotSize': 1, 'tickSize': 0.5,
+            # XBTUSD 'maxOrderQty': 10000000, 'maxPrice': 1000000, 'lotSize': 1, 'tickSize': 0.5,
             market.set_size_limits(instrument.get('tickSize', 1.0), instrument.get('maxOrderQty', 0.0), instrument.get('tickSize', 1.0))
             market.set_notional_limits(min_notional, instrument.get('maxPrice', 0.0), 0.0)
             market.set_price_limits(0.0, 0.0, instrument.get('tickSize', 1.0))
 
-            # need to divided by account currency XBt = 100000000
+            # divide by account currency XBt = 100000000 XBT
             market.margin_factor = instrument.get('initMargin', 1.0)
 
-            ratio = 1.0 / 100000000.0
+            ratio = 1.0 / 100000000.0  # XBt to XBT
 
+            # @todo 'multiplier': -100000000 for XBTUSD means 1 for inverse in XBT, 20000 for XRPUSD
+            # @todo 'riskStep': 15000000000 for XBTUSD, 5000000000 for XRPUSD
             min_leverage = 1.0
             max_leverage = instrument.get('riskLimit', 1.0) * ratio  # ex: 20000000000 for max leverage 200
 
             market.set_leverages((min_leverage, max_leverage))
 
             # '-' if perpetual else match the regexp and keep the expiry part only
+            # or by instrument.get('expiry') datetime
             expiry = BitMexWatcher.EXPIRY_RE.match(market_id)
 
-            # or instrument.get(expiry') == '2018-12-28T12:00:00.000Z' for Z18 its 28 of month Z (december) and year 2018
             if expiry is None:
                 market.expiry = '-'
             else:
@@ -844,15 +904,17 @@ class BitMexWatcher(Watcher):
             market.trade = Market.TRADE_MARGIN | Market.TRADE_IND_MARGIN
 
             # inverse perpetual contract
-            if base_symbol == "XBT" and quote_symbol in ("USD", "USDT"):
+            if instrument.get('isInverse'):
                 market.unit_type = Market.UNIT_INVERSE
+
+            # @todo 'isQuanto': true/false
 
             if bid is not None and ask is not None:
                 market.bid = bid
                 market.ask = ask
                 market.last_update_time = update_time
 
-            market.lot_size = 1.0  # instrument.get('lotSize', 1.0)  # ex: 1.0 for XBTUSD
+            market.lot_size = 1.0  # instrument.get('lotSize', 1.0)  # ex: 100.0 for XBTUSD
             market.contract_size = 1.0
             market.value_per_pip = 1.0
             market.one_pip_means = instrument.get('tickSize', 1.0)
@@ -900,45 +962,20 @@ class BitMexWatcher(Watcher):
 
         if quote_symbol == 'USD':  # perpetual contract over XBT
             if base_symbol == 'XBT':  # 1 USD inverse contract
-                contract_size = 1.0  # 1.0 / instrument.get('lastPrice', 1.0) ** 2
-            elif base_symbol == 'ADA':  # ADAUSD Contract Size 0,0001 XBT per 1 USD
-                contract_size = 0.0001
-            elif base_symbol == 'BCH':  # BCHUSD Contract Size 0,001 mXBT per 1 USD
-                contract_size = 0.001 * 0.001
-            elif base_symbol == 'ETH':  # ETHUSD Contract Size 0,001 mXBT per 1 USD
-                contract_size = 0.001 * 0.001
-            elif base_symbol == 'LTC':  # LTCUSD Contact Size 0,002 mXBT per 1 USD
-                contract_size = 0.002 * 0.001
-            elif base_symbol == 'XRP':  # XRPUSD Contract Size 0,0002 XBT per 1 USD
-                contract_size = 0.0002
+                contract_size = 1.0  # meaning 1.0 / instrument.get('lastPrice', 1.0) ** 2 on linear
             else:
-                # @todo others markets
-                contract_size = 1.0
+                contract_size = BitMexWatcher.PERPETUAL_USD_CONTRACT_SIZE.get(base_symbol, 0.0)
 
             value_per_pip = contract_size
 
-        elif quote_symbol == 'USDT':  # perpetuals contracts over USDT
-            value_per_pip = 1.0
-
-            if base_symbol == 'XBT':  # 1 USD inverse contract
-                contract_size = 0.000001
-            # elif base_symbol == 'ADA':
-            #     contract_size = 0.0001
-            # elif base_symbol == 'BCH':
-            #     contract_size = 0.001 * 0.001
-            # elif base_symbol == 'ETH':
-            #     contract_size = 0.001 * 0.001
-            # elif base_symbol == 'LTC':
-            #     contract_size = 0.002 * 0.001
-            # elif base_symbol == 'XRP':
-            #     contract_size = 0.0002
-            else:
-                # @todo others markets
-                contract_size = 1.0
-
         elif quote_symbol == "XBT":  # ETHXBT, BCHXBT... (perpetual futures over XBT)
             # @todo
-            pass
+            contract_size = 0.0
+            value_per_pip = 1.0
+
+        elif quote_symbol == 'USDT':  # perpetuals contracts over USDT
+            value_per_pip = 1.0
+            contract_size = BitMexWatcher.PERPETUAL_USDT_CONTRACT_SIZE.get(base_symbol, 0.0) * instrument.get('lastPrice', 0.0)
 
         else:  # XBT<M><YY>, XRP<M><YY>... (non perpetuals futures)
             base_exchange_rate = 1.0  # quoted in XBT
@@ -978,7 +1015,8 @@ class BitMexWatcher(Watcher):
                     market.base_exchange_rate, market.contract_size, market.value_per_pip,
                     market.vol24h_base, market.vol24h_quote)
             else:
-                market_data = (market_id, market.is_open, market.last_update_time, None, None, None, None, None, None, None)
+                market_data = (market_id, market.is_open, market.last_update_time,
+                               None, None, None, None, None, None, None)
 
             self.service.notify(Signal.SIGNAL_MARKET_DATA, self.name, market_data)
 

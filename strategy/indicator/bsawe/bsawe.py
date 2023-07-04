@@ -17,8 +17,8 @@ class BSAweIndicator(Indicator):
     """
     Awesome based buy/sell signal indicator.
 
-    @ref https://www.forexstrategiesresources.com/scalping-forex-strategies-iii/337-bollinger-bands-and-chaos-awesome-scalping-system
-    @ref Squeeze Momentum Indicator [LazyBear]
+    @see https://www.forexstrategiesresources.com/scalping-forex-strategies-iii/337-bollinger-bands-and-chaos-awesome-scalping-system
+    @author Squeeze Momentum Indicator [LazyBear]
     """
 
     __slots__ = '_bb_L', '_fast_MA_L', '_awesome_fast_L', '_awesome_slow_L', '_use_EMA', '_signal'

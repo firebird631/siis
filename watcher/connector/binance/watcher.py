@@ -36,7 +36,7 @@ class BinanceWatcher(Watcher):
     """
     Binance market watcher using REST + WS.
 
-    @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/margin-api.md
+    @see https://github.com/binance-exchange/binance-official-api-docs/blob/master/margin-api.md
 
     @todo Finish order book events.
     @todo Update base_exchange_rate as price change (not always necessary).
@@ -887,7 +887,7 @@ class BinanceWatcher(Watcher):
 
     def __on_user_data(self, data):
         """
-        @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#web-socket-payloads
+        @see https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#web-socket-payloads
         """
         if type(data) is not dict:
             return

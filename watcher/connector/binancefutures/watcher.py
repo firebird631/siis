@@ -38,10 +38,10 @@ class BinanceFuturesWatcher(Watcher):
     """
     Binance futures market watcher using REST + WS.
 
-    @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/margin-api.md
+    @see https://github.com/binance-exchange/binance-official-api-docs/blob/master/margin-api.md
 
     @todo Finish order book events.
-    @todo Once a market is not longer found (market update) we could remove it from watched list,
+    @todo Once a market is no longer found (market update) we could remove it from watched list,
         and even have a special signal to strategy, and remove the subscriber, and markets data from watcher and trader
     @todo no user data in paper-mode
 
@@ -879,7 +879,7 @@ class BinanceFuturesWatcher(Watcher):
 
     def __on_user_data(self, data):
         """
-        @ref https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#web-socket-payloads
+        @see https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#web-socket-payloads
         """
         event_type = data.get('e', "")
 
@@ -887,7 +887,7 @@ class BinanceFuturesWatcher(Watcher):
             # trade update are pushed before account (position) update in way to be processed before
 
             # order trade : created, updated, rejected, canceled, deleted
-            # @ref https://binance-docs.github.io/apidocs/futures/en/#event-order-update
+            # @see https://binance-docs.github.io/apidocs/futures/en/#event-order-update
 
             # @todo New field "rp" for the realized profit of the trade in event "ORDER_TRADE_UPDATE"
 
@@ -1089,7 +1089,7 @@ class BinanceFuturesWatcher(Watcher):
             # process the account update after the trades update events
 
             # balance and position updated
-            # @ref https://binance-docs.github.io/apidocs/futures/en/#event-balance-and-position-update
+            # @see https://binance-docs.github.io/apidocs/futures/en/#event-balance-and-position-update
             # exec_logger.info("binancefutures.com ACCOUNT_UPDATE %s" % str(data))
             # field "m" for event reason type in event "ACCOUNT_UPDATE"
             event_timestamp = float(data['E']) * 0.001           

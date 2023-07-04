@@ -792,7 +792,7 @@ class KrakenTrader(Trader):
 
     @staticmethod
     def error_code_to_reason(error_code: str) -> int:
-        # @ref https://support.kraken.com/hc/en-us/articles/360001491786-API-error-messages
+        # @see https://support.kraken.com/hc/en-us/articles/360001491786-API-error-messages
         if error_code == "EAPI:Invalid nonce":
             return Order.REASON_INVALID_NONCE
 

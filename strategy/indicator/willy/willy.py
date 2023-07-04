@@ -13,7 +13,7 @@ class WillyIndicator(Indicator):
     """
     Willy norm EMA cross indicator.
     Variant of the Williams %R indicator.
-    @ref https://fr.tradingview.com/script/eij9KTBO-Willy/
+    @see https://fr.tradingview.com/script/eij9KTBO-Willy/
 
     Range is [0..-100], bands are -80 and -20.
     """

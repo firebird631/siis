@@ -35,9 +35,9 @@ class TomDemarkIndicator(Indicator):
     On compare les closes, de la derniere bougie avec celle 4 positions plus tot.
     Donc le min length doit etre de 4+1 (+1 pour trouver le flip).
 
-    @ref https://www.youtube.com/watch?v=fpy6XIZ5i8w&index=19&list=LLFsBV7tmWUGtCS8CRRPv5dQ&t=1686s
-    @ref http://practicaltechnicalanalysis.blogspot.com/2013/01/tom-demark-sequential.html
-    @ref https://www.mql5.com/en/code/viewcode/8966/130033/MAB_TD_Sequential.mq4
+    @see https://www.youtube.com/watch?v=fpy6XIZ5i8w&index=19&list=LLFsBV7tmWUGtCS8CRRPv5dQ&t=1686s
+    @see http://practicaltechnicalanalysis.blogspot.com/2013/01/tom-demark-sequential.html
+    @see https://www.mql5.com/en/code/viewcode/8966/130033/MAB_TD_Sequential.mq4
     """
 
     __slots__ =  '_length', '_c', '_prev_c', '_cd', '_prev_cd', '_agg_cd', '_prev_agg_cd', '_high_low'

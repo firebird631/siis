@@ -15,10 +15,10 @@ class PivotPointIndicator(Indicator):
     """
     Supports and resistances detection using pivot point method.
 
-    @ref https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/pivot-points-resistance-support
-    @ref https://www.andlil.com/les-points-pivots-dans-le-trading-430.html
-    @ref https://www.andlil.com/points-pivots-de-camarilla-440.html
-    @ref https://www.andlil.com/point-pivot-de-woodie-445.html
+    @see https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/pivot-points-resistance-support
+    @see https://www.andlil.com/les-points-pivots-dans-le-trading-430.html
+    @see https://www.andlil.com/points-pivots-de-camarilla-440.html
+    @see https://www.andlil.com/point-pivot-de-woodie-445.html
 
     Classical:
     Pivot = (H + B + C) / 3

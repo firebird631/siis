@@ -36,8 +36,8 @@ class KrakenWatcher(Watcher):
     @todo fee from 30 day traded volume
     @todo order book WS
 
-    @ref WS 'status' online|maintenance|cancel_only|limit_only|post_only
-    @ref https://docs.kraken.com/websockets
+    @see WS 'status' online|maintenance|cancel_only|limit_only|post_only
+    @see https://docs.kraken.com/websockets
     """
 
     BASE_QUOTE = "ZUSD"
@@ -783,7 +783,7 @@ class KrakenWatcher(Watcher):
     #
 
     def __on_depth_data(self, data):
-        # @ref https://www.kraken.com/en-us/features/websocket-api#message-book
+        # @see https://www.kraken.com/en-us/features/websocket-api#message-book
         pass
 
     def __on_ticker_data(self, data):

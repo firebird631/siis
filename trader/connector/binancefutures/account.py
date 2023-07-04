@@ -62,7 +62,7 @@ class BinanceFuturesAccount(Account):
                 # does the initial using REST API
                 account = connector.futures_account()
                 if account:
-                    # @ref https://binance-docs.github.io/apidocs/futures/en/#account-information-user_data
+                    # @see https://binance-docs.github.io/apidocs/futures/en/#account-information-user_data
                     self._balance = float(account['totalWalletBalance'])
 
                     # net worth : balance + unrealized profit/loss
