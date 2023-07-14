@@ -49,7 +49,7 @@ class CronExportScript(threading.Thread):
         self._unmanaged = unmanaged
 
         self._report_path = strategy_service.report_path
-        self._fn_prefix = strategy_service.strategy.identifier
+        self._fn_prefix = strategy_service.strategy().identifier if self._strategy_service.strategy() else "siis"
 
     def run(self):
         while self._process:
