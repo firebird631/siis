@@ -1050,10 +1050,14 @@ class StrategyTrader(object):
         """
         Trader and trades persistence (might occur only for live mode on real accounts).
         @note Must be called only after terminate.
+        @note Would need a transaction from clear to the last store
         """
         trader = self.strategy.trader()
 
         with self._mutex:
+            # clear DB before
+            Database.inst().clear_user_trades(trader.name, trader.account.name, self.strategy.identifier)
+
             with self._trade_mutex:
                 for trade in self._trades:
                     t_data = trade.dumps()

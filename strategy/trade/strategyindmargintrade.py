@@ -545,18 +545,19 @@ class StrategyIndMarginTrade(StrategyTrade):
     #
 
     def update_dirty(self, trader: Trader, instrument: Instrument):
+        # result invalid done only on error, but previously it was also invalided by a nothing to do.
         if self._dirty:
             done = True
 
             try:
                 if self.has_limit_order() and self.tp > 0.0:
                     result = self.modify_take_profit(trader, instrument, self.tp, True)
-                    if result <= 0:
+                    if result < 0:
                         done = False
 
                 if self.has_stop_order() and self.sl > 0.0:
                     result = self.modify_stop_loss(trader, instrument, self.sl, True)
-                    if result <= 0:
+                    if result < 0:
                         done = False
 
             except Exception as e:
