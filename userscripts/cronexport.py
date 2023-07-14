@@ -1,4 +1,10 @@
+# @date 2022-09-12
+# @author Frederic Scherma, All rights reserved without prejudices.
+# @license Copyright (c) 2022 Dream Overflow
+# Cron export script.
+
 import json
+import os
 import time
 from datetime import datetime
 import threading
@@ -9,6 +15,13 @@ from common.utils import UTC
 
 
 class CronExportScript(threading.Thread):
+    """
+    Export a regular interval strategy traders stats, trades, account details, history.
+
+    Files are exported at JSON format in the report's directory with a prefix name using the identifier of the
+    configured strategy to avoid conflict between running instances.
+    """
+
     TRADES_DELAY = 60.0
     SLEEP_TIME = 5.0
     BALANCE_DELAY = 60.0*60*24
@@ -36,6 +49,7 @@ class CronExportScript(threading.Thread):
         self._unmanaged = unmanaged
 
         self._report_path = strategy_service.report_path
+        self._fn_prefix = strategy_service.strategy.identifier
 
     def run(self):
         while self._process:
@@ -49,7 +63,7 @@ class CronExportScript(threading.Thread):
                         'dataset': "active",
                         'pending': True,
                         'export-format': "json",
-                        'filename': self._report_path + "/siis_trades.json",
+                        'filename': os.path.join(self._report_path, self._fn_prefix + "_trades.json"),
                     })
 
             if now - self._balances_last_time >= CronExportScript.BALANCE_DELAY:
@@ -73,7 +87,9 @@ class CronExportScript(threading.Thread):
 
                         dataset.append(balances)
 
-                        with open(self._report_path + "/siis_balances.json", "w") as f:
+                        filename = os.path.join(self._report_path, self._fn_prefix + "_balances.json")
+
+                        with open(filename, "w") as f:
                             f.write(json.dumps(dataset))
 
             if now - self._alerts_last_time >= CronExportScript.ALERT_DELAY:
@@ -84,7 +100,7 @@ class CronExportScript(threading.Thread):
                     results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
                         'dataset': "alert",
                         'export-format': "json",
-                        'filename': self._report_path + "/siis_alerts.json",
+                        'filename': os.path.join(self._report_path, self._fn_prefix + "_alerts.json"),
                     })
 
             if now - self._regions_last_time >= CronExportScript.REGION_DELAY:
@@ -95,7 +111,7 @@ class CronExportScript(threading.Thread):
                     results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
                         'dataset': "region",
                         'export-format': "json",
-                        'filename': self._report_path + "/siis_regions.json",
+                        'filename': os.path.join(self._report_path, self._fn_prefix + "_regions.json"),
                     })
 
             if now - self._strategy_last_time >= CronExportScript.STRATEGY_DELAY:
@@ -106,7 +122,7 @@ class CronExportScript(threading.Thread):
                     results = self._strategy_service.command(Strategy.COMMAND_TRADER_EXPORT_ALL, {
                         'dataset': "strategy",
                         'export-format': "json",
-                        'filename': self._report_path + "/siis_strategy.json",
+                        'filename': os.path.join(self._report_path, self._fn_prefix + "_strategy.json"),
                     })
 
             if now - self._trader_last_time >= CronExportScript.TRADER_DELAY:
@@ -117,7 +133,7 @@ class CronExportScript(threading.Thread):
                     results = self._trader_service.command(Trader.COMMAND_EXPORT, {
                         'dataset': "trader",
                         'export-format': "json",
-                        'filename': self._report_path + "/siis_trader.json",
+                        'filename': os.path.join(self._report_path, self._fn_prefix + "_trader.json"),
                     })
 
             if now - self._history_last_time >= CronExportScript.HISTORY_DELAY:
@@ -129,7 +145,7 @@ class CronExportScript(threading.Thread):
                         'dataset': "history",
                         'pending': True,
                         'export-format': "json",
-                        'filename': self._report_path + "/siis_history.json",
+                        'filename': os.path.join(self._report_path, self._fn_prefix + "_history.json"),
                     })
 
             if self._unmanaged and self._strategy_service.strategy() is None:
