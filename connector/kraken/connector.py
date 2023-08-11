@@ -856,6 +856,18 @@ class Connector(object):
         return {}
 
     def get_orders_info(self, txids=None, userref=None, trades=False):
+        """
+        Return order info for a list of txids (order identifiers or user references).
+        If an empty dict is returns it means an error.
+        An exception can also be thrown in some cases.
+        If the order does not exist (never existed) it will return a
+
+        @param txids:
+        @param userref:
+        @param trades:
+        @return: A dict with order-id : order-info or None.
+        """
+
         # trades = whether or not to include trades in output (optional.  default = false)
         # userref = restrict results to given user reference id (optional)
         # txid = comma delimited list of transaction ids to query info about (50 maximum)
@@ -876,17 +888,24 @@ class Connector(object):
         data = self.retry_query_private('QueryOrders', params)
 
         if not data:
+            # no results as error (might not occur)
             logger.error("query orders info no result")
-            return {}
+            return None
 
         if data.get('error'):
+            # at least one error string
             logger.error("query orders info: %s" % ', '.join(data['error']))
-            return {}
+
+            # common error is "EOrder:Invalid order" when one or more identifiers are invalid
+            return {'error': data['error'][0]}
 
         if data.get('result'):
+            # a dict with trxid:order-info
             return data['result']
 
-        return {}
+        # any other invalid cases, might not occur
+        logger.error("query orders info abnormal empty result")
+        return None
 
     #
     # internal

@@ -8,16 +8,16 @@
  (function($) {
      $.fn.doubleTap = function(doubleTapCallback) {
          return this.each(function(){
-			var elm = this;
-			var lastTap = 0;
-			$(elm).bind('mousedown', function (e) {
-                var now = (new Date()).valueOf();
-				var diff = (now - lastTap);
-                lastTap = now ;
-                if (diff < 250) {
-                  if($.isFunction( doubleTapCallback )) {
-                    doubleTapCallback.call(elm);
-		          }
+             var elm = this;
+             var lastTap = 0;
+             $(elm).bind('mousedown', function (e) {
+                 var now = (new Date()).valueOf();
+                 var diff = (now - lastTap);
+                 lastTap = now;
+                 if (diff < 250) {
+                    if($.isFunction( doubleTapCallback )) {
+                        doubleTapCallback.call(elm);
+		            }
                 }
 			});
          });
@@ -25,7 +25,7 @@
 })(jQuery);
 
 $(window).ready(function() {
-    CURRENCIES = {
+    window.CURRENCIES = {
         'EUR': 2,
         'ZEUR': 2,
         'USD': 2,
@@ -42,7 +42,7 @@ $(window).ready(function() {
         'XETH': 8,
     };
 
-    CURRENCIES_ALIAS = {
+    window.CURRENCIES_ALIAS = {
         'ZEUR': ['EUR', '€'],
         'ZUSD': ['USD', '$'],
         'ZCHF': ['CHF', 'CHF'],
@@ -98,11 +98,7 @@ $(window).ready(function() {
         window.server['ws-port'] = parseInt(searchParams.get('ws-port'));
     }
 
-    if (navigator.userAgent.toLowerCase().match(/mobile/i)) {
-        window.mobileDevice = true;
-    } else {
-        window.mobileDevice = false;
-    }
+    window.mobileDevice = !!navigator.userAgent.toLowerCase().match(/mobile/i);
 
     window.broker = {
         'name': 'binancefutures.com',
@@ -728,7 +724,7 @@ $(window).ready(function() {
     $('#list_active_trades').css('background', 'chocolate');
 
     $('#list_performances').on('click', function(e) {
-        if (server.permissions.indexOf("trader-balance-view") != -1) {
+        if (server.permissions.indexOf("trader-balance-view") !== -1) {
             on_update_performances();
         }
     });
@@ -747,13 +743,13 @@ $(window).ready(function() {
     });
 
     $('#identifier').keypress(function(e) {
-        if (e.which == '13') {
+        if (e.which === 13) {
             authenticate();
         }
     });
 
     $('#password').keypress(function(e) {
-        if (e.which == '13') {
+        if (e.which === 13) {
             authenticate();
         }
     });
@@ -836,7 +832,7 @@ $(window).ready(function() {
     if (window.mobileDevice) {
         $('#trade_list_sizer').doubleTap(function(e) {
             let elt = $('div.trade-list');
-            if (elt.attr('view-mode') == 'maximized') {
+            if (elt.attr('view-mode') === 'maximized') {
                 restore_trade_list_view();
             } else {
                 maximize_trade_list_view();
@@ -845,7 +841,7 @@ $(window).ready(function() {
     } else {
         $('#trade_list_sizer').dblclick(function(e) {
             let elt = $('div.trade-list');
-            if (elt.attr('view-mode') == 'maximized') {
+            if (elt.attr('view-mode') === 'maximized') {
                 restore_trade_list_view();
             } else {
                 maximize_trade_list_view();
@@ -911,7 +907,7 @@ $(window).ready(function() {
 
             fetch_status();
 
-            if (server.permissions.indexOf("strategy-view") != -1) {
+            if (server.permissions.indexOf("strategy-view") !== -1) {
                 fetch_strategy();
             }
 
@@ -932,13 +928,13 @@ $(window).ready(function() {
             window.server['connected'] = false;
             window.server['retry'] = true;
 
-            if (window.server['delay'] == 0) {
+            if (window.server['delay'] === 0) {
                 window.server['delay'] = 1000;
-            } else if (window.server['delay'] == 1000) {
+            } else if (window.server['delay'] === 1000) {
                 window.server['delay'] = 5000;
-            } else if (window.server['delay'] == 5000) {
+            } else if (window.server['delay'] === 5000) {
                 window.server['delay'] = 10000;
-            } else if (window.server['delay'] == 10000) {
+            } else if (window.server['delay'] === 10000) {
                 window.server['delay'] = 15000;
             }
 
@@ -994,7 +990,7 @@ $(window).ready(function() {
 
             fetch_status();
 
-            if (server.permissions.indexOf("strategy-view") != -1) {
+            if (server.permissions.indexOf("strategy-view") !== -1) {
                 fetch_strategy();
             }
 
@@ -1015,13 +1011,13 @@ $(window).ready(function() {
             window.server['connected'] = false;
             window.server['retry'] = true;
 
-            if (window.server['delay'] == 0) {
+            if (window.server['delay'] === 0) {
                 window.server['delay'] = 1000;
-            } else if (window.server['delay'] == 1000) {
+            } else if (window.server['delay'] === 1000) {
                 window.server['delay'] = 5000;
-            } else if (window.server['delay'] == 5000) {
+            } else if (window.server['delay'] === 5000) {
                 window.server['delay'] = 10000;
-            } else if (window.server['delay'] == 10000) {
+            } else if (window.server['delay'] === 10000) {
                 window.server['delay'] = 15000;
             }
 
@@ -1069,14 +1065,14 @@ $(window).ready(function() {
         }
     }
 
-    // global function to setup data and to get an initial auth-token
+    // global function to set up data and to get an initial auth-token
     siis_connect = function(api_key, host, port, ws_port=6340) {
         window.server['host'] = host;
         window.server['port'] = port;
         window.server['ws-port'] = ws_port;
 
         return get_auth_token(api_key);
-    }
+    };
 
     siis_login = function(identifier, password, host, port, ws_port=6340) {
         window.server['host'] = host;
@@ -1084,14 +1080,14 @@ $(window).ready(function() {
         window.server['ws-port'] = ws_port;
 
         return login(identifier, password);
-    }
+    };
 
     window.server['protocol'] = window.location.protocol;
 
     simple_connect = function(api_key) {
         let port = parseInt(window.location.port || 80);
         return siis_connect(api_key, window.location.hostname, port, port+1);
-    }
+    };
 
     // update ping
     function update_states() {
@@ -1137,10 +1133,10 @@ function getCookie(cname) {
     let ca = decodedCookie.split(';');
     for(let i = 0; i <ca.length; i++) {
         let c = ca[i];
-        while (c.charAt(0) == ' ') {
+        while (c.charAt(0) === ' ') {
             c = c.substring(1);
         }
-        if (c.indexOf(name) == 0) {
+        if (c.indexOf(name) === 0) {
             return c.substring(name.length, c.length);
         }
     }
@@ -1351,7 +1347,7 @@ function fetch_status() {
         // unused watchers slots
         for (let i = 0; i < 5; ++i) {
             let update = window.server['updates']['watcher' + (i+1)];
-            if (update.name == "") {
+            if (update.name === "") {
                 let nid = '#watcher' + (i+1) + '_state';
                 $(nid).css('display', 'none');
             }
@@ -1391,7 +1387,6 @@ function fetch_strategy() {
                 'strategy': market['strategy'],
                 'market-id': market['market-id'],
                 'symbol': market['symbol'],
-                'market-id': market['market-id'],
                 'value-per-pip': market['value-per-pip'],
                 'price-limits': market['price-limits'],        // array 4 floats
                 'notional-limits': market['notional-limits'],  // array 4 floats
@@ -1420,11 +1415,11 @@ function fetch_strategy() {
                 if (profile['take-profit']) {
                     take_profit_method = "";
 
-                    if (profile['take-profit']['distance-type'] == 'percent') {
+                    if (profile['take-profit']['distance-type'] === 'percent') {
                         take_profit_method = 'percent-' + profile['take-profit']['distance'].toFixed(2);
-                    } else if (profile['take-profit']['distance-type'] == 'pip') {
+                    } else if (profile['take-profit']['distance-type'] === 'pip') {
                         take_profit_method = 'pip-' + profile['take-profit']['distance'];
-                    } else if (profile['take-profit']['distance-type'] == 'dist') {
+                    } else if (profile['take-profit']['distance-type'] === 'dist') {
                         take_profit_method = 'price-' + profile['take-profit']['distance'];
                     } else {
                         take_profit_method = profile['take-profit']['distance-type'];
@@ -1433,12 +1428,12 @@ function fetch_strategy() {
                     if (!(take_profit_method in window.methods)) {
                         let label = ""
 
-                        if (profile['take-profit']['distance-type'] == 'percent') {
+                        if (profile['take-profit']['distance-type'] === 'percent') {
                             label = profile['take-profit']['distance'].toFixed(2) + '%';
-                        } else if (profile['take-profit']['distance-type'] == 'pip') {
+                        } else if (profile['take-profit']['distance-type'] === 'pip') {
                             label = profile['take-profit']['distance'] + 'pips';
-                        } else if (profile['take-profit']['distance-type'] == 'dist') {
-                            if (profile['take-profit']['distance'] == 0.0) {
+                        } else if (profile['take-profit']['distance-type'] === 'dist') {
+                            if (profile['take-profit']['distance'] === 0.0) {
                                 continue;
                             }
                             label = profile['take-profit']['distance'] + 'price';
@@ -1455,11 +1450,11 @@ function fetch_strategy() {
                 }
 
                 if (profile['stop-loss']) {
-                    if (profile['stop-loss']['distance-type'] == 'percent') {
+                    if (profile['stop-loss']['distance-type'] === 'percent') {
                         stop_loss_method = 'percent-' + profile['stop-loss']['distance'].toFixed(2);
-                    } else if (profile['stop-loss']['distance-type'] == 'pip') {
+                    } else if (profile['stop-loss']['distance-type'] === 'pip') {
                         stop_loss_method = 'pip-' + profile['stop-loss']['distance'];
-                    } else if (profile['stop-loss']['distance-type'] == 'dist') {
+                    } else if (profile['stop-loss']['distance-type'] === 'dist') {
                         stop_loss_method = 'price-' + profile['stop-loss']['distance'];
                     } else {
                         stop_loss_method = profile['stop-loss'];
@@ -1468,12 +1463,12 @@ function fetch_strategy() {
                     if (!(stop_loss_method in window.methods)) {
                         let label = "";
 
-                        if (profile['stop-loss']['distance-type'] == 'percent') {
+                        if (profile['stop-loss']['distance-type'] === 'percent') {
                             label = profile['stop-loss']['distance'].toFixed(2) + '%';
-                        } else if (profile['stop-loss']['distance-type'] == 'pip') {
+                        } else if (profile['stop-loss']['distance-type'] === 'pip') {
                             label = profile['stop-loss']['distance'] + 'pips';
-                        } else if (profile['stop-loss']['distance-type'] == 'dist') {
-                            if (profile['stop-loss']['distance'] == 0.0) {
+                        } else if (profile['stop-loss']['distance-type'] === 'dist') {
+                            if (profile['stop-loss']['distance'] === 0.0) {
                                 continue;
                             }
                             label = profile['stop-loss']['distance'] + 'price';
@@ -1499,7 +1494,7 @@ function fetch_strategy() {
             }
         }
 
-        if (server.permissions.indexOf("strategy-open-trade") != -1) {
+        if (server.permissions.indexOf("strategy-open-trade") !== -1) {
             setup_traders();
         } else {
             // hide the traders
@@ -1509,13 +1504,13 @@ function fetch_strategy() {
             $('#trade_list_sizer').remove();
         }
 
-        if (server.permissions.indexOf("strategy-trader") != -1) {
+        if (server.permissions.indexOf("strategy-trader") !== -1) {
             // @todo traders options
         } else {
             // @todo trader must not have play/pause, modify quantity, modify affinity ...
         }
 
-        if (server.permissions.indexOf("strategy-view") != -1) {
+        if (server.permissions.indexOf("strategy-view") !== -1) {
             fetch_trades();
             fetch_history();
             fetch_alerts();
@@ -1527,7 +1522,7 @@ function fetch_strategy() {
             $('#list_historical_trades').remove();
         }
 
-        if (server.permissions.indexOf("trader-balance-view") != -1) {
+        if (server.permissions.indexOf("trader-balance-view") !== -1) {
             fetch_balances();
         } else {
             // remove menu
@@ -1677,8 +1672,7 @@ function fetch_balances() {
         let balances = result['data'];
 
         for (let asset in balances) {
-            let balance = balances[asset];
-            window.account_balances[asset] = balance;
+            window.account_balances[asset] = balances[asset];
         }
     })
     .fail(function() {
@@ -1687,7 +1681,7 @@ function fetch_balances() {
 }
 
 function timestamp_to_time_str(timestamp) {
-    if (timestamp == null || timestamp == undefined) {
+    if (timestamp == null) {
         return "";
     }
 
@@ -1700,7 +1694,7 @@ function timestamp_to_time_str(timestamp) {
 }
 
 function timestamp_to_date_str(timestamp) {
-    if (timestamp == null || timestamp == undefined) {
+    if (timestamp == null) {
         return "";
     }
 
@@ -1713,7 +1707,7 @@ function timestamp_to_date_str(timestamp) {
 }
 
 function timestamp_to_datetime_str(timestamp) {
-    if (timestamp == null || timestamp == undefined) {
+    if (timestamp == null) {
         return "";
     }
 
@@ -1726,12 +1720,12 @@ function timestamp_to_datetime_str(timestamp) {
 }
 
 function timeframe_to_str(timeframe) {
-    if (timeframe == null || timeframe == undefined) {
+    if (timeframe == null) {
         return "";
     }
 
-    if (typeof(timeframe) !== "number") {
-        timestamp = parseFloat(timeframe);
+    if (typeof (timeframe) !== "number") {
+        timeframe = parseFloat(timeframe);
     }
 
     if (timeframe >= 30*24*60*60*60) {
@@ -1752,7 +1746,7 @@ function timeframe_to_str(timeframe) {
 }
 
 function timeframe_from_str(timeframe) {
-    if (timeframe == null || timeframe == undefined) {
+    if (timeframe == null) {
         return 0;
     }
 
@@ -1783,7 +1777,7 @@ function add_symbols(id, to) {
     let select = $('<select class="markets" name="market-id"></select>');
     select.attr('trader-id', id);
 
-    for (market in markets) {
+    for (let market in markets) {
         select.append($('<option value="' + market +'">' + markets[market].symbol + '</>'));
     }
 
@@ -1796,13 +1790,13 @@ function add_symbols(id, to) {
     });
 
     return select;
-};
+}
 
 function add_profiles(id, to, profiles) {
     let select = $('<select class="profiles" name="profile-id"></select>');
     select.attr('trader-id', id);
 
-    for (profile_id in profiles) {
+    for (let profile_id in profiles) {
         select.append($('<option value="' + profile_id +'">' + profiles[profile_id].label + '</>'));
     }
 
@@ -1815,20 +1809,20 @@ function add_profiles(id, to, profiles) {
     });
 
     return select;
-};
+}
 
 function add_take_profit_price(id, to) {
     let input = $('<input type="number" class="take-profit-price" name="take-profit-price" placeholder="Take-Profit" lang="en">');
     input.attr('trader-id', id);
 
     to.append(input);
-};
+}
 
 function add_take_profit_methods(id, to) {
     let select = $('<select class="take-profit-method" name="take-profit-method"></select>');
     select.attr('trader-id', id);
 
-    for (method in methods) {
+    for (let method in methods) {
         select.append($('<option value="' + method +'">' + methods[method].label + '</>'));
     }
 
@@ -1841,20 +1835,20 @@ function add_take_profit_methods(id, to) {
     });
 
     return select;
-};
+}
 
 function add_entry_price(id, to) {
     let input = $('<input type="number" class="entry-price" name="entry-price" placeholder="Entry-Price" lang="en">');
     input.attr('trader-id', id);
 
     to.append(input);
-};
+}
 
 function add_entry_price_methods(id, to) {
     let select = $('<select class="entry-price-method" name="entry-price-method"></select>');
     select.attr('trader-id', id);
 
-    for (method in entry_methods) {
+    for (let method in entry_methods) {
         select.append($('<option value="' + method +'">' + entry_methods[method].label + '</>'));
     }
 
@@ -1869,20 +1863,20 @@ function add_entry_price_methods(id, to) {
     select.selectpicker("val", "limit");
 
     return select;
-};
+}
 
 function add_stop_loss_price(id, to) {
     let input = $('<input type="number" class="stop-loss-price" name="stop-loss-price" placeholder="Stop-Loss" lang="en">');
     input.attr('trader-id', id);
 
     to.append(input);
-};
+}
 
 function add_stop_loss_methods(id, to) {
     let select = $('<select class="stop-loss-method" name="stop-loss-method"></select>');
     select.attr('trader-id', id);
 
-    for (method in methods) {
+    for (let method in methods) {
         select.append($('<option value="' + method +'">' + methods[method].label + '</>'));
     }
 
@@ -1895,7 +1889,7 @@ function add_stop_loss_methods(id, to) {
     });
 
     return select;
-};
+}
 
 function add_quantity_slider(id, to) {
     let slider = $('<input type="range" class="quantity" name="quantity">').css('width', '200px');
@@ -2208,7 +2202,7 @@ function on_change_entry_method(elt) {
 
     let entry_method = retrieve_entry_method(trader_id);
 
-    if (entry_method == "limit") {
+    if (entry_method === "limit") {
         let ep = $('input.entry-price[trader-id="' + trader_id +'"]');
         ep.prop("disabled", false);
     } else {
@@ -2231,7 +2225,7 @@ function on_change_stop_loss_method(elt) {
 
     let stop_loss_method = retrieve_stop_loss_method(trader_id);
 
-    if (stop_loss_method == "price") {
+    if (stop_loss_method === "price") {
         let slp = $('input.stop-loss-price[trader-id="' + trader_id +'"]');
         slp.prop("disabled", false);
     } else {
@@ -2248,7 +2242,7 @@ function on_change_take_profit_method(elt) {
 
     let take_profit_method = retrieve_take_profit_method(trader_id);
 
-    if (take_profit_method == "price") {
+    if (take_profit_method === "price") {
         let tpp = $('input.take-profit-price[trader-id="' + trader_id +'"]');
         tpp.prop("disabled", false);
     } else {
@@ -2260,7 +2254,7 @@ function on_change_take_profit_method(elt) {
 }
 
 function on_update_performances() {
-    if ($('div.performance-list-entries').css('display') != 'none') {
+    if ($('div.performance-list-entries').css('display') !== 'none') {
         let table = $('div.performance-list-entries table.performance').find('tbody');
         table.empty();
 
@@ -2378,7 +2372,7 @@ function on_update_performances() {
             let row_entry = $('<tr class="balance-entry"></tr>');
             row_entry.append($('<td class="balance-symbol">' + asset_symbol + '</td>'));
 
-            if (balance.type == "asset") {
+            if (balance.type === "asset") {
                 if ((precision === undefined || precision === null) && (asset in CURRENCIES)) {
                     precision = CURRENCIES[asset];
                 }
@@ -2386,7 +2380,7 @@ function on_update_performances() {
                 row_entry.append($('<td class="balance-free">' + format_value(balance.free, precision) + '</td>'));
                 row_entry.append($('<td class="balance-locked">' + format_value(balance.locked, precision) + '</td>'));
                 row_entry.append($('<td class="balance-total">' + format_value(balance.total, precision) + '</td>'));
-            } else if (balance.type == "margin") {
+            } else if (balance.type === "margin") {
                 row_entry.append($('<td class="balance-free">' + format_value(balance.free, precision) + '</td>'));
 
                 if (balance.locked > 0.0) {
@@ -2396,7 +2390,7 @@ function on_update_performances() {
                     row_entry.append($('<td class="balance-locked">0</td>'));
                 }
 
-                if (balance.upnl != 0.0) {
+                if (balance.upnl !== 0.0) {
                     row_entry.append($('<td class="balance-total">' + format_value(balance.total, precision) +
                         ' (upnl ' + format_value(balance.upnl, precision) + ')</td>'));
                 } else {
@@ -2414,12 +2408,12 @@ function on_update_performances() {
         window.stats['rpnl'] = history_total_sum;
 
         // update every half-second until displayed or @todo remove after using WS implementation
-        if (server.permissions.indexOf("trader-balance-view") != -1) {
+        if (server.permissions.indexOf("trader-balance-view") !== -1) {
             setTimeout(fetch_balances, 500);
         }
 
         if (window.server['ws']) {
-            if (server.permissions.indexOf("trader-balance-view") != -1) {
+            if (server.permissions.indexOf("trader-balance-view") !== -1) {
                 setTimeout(on_update_performances, 500);
             }
         }
@@ -2427,7 +2421,7 @@ function on_update_performances() {
 }
 
 function on_update_balances(symbol, asset, timestamp, data) {
-    if ($('div.performance-list-entries').css('display') != 'none') {
+    if ($('div.performance-list-entries').css('display') !== 'none') {
         if (window.account_balances[asset]) {
             // update the related asset
             window.account_balances[asset].free = data.free;
@@ -2465,7 +2459,7 @@ function on_update_balances(symbol, asset, timestamp, data) {
 
             let precision = balance.precision;
 
-            if (balance.type == "asset") {
+            if (balance.type === "asset") {
                 if ((precision === undefined || precision === null) && (asset in CURRENCIES)) {
                     precision = CURRENCIES[asset];
                 }
@@ -2474,7 +2468,7 @@ function on_update_balances(symbol, asset, timestamp, data) {
                 row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + '</td>'));
                 row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '</td>'));
 
-            } else if (balance.type == "margin") {
+            } else if (balance.type === "margin") {
                 row_entry.append($('<td class="balance-free">' + balance.free.toFixed(precision) + '</td>'));
                 row_entry.append($('<td class="balance-locked">' + balance.locked.toFixed(precision) + ' (level '+ (balance['margin-level'] * 100).toFixed(2) + '%)</td>'));
                 row_entry.append($('<td class="balance-total">' + balance.total.toFixed(precision) + '(upnl ' + balance.upnl + ')</td>'));
@@ -2549,7 +2543,7 @@ function restore_trade_list_view() {
 
     let charts = $('div.charts');
     charts.css('height', '75vh');
-    if (traders.css('display') == 'none') {
+    if (traders.css('display') === 'none') {
         charts.css('display', 'block');
     }
 }
@@ -2587,7 +2581,7 @@ function set_conn_state(state) {
         $('#conn_state').css('background', 'green');
     } else if (state < 0) {
         $('#conn_state').css('background', 'red');
-    } else if (state == 0) {
+    } else if (state === 0) {
         $('#conn_state').css('background', 'orange');
     }
 }
@@ -2597,7 +2591,7 @@ function set_ws_ping_state(state) {
         $('#ws_state').css('background', 'green');
     } else if (state < 0) {
         $('#ws_state').css('background', 'red');
-    } else if (state == 0) {
+    } else if (state === 0) {
         $('#ws_state').css('background', 'orange');
     }
 }
@@ -2605,11 +2599,11 @@ function set_ws_ping_state(state) {
 function find_watcher_slot(name) {
     for (let i = 0; i < 5; ++i) {
         let update = window.server['updates']['watcher' + (i+1)];
-        if (update.name == "") {
+        if (update.name === "") {
             return 'watcher' + (i+1);
         }
 
-        if (update.name == name) {
+        if (update.name === name) {
             return 'watcher' + (i+1);
         }
     }
@@ -2621,7 +2615,7 @@ function find_watcher_slot(name) {
 function set_svc_update_timestamp(type, name, timestamp) {
     let now = Date.now();
 
-    if (type == "watcher") {
+    if (type === "watcher") {
         type = find_watcher_slot(name);
 
         if (type == "") {
@@ -2649,10 +2643,10 @@ function set_svc_update_timestamp(type, name, timestamp) {
 function set_conn_update_state(type, name, state) {
     let now = Date.now();
 
-    if (type == "watcher") {
+    if (type === "watcher") {
         type = find_watcher_slot(name);
 
-        if (type == "") {
+        if (type === "") {
             // no free slot
             return;
         }
@@ -2660,7 +2654,7 @@ function set_conn_update_state(type, name, state) {
 
     let update = window.server['updates'][type];
 
-    if (update.name == "") {
+    if (update.name === "") {
         update.name = name;
 
         let nid = '#' + type + '_state';
@@ -2678,7 +2672,7 @@ function set_svc_state(type, svc_state) {
         $(nid).css('background', 'green');
     } else if (svc_state < 0) {
         $(nid).css('background', 'red');
-    } else if (svc_state == 0) {
+    } else if (svc_state === 0) {
         $(nid).css('background', 'orange');
     }
 }
@@ -2690,7 +2684,7 @@ function set_svc_conn_state(type, conn_state) {
         $(nid).css('border-color', 'green');
     } else if (conn_state < 0) {
         $(nid).css('border-color', 'red');
-    } else if (conn_state == 0) {
+    } else if (conn_state === 0) {
         // $(nid).css('border-color', 'orange');
         $(nid).css('border-color', 'gray');
     }
