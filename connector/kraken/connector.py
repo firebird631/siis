@@ -503,6 +503,26 @@ class Connector(object):
 
         return {}
 
+    def get_balances_ex(self):
+        """
+        Similar as get_balances but return a dict per asset with balance and hold_trade fields.
+        """
+        # data = self.query_private('Balance')
+        data = self.retry_query_private('BalanceEx')
+
+        if not data:
+            logger.error("query balance extended no result")
+            return {}
+
+        if data.get('error'):
+            logger.error("query balance: %s" % ', '.join(data['error']))
+            return {}
+
+        if data.get('result'):
+            return data['result']
+
+        return {}
+
     def get_trade_volume(self):
         # pair = comma delimited list of asset pairs to get fee info on (optional)
         # fee-info = whether or not to include fee info info results (optional)

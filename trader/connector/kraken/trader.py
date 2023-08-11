@@ -612,8 +612,12 @@ class KrakenTrader(Trader):
         self._account.update(self._watcher.connector)
 
     def __fetch_assets(self):
+        """
+        @note New version use BalanceEx endpoint
+        """
         assets = self._watcher.connector.assets()
-        balances = self._watcher.connector.get_balances()
+        # balances = self._watcher.connector.get_balances()
+        balances_ex = self._watcher.connector.get_balances_ex()
         # open_orders = self._watcher.connector.get_open_orders()
         instruments = self._watcher.connector.instruments()
 
@@ -656,15 +660,25 @@ class KrakenTrader(Trader):
             if not asset.quote:
                 logger.warning("No found quote for asset %s" % asset.symbol)
 
-        for asset_name, balance in balances.items():
+        for asset_name, balance_ex in balances_ex.items():
             asset = self._assets.get(asset_name)
 
             if asset:
-                # cannot distinct from locked to free, compute locked from active orders
-                asset.set_quantity(0.0, float(balance))
+                balance = float(balance_ex['balance'])
+                locked = float(balance_ex['hold_trade'])
+                free = balance - locked
 
-                # uses open orders to found the locked quantity
-                # @todo
+                asset.set_quantity(locked, free)
+
+        # for asset_name, balance in balances.items():
+        #     asset = self._assets.get(asset_name)
+        #
+        #     if asset:
+        #         # cannot distinct from locked to free, compute locked from active orders
+        #         asset.set_quantity(0.0, float(balance))
+        #
+        #         # uses open orders to found the locked quantity
+        #         # @todo
 
     def __fetch_positions(self):
         open_positions = self._watcher.connector.get_open_positions()

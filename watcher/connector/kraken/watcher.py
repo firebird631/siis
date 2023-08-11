@@ -1619,19 +1619,20 @@ class KrakenWatcher(Watcher):
         Update asset balance.
 
         @note Non thread-safe because only called at each sync update.
+        @note New version use BalanceEx endpoint
         """
-        balances = self._connector.get_balances()
+        balances_ex = self._connector.get_balances_ex()
 
-        for asset_name, balance in balances.items():
+        for asset_name, balance_ex in balances_ex.items():
             if asset_name not in self._last_assets_balances:
                 # initiate cache
                 self._last_assets_balances[asset_name] = [0.0, 0.0]  # locked, free
 
             asset = self._last_assets_balances[asset_name]
 
-            # use the last computed locked value from opened orders using this asset
-            locked = asset[0]
-            free = float(balance) - locked
+            balance = float(balance_ex['balance'])
+            locked = float(balance_ex['hold_trade'])
+            free = balance - locked
 
             if locked != asset[0] or free != asset[1]:
                 # update cache for next comparison
@@ -1640,6 +1641,27 @@ class KrakenWatcher(Watcher):
 
                 # asset updated
                 self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, locked, free))
+
+        # balances = self._connector.get_balances()
+        #
+        # for asset_name, balance in balances.items():
+        #     if asset_name not in self._last_assets_balances:
+        #         # initiate cache
+        #         self._last_assets_balances[asset_name] = [0.0, 0.0]  # locked, free
+        #
+        #     asset = self._last_assets_balances[asset_name]
+        #
+        #     # use the last computed locked value from opened orders using this asset
+        #     locked = asset[0]
+        #     free = float(balance) - locked
+        #
+        #     if locked != asset[0] or free != asset[1]:
+        #         # update cache for next comparison
+        #         asset[0] = locked
+        #         asset[1] = free
+        #
+        #         # asset updated
+        #         self.service.notify(Signal.SIGNAL_ASSET_UPDATED, self.name, (asset_name, locked, free))
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         trades = []
