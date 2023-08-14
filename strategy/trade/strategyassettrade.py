@@ -24,34 +24,29 @@ error_logger = logging.getLogger('siis.error.strategy.assettrade')
 
 class StrategyAssetTrade(StrategyTrade):
     """
-    Specialization for asset buy/sell trading.
-    Only an initial buy order, and a single, either a stop or a take-profit order.
+    Specialization for asset trading : first buy (entry) then sell (exit).
+    Only a single initial buy order, and a single exit order (either stop or limit order).
 
-    @todo fill the exit_trades list and update the x and axp each time
-    @todo support of OCO order (modify_sl/tp) if available from market or a specialized model
+    @todo support of OCO order (close, remove, modify, cancel) if available from market or a specialized model
 
-    @todo on cancel_open a rare case is not matched :
-        - if the signal is lost, or after a restart and loading trades, maybe the order was partially completed,
-        but the entry quantity is still 0 or partial, but the strategy when to cancel the order because of
-        a timeout or another logic, then it is necessary to check the state of the current order before cancel it,
-        and to fix the quantity.
-        - before canceling (and possibly after fixing from previous case) it is necessary to compute the notional
-        size and to compare with the min-notional size, because else it will be impossible to create a sell order
-        with the realized entry quantity.
+    @todo could compare limit/stop_order_qty and limit/stop_exec_qty even in the case where fees are taken on base asset
+        because if we deduce this amount from limit/stop_order_qty and limit/stop_exec_qty comparison will be ok
 
-    @todo on modify_stop_loss or modify_take_profit some rare case are not matched :
-        - if the signal is lost, and a stop or limit quantity has been realized during this time, so the order
-        is partially completed, and the exit quantity is still 0 or partial, but the strategy want to modify
-        the order because of its logic, then it is necessary to check the state of the current order before cancel it,
-        and to fix the quantity.
-        - before modifying or canceling, it is necessary to compute the notional size and to compare with the
-        min-notional size, because else it will be impossible to recreate a sell order with the remaining quantity.
+    @todo before close or modifying or canceling stop or limit it is important to compute the notional size
+        and to compare with the instrument min-notional size, because else it will be impossible to recreate
+        a sell order with the remaining quantity.
 
     @todo if commission is in asset or BNB and not in quote (case of binance : asset at buy et quote at sell / or BNB)
+
+    @todo In case of exit limit is partially executed and another exit order is placed after (manual close,
+        another limit, stop reached for the rest) the next orders will have a cumulative qty only for the rest.
+        Need to keep back the previous limit and stop order until receiving the close/deleted/canceled message.
     """
 
-    __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', 'entry_oid', 'stop_oid', \
-                'limit_oid', 'oco_oid', 'stop_order_qty', 'limit_order_qty', '_use_oco'
+    __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', \
+                'entry_oid', 'stop_oid', 'limit_oid', 'oco_oid', '_use_oco', \
+                'stop_order_qty', 'limit_order_qty', \
+                'stop_order_exec', 'limit_order_exec'
 
     def __init__(self, timeframe: float):
         super().__init__(StrategyTrade.TRADE_BUY_SELL, timeframe)
@@ -61,15 +56,18 @@ class StrategyAssetTrade(StrategyTrade):
         self.limit_ref_oid = None
         self.oco_ref_oid = None
 
-        self._use_oco = False
+        self.entry_oid = None       # entry buy order id
+        self.stop_oid = None        # exit sell stop order id
+        self.limit_oid = None       # exit sell limit order id
+        self.oco_oid = None         # exit sell OCO order id
 
-        self.entry_oid = None   # related entry buy order id
-        self.stop_oid = None    # related exit sell stop order id
-        self.limit_oid = None   # related exit sell limit order id
-        self.oco_oid = None     # related exit sell OCO order id
+        self._use_oco = False   # True if OCO order is used
 
-        self.stop_order_qty = 0.0
-        self.limit_order_qty = 0.0
+        self.stop_order_qty = 0.0       # ordered quantity of the current stop order
+        self.limit_order_qty = 0.0       # ordered quantity of the current limit order
+
+        self.stop_order_exec = 0.0       # executed quantity of the current stop order
+        self.limit_order_exec = 0.0       # executed quantity of the current limit order
 
     def open(self, trader: Trader, instrument: Instrument, direction: int, order_type: int,
              order_price: float, quantity: float, take_profit: float, stop_loss: float,
@@ -153,9 +151,8 @@ class StrategyAssetTrade(StrategyTrade):
         if self.entry_oid:
             # cancel the remaining buy order
             if trader.cancel_order(self.entry_oid, instrument) > 0:
-                # returns true, no need to wait signal confirmation
-                self.entry_ref_oid = None
-                self.entry_oid = None
+                # check entry_oid closed order state qty : must be still unchanged or fix it
+                self.__check_and_reset_entry(trader, instrument)
 
                 if self.e <= 0:
                     # no entry qty processed, entry canceled
@@ -183,12 +180,13 @@ class StrategyAssetTrade(StrategyTrade):
         if self.oco_oid:
             # cancel the oco sell order
             if trader.cancel_order(self.oco_oid, instrument) > 0:
-                # returns true, no need to wait signal confirmation
+                # @todo must check stop and limit order state and fix it if necessary
+
                 self.oco_ref_oid = None
                 self.oco_oid = None
 
-                self.stop_oid = None
-                self.limit_oid = None
+                self.__reset_stop()
+                self.__reset_limit()
 
                 if self.e <= 0 and self.x <= 0:
                     # no exit qty
@@ -215,10 +213,8 @@ class StrategyAssetTrade(StrategyTrade):
             if self.stop_oid:
                 # cancel the stop sell order
                 if trader.cancel_order(self.stop_oid, instrument) > 0:
-                    # returns true, no need to wait signal confirmation
-                    self.stop_ref_oid = None
-                    self.stop_oid = None
-                    self.stop_order_qty = 0.0
+                    # check stop_oid closed order state qty : must be still unchanged or fix it
+                    self.__check_and_reset_stop(trader, instrument)
 
                     if self.e <= 0 and self.x <= 0:
                         # no exit qty
@@ -236,19 +232,15 @@ class StrategyAssetTrade(StrategyTrade):
 
                     elif data['id'] is None:
                         # cannot retrieve the order, wrong id, no stop order
-                        self.stop_ref_oid = None
-                        self.stop_oid = None
-                        self.stop_order_qty = 0.0
+                        self.__reset_stop()
                     else:
                         error = True
 
             if self.limit_oid:
                 # cancel the sell limit order
                 if trader.cancel_order(self.limit_oid, instrument) > 0:
-                    # returns true, no need to wait signal confirmation
-                    self.limit_ref_oid = None
-                    self.limit_oid = None
-                    self.limit_order_qty = 0.0
+                    # check limit_oid closed order state qty : must be still unchanged or fix it
+                    self.__check_and_reset_limit(trader, instrument)
 
                     if self.e <= 0 and self.x <= 0:
                         # no exit qty
@@ -266,9 +258,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                     elif data['id'] is None:
                         # cannot retrieve the order, wrong id, no stop order
-                        self.limit_ref_oid = None
-                        self.limit_oid = None
-                        self.limit_order_qty = 0.0
+                        self.__reset_limit()
                     else:
                         error = True
 
@@ -282,9 +272,8 @@ class StrategyAssetTrade(StrategyTrade):
         if self.entry_oid:
             # cancel the buy order
             if trader.cancel_order(self.entry_oid, instrument) > 0:
-                # returns true, no need to wait signal confirmation
-                self.entry_oid = None
-                self.entry_ref_oid = None
+                # check entry_oid closed order state qty : must be still unchanged or fix it
+                self.__check_and_reset_entry(trader, instrument)
 
                 if self.e <= 0:
                     # cancel a just opened trade means it is canceled
@@ -323,9 +312,8 @@ class StrategyAssetTrade(StrategyTrade):
         elif self.limit_oid:
             # cancel the sell order
             if trader.cancel_order(self.limit_oid, instrument) > 0:
-                # returns true, no need to wait signal confirmation
-                self.limit_oid = None
-                self.limit_ref_oid = None
+                # check limit_oid closed order state qty : must be still unchanged or fix it
+                self.__check_and_reset_limit(trader, instrument)
 
                 if self.x <= 0:
                     self._exit_state = StrategyTrade.STATE_CANCELED
@@ -340,8 +328,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 elif data['id'] is None:
                     # cannot retrieve the order, wrong id, no entry order, nothing to do
-                    self.limit_ref_oid = None
-                    self.limit_oid = None
+                    self.__reset_limit()
 
                     self._exit_state = StrategyTrade.STATE_CANCELED
                 else:
@@ -351,9 +338,8 @@ class StrategyAssetTrade(StrategyTrade):
         elif self.stop_oid:
             # cancel the sell order
             if trader.cancel_order(self.stop_oid, instrument) > 0:
-                # returns true, no need to wait signal confirmation
-                self.stop_oid = None
-                self.stop_ref_oid = None
+                # check stop_oid closed order state qty : must be still unchanged or fix it
+                self.__check_and_reset_stop(trader, instrument)
 
                 if self.x <= 0:
                     self._exit_state = StrategyTrade.STATE_CANCELED
@@ -368,8 +354,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                 elif data['id'] is None:
                     # cannot retrieve the order, wrong id, no entry order, nothing to do
-                    self.stop_ref_oid = None
-                    self.stop_oid = None
+                    self.__reset_stop()
 
                     self._exit_state = StrategyTrade.STATE_CANCELED
                 else:
@@ -400,10 +385,8 @@ class StrategyAssetTrade(StrategyTrade):
             if self.limit_oid:
                 # cancel the sell limit order and create a new one
                 if trader.cancel_order(self.limit_oid, instrument) > 0:
-                    # REST sync
-                    self.limit_ref_oid = None
-                    self.limit_oid = None
-                    self.limit_order_qty = 0.0
+                    # check limit_oid closed order state qty : must be still unchanged or fix it
+                    self.__check_and_reset_limit(trader, instrument)
                 else:
                     data = trader.order_info(self.limit_oid, instrument)
 
@@ -413,20 +396,15 @@ class StrategyAssetTrade(StrategyTrade):
 
                     elif data['id'] is None:
                         # cannot retrieve the order, wrong id, no limit order
-                        self.limit_ref_oid = None
-                        self.limit_oid = None
-                        self.limit_order_qty = 0.0
+                        self.__reset_limit()
                     else:
                         return self.ERROR
 
             if self.stop_oid and hard:
                 # cancel the sell stop order (only one or the other)
                 if trader.cancel_order(self.stop_oid, instrument) > 0:
-                    # REST sync
-                    # returns true, no need to wait signal confirmation
-                    self.stop_ref_oid = None
-                    self.stop_oid = None
-                    self.stop_order_qty = 0.0
+                    # check stop_oid closed order state qty : must be still unchanged or fix it
+                    self.__check_and_reset_stop(trader, instrument)
                 else:
                     data = trader.order_info(self.stop_oid, instrument)
 
@@ -436,9 +414,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                     elif data['id'] is None:
                         # cannot retrieve the order, wrong id, no stop order
-                        self.stop_ref_oid = None
-                        self.stop_oid = None
-                        self.stop_order_qty = 0.0
+                        self.__reset_stop()
                     else:
                         return self.ERROR
 
@@ -457,13 +433,16 @@ class StrategyAssetTrade(StrategyTrade):
 
                 # generated a reference order id
                 trader.set_ref_order_id(order)
+
+                # set before in case of async signal comes before
                 self.limit_ref_oid = order.ref_order_id
+                self.limit_order_qty = order.quantity
+                self.limit_order_exec = 0.0
 
                 create_order_result = trader.create_order(order, instrument)
                 if create_order_result > 0:
                     # REST sync
                     self.limit_oid = order.order_id
-                    self.limit_order_qty = order.quantity
 
                     self.last_tp_ot[0] = order.created_time
                     self.last_tp_ot[1] += 1
@@ -473,17 +452,13 @@ class StrategyAssetTrade(StrategyTrade):
                     return self.ACCEPTED
                 elif create_order_result == Order.REASON_INSUFFICIENT_FUNDS:
                     # rejected because not enough margin, must stop to retry
-                    self.limit_ref_oid = None
-                    self.limit_order_qty = 0.0
-
+                    self.__reset_limit()
                     self._exit_state = self.STATE_ERROR
 
                     return self.INSUFFICIENT_FUNDS
                 else:
                     # rejected
-                    self.limit_ref_oid = None
-                    self.limit_order_qty = 0.0
-
+                    self.__reset_limit()
                     return self.REJECTED
             elif limit_price:
                 # soft take-profit
@@ -516,11 +491,8 @@ class StrategyAssetTrade(StrategyTrade):
             if self.stop_oid:
                 # cancel the sell stop order and create a new one
                 if trader.cancel_order(self.stop_oid, instrument) > 0:
-                    # REST sync
-                    # returns true, no need to wait signal confirmation
-                    self.stop_ref_oid = None
-                    self.stop_oid = None
-                    self.stop_order_qty = 0.0
+                    # check stop_oid closed order state qty : must be still unchanged or fix it
+                    self.__check_and_reset_stop(trader, instrument)
                 else:
                     data = trader.order_info(self.stop_oid, instrument)
 
@@ -530,20 +502,15 @@ class StrategyAssetTrade(StrategyTrade):
 
                     elif data['id'] is None:
                         # cannot retrieve the order, wrong id, no stop order
-                        self.stop_ref_oid = None
-                        self.stop_oid = None
-                        self.stop_order_qty = 0.0
+                        self.__reset_stop()
                     else:
                         return self.ERROR
 
             if self.limit_oid and hard:
                 # cancel the sell limit order (only one or the other)
                 if trader.cancel_order(self.limit_oid, instrument) > 0:
-                    # REST sync
-                    # returns true, no need to wait signal confirmation
-                    self.limit_ref_oid = None
-                    self.limit_oid = None
-                    self.limit_order_qty = 0.0
+                    # check limit_oid closed order state qty : must be still unchanged or fix it
+                    self.__check_and_reset_limit(trader, instrument)
                 else:
                     data = trader.order_info(self.limit_oid, instrument)
 
@@ -553,9 +520,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                     elif data['id'] is None:
                         # cannot retrieve the order, wrong id, no limit order
-                        self.limit_ref_oid = None
-                        self.limit_oid = None
-                        self.limit_order_qty = 0.0
+                        self.__reset_limit()
                     else:
                         return self.ERROR
 
@@ -574,13 +539,16 @@ class StrategyAssetTrade(StrategyTrade):
 
                 # generated a reference order id
                 trader.set_ref_order_id(order)
+
+                # set before in case of async signal comes before
                 self.stop_ref_oid = order.ref_order_id
+                self.stop_order_qty = order.quantity
+                self.stop_order_exec = 0.0
 
                 create_order_result = trader.create_order(order, instrument)
                 if create_order_result > 0:
                     # REST sync
                     self.stop_oid = order.order_id
-                    self.stop_order_qty = order.quantity
 
                     self.last_stop_ot[0] = order.created_time
                     self.last_stop_ot[1] += 1
@@ -590,17 +558,13 @@ class StrategyAssetTrade(StrategyTrade):
                     return self.ACCEPTED
                 elif create_order_result == Order.REASON_INSUFFICIENT_FUNDS:
                     # rejected because not enough margin, must stop to retry
-                    self.stop_ref_oid = None
-                    self.stop_order_qty = 0.0
-
+                    self.__reset_stop()
                     self._exit_state = self.STATE_ERROR
 
                     return self.INSUFFICIENT_FUNDS
                 else:
                     # rejected
-                    self.stop_ref_oid = None
-                    self.stop_order_qty = 0.0
-
+                    self.__reset_stop()
                     return self.REJECTED
             elif stop_price:
                 # soft stop-loss
@@ -637,8 +601,8 @@ class StrategyAssetTrade(StrategyTrade):
             if self.entry_oid:
                 # cancel the remaining buy order
                 if trader.cancel_order(self.entry_oid, instrument) > 0:
-                    self.entry_ref_oid = None
-                    self.entry_oid = None
+                    # check entry_oid closed order state qty : must be still unchanged or fix it
+                    self.__check_and_reset_entry(trader, instrument)
                 else:
                     data = trader.order_info(self.entry_oid, instrument)
 
@@ -656,9 +620,8 @@ class StrategyAssetTrade(StrategyTrade):
             if self.limit_oid:
                 # cancel the sell limit order
                 if trader.cancel_order(self.limit_oid, instrument) > 0:
-                    self.limit_ref_oid = None
-                    self.limit_oid = None
-                    self.limit_order_qty = 0.0
+                    # check limit_oid closed order state qty : must be still unchanged or fix it
+                    self.__check_and_reset_limit(trader, instrument)
                 else:
                     data = trader.order_info(self.limit_oid, instrument)
 
@@ -668,18 +631,15 @@ class StrategyAssetTrade(StrategyTrade):
 
                     elif data['id'] is None:
                         # cannot retrieve the order, wrong id, no limit order
-                        self.limit_ref_oid = None
-                        self.limit_oid = None
-                        self.limit_order_qty = 0.0
+                        self.__reset_limit()
                     else:
                         return self.ERROR
 
             if self.stop_oid:
                 # cancel the sell stop order and create a new one
                 if trader.cancel_order(self.stop_oid, instrument) > 0:
-                    self.stop_ref_oid = None
-                    self.stop_oid = None
-                    self.stop_order_qty = 0.0
+                    # check stop_oid closed order state qty : must be still unchanged or fix it
+                    self.__check_and_reset_stop(trader, instrument)
                 else:
                     data = trader.order_info(self.stop_oid, instrument)
 
@@ -689,9 +649,7 @@ class StrategyAssetTrade(StrategyTrade):
 
                     elif data['id'] is None:
                         # cannot retrieve the order, wrong id, no stop order
-                        self.stop_ref_oid = None
-                        self.stop_oid = None
-                        self.stop_order_qty = 0.0
+                        self.__reset_stop()
                     else:
                         return self.ERROR
 
@@ -708,13 +666,16 @@ class StrategyAssetTrade(StrategyTrade):
 
             # generated a reference order id and keep it before ordering to retrieve its signals
             trader.set_ref_order_id(order)
+
+            # set before in case of async signal comes before
             self.stop_ref_oid = order.ref_order_id
+            self.stop_order_qty = order.quantity
+            self.stop_order_exec = 0.0
 
             create_order_result = trader.create_order(order, instrument)
             if create_order_result > 0:
                 # REST sync
                 self.stop_oid = order.order_id
-                self.stop_order_qty = order.quantity
 
                 # closing order defined
                 self._closing = True
@@ -722,15 +683,13 @@ class StrategyAssetTrade(StrategyTrade):
                 return self.ACCEPTED
             elif create_order_result == Order.REASON_INSUFFICIENT_FUNDS:
                 # rejected because not enough margin, must stop to retry
-                self.stop_ref_oid = None
-                self.stop_order_qty = 0.0
-
+                self.__reset_stop()
                 self._exit_state = self.STATE_ERROR
 
                 return self.INSUFFICIENT_FUNDS
             else:
                 # rejected
-                self.stop_ref_oid = None
+                self.__reset_stop()
                 return self.REJECTED
 
     def has_stop_order(self) -> bool:
@@ -836,29 +795,35 @@ class StrategyAssetTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_ORDER_TRADED:
             # update the trade quantity
+
+            #
+            # Entry
+            #
+
             if (data['id'] == self.entry_oid or ref_order_id and ref_order_id == self.entry_ref_oid) and (
                     'filled' in data or 'cumulative-filled' in data):
 
-                # a single order for the entry, then it is OK and preferred to use cumulative-filled and avg-price
-                # because precision comes from the broker
+                # it is preferred to use cumulative-filled and avg-price because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+                    # compute filled qty since last signal
                     filled = data['cumulative-filled'] - self.e  # compute filled qty
                 elif data.get('filled') is not None and data['filled'] > 0:
+                    # relative data field
                     filled = data['filled']
                 else:
                     filled = 0
 
-                if data.get('avg-price') is not None and data['avg-price']:
+                if data.get('avg-price') is not None and data['avg-price'] > 0:
                     # average entry price is directly given
                     self.aep = data['avg-price']
 
-                elif (data.get('exec-price') is not None and data['exec-price']) and (filled > 0):
+                elif data.get('exec-price') is not None and data['exec-price'] > 0 and filled > 0:
                     # compute the average entry price whe increasing the trade
                     self.aep = instrument.adjust_price(((self.aep * self.e) + (
                             data['exec-price'] * filled)) / (self.e + filled))
 
                 # cumulative filled entry qty
-                if data.get('cumulative-filled') is not None:
+                if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
                     self.e = data.get('cumulative-filled')
                 elif filled > 0:
                     self.e = instrument.adjust_quantity(self.e + filled)
@@ -872,9 +837,13 @@ class StrategyAssetTrade(StrategyTrade):
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
+                # filled mean also order completed and then no longer exists
+                if data.get('fully-filled'):
+                    self._entry_state = StrategyTrade.STATE_FILLED
+                    self.__reset_entry()
+
                 #
                 # fees/commissions
-                # @todo if commission is in asset or BNB
                 #
 
                 if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
@@ -897,31 +866,23 @@ class StrategyAssetTrade(StrategyTrade):
 
                 self._stats['last-realized-entry-timestamp'] = data.get('timestamp', 0.0)
 
-                #
-                # filled mean also deleted
-                #
+            #
+            # Exit Limit
+            #
 
-                if data.get('fully-filled'):
-                    # fully filled, this is ok with single order asset trade, but will need to compute with multi-order
-                    self._entry_state = StrategyTrade.STATE_FILLED
-
-                    self.entry_oid = None
-                    self.entry_ref_oid = None
-
-            elif ((data['id'] == self.limit_oid or data['id'] == self.stop_oid or
-                   (ref_order_id and (ref_order_id == self.limit_ref_oid or ref_order_id == self.stop_ref_oid))) and
+            elif ((data['id'] == self.limit_oid or (ref_order_id and ref_order_id == self.limit_ref_oid)) and
                   ('filled' in data or 'cumulative-filled' in data)):
 
-                # @warning on the exit side, normal case will have a single order, but possibly to have a 
-                # partial limit TP, plus remaining in market
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                    filled = data['cumulative-filled'] - self.x  # compute filled qty                
+                    # compute filled qty since last signal
+                    filled = data['cumulative-filled'] - self.limit_order_exec
                 elif data.get('filled') is not None and data['filled'] > 0:
+                    # relative data field
                     filled = data['filled']
                 else:
                     filled = 0
 
-                if data.get('exec-price') is not None and data['exec-price'] and filled > 0:
+                if data.get('exec-price') is not None and data['exec-price'] > 0 and filled > 0:
                     # profit/loss when reducing the trade (over executed entry qty)
                     self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
 
@@ -929,20 +890,17 @@ class StrategyAssetTrade(StrategyTrade):
                     self.axp = instrument.adjust_price(((self.axp * self.x) + (
                             data['exec-price'] * filled)) / (self.x + filled))
 
-                # elif data.get('avg-price') is not None and data['avg-price']:
+                # elif data.get('avg-price') is not None and data['avg-price'] > 0:
                 #     # average price is directly given
                 #     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * filled)) / (self.aep * self.e)
 
                 #     # average exit price
                 #     self.axp = data['avg-price']
 
-                # cumulative filled exit qty
-                # commented because in case of partial in limit + remaining in stop or market
-                # if data.get('cumulative-filled') is not None:
-                #     self.x = data.get('cumulative-filled')
-                # else:
+                # cumulative filled exit qty, update trade qty and order related qty
                 if filled > 0:
                     self.x = instrument.adjust_quantity(self.x + filled)
+                    self.limit_order_exec = instrument.adjust_quantity(self.limit_order_exec + filled)
 
                 if self._entry_state == StrategyTrade.STATE_FILLED:
                     if self.x >= self.e:
@@ -959,9 +917,13 @@ class StrategyAssetTrade(StrategyTrade):
                         # there is no longer entry order, then we have fully filled the exit
                         self._exit_state = StrategyTrade.STATE_FILLED
 
+                # filled mean also order completed and then no longer exists
+                if data.get('fully-filled'):
+                    self._exit_state = StrategyTrade.STATE_FILLED
+                    self.__reset_limit()
+
                 #
                 # fees/commissions
-                # @todo if commission is in asset or BNB
                 #
 
                 # commission asset is asset, have to reduce it from filled
@@ -983,25 +945,84 @@ class StrategyAssetTrade(StrategyTrade):
 
                 self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
-                #
+            #
+            # Exit Stop
+            #
+
+            elif ((data['id'] == self.stop_oid or (ref_order_id and ref_order_id == self.stop_ref_oid)) and
+                  ('filled' in data or 'cumulative-filled' in data)):
+
+                if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
+                    # compute filled qty since last signal
+                    filled = data['cumulative-filled'] - self.stop_order_exec
+                elif data.get('filled') is not None and data['filled'] > 0:
+                    # relative data field
+                    filled = data['filled']
+                else:
+                    filled = 0
+
+                if data.get('exec-price') is not None and data['exec-price'] and filled > 0:
+                    # profit/loss when reducing the trade (over executed entry qty)
+                    self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
+
+                    # average exit price
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (
+                            data['exec-price'] * filled)) / (self.x + filled))
+
+                # elif data.get('avg-price') is not None and data['avg-price']:
+                #     # average price is directly given
+                #     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * filled)) / (self.aep * self.e)
+
+                #     # average exit price
+                #     self.axp = data['avg-price']
+
+                # cumulative filled exit qty, update trade qty and order related qty
+                if filled > 0:
+                    self.x = instrument.adjust_quantity(self.x + filled)
+                    self.stop_order_exec = instrument.adjust_quantity(self.stop_order_exec + filled)
+
+                if self._entry_state == StrategyTrade.STATE_FILLED:
+                    if self.x >= self.e:
+                        # entry fully filled, exit filled the entry qty => exit fully filled
+                        self._exit_state = StrategyTrade.STATE_FILLED
+                    else:
+                        # some part of the entry qty is not filled at this time
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                else:
+                    if self.entry_oid and self.e < self.oq:
+                        # the entry part is not fully filled, the entry order still exists
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                    else:
+                        # there is no longer entry order, then we have fully filled the exit
+                        self._exit_state = StrategyTrade.STATE_FILLED
+
                 # filled mean also order completed and then no longer exists
+                if data.get('fully-filled'):
+                    self._exit_state = StrategyTrade.STATE_FILLED
+                    self.__reset_stop()
+
+                #
+                # fees/commissions
                 #
 
-                if data.get('fully-filled'):
-                    # fully filled, this is ok with single order asset trade, but will need to compute with multi-order
-                    self._exit_state = StrategyTrade.STATE_FILLED
+                # commission asset is asset, have to reduce it from filled
+                if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
+                    self.x = instrument.adjust_quantity(self.x - data.get('commission-amount', 0))
 
-                    if (self.limit_oid and data['id'] == self.limit_oid) or (
-                            self.limit_ref_oid and ref_order_id == self.limit_ref_oid):
+                # realized fees : in cumulated quote or compute from filled quantity and trade execution
+                if 'cumulative-commission-amount' in data:
+                    self._stats['exit-fees'] = data['cumulative-commission-amount']
+                elif 'commission-amount' in data:
+                    self._stats['exit-fees'] += data['commission-amount']
+                # else:  # @todo on quote or on base...
+                #     self._stats['exit-fees'] += filled * (
+                #         instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
 
-                        self.limit_oid = None
-                        self.limit_ref_oid = None
+                # retains the trade timestamp
+                if not self._stats['first-realized-exit-timestamp']:
+                    self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
-                    elif (self.stop_oid and data['id'] == self.stop_oid) or (
-                            self.stop_ref_oid and ref_order_id == self.stop_ref_oid):
-
-                        self.stop_oid = None
-                        self.stop_ref_oid = None
+                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price or qty modified
@@ -1035,18 +1056,14 @@ class StrategyAssetTrade(StrategyTrade):
                 return
 
             if data == self.entry_ref_oid:
-                self.entry_ref_oid = None
-                self.entry_oid = None
-
+                self.__reset_entry()
                 self._entry_state = StrategyTrade.STATE_REJECTED
 
             elif data == self.stop_ref_oid:
-                self.stop_ref_oid = None
-                self.stop_oid = None
+                self.__reset_stop()
 
             elif data == self.limit_ref_oid:
-                self.limit_ref_oid = None
-                self.limit_oid = None
+                self.__reset_limit()
 
         elif signal_type == Signal.SIGNAL_ORDER_CANCELED:
             # order is no longer active
@@ -1054,20 +1071,17 @@ class StrategyAssetTrade(StrategyTrade):
                 return
 
             if data == self.entry_oid:
-                self.entry_ref_oid = None
-                self.entry_oid = None
+                self.__reset_entry()
 
                 if self.e > 0:
                     # entry order canceled but some qty exists means entry is fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
 
             elif data == self.stop_oid:
-                self.stop_ref_oid = None
-                self.stop_oid = None
+                self.__reset_stop()
 
             elif data == self.limit_oid:
-                self.limit_ref_oid = None
-                self.limit_oid = None
+                self.__reset_limit()
 
     def dumps(self) -> dict:
         data = super().dumps()
@@ -1087,6 +1101,9 @@ class StrategyAssetTrade(StrategyTrade):
         data['stop-order-qty'] = self.stop_order_qty
         data['limit-order-qty'] = self.limit_order_qty
 
+        data['stop-order-exec'] = self.stop_order_exec
+        data['limit-order-exec'] = self.limit_order_exec
+
         return data
 
     def loads(self, data: dict, strategy_trader: StrategyTrader) -> bool:
@@ -1105,8 +1122,11 @@ class StrategyAssetTrade(StrategyTrade):
         self.oco_ref_oid = data.get('oco-ref-oid', None)
         self.oco_oid = data.get('oco-oid', None)
 
-        self.stop_order_qty = data.get('stop_order_qty', 0.0)
+        self.stop_order_qty = data.get('stop-order-qty', 0.0)
         self.limit_order_qty = data.get('limit-order-qty', 0.0)
+
+        self.stop_order_exec = data.get('stop-order-exec', 0.0)
+        self.limit_order_exec = data.get('limit-order-exec', 0.0)
 
         return True
 
@@ -1168,9 +1188,7 @@ class StrategyAssetTrade(StrategyTrade):
                         result = 0
 
                         # no longer stop order
-                        self.stop_oid = None
-                        self.stop_ref_oid = None
-                        self.stop_order_qty = 0.0
+                        self.__reset_stop()
                     else:
                         self.fix_exit_by_order(data, instrument)
 
@@ -1186,9 +1204,7 @@ class StrategyAssetTrade(StrategyTrade):
                         result = 0
 
                         # no longer limit order
-                        self.limit_oid = None
-                        self.limit_ref_oid = None
-                        self.limit_order_qty = 0.0
+                        self.__reset_limit()
                     else:
                         self.fix_exit_by_order(data, instrument)
 
@@ -1310,3 +1326,60 @@ class StrategyAssetTrade(StrategyTrade):
             data.append("OCO order id / ref : %s / %s" % (self.oco_oid, self.oco_ref_oid))
 
         return tuple(data)
+
+    #
+    # private
+    #
+
+    def __reset_entry(self):
+        # reset for remove
+        self.entry_ref_oid = None
+        self.entry_oid = None
+
+    def __reset_stop(self):
+        # reset for new order
+        self.stop_oid = None
+        self.stop_ref_oid = None
+        self.stop_order_qty = 0.0
+        self.stop_order_exec = 0.0
+
+    def __reset_limit(self):
+        # reset for new order
+        self.limit_oid = None
+        self.limit_ref_oid = None
+        self.limit_order_qty = 0.0
+        self.limit_order_exec = 0.0
+
+    def __check_and_reset_entry(self, trader: Trader, instrument: Instrument):
+        if self.entry_oid:
+            # check entry_oid closed order state qty : must be still unchanged or fix it
+            data = trader.order_info(self.entry_oid, instrument)
+
+            if data and data['id']:
+                # realized qty changed between
+                if data['cumulative-filled'] > self.e:
+                    self.fix_entry_by_order(data, instrument)
+
+        self.__reset_entry()
+
+    def __check_and_reset_stop(self, trader: Trader, instrument: Instrument):
+        if self.stop_oid:
+            data = trader.order_info(self.stop_oid, instrument)
+
+            if data and data['id']:
+                # realized qty changed between
+                if data['cumulative-filled'] > self.stop_order_exec:
+                    self.fix_exit_by_order(data, instrument)
+
+        self.__reset_stop()
+
+    def __check_and_reset_limit(self, trader: Trader, instrument: Instrument):
+        if self.limit_oid:
+            data = trader.order_info(self.limit_oid, instrument)
+
+            if data and data['id']:
+                # realized qty changed between
+                if data['cumulative-filled'] > self.limit_order_exec:
+                    self.fix_exit_by_order(data, instrument)
+
+        self.__reset_limit()

@@ -432,8 +432,8 @@ class Fetcher(object):
     def fetch_closed_orders(self, from_date, to_date):
         """
         Retrieve the historical order data for a certain a period of date.
-        @param from_date
-        @param to_date
+        @param from_date Exclusive
+        @param to_date Inclusive
         @return list of dict or None if error
         """
         return None

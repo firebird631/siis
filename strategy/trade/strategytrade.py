@@ -36,6 +36,16 @@ class StrategyTrade(object):
     The pl field does not measure the fees neither commissions. It is a raw profit and loss rate.
     """
 
+    class OrderInfo(object):
+        """Inner class for related orders state."""
+        __slots__ = 'order_qty', 'exec_qty', 'oid', 'ref_oid'
+
+        def __init__(self):
+            self.order_qty = 0.0
+            self.exec_qty = 0.0
+            self.oid = ""
+            self.ref_oid = ""
+
     __slots__ = '_trade_type', '_entry_state', '_exit_state', '_closing', '_timeframe', '_operations', '_user_trade', \
                 '_next_operation_id', 'id', 'dir', 'op', 'oq', 'tp', 'sl', 'aep', 'axp', 'eot', 'xot', 'e', 'x', \
                 'pl', '_stats', 'last_tp_ot', 'last_stop_ot', 'exit_trades', '_label', '_entry_timeout', '_expiry', \

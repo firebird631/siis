@@ -74,42 +74,45 @@ class ColoredFormatter(logging.Formatter):
             return logging.Formatter.format(self, record)
 
 
-class TerminalHandler(logging.StreamHandler):
-
-    def __init__(self):
-        logging.StreamHandler.__init__(self)
+class TerminalFilter(logging.Filter):
 
     def filter(self, record):
-        if (record.pathname.startswith('siis.exec.') or record.pathname.startswith('siis.signal.') or
-                record.pathname.startswith('siis.order.') or record.pathname.startswith('siis.traceback.')):
+        if (record.name.startswith('siis.exec.') or record.name.startswith('siis.signal.') or
+                record.name.startswith('siis.order.') or record.name.startswith('siis.traceback.')):
             # this only goes to loggers, not to stdout
             return False
 
         return True
 
+
+class TerminalHandler(logging.StreamHandler):
+
+    def __init__(self):
+        logging.StreamHandler.__init__(self)
+
     def emit(self, record):
         msg = self.format(record)
 
         if record.levelno == logging.CRITICAL:
-            if record.pathname.startswith('siis.error.'):
+            if record.name.startswith('siis.error.'):
                 Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
             else:
                 Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.ERROR:
-            if record.pathname.startswith('siis.error.'):
+            if record.name.startswith('siis.error.'):
                 Terminal.inst().error(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
                 Terminal.inst().error(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.WARNING:
-            if record.pathname.startswith('siis.error.'):
+            if record.name.startswith('siis.error.'):
                 Terminal.inst().error(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
                 Terminal.inst().warning(str(msg), view='content') if Terminal.inst() else print(str(msg))
 
         elif record.levelno == logging.INFO:
-            if record.pathname.startswith('siis.error.'):
+            if record.name.startswith('siis.error.'):
                 Terminal.inst().message(str(msg), view='debug') if Terminal.inst() else print(str(msg))
             else:
                 Terminal.inst().message(str(msg), view='content') if Terminal.inst() else print(str(msg))
@@ -135,6 +138,7 @@ class SiisLog(object):
 
         # stderr to terminal in info level
         self.console = TerminalHandler()  # logging.StreamHandler()
+        self.console.addFilter(TerminalFilter())
         self.console.setLevel(logging.DEBUG)
 
         # self.term_formatter = logging.Formatter('- %(name)-12s: %(levelname)-8s %(message)s')

@@ -108,16 +108,17 @@ def cmd_strategy_trader_export(strategy, strategy_trader, data):
 
         try:
             with strategy_trader._mutex:
-                for trade in strategy_trader.trades:
-                    if trade.is_active() or (pending and trade.is_opened()):
-                        data_dump = trade.dumps()
+                with strategy_trader._trade_mutex:
+                    for trade in strategy_trader.trades:
+                        if trade.is_active() or (pending and trade.is_opened()):
+                            data_dump = trade.dumps()
 
-                        if trade.has_operations():
-                            data_dump['operations'] = [operation.dumps() for operation in trade.operations]
-                        else:
-                            data_dump['operations'] = []
+                            if trade.has_operations():
+                                data_dump['operations'] = [operation.dumps() for operation in trade.operations]
+                            else:
+                                data_dump['operations'] = []
 
-                        data_dumps.append(humanize_trade(trade, data_dump, strategy_trader.instrument))
+                            data_dumps.append(humanize_trade(trade, data_dump, strategy_trader.instrument))
 
         except Exception as e:
             results['messages'].append(repr(e))

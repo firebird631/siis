@@ -200,8 +200,12 @@ class KrakenWatcher(Watcher):
         self._got_orders_init_snapshot = False
         self._got_trades_init_snapshot = False
 
+        self._last_order_event_timestamp = 0.0  # to replay history of missed orders events
+
         self._orders_ws_cache = {}     # orders data cache to be updated per WS
         self._positions_ws_cache = {}  # positions data cache to be updated per WS
+
+        self._query_retrieve_events = None
 
     def connect(self):
         super().connect()
@@ -588,6 +592,18 @@ class KrakenWatcher(Watcher):
         if self.__check_reconnect(self._ws_depth_data):
             # logger.debug("%s reconnecting to depths data stream..." % self.name)
             self.__reconnect_ws(self._ws_depth_data, self.__on_depth_data, 'depth')
+
+        # after a private WS reconnection or external query
+        query_retrieve_events = None
+
+        with self._mutex:
+            if self._query_retrieve_events:
+                if 0.0 < self._query_retrieve_events[0] < self._ws_open_orders['timestamp']:
+                    query_retrieve_events = self._query_retrieve_events
+                    self._query_retrieve_events = None
+
+        if query_retrieve_events:
+            self.retrieve_events(query_retrieve_events[0], query_retrieve_events[1])
 
         #
         # ohlc close/open
@@ -1057,7 +1073,6 @@ class KrakenWatcher(Watcher):
                 exec_logger.info("kraken.com ownTrades : %s - %s" % (trade_id, trade_data))
 
                 symbol = self._wsname_lookup.get(trade_data['pair'])
-
                 if not symbol:
                     continue
 
@@ -1216,6 +1231,9 @@ class KrakenWatcher(Watcher):
                     self._ws_own_trades['subscribed'] = True
                     logger.debug("user trades data subscriptionStatus : subscribed")
 
+                    # reset initial snapshot status
+                    self._got_trades_init_snapshot = False
+
                 elif data['status'] == "unsubscribed" and data['channelName'] == "ownTrades":
                     self._ws_own_trades['subscribed'] = False
                     logger.debug("user trades data subscriptionStatus : unsubscribed")
@@ -1230,6 +1248,132 @@ class KrakenWatcher(Watcher):
     #
     # private order WS
     #
+
+    def query_retrieve_events(self, from_ts: float):
+        with self._mutex:
+            self._query_retrieve_events = (from_ts, )
+
+    def retrieve_events(self, from_ts: float, to_ts: float):
+        """
+        Retrieve missed events (orders, trades) and publish traded/canceled/deleted signal.
+        @param from_ts:
+        @param to_ts:
+        @return:
+        """
+        if not self._connector or not self._connector.connected:
+            return False
+
+        logger.info("Retrieving potentially missed events...")
+
+        if 0.0 < from_ts < to_ts:
+            try:
+                orders_data = self._connector.get_closed_orders(from_ts, to_ts, closetime="close")
+            except Exception as e:
+                logger.error(repr(e))
+                return False
+
+            for order_data in orders_data:
+                if from_ts <= order_data['closetm'] < to_ts:
+                    if 'descr' not in order_data:
+                        continue
+
+                    symbol = order_data['descr']['pair']
+                    if not symbol:
+                        continue
+
+                    order_id = order_data['orderid']
+                    client_order_id = str(order_data['userref']) if order_data.get('userref') else ""
+
+                    status = order_data['status']
+
+                    if status == 'canceled':
+                        logger.debug("Retrieved a missed order 'canceled' event for %s" % order_id)
+
+                        self.service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name,
+                                            (symbol, order_id, client_order_id))
+
+                    elif status == "deleted":
+                        # should be partially filled
+                        logger.debug("Retrieved a missed order 'deleted' event for %s" % order_id)
+
+                        order = self.__set_order(symbol, order_id, order_data)
+
+                        # always have a closetm
+                        order['timestamp'] = float(order_data['closetm'])
+
+                        cumulative_filled = float(order_data['vol_exec'])
+                        order_volume = float(order_data['vol'])
+                        partial = False
+                        fully_filled = False
+
+                        if order_data['misc']:
+                            misc = order_data['misc'].split(',')
+
+                            if 'partial' in misc:
+                                partial = True
+
+                        if cumulative_filled >= order_volume or partial:
+                            fully_filled = True
+
+                        order['exec-price'] = float(order_data['price'])
+                        order['cumulative-filled'] = cumulative_filled
+                        order['cumulative-commission-amount'] = float(order_data['fee'])
+                        # # order['commission-asset'] =   # is quote symbol because order always use quote fee flag
+                        # # order['maker'] =    # trade execution over or counter the market : true if maker, false if taker
+                        order['fully-filled'] = fully_filled
+
+                        # self.__fill_order(order, order_data, filled_volume)
+                        self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
+
+                        self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
+
+                    elif order_data['status'] == 'closed':
+                        # should be fully filled
+                        logger.debug("Retrieved a missed order 'closed' event for %s" % order_id)
+
+                        order = self.__set_order(symbol, order_id, order_data)
+
+                        # always have a closetm
+                        order['timestamp'] = float(order_data['closetm'])
+
+                        cumulative_filled = float(order_data['vol_exec'])
+                        order_volume = float(order_data['vol'])
+                        partial = False
+                        fully_filled = True
+
+                        if order_data['misc']:
+                            misc = order_data['misc'].split(',')
+
+                            if 'partial' in misc:
+                                partial = True
+
+                        if cumulative_filled < order_volume or partial:
+                            fully_filled = False
+
+                        order['exec-price'] = float(order_data['price'])
+                        order['cumulative-filled'] = cumulative_filled
+                        order['cumulative-commission-amount'] = float(order_data['fee'])
+                        # # order['commission-asset'] =   # is quote symbol because order always use quote fee flag
+                        # # order['maker'] =    # trade execution over or counter the market : true if maker, false if taker
+                        order['fully-filled'] = fully_filled
+
+                        self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
+
+                        self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, client_order_id))
+
+                    # in case if it still into the cache
+                    if order_id in self._orders_ws_cache:
+                        del self._orders_ws_cache[order_id]
+
+                    # retains the last order event timestamp
+                    last_order_event_timestamp = float(order_data['closetm'])
+                    with self._mutex:
+                        if last_order_event_timestamp > self._last_order_event_timestamp:
+                            self._last_order_event_timestamp = last_order_event_timestamp
+
+            return True
+
+        return False
 
     def __set_order(self, symbol, order_id, order_data):
         descr = order_data['descr']
@@ -1301,8 +1445,18 @@ class KrakenWatcher(Watcher):
         # if descr['close']:
         #     pass  # @todo
 
-        # most of the event are update, except for the open event where it is replace by opentm
-        event_timestamp = float(order_data['lastupdated']) if 'lastupdated' in order_data else time.time()
+        # timestamp
+        event_timestamp = 0.0
+        if 'lastupdated' in order_data:
+            # most of the events defines lastupdated
+            event_timestamp = float(order_data['lastupdated'])
+        elif 'opentm' in order_data:
+            # except for the open event where it is replaced by opentm
+            event_timestamp = float(order_data['opentm'])
+
+        if event_timestamp <= 0.0:
+            # fallback to UTC now
+            event_timestamp = time.time()
 
         return {
             'id': order_id,
@@ -1354,6 +1508,20 @@ class KrakenWatcher(Watcher):
         opened = False
         new_exec_vol = 0.0
 
+        # retains the last order event timestamp
+        if 'lastupdated' in new_order_data:
+            # most of the events defines lastupdated
+            last_order_event_timestamp = float(new_order_data['lastupdated'])
+        elif 'opentm' in new_order_data:
+            # except for the open event where it is replaced by opentm
+            last_order_event_timestamp = float(new_order_data['opentm'])
+        else:
+            last_order_event_timestamp = time.time()
+
+        with self._mutex:
+            if last_order_event_timestamp > self._last_order_event_timestamp:
+                self._last_order_event_timestamp = last_order_event_timestamp
+
         if order_data_cache:
             # detect a diff in executed volume
             prev_exec_vol = 0.0
@@ -1392,7 +1560,7 @@ class KrakenWatcher(Watcher):
             if ('status' in new_order_data) and (new_order_data['status'] in ("pending", "open")):
                 self._orders_ws_cache[order_id] = new_order_data
 
-                # first for open state (sometime it doesnt have pending state so we direct opened from here)
+                # first for open state (sometime it doesn't have pending state, so we direct opened from here)
                 if new_order_data['status'] == "open":
                     opened = True
 
@@ -1441,11 +1609,9 @@ class KrakenWatcher(Watcher):
                     continue
 
                 symbol = self._wsname_lookup.get(order_data['descr']['pair'])
-
                 if not symbol:
-                    # not managed symbol
                     error_logger.warning(
-                        "kraken.com openOrder : Could not retrieve the symbol for %s. Message ignored !" % (order_id,))
+                        "kraken.com openOrder : Could not retrieve the symbol for %s. Message ignored !" % order_id)
                     continue
 
                 status = order_data.get('status', "")
@@ -1525,6 +1691,12 @@ class KrakenWatcher(Watcher):
                 if data['status'] == "subscribed" and data['channelName'] == "openOrders":
                     self._ws_open_orders['subscribed'] = True
                     logger.debug("user orders data subscriptionStatus : subscribed")
+
+                    # reset initial snapshot status
+                    self._got_orders_init_snapshot = False
+
+                    # we want to query potentially missed events at next update
+                    self._query_retrieve_events = (self._last_order_event_timestamp, self._ws_open_orders['timestamp'])
 
                 elif data['status'] == "unsubscribed" and data['channelName'] == "openOrders":
                     self._ws_open_orders['subscribed'] = False

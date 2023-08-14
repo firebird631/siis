@@ -3,6 +3,7 @@
 # @license Copyright (c) 2021 Dream Overflow
 # History tools
 
+import datetime
 import json
 
 from tools.tool import Tool
@@ -136,7 +137,11 @@ class History(Tool):
                     with open('c.tmp', 'rt') as f:
                         closed_orders = json.loads(f.read())
                 else:
-                    closed_orders = fetcher.fetch_closed_orders(options.get('from'), options.get('to'))
+                    # fetch closed orders since from datetime minus 1ms because it is exclusive, to datetime (inclusive)
+                    closed_orders = fetcher.fetch_closed_orders(
+                        options.get('from') - datetime.timedelta(milliseconds=1),
+                        options.get('to'))
+
                     if WRITE_DEBUG_CACHE:
                         with open('c.tmp', 'wt') as f:
                             f.write(json.dumps(closed_orders))

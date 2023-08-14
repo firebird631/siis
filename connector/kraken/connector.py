@@ -625,9 +625,22 @@ class Connector(object):
 
         return {}
 
-    def get_closed_orders(self, from_date, to_date=None, trades=False, userref=None):
-        # trades = inclure les trades ou non dans la requete (facultatif. par defaut = faux)
-        # userref = restreindre les resultats à un identifiant de référence utilisateur donne (facultatif)
+    def get_closed_orders(self, from_date, to_date=None, trades=False, userref=None, closetime=None):
+        """
+        Retrieve the history of closed or canceled orders.
+
+        API return per page of 50 orders, starting from exclusive from_date until now or to_date.
+
+        @param from_date: Unix timestamp in seconds or datetime
+        @param to_date: Unix timestamp in seconds or datetime or None for UTC now.
+        @param trades:
+        @param userref:
+        @param closetime: str
+        @return:
+
+        trades = inclure les trades ou non dans la requete (facultatif. par defaut = faux)
+        userref = restreindre les resultats à un identifiant de référence utilisateur donne (facultatif)
+        """
         params = {}
 
         if trades:
@@ -636,15 +649,34 @@ class Connector(object):
         if userref:
             params['userref'] = userref
 
-        last_datetime = from_date.timestamp() - 1.0 if from_date else 0.0  # minus 1 sec else will not have from current
-        to_ts = to_date.timestamp() if to_date else time.time()
+        last_datetime = 0.0
+        if from_date is not None:
+            if type(from_date) is float:
+                last_datetime = from_date
+            elif type(from_date) is datetime:
+                last_datetime = from_date.timestamp()
+
+        to_ts = 0.0
+        if to_date is not None:
+            if type(to_date) is float:
+                to_ts = to_date
+            elif type(to_date) is datetime:
+                to_ts = to_date.timestamp()
+
+        if to_ts <= 0.0:
+            # until UTC now
+            to_ts = time.time()
+
         retry_count = 0
 
-        if from_date:
+        if last_datetime > 0.0:
             params['start'] = last_datetime
 
-        if to_date:
+        if to_ts > 0.0:
             params['end'] = to_ts
+
+        if closetime:
+            params['closetime'] = closetime
 
         params['ofs'] = 0
 

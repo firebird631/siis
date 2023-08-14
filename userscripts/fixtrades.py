@@ -8,6 +8,11 @@ logger = logging.getLogger('siis.strategy')
 
 
 def run_once(watcher_service, trader_service, strategy_service, monitor_service, notifier_service):
+    """
+    @warning : with strategy_trader._mutex: and with strategy_trader._trade_mutex:
+        stay locked during all the process per strategy trader.
+    """
+
     results = {
         'messages': [],
         'error': False

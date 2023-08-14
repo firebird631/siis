@@ -24,22 +24,42 @@ error_logger = logging.getLogger('siis.error.strategy.indmargintrade')
 
 class StrategyIndMarginTrade(StrategyTrade):
     """
-    Specialization for indivisible margin position trade.
+    Specialization for indivisible margin position trade. Some exchanges allow two sides (case of binancesfutures),
+    meaning in to different position with the same symbol but on opposite directions.
 
     In this case we only have a single position per market without integrated stop/limit.
-    Works with crypto futures brokers (bitmex, binancefutures...).
+    Works with crypto futures brokers (bitmex, binancefutures, bybit, ftx...).
 
-    We cannot deal in opposite direction at the same time (no hedging),
-    but we can eventually manage many trade on the same direction.
+    We cannot deal in opposite direction at the same time (no hedging), but we can eventually manage many
+    trades on the same direction.
     With some exchanges (binancefutures) if the hedge mode is active it is possible to manage the both directions.
 
     We prefers here to update on trade order signal. A position deleted mean any related trades closed.
 
     @todo position maintenance funding fees, but how to ?
+    @todo support of two directional (hedging mode) positions (position id must be compared with its direction too)
+
+    @todo should after a cancel, close, modify check state of the previous (canceled) order.
+        query REST API call (1 cost) and check the executed size if it is still 0 or not differs.
+            if differs that could means a traded executing during the time and then change the state of the
+            entry or exit of the trade.
+
+    @todo remove check limit, stop, entry order qty (must not changed else adjust)
+    @todo cancel_open check entry order qty (must be 0 else adjust)
+    @todo cancel_close check exit order qty (must not changed else adjust)
+    @todo modify_take_profit check stop and limit order qty (must not changed else adjust)
+    @todo modify_stop_loss check stop and limit order qty (must not changed else adjust)
+    @todo close check stop and limit order qty (must not changed else adjust)
+    @todo order_signal adjust and update stop_order_exec with stop_order_qty and limit_order_exec with limit_order_qty
+
+    @todo as for StrategyAssetTrade stop_order_exec and limit_order_exec and check previous order on changes
     """
 
-    __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', \
-                'position_id', 'leverage', 'stop_order_qty', 'limit_order_qty',
+    __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', \
+                'create_oid', 'stop_oid', 'limit_oid', \
+                'position_id', 'leverage', \
+                'stop_order_qty', 'limit_order_qty', \
+                'stop_order_exec', 'limit_order_exec'
 
     def __init__(self, timeframe: float):
         super().__init__(StrategyTrade.TRADE_IND_MARGIN, timeframe)
@@ -48,15 +68,18 @@ class StrategyIndMarginTrade(StrategyTrade):
         self.stop_ref_oid = None
         self.limit_ref_oid = None
 
-        self.create_oid = None  # related entry order id
-        self.stop_oid = None    # related stop order id
-        self.limit_oid = None   # related limit order id
+        self.create_oid = None      # related entry order id
+        self.stop_oid = None        # related stop order id
+        self.limit_oid = None       # related limit order id
 
         self.position_id = None  # related position id
         self.leverage = 1.0
 
-        self.stop_order_qty = 0.0    # if stop_oid then this is the qty placed on the stop order
-        self.limit_order_qty = 0.0   # if limit_oid then this is the qty placed on the limit order
+        self.stop_order_qty = 0.0       # ordered quantity of the current stop order
+        self.limit_order_qty = 0.0       # ordered quantity of the current limit order
+
+        self.stop_order_exec = 0.0       # executed quantity of the current stop order
+        self.limit_order_exec = 0.0       # executed quantity of the current limit order
 
     def open(self, trader: Trader, instrument: Instrument, direction: int, order_type: int,
              order_price: float, quantity: float, take_profit: float, stop_loss: float,

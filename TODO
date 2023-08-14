@@ -55,7 +55,19 @@ Sum order :
 # WIP #
 #######
 
-#116 kraken watcher et trader :
+- Finir gestion de reco(ws) des trades orders states
+    - quelle gestion du timestamp du dernier event recu
+    - au timestamp de reco subscribed a la WS
+    - soit mise en cache et les strategies trader viennent chercher les info
+      avec un get_order_info et si cache renvoyer le cache pour eviter des API call a outrance
+    - soit avec un replay des event cote watcher
+        - mais donc faire un call manuel apres un load des trades (depuis DB ou fichier)
+            - bien fait apres la fin du load sinon les events n'auront pas d'issue
+    - est-ce que un canceled est tjs a 0 qty et donc different d'un deleted (kraken, binance...)
+
+- Dans la vue aggtrade ajouter un avg entry price et total qty par market
+
+- kraken watcher et trader :
     - fetch des positions
     - fetch des trades history et calcule des prix d'entré moyen par asset
     - finir WS des positions (margin)
@@ -63,7 +75,7 @@ Sum order :
     - revoir que si besoin ownTrade pour signal ORDER_TRADED
     - calcule des qty locked par asset en fonction des ordres ouverts (attention aux arrondis)
 
-#103 WebTrader
+- WebTrader
     - HTTP :
         - POST/GET reinvest-gain handler
         - POST/GET DCA handler
@@ -180,59 +192,12 @@ Sum order :
         - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
 
 
-####################
-## Strategy Ideas ##
-####################
-
-- TD9 : 9 13 9, double setup, aggressive, combiné avec RSI par exemple et MA pour les double setup
-- Mode HHT (Hilbert) et min/max par modes
-- Détection de breakout sur bollinger (renforce un signal, un trade, ou stop un trade inverse)
-- SL sur TD9, sous/sur bollinger, sous/sur last min/max, sous/sur fibo
-- Détection de canaux, triangles
-- Détection des patterns elliotists
-- Détection des harmonic patterns
-- Bollinger + triangle => pullback + count number of pullback => break
-- Chande Kroll Stop @ref https://www.centralcharts.com/fr/forums/12-analyse-technique/1366-indicateur-chande-kroll-stop
-- Algo-G pour optimiser les paramètres
-- ML avec TensorFlow selon différent indicateurs ou encore selon des signaux prétraité (hilbert...)
-
-- Le signal doit être annulé si le prix dépasse (long) celui de la réintégration de la BB (inverse pour short)
-- prix de TP :
-    1) on a une MA20 50 100 ou 200 dans la bollinger, on prend la plus éloignée qui est dans la BB
-    2) si pas assez loin ou en dehors, on cherche la tenkan (si assez loin du prix)
-    3) on prend le précédent ATR le plus loin dans la BB ou le en cours si rien d'autre
-    4) fixed-pct ou fixed-distance si rien d'autre
-- prix de SL :
-    1) current ATR si == bas de la bougie de break
-    2) precedent ATR en dessous de la open de la bougie de réintégration
-    3) fixed
-- entrée :
-    1) vérifier qu'on est tjs dans la partie basse (inversement haute) de la bollinger (fait mais semble pas suffire)
-    2) vérifier le % min, limité par la bollinger opposés, qu'il soit suffisant
-    3) le corps de la bougie de confirmation doit être au moins N x epsilon
-    4) valider une entré sur une HMA20 dépassée par la close de conf
-    5) Ajouter une RSI a bourricot, et si div de RSI3 en 1m alors oui signal sinon continuation
-- sortie :
-    1) TP initial, on l'écarte tant que les bougies sont rouges
-    2) Si verte que à partir du price epsilon sinon on la compte comme rouge
-    3) On coupe si signal opposé sur la même timeframe
-
-
-#################
-## Data source ##
-#################
-
-- PyEX (mais c'est payant) => rapidapi-morningstar mais pas de WS
-- polygon.io (99$ à 399$ / mois) => selon 1m ou tick, REST ou WS
-- rapidapi-yahoo-finance pour récupérer stock, indices, forex quotes, mappinng à un autre broker (ig.com...) pour le prefetch
-- rapidapi-morningstar pour récupérer les actions et indices intraday, D, W, M, mappinng à un autre broker (ig.com...) pour le prefetch
-
-
 ############
 ## Divers ##
 ############
 
-Serveur :
+Server
+------
 
 - recup et intégration d'un int +1 ou -1 pour dire direction du trade (-bid, +ask)
 - propagation de la dite info au stratégie
@@ -249,7 +214,8 @@ Serveur :
 - detection auto selon volume des précédentes tick bar pour ajuster les parametre des tick bar et autres seuils des indicateurs de mesure
 
 
-Client Web
+Web Client
+----------
 
 - tracer tick bar et reversal sur client web
 - tracer bougie sur client web
@@ -263,3 +229,13 @@ Client Web
     3) si modifie et 'forced' (command) mais que asset trade et pas encore is_open alors danger de créer un ordre sur 0 qty or autre qty d'un autre trade
     4) utilisation du handler partout en lieu et place (strategies, command, operation)
     5) commnent gérer si has_xxx_order dans operation, dans command, autres cas... niveau handler ?
+
+
+#################
+## Data source ##
+#################
+
+- PyEX (mais c'est payant) => rapidapi-morningstar mais pas de WS
+- polygon.io (99$ à 399$ / mois) => selon 1m ou tick, REST ou WS
+- rapidapi-yahoo-finance pour récupérer stock, indices, forex quotes, mappinng à un autre broker (ig.com...) pour le prefetch
+- rapidapi-morningstar pour récupérer les actions et indices intraday, D, W, M, mappinng à un autre broker (ig.com...) pour le prefetch

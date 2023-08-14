@@ -24,7 +24,8 @@ logger = logging.getLogger('siis.strategy.margintrade')
 class StrategyMarginTrade(StrategyTrade):
     """
     Specialization for margin trading with FIFO position order at deletion.
-    @todo It is no longer maintained because no current usage and very specific.
+    @deprecated It is no longer maintained because no current usage and very specific.
+    @todo Should be renamed to StrategyMarginFifoTrade
 
     This type of trade is related to margin trading market, allowing or not hedging, where there is a
     position identifier per trade, but generally in the same direction (no hedging).
@@ -33,7 +34,8 @@ class StrategyMarginTrade(StrategyTrade):
         if we use cumulative-filled and avg-price we have the same problem here too.
     @todo have to check about position_updated qty with direction maybe or take care to have trade signal and 
         distinct entry from exit
-    @todo fees and commissions like as strategyindmargintrade
+
+    @todo fees, commissions and funding like as strategyindmargintrade
     """
 
     __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', \

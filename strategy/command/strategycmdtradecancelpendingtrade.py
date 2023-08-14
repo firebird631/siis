@@ -38,27 +38,27 @@ def cmd_trade_cancel_pending(strategy, strategy_trader, data, silent=False):
                     trade = t
                     break
 
-        if trade:
-            if not trade.is_active():
-                # cancel open
-                if trade.cancel_open(trader, strategy_trader.instrument) > 0:
-                    # add a success result message
-                    results['messages'].append("Cancel trade %i on %s:%s" % (
-                        trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+            if trade:
+                if not trade.is_active():
+                    # cancel open
+                    if trade.cancel_open(trader, strategy_trader.instrument) > 0:
+                        # add a success result message
+                        results['messages'].append("Cancel trade %i on %s:%s" % (
+                            trade.id, strategy.identifier, strategy_trader.instrument.market_id))
 
-                    # update strategy-trader
-                    strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+                        # update strategy-trader
+                        strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
+                    else:
+                        results['error'] = True
+                        results['messages'].append("Error during cancel trade %i on %s:%s" % (
+                            trade.id, strategy.identifier, strategy_trader.instrument.market_id))
                 else:
-                    results['error'] = True
-                    results['messages'].append("Error during cancel trade %i on %s:%s" % (
-                        trade.id, strategy.identifier, strategy_trader.instrument.market_id))
+                    # cannot cancel if active, add a reject result message
+                    if not silent:
+                        results['messages'].append("Cannot cancel active trade %i on %s:%s" % (
+                            trade.id, strategy.identifier, strategy_trader.instrument.market_id))
             else:
-                # cannot cancel if active, add a reject result message
-                if not silent:
-                    results['messages'].append("Cannot cancel active trade %i on %s:%s" % (
-                        trade.id, strategy.identifier, strategy_trader.instrument.market_id))
-        else:
-            results['error'] = True
-            results['messages'].append("Invalid trade identifier %i" % trade_id)
+                results['error'] = True
+                results['messages'].append("Invalid trade identifier %i" % trade_id)
 
     return results

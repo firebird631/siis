@@ -14,6 +14,9 @@ There are 3 others services :
 * WatchDog service : To check that any others services and worker are still alive and not frozen or saturated,
 * Notifiers service : To publish trading and status signals to externals services (Telegram, Discord...).
 
+Concerning the code structure and processes :
+* [How orders and trades are managed](tradeprocess.md).
+
 ## Watchers Service ##
 
 The watcher service instantiate the watchers configured into the profile. In backtesting there is no connected watcher, 
