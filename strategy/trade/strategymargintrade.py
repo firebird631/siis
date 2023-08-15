@@ -25,17 +25,16 @@ class StrategyMarginTrade(StrategyTrade):
     """
     Specialization for margin trading with FIFO position order at deletion.
     @deprecated It is no longer maintained because no current usage and very specific.
-    @todo Should be renamed to StrategyMarginFifoTrade
 
     This type of trade is related to margin trading market, allowing or not hedging, where there is a
-    position identifier per trade, but generally in the same direction (no hedging).
+    position identifier per trade, but generally in the same direction (no hedging) because of the FIFO.
 
-    @todo do we need like with asset trade an exit_trades list to compute the axp and x values, because
-        if we use cumulative-filled and avg-price we have the same problem here too.
+    @todo could be renamed to StrategyMarginFifoTrade
+    @todo update as StrategyIndMarginTrade for stop/limit_order_exec and mgmt
     @todo have to check about position_updated qty with direction maybe or take care to have trade signal and 
         distinct entry from exit
 
-    @todo fees, commissions and funding like as strategyindmargintrade
+    @todo fees, commissions and funding like as StrategyIndMarginTrade
     """
 
     __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'create_oid', 'stop_oid', 'limit_oid', \

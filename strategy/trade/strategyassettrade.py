@@ -29,24 +29,21 @@ class StrategyAssetTrade(StrategyTrade):
 
     @todo support of OCO order (close, remove, modify, cancel) if available from market or a specialized model
 
-    @todo could compare limit/stop_order_qty and limit/stop_exec_qty even in the case where fees are taken on base asset
-        because if we deduce this amount from limit/stop_order_qty and limit/stop_exec_qty comparison will be ok
+    @todo improve trade management in case of fees are in base asset :
+        to know if an exit order is complete it could compare limit/stop_order_qty and limit/stop_exec_qty even
+        in the case where fees are taken on base asset because if we deduce this amount from
+        limit/stop_order_qty and limit/stop_exec_qty comparison will be ok
 
     @todo before close or modifying or canceling stop or limit it is important to compute the notional size
         and to compare with the instrument min-notional size, because else it will be impossible to recreate
         a sell order with the remaining quantity.
-
-    @todo if commission is in asset or BNB and not in quote (case of binance : asset at buy et quote at sell / or BNB)
-
-    @todo In case of exit limit is partially executed and another exit order is placed after (manual close,
-        another limit, stop reached for the rest) the next orders will have a cumulative qty only for the rest.
-        Need to keep back the previous limit and stop order until receiving the close/deleted/canceled message.
     """
 
     __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', \
                 'entry_oid', 'stop_oid', 'limit_oid', 'oco_oid', '_use_oco', \
                 'stop_order_qty', 'limit_order_qty', \
-                'stop_order_exec', 'limit_order_exec'
+                'stop_order_exec', 'limit_order_exec', \
+                'stop_order_cum_fees', 'limit_order_cum_fees'
 
     def __init__(self, timeframe: float):
         super().__init__(StrategyTrade.TRADE_BUY_SELL, timeframe)
@@ -63,11 +60,14 @@ class StrategyAssetTrade(StrategyTrade):
 
         self._use_oco = False   # True if OCO order is used
 
-        self.stop_order_qty = 0.0       # ordered quantity of the current stop order
-        self.limit_order_qty = 0.0       # ordered quantity of the current limit order
+        self.stop_order_qty = 0.0         # ordered quantity of the current stop order
+        self.limit_order_qty = 0.0        # ordered quantity of the current limit order
 
-        self.stop_order_exec = 0.0       # executed quantity of the current stop order
+        self.stop_order_exec = 0.0        # executed quantity of the current stop order
         self.limit_order_exec = 0.0       # executed quantity of the current limit order
+
+        self.stop_order_cum_fees = 0.0    # cumulative fees quantity of the current stop order
+        self.limit_order_cum_fees = 0.0   # cumulative fees quantity of the current limit order
 
     def open(self, trader: Trader, instrument: Instrument, direction: int, order_type: int,
              order_price: float, quantity: float, take_profit: float, stop_loss: float,
@@ -438,6 +438,7 @@ class StrategyAssetTrade(StrategyTrade):
                 self.limit_ref_oid = order.ref_order_id
                 self.limit_order_qty = order.quantity
                 self.limit_order_exec = 0.0
+                self.limit_order_cum_fees = 0.0
 
                 create_order_result = trader.create_order(order, instrument)
                 if create_order_result > 0:
@@ -544,6 +545,7 @@ class StrategyAssetTrade(StrategyTrade):
                 self.stop_ref_oid = order.ref_order_id
                 self.stop_order_qty = order.quantity
                 self.stop_order_exec = 0.0
+                self.stop_order_cum_fees = 0.0
 
                 create_order_result = trader.create_order(order, instrument)
                 if create_order_result > 0:
@@ -671,6 +673,7 @@ class StrategyAssetTrade(StrategyTrade):
             self.stop_ref_oid = order.ref_order_id
             self.stop_order_qty = order.quantity
             self.stop_order_exec = 0.0
+            self.stop_order_cum_fees = 0.0
 
             create_order_result = trader.create_order(order, instrument)
             if create_order_result > 0:
@@ -795,13 +798,110 @@ class StrategyAssetTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_ORDER_TRADED:
             # update the trade quantity
+            if 'filled' not in data and 'cumulative-filled' not in data:
+                return
+
+            def update_exit_qty(order_exec):
+                """
+                Inner function to update the exit qty.
+                """
+                if data.get('cumulative-filled') is not None and data['cumulative-filled'] > order_exec:
+                    # compute filled qty since last signal
+                    _filled = data['cumulative-filled'] - order_exec
+                elif data.get('filled') is not None and data['filled'] > 0:
+                    # relative data field
+                    _filled = data['filled']
+                else:
+                    _filled = 0
+
+                if data.get('exec-price') is not None and data['exec-price'] > 0 and _filled > 0:
+                    # profit/loss when reducing the trade (over executed entry qty)
+                    self.pl += ((data['exec-price'] * _filled) - (self.aep * _filled)) / (self.aep * self.e)
+
+                    # average exit price
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (
+                            data['exec-price'] * _filled)) / (self.x + _filled))
+
+                # elif data.get('avg-price') is not None and data['avg-price'] > 0:
+                #     # average price is directly given
+                #     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * filled)) / (self.aep * self.e)
+
+                #     # average exit price
+                #     self.axp = data['avg-price']
+
+                return _filled
+
+            def update_exit_state():
+                """
+                Inner function to update the exit state for limit and stop order traded signals.
+                """
+                if self._entry_state == StrategyTrade.STATE_FILLED:
+                    if self.x >= self.e or data.get('fully-filled', False):
+                        # entry fully-filled : exit fully-filled or exit quantity reach entry quantity
+                        self._exit_state = StrategyTrade.STATE_FILLED
+                    else:
+                        # entry fully-filled : exit quantity not reached entry quantity
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                else:
+                    if self.entry_oid and self.e < self.oq:
+                        # entry order still exists and entry quantity not reached order entry quantity
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                    else:
+                        # or there is no longer entry order then we have fully filled the exit
+                        self._exit_state = StrategyTrade.STATE_FILLED
+
+            def update_exit_stats():
+                """
+                Inner function to retain the trade timestamp.
+                """
+                if not self._stats['first-realized-exit-timestamp']:
+                    self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+
+            def update_exit_fees_and_qty(order_cum_fees: float,
+                                         order_exec: float,
+                                         prev_order_exec: float,
+                                         order_type: int):
+                """
+                Inner function to update cumulated exit fees and adjust exited quantity if necessary.
+                """
+                # filled fees/commissions
+                _filled_commission = 0
+
+                if data.get('cumulative-commission-amount') is None and data.get('commission-amount') is None:
+                    # no value but have an order execution then compute locally
+                    if order_exec > prev_order_exec:
+                        # @todo compute on quote or on base or let zero
+                        pass
+                        # _filled_commission = (order_exec - prev_order_exec) * (
+                        #     instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+
+                elif data.get('cumulative-commission-amount') is not None and \
+                        data['cumulative-commission-amount'] > order_cum_fees:
+                    # compute filled commission amount since last signal
+                    _filled_commission = data['cumulative-commission-amount'] - order_cum_fees
+
+                elif data.get('commission-amount') is not None and data['commission-amount'] > 0:
+                    # relative data field
+                    _filled_commission = data['commission-amount']
+
+                # realized fees : in cumulated quote or computed from filled quantity and trade execution
+                if _filled_commission > 0:
+                    # commission asset is asset, have to reduce it from filled exit qty
+                    if data.get('commission-asset', "") == instrument.base:
+                        self.x = instrument.adjust_quantity(self.x - _filled_commission)
+
+                    self._stats['exit-fees'] += _filled_commission
+
+                return _filled_commission
 
             #
             # Entry
             #
 
-            if (data['id'] == self.entry_oid or ref_order_id and ref_order_id == self.entry_ref_oid) and (
-                    'filled' in data or 'cumulative-filled' in data):
+            if ((self.entry_oid and data['id'] == self.entry_oid) or (
+                    ref_order_id and ref_order_id == self.entry_ref_oid)):
 
                 # it is preferred to use cumulative-filled and avg-price because precision comes from the broker
                 if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
@@ -832,16 +932,6 @@ class StrategyAssetTrade(StrategyTrade):
                     # probably need to update exit orders
                     self._dirty = True
 
-                if self.e >= self.oq:
-                    self._entry_state = StrategyTrade.STATE_FILLED
-                else:
-                    self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
-
-                # filled mean also order completed and then no longer exists
-                if data.get('fully-filled'):
-                    self._entry_state = StrategyTrade.STATE_FILLED
-                    self.__reset_entry()
-
                 #
                 # fees/commissions
                 #
@@ -860,6 +950,22 @@ class StrategyAssetTrade(StrategyTrade):
                 #     self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get(
                 #         'maker', False) else instrument.taker_fee)
 
+                #
+                # state
+                #
+
+                if self.e >= self.oq or data.get('fully-filled', False):
+                    self._entry_state = StrategyTrade.STATE_FILLED
+
+                    # it means also entry order completed and then no longer exists
+                    self.__reset_entry()
+                else:
+                    self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
+
+                #
+                # stats
+                #
+
                 # retains the trade timestamp
                 if not self._stats['first-realized-entry-timestamp']:
                     self._stats['first-realized-entry-timestamp'] = data.get('timestamp', 0.0)
@@ -870,159 +976,61 @@ class StrategyAssetTrade(StrategyTrade):
             # Exit Limit
             #
 
-            elif ((data['id'] == self.limit_oid or (ref_order_id and ref_order_id == self.limit_ref_oid)) and
-                  ('filled' in data or 'cumulative-filled' in data)):
+            elif (self.limit_oid and data['id'] == self.limit_oid) or (
+                    ref_order_id and ref_order_id == self.limit_ref_oid):
 
-                if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                    # compute filled qty since last signal
-                    filled = data['cumulative-filled'] - self.limit_order_exec
-                elif data.get('filled') is not None and data['filled'] > 0:
-                    # relative data field
-                    filled = data['filled']
-                else:
-                    filled = 0
-
-                if data.get('exec-price') is not None and data['exec-price'] > 0 and filled > 0:
-                    # profit/loss when reducing the trade (over executed entry qty)
-                    self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
-
-                    # average exit price
-                    self.axp = instrument.adjust_price(((self.axp * self.x) + (
-                            data['exec-price'] * filled)) / (self.x + filled))
-
-                # elif data.get('avg-price') is not None and data['avg-price'] > 0:
-                #     # average price is directly given
-                #     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * filled)) / (self.aep * self.e)
-
-                #     # average exit price
-                #     self.axp = data['avg-price']
+                # qty
+                prev_limit_order_exec = self.limit_order_exec
+                filled = update_exit_qty(self.limit_order_exec)
 
                 # cumulative filled exit qty, update trade qty and order related qty
                 if filled > 0:
                     self.x = instrument.adjust_quantity(self.x + filled)
                     self.limit_order_exec = instrument.adjust_quantity(self.limit_order_exec + filled)
 
-                if self._entry_state == StrategyTrade.STATE_FILLED:
-                    if self.x >= self.e:
-                        # entry fully filled, exit filled the entry qty => exit fully filled
-                        self._exit_state = StrategyTrade.STATE_FILLED
-                    else:
-                        # some part of the entry qty is not filled at this time
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                else:
-                    if self.entry_oid and self.e < self.oq:
-                        # the entry part is not fully filled, the entry order still exists
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    else:
-                        # there is no longer entry order, then we have fully filled the exit
-                        self._exit_state = StrategyTrade.STATE_FILLED
+                # fees/commissions
+                update_exit_fees_and_qty(self.limit_order_cum_fees, self.limit_order_exec, prev_limit_order_exec,
+                                         self._stats.get('take-profit-order-type', Order.ORDER_MARKET))
 
-                # filled mean also order completed and then no longer exists
-                if data.get('fully-filled'):
-                    self._exit_state = StrategyTrade.STATE_FILLED
+                # state
+                update_exit_state()
+
+                # order relative executed qty reached ordered qty or fully-filled flag : reset limit order state
+                if self.limit_order_exec >= self.limit_order_qty or data.get('fully-filled', False):
                     self.__reset_limit()
 
-                #
-                # fees/commissions
-                #
-
-                # commission asset is asset, have to reduce it from filled
-                if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
-                    self.x = instrument.adjust_quantity(self.x - data.get('commission-amount', 0))
-
-                # realized fees : in cumulated quote or compute from filled quantity and trade execution
-                if 'cumulative-commission-amount' in data:
-                    self._stats['exit-fees'] = data['cumulative-commission-amount']
-                elif 'commission-amount' in data:
-                    self._stats['exit-fees'] += data['commission-amount']
-                # else:  # @todo on quote or on base...
-                #     self._stats['exit-fees'] += filled * (
-                #         instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
-
-                # retains the trade timestamp
-                if not self._stats['first-realized-exit-timestamp']:
-                    self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
-
-                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+                # stats
+                update_exit_stats()
 
             #
             # Exit Stop
             #
 
-            elif ((data['id'] == self.stop_oid or (ref_order_id and ref_order_id == self.stop_ref_oid)) and
-                  ('filled' in data or 'cumulative-filled' in data)):
+            elif (self.stop_oid and data['id'] == self.stop_oid) or (
+                    ref_order_id and ref_order_id == self.stop_ref_oid):
 
-                if data.get('cumulative-filled') is not None and data['cumulative-filled'] > 0:
-                    # compute filled qty since last signal
-                    filled = data['cumulative-filled'] - self.stop_order_exec
-                elif data.get('filled') is not None and data['filled'] > 0:
-                    # relative data field
-                    filled = data['filled']
-                else:
-                    filled = 0
-
-                if data.get('exec-price') is not None and data['exec-price'] and filled > 0:
-                    # profit/loss when reducing the trade (over executed entry qty)
-                    self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
-
-                    # average exit price
-                    self.axp = instrument.adjust_price(((self.axp * self.x) + (
-                            data['exec-price'] * filled)) / (self.x + filled))
-
-                # elif data.get('avg-price') is not None and data['avg-price']:
-                #     # average price is directly given
-                #     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * filled)) / (self.aep * self.e)
-
-                #     # average exit price
-                #     self.axp = data['avg-price']
+                # qty
+                prev_stop_order_exec = self.stop_order_exec
+                filled = update_exit_qty(self.stop_order_exec)
 
                 # cumulative filled exit qty, update trade qty and order related qty
                 if filled > 0:
                     self.x = instrument.adjust_quantity(self.x + filled)
                     self.stop_order_exec = instrument.adjust_quantity(self.stop_order_exec + filled)
 
-                if self._entry_state == StrategyTrade.STATE_FILLED:
-                    if self.x >= self.e:
-                        # entry fully filled, exit filled the entry qty => exit fully filled
-                        self._exit_state = StrategyTrade.STATE_FILLED
-                    else:
-                        # some part of the entry qty is not filled at this time
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                else:
-                    if self.entry_oid and self.e < self.oq:
-                        # the entry part is not fully filled, the entry order still exists
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    else:
-                        # there is no longer entry order, then we have fully filled the exit
-                        self._exit_state = StrategyTrade.STATE_FILLED
+                # fees/commissions
+                update_exit_fees_and_qty(self.stop_order_cum_fees, self.stop_order_exec, prev_stop_order_exec,
+                                         self._stats.get('stop-order-type', Order.ORDER_MARKET))
 
-                # filled mean also order completed and then no longer exists
-                if data.get('fully-filled'):
-                    self._exit_state = StrategyTrade.STATE_FILLED
+                # state
+                update_exit_state()
+
+                # order relative executed qty reached ordered qty or fully-filled flag : reset stop order state
+                if self.stop_order_exec >= self.stop_order_qty or data.get('fully-filled', False):
                     self.__reset_stop()
 
-                #
-                # fees/commissions
-                #
-
-                # commission asset is asset, have to reduce it from filled
-                if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
-                    self.x = instrument.adjust_quantity(self.x - data.get('commission-amount', 0))
-
-                # realized fees : in cumulated quote or compute from filled quantity and trade execution
-                if 'cumulative-commission-amount' in data:
-                    self._stats['exit-fees'] = data['cumulative-commission-amount']
-                elif 'commission-amount' in data:
-                    self._stats['exit-fees'] += data['commission-amount']
-                # else:  # @todo on quote or on base...
-                #     self._stats['exit-fees'] += filled * (
-                #         instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
-
-                # retains the trade timestamp
-                if not self._stats['first-realized-exit-timestamp']:
-                    self._stats['first-realized-exit-timestamp'] = data.get('timestamp', 0.0)
-
-                self._stats['last-realized-exit-timestamp'] = data.get('timestamp', 0.0)
+                # stats
+                update_exit_stats()
 
         elif signal_type == Signal.SIGNAL_ORDER_UPDATED:
             # order price or qty modified
@@ -1035,20 +1043,17 @@ class StrategyAssetTrade(StrategyTrade):
                 return
 
             if data == self.entry_oid:
-                self.entry_ref_oid = None
-                self.entry_oid = None
+                self.__reset_entry()
 
                 if self.e > 0:
                     # entry order deleted but some qty exists means entry is fully filled
                     self._entry_state = StrategyTrade.STATE_FILLED
 
             elif data == self.stop_oid:
-                self.stop_ref_oid = None
-                self.stop_oid = None
+                self.__reset_stop()
 
             elif data == self.limit_oid:
-                self.limit_ref_oid = None
-                self.limit_oid = None
+                self.__reset_limit()
 
         elif signal_type == Signal.SIGNAL_ORDER_REJECTED:
             # order is rejected
@@ -1104,6 +1109,9 @@ class StrategyAssetTrade(StrategyTrade):
         data['stop-order-exec'] = self.stop_order_exec
         data['limit-order-exec'] = self.limit_order_exec
 
+        data['stop-order-cum-fees'] = self.stop_order_cum_fees
+        data['limit-order-cum-fees'] = self.limit_order_cum_fees
+
         return data
 
     def loads(self, data: dict, strategy_trader: StrategyTrader) -> bool:
@@ -1128,6 +1136,9 @@ class StrategyAssetTrade(StrategyTrade):
         self.stop_order_exec = data.get('stop-order-exec', 0.0)
         self.limit_order_exec = data.get('limit-order-exec', 0.0)
 
+        self.stop_order_cum_fees = data.get('stop-order-cum-fees', 0.0)
+        self.limit_order_cum_fees = data.get('limit-order-cum-fees', 0.0)
+
         return True
 
     def check(self, trader: Trader, instrument: Instrument) -> int:
@@ -1149,10 +1160,9 @@ class StrategyAssetTrade(StrategyTrade):
                     result = 0
 
                     # no longer entry order
-                    self.entry_oid = None
-                    self.entry_ref_oid = None
+                    self.__reset_entry()
                 else:
-                    self.fix_entry_by_order(data, instrument)
+                    self.fix_by_order(data, instrument, self.e)
 
         #
         # exit
@@ -1174,7 +1184,7 @@ class StrategyAssetTrade(StrategyTrade):
                     self.oco_oid = None
                     self.oco_ref_oid = None
                 else:
-                    self.fix_exit_by_order(data, instrument)
+                    pass
         else:
             if self.stop_oid:
                 data = trader.order_info(self.stop_oid, instrument)
@@ -1190,7 +1200,7 @@ class StrategyAssetTrade(StrategyTrade):
                         # no longer stop order
                         self.__reset_stop()
                     else:
-                        self.fix_exit_by_order(data, instrument)
+                        self.fix_by_order(data, instrument, self.stop_order_exec)
 
             if self.limit_oid:
                 data = trader.order_info(self.limit_oid, instrument)
@@ -1206,16 +1216,17 @@ class StrategyAssetTrade(StrategyTrade):
                         # no longer limit order
                         self.__reset_limit()
                     else:
-                        self.fix_exit_by_order(data, instrument)
+                        self.fix_by_order(data, instrument, self.limit_order_exec)
 
         return result
 
-    def fix_entry_by_order(self, order_data, instrument):
+    def fix_by_order(self, order_data: dict, instrument: Instrument, quantity: float) -> bool:
         """
         Mostly an internal method used to fix a missed and closed order, fixing the realized quantity.
 
         @param order_data:
         @param instrument:
+        @param quantity:
         @return:
         """
         if not order_data or not instrument:
@@ -1227,7 +1238,8 @@ class StrategyAssetTrade(StrategyTrade):
         if 'ref-id' not in order_data:
             return False
 
-        if order_data['cumulative-filled'] > self.e or order_data['fully-filled']:
+        if order_data['cumulative-filled'] > quantity or order_data['fully-filled']:
+            # change in executed qty
             self.order_signal(Signal.SIGNAL_ORDER_TRADED, order_data, order_data['ref-id'], instrument)
 
         if 'status' not in order_data:
@@ -1238,37 +1250,6 @@ class StrategyAssetTrade(StrategyTrade):
 
         elif order_data['status'] in ('expired', 'canceled'):
             self.order_signal(Signal.SIGNAL_ORDER_CANCELED, order_data['id'], order_data['ref-id'], instrument)
-
-    def fix_exit_by_order(self, order_data: dict, instrument: Instrument) -> bool:
-        """
-        Mostly an internal method used to fix a missed and closed order, fixing the realized quantity.
-
-        @param order_data:
-        @param instrument:
-        @return:
-        """
-        if not order_data or not instrument:
-            return False
-
-        if 'cumulative-filled' not in order_data or 'fully-filled' not in order_data:
-            return False
-
-        if 'ref-id' not in order_data:
-            return False
-
-        if order_data['cumulative-filled'] > self.x or order_data['fully-filled']:
-            self.order_signal(Signal.SIGNAL_ORDER_TRADED, order_data, order_data['ref-id'], instrument)
-
-        if 'status' not in order_data:
-            return False
-
-        if order_data['status'] in ('closed', 'deleted'):
-            self.order_signal(Signal.SIGNAL_ORDER_DELETED, order_data['id'], order_data['ref-id'], instrument)
-
-        elif order_data['status'] in ('expired', 'canceled'):
-            self.order_signal(Signal.SIGNAL_ORDER_CANCELED, order_data['id'], order_data['ref-id'], instrument)
-
-        return True
 
     def repair(self, trader: Trader, instrument: Instrument) -> bool:
         # @todo fix the trade
@@ -1315,12 +1296,17 @@ class StrategyAssetTrade(StrategyTrade):
 
         if self.entry_oid or self.entry_ref_oid:
             data.append("Entry order id / ref : %s / %s" % (self.entry_oid, self.entry_ref_oid))
+            data.append("- Qty %g / Exec %g / Fees %g" % (self.oq, self.e, self._stats['entry-fees']))
 
         if self.stop_oid or self.stop_ref_oid:
             data.append("Stop order id / ref : %s / %s" % (self.stop_oid, self.stop_ref_oid))
+            data.append("- Qty %g / Exec %g / Fees %g" % (
+                self.stop_order_qty, self.stop_order_exec, self.stop_order_cum_fees))
 
         if self.limit_oid or self.limit_ref_oid:
             data.append("Limit order id / ref : %s / %s" % (self.limit_oid, self.limit_ref_oid))
+            data.append("- Qty %g / Exec %g / Fees %g" % (
+                self.limit_order_qty, self.limit_order_exec, self.limit_order_cum_fees))
 
         if self.oco_oid or self.oco_ref_oid:
             data.append("OCO order id / ref : %s / %s" % (self.oco_oid, self.oco_ref_oid))
@@ -1342,6 +1328,7 @@ class StrategyAssetTrade(StrategyTrade):
         self.stop_ref_oid = None
         self.stop_order_qty = 0.0
         self.stop_order_exec = 0.0
+        self.stop_order_cum_fees = 0.0
 
     def __reset_limit(self):
         # reset for new order
@@ -1349,37 +1336,38 @@ class StrategyAssetTrade(StrategyTrade):
         self.limit_ref_oid = None
         self.limit_order_qty = 0.0
         self.limit_order_exec = 0.0
+        self.limit_order_cum_fees = 0.0
 
     def __check_and_reset_entry(self, trader: Trader, instrument: Instrument):
         if self.entry_oid:
             # check entry_oid closed order state qty : must be still unchanged or fix it
-            data = trader.order_info(self.entry_oid, instrument)
+            order_data = trader.order_info(self.entry_oid, instrument)
 
-            if data and data['id']:
-                # realized qty changed between
-                if data['cumulative-filled'] > self.e:
-                    self.fix_entry_by_order(data, instrument)
+            if order_data and order_data['id']:
+                # realized qty changed between, only process traded signal
+                if order_data['cumulative-filled'] > self.e:
+                    self.order_signal(Signal.SIGNAL_ORDER_TRADED, order_data, order_data['ref-id'], instrument)
 
         self.__reset_entry()
 
     def __check_and_reset_stop(self, trader: Trader, instrument: Instrument):
         if self.stop_oid:
-            data = trader.order_info(self.stop_oid, instrument)
+            order_data = trader.order_info(self.stop_oid, instrument)
 
-            if data and data['id']:
-                # realized qty changed between
-                if data['cumulative-filled'] > self.stop_order_exec:
-                    self.fix_exit_by_order(data, instrument)
+            if order_data and order_data['id']:
+                # realized qty changed between, only process traded signal
+                if order_data['cumulative-filled'] > self.stop_order_exec:
+                    self.order_signal(Signal.SIGNAL_ORDER_TRADED, order_data, order_data['ref-id'], instrument)
 
         self.__reset_stop()
 
     def __check_and_reset_limit(self, trader: Trader, instrument: Instrument):
         if self.limit_oid:
-            data = trader.order_info(self.limit_oid, instrument)
+            order_data = trader.order_info(self.limit_oid, instrument)
 
-            if data and data['id']:
-                # realized qty changed between
-                if data['cumulative-filled'] > self.limit_order_exec:
-                    self.fix_exit_by_order(data, instrument)
+            if order_data and order_data['id']:
+                # realized qty changed between, only process traded signal
+                if order_data['cumulative-filled'] > self.limit_order_exec:
+                    self.order_signal(Signal.SIGNAL_ORDER_TRADED, order_data, order_data['ref-id'], instrument)
 
         self.__reset_limit()

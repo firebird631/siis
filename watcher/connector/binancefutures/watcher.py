@@ -898,12 +898,12 @@ class BinanceFuturesWatcher(Watcher):
             order = data['o']
             symbol = order['s']
 
-            if order['x'] == Client.ORDER_STATUS_REJECTED:  # and order['X'] == '?':
+            if order['x'] == 'REJECTED':  # and order['X'] == Client.ORDER_STATUS_REJECTED:
                 client_order_id = order['c']
 
                 self.service.notify(Signal.SIGNAL_ORDER_REJECTED, self.name, (symbol, client_order_id))
 
-            elif (order['x'] == 'TRADE') and (order['X'] == Client.ORDER_STATUS_NEW or
+            elif (order['x'] == 'TRADE') and (order['X'] == Client.ORDER_STATUS_FILLED or
                                               order['X'] == Client.ORDER_STATUS_PARTIALLY_FILLED):
                 order_id = str(order['i'])
                 client_order_id = str(order['c'])
@@ -988,7 +988,7 @@ class BinanceFuturesWatcher(Watcher):
 
                 self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order_data, client_order_id))
 
-            elif order['x'] == Client.ORDER_STATUS_NEW and order['X'] == Client.ORDER_STATUS_NEW:
+            elif order['x'] == 'NEW' and order['X'] == Client.ORDER_STATUS_NEW:
                 order_id = str(order['i'])
                 client_order_id = str(order['c'])
 
@@ -1064,26 +1064,23 @@ class BinanceFuturesWatcher(Watcher):
 
                 self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (symbol, order_data, client_order_id))
 
-            elif order['x'] == Client.ORDER_STATUS_CANCELED and order['X'] == Client.ORDER_STATUS_CANCELED:
+            elif order['x'] == 'CANCELED' and order['X'] == Client.ORDER_STATUS_CANCELED:
                 order_id = str(order['i'])
                 org_client_order_id = str(order['c'])
 
                 self.service.notify(Signal.SIGNAL_ORDER_CANCELED, self.name, (symbol, order_id, org_client_order_id))
 
-            elif order['x'] == Client.ORDER_STATUS_EXPIRED and order['X'] == Client.ORDER_STATUS_EXPIRED:
+            elif order['x'] == 'EXPIRED' and order['X'] == Client.ORDER_STATUS_EXPIRED:
                 order_id = str(order['i'])
 
                 # binance send an expired when a STOP/TAKE_PROFIT is hit, then it create a new market order
                 # with the same ID and CLID, and then the order is filled in market with the same id
-                # so that we cannot send order delete signal else the trader will think the order does not
-                # longer exists could not manage its auto remove
+                # so that we cannot send order delete signal else the trader will think the order does no longer
+                # exists could not manage its auto remove
 
                 if order['o'] not in ('STOP_MARKET', 'STOP', 'TAKE_PROFIT_MARKET', 'TAKE_PROFIT',
                                       'TRAILING_STOP_MARKET') or float(order['l']) > 0:
                     self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
-
-            elif order['x'] == 'RESTATED':
-                pass  # nothing to do (currently unused)
 
         elif event_type == "ACCOUNT_UPDATE":
             # process the account update after the trades update events

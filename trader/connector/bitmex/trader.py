@@ -179,7 +179,7 @@ class BitMexTrader(Trader):
                 else:
                     close_only = False
 
-                # close reduce only
+                # reduce only
                 if 'ReduceOnly' in exec_inst:
                     # reduce only order (only reduce a position)
                     reduce_only = True

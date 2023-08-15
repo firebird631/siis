@@ -903,7 +903,7 @@ class BinanceWatcher(Watcher):
 
             event_timestamp = float(data['E']) * 0.001
 
-            if data['x'] == 'REJECTED':  # and data['X'] == '?':
+            if data['x'] == 'REJECTED':  # and data['X'] == Client.ORDER_STATUS_REJECTED:
                 client_order_id = str(data['c'])
                 reason = ""
 
@@ -1065,8 +1065,9 @@ class BinanceWatcher(Watcher):
 
                 self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (symbol, order_id, ""))
 
-            elif data['x'] == 'REPLACED' or data['X'] == 'REPLACED':
-                pass  # nothing to do (currently unused)
+            elif data['x'] == 'TRADE_PREVENTION':
+                # @todo the order has expired due to STP trigger.
+                pass
 
         elif event_type == 'outboundAccountInfo':
             event_timestamp = float(data['E']) * 0.001
