@@ -131,7 +131,7 @@ class StrategyTrade(object):
         self.e = 0.0     # current filled entry quantity
         self.x = 0.0     # current filled exit quantity
 
-        self.pl = 0.0    # once closed profit/loss in percent (valid once partially or fully closed)
+        self.pl = 0.0    # once closed profit/loss rate (valid when partially or fully closed)
 
         self.exit_trades = {}  # contain each executed exit trades {<orderId> : (<qty>, <price>)}
 
@@ -1103,22 +1103,22 @@ class StrategyTrade(object):
 
         return 0.0
 
-    def margin_fees(self):
+    def margin_fees(self) -> float:
         """Realized margin fees (not rate)"""
         return self._stats['margin-fees']
 
-    def margin_fees_rate(self):
+    def margin_fees_rate(self) -> float:
         """Realized margin fees rate over entry notional size"""
         if self._stats['margin-fees'] != 0.0 and self._stats['notional-value'] > 0:
             return self._stats['margin-fees'] / self._stats['notional-value']
 
         return 0.0
 
-    def total_fees(self):
+    def total_fees(self) -> float:
         """Sum of different fees and commissions (not rate)"""
         return self._stats['entry-fees'] + self._stats['exit-fees'] + self._stats['margin-fees']
 
-    def total_fees_rate(self):
+    def total_fees_rate(self) -> float:
         """Sum of different fees and commissions rate over entry notional size"""
         total_fees = self.total_fees()
 

@@ -25,20 +25,21 @@ error_logger = logging.getLogger('siis.error.strategy.indmargintrade')
 class StrategyIndMarginTrade(StrategyTrade):
     """
     Specialization for indivisible margin position trade. Some exchanges allow two sides (case of binancesfutures),
-    meaning in to different position with the same symbol but on opposite directions.
+    meaning in to different positions with the same symbol.
 
     In this case we only have a single position per market without integrated stop/limit.
-    Works with crypto futures brokers (bitmex, binancefutures, bybit, ftx...).
+    Works with crypto futures exchanges (bitmex, binancefutures, bybit, ftx...).
 
     We cannot deal in opposite direction at the same time (no hedging), but we can eventually manage many
     trades on the same direction.
-    With some exchanges (binancefutures) if the hedge mode is active it is possible to manage the both directions.
+    But with some exchanges (binancefutures) if the hedge mode is active it is possible to manage the both directions,
+    through two different positions.
 
-    We prefers here to update on trade order signal. A position deleted mean any related trades closed.
+    We prefers here to update on trade order signal. A position deleted means to close any related orders.
 
     @todo position maintenance funding fees, but how to ?
     @todo support of two directional (hedging mode) positions (position id must be compared with its direction too)
-    @todo fix exit state correctly
+    @todo in case if position closed externally it is necessary to update exit qty/price/fees and update then rpnl
     """
 
     __slots__ = 'create_ref_oid', 'stop_ref_oid', 'limit_ref_oid', \
@@ -641,6 +642,13 @@ class StrategyIndMarginTrade(StrategyTrade):
             if 'filled' not in data and 'cumulative-filled' not in data:
                 return
 
+            def update_rpnl():
+                """
+                Inner function to update raw realized profit/loss rate.
+                """
+                if self.aep > 0.0 and self.x > 0.0:
+                    self.pl = self.direction * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.x)
+
             def update_exit_qty(order_exec):
                 """
                 Inner function to update the exit qty.
@@ -657,24 +665,26 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 if data.get('avg-price') is not None and data['avg-price'] > 0:
                     # recompute profit-loss
-                    if self.dir > 0:
-                        self.pl = (data['avg-price'] - self.aep) / self.aep
-                    elif self.dir < 0:
-                        self.pl = (self.aep - data['avg-price']) / self.aep
+                    # if self.dir > 0:
+                    #     self.pl = (data['avg-price'] - self.aep) / self.aep
+                    # elif self.dir < 0:
+                    #     self.pl = (self.aep - data['avg-price']) / self.aep
 
                     # in that case we have avg-price already computed
                     self.axp = data['avg-price']
 
                 elif data.get('exec-price') is not None and data['exec-price'] > 0:
                     # increase/decrease profit/loss (over entry executed quantity)
-                    if self.dir > 0:
-                        self.pl += ((data['exec-price'] * _filled) - (self.aep * filled)) / (self.aep * self.e)
-                    elif self.dir < 0:
-                        self.pl += ((self.aep * _filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
+                    # if self.dir > 0:
+                    #     self.pl += ((data['exec-price'] * _filled) - (self.aep * filled)) / (self.aep * self.e)
+                    # elif self.dir < 0:
+                    #     self.pl += ((self.aep * _filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
 
                     # compute the average exit price
-                    self.axp = instrument.adjust_price(((self.axp * self.x) + (
-                            data['exec-price'] * _filled)) / (self.x + _filled))
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * _filled)) / (
+                            self.x + _filled))
+
+                update_rpnl()
 
                 return _filled
 
@@ -682,7 +692,20 @@ class StrategyIndMarginTrade(StrategyTrade):
                 """
                 Inner function to update the exit state for limit and stop order traded signals.
                 """
-                pass
+                if self._entry_state == StrategyTrade.STATE_FILLED:
+                    if self.x >= self.e or data.get('fully-filled', False):
+                        # entry fully-filled : exit fully-filled or exit quantity reach entry quantity
+                        self._exit_state = StrategyTrade.STATE_FILLED
+                    else:
+                        # entry fully-filled : exit quantity not reached entry quantity
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                else:
+                    if self.create_oid and self.e < self.oq:
+                        # entry order still exists and entry quantity not reached order entry quantity
+                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
+                    else:
+                        # or there is no longer entry order then we have fully filled the exit
+                        self._exit_state = StrategyTrade.STATE_FILLED
 
             def update_exit_stats():
                 """
@@ -727,20 +750,21 @@ class StrategyIndMarginTrade(StrategyTrade):
                         #     self.axp/self.aep) * (instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
 
                         if prev_order_exec == 0:
-                            # initial fill we add the commission fee
-                            self._stats['exit-fees'] += instrument.maker_commission if _maker else instrument.taker_commission
+                            # for initial fill add the commission fee
+                            _filled_commission += instrument.maker_commission if _maker else instrument.taker_commission
 
                 elif data.get('cumulative-commission-amount') is not None and \
-                        data['cumulative-commission-amount'] > order_cum_fees:
+                        data['cumulative-commission-amount'] != 0 and \
+                        data['cumulative-commission-amount'] != order_cum_fees:
                     # compute filled commission amount since last signal
                     _filled_commission = data['cumulative-commission-amount'] - order_cum_fees
 
-                elif data.get('commission-amount') is not None and data['commission-amount'] > 0:
+                elif data.get('commission-amount') is not None and data['commission-amount'] != 0:
                     # relative data field
                     _filled_commission = data['commission-amount']
 
                 # realized fees : in cumulated amount or computed from filled quantity and trade execution
-                if _filled_commission > 0:
+                if _filled_commission != 0:
                     self._stats['exit-fees'] += _filled_commission
 
                 return _filled_commission
@@ -804,11 +828,16 @@ class StrategyIndMarginTrade(StrategyTrade):
                 #
 
                 # realized fees : in cumulated or compute from filled quantity and trade execution
-                if 'cumulative-commission-amount' in data:
+                if data.get('cumulative-commission-amount') is not None and \
+                        data['cumulative-commission-amount'] != 0 and \
+                        data['cumulative-commission-amount'] != self._stats['entry-fees']:
+
                     self._stats['entry-fees'] = data['cumulative-commission-amount']
-                elif 'commission-amount' in data:
+
+                elif data.get('commission-amount') is not None and data['commission-amount'] != 0:
                     self._stats['entry-fees'] += data['commission-amount']
-                else:
+
+                elif filled > 0:
                     maker = data.get('maker', None)
 
                     if maker is None:
@@ -820,24 +849,23 @@ class StrategyIndMarginTrade(StrategyTrade):
                         else:
                             maker = False
 
-                    # realized fees
-                    if filled > 0:
-                        self._stats['entry-fees'] = self._stats['notional-value'] * (
-                            instrument.maker_fee if maker else instrument.taker_fee)
-                        # self._stats['entry-fees'] = self._stats['notional-value'] * (
-                        #     instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
+                    # recompute entry-fees proportionate to notional-value
+                    self._stats['entry-fees'] = self._stats['notional-value'] * (
+                        instrument.maker_fee if maker else instrument.taker_fee)
+                    # self._stats['entry-fees'] = self._stats['notional-value'] * (
+                    #     instrument.maker_fee if maker else instrument.taker_fee) * instrument.contract_size
 
-                        if prev_e == 0:
-                            # initial fill we count the commission fee
-                            self._stats['entry-fees'] += instrument.maker_commission if maker else instrument.taker_commission
+                    # plus the initial commission fee
+                    self._stats['entry-fees'] += instrument.maker_commission if maker else instrument.taker_commission
 
                 #
                 # state
                 #
 
                 if self.e >= self.oq or data.get('fully-filled', False):
-                    # bitmex does not send ORDER_DELETED signal, cleanup here
                     self._entry_state = StrategyTrade.STATE_FILLED
+
+                    # bitmex does not send ORDER_DELETED signal, cleanup here
                     self.__reset_create()
                 else:
                     self._entry_state = StrategyTrade.STATE_PARTIALLY_FILLED
@@ -869,35 +897,19 @@ class StrategyIndMarginTrade(StrategyTrade):
                     self.limit_order_exec = instrument.adjust_quantity(self.limit_order_exec + filled)
 
                 # fees/commissions
-                update_exit_fees_and_qty(self.limit_order_cum_fees, self.limit_order_exec, prev_limit_order_exec,
-                                         self._stats.get('take-profit-order-type', Order.ORDER_MARKET))
+                filled_commission = update_exit_fees_and_qty(
+                    self.limit_order_cum_fees, self.limit_order_exec, prev_limit_order_exec,
+                    self._stats.get('take-profit-order-type', Order.ORDER_MARKET))
 
-                #
+                if filled_commission != 0:
+                    self.limit_order_cum_fees += filled_commission
+
                 # state
-                #
+                update_exit_state()
 
-                if self._entry_state == StrategyTrade.STATE_FILLED:
-                    if self.x >= self.e:
-                        # entry fully filled, exit filled the entry qty => exit fully filled
-                        self._exit_state = StrategyTrade.STATE_FILLED
-                    else:
-                        # some part of the entry qty is not filled at this time
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                else:
-                    if self.create_oid and self.e < self.oq:
-                        # the entry part is not fully filled, the entry order still exists
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    else:
-                        # there is no longer entry order, then we have fully filled the exit
-                        self._exit_state = StrategyTrade.STATE_FILLED
-
-                # @todo not correct if create order not fully filled
-                if self.x >= self.e or data.get('fully-filled', False):
-                    # bitmex does not send ORDER_DELETED signal, cleanup here
-                    self._exit_state = StrategyTrade.STATE_FILLED
+                # order relative executed qty reached ordered qty or fully-filled flag : reset limit order state
+                if self.limit_order_exec >= self.limit_order_qty or data.get('fully-filled', False):
                     self.__reset_limit()
-                else:
-                    self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
                 # stats
                 update_exit_stats()
@@ -919,42 +931,26 @@ class StrategyIndMarginTrade(StrategyTrade):
                     self.stop_order_exec = instrument.adjust_quantity(self.stop_order_exec + filled)
 
                 # fees/commissions
-                update_exit_fees_and_qty(self.stop_order_cum_fees, self.stop_order_exec, prev_stop_order_exec,
-                                         self._stats.get('stop-profit-order-type', Order.ORDER_MARKET))
+                filled_commission = update_exit_fees_and_qty(
+                    self.stop_order_cum_fees, self.stop_order_exec, prev_stop_order_exec,
+                    self._stats.get('stop-profit-order-type', Order.ORDER_MARKET))
 
-                #
+                if filled_commission != 0:
+                    self.stop_order_cum_fees += filled_commission
+
                 # state
-                #
+                update_exit_state()
 
-                if self._entry_state == StrategyTrade.STATE_FILLED:
-                    if self.x >= self.e:
-                        # entry fully filled, exit filled the entry qty => exit fully filled
-                        self._exit_state = StrategyTrade.STATE_FILLED
-                    else:
-                        # some part of the entry qty is not filled at this time
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                else:
-                    if self.create_oid and self.e < self.oq:
-                        # the entry part is not fully filled, the entry order still exists
-                        self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
-                    else:
-                        # there is no longer entry order, then we have fully filled the exit
-                        self._exit_state = StrategyTrade.STATE_FILLED
-
-                # @todo not correct if create order not fully filled
-                if self.x >= self.e or data.get('fully-filled', False):
-                    # bitmex does not send ORDER_DELETED signal, cleanup here
-                    self._exit_state = StrategyTrade.STATE_FILLED
+                # order relative executed qty reached ordered qty or fully-filled flag : reset stop order state
+                if self.stop_order_exec >= self.stop_order_qty or data.get('fully-filled', False):
                     self.__reset_stop()
-                else:
-                    self._exit_state = StrategyTrade.STATE_PARTIALLY_FILLED
 
                 # stats
                 update_exit_stats()
 
     def position_signal(self, signal_type: int, data: dict, ref_order_id: str, instrument: Instrument):
         if signal_type == Signal.SIGNAL_POSITION_UPDATED:
-            # profit/loss update
+            # profit/loss update, but it is locally performed by update_stats
             if data.get('profit-loss'):
                 # trade current quantity is part or total of the indivisible position
                 ratio = (self.e - self.x) / data['quantity']
@@ -964,6 +960,14 @@ class StrategyIndMarginTrade(StrategyTrade):
                 self._stats['profit-loss-currency'] = data['profit-currency']
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
+
+            def update_rpnl():
+                """
+                Inner function to update raw realized profit/loss rate.
+                """
+                if self.aep > 0.0 and self.x > 0.0:
+                    self.pl = self.direction * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.x)
+
             # filter only if the signal timestamp occurs after the creation of this trade
             if data.get('timestamp') > self.eot and self.e > 0.0:
                 # no longer related position, have to clean up any related trades in case of manual close, liquidation
@@ -973,17 +977,21 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # during a reversal the new trade can receive the deleted position signal and forced to be closed,
                 # but it might not. maybe the timestamp could help to filter
                 if self.x < self.e:
+                    # @todo need to fix exit qty, exit price and exit fees as in traded signal and finally update rpnl
+                    # update_rpnl()
+
                     # mean fill the rest (because qty can concerns many trades...)
                     filled = instrument.adjust_quantity(self.e - self.x)
 
                     if data.get('exec-price') is not None and data['exec-price'] > 0:
-                        # increase/decrease profit/loss (over entry executed quantity)
+                        # increase/decrease profit/loss rate (over entry executed quantity)
                         if self.dir > 0:
                             self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
                         elif self.dir < 0:
                             self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
 
                 if self._exit_state != StrategyTrade.STATE_FILLED:
+                    # that will cause to remove the trade and then related orders
                     self._exit_state = StrategyTrade.STATE_FILLED
 
                     # for stats
@@ -1190,22 +1198,41 @@ class StrategyIndMarginTrade(StrategyTrade):
     def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
         data = list(super().info_report(strategy_trader))
 
+        entry_fees = "%g" % self._stats['entry-fees']
+
         if self.create_oid or self.create_ref_oid:
             data.append("Entry order id / ref : %s / %s" % (self.create_oid, self.create_ref_oid))
-            data.append("- Qty %g / Exec %g / Fees %g" % (self.oq, self.e, self._stats['entry-fees']))
+            data.append("- Qty %s / Exec %s / Fees %s" % (strategy_trader.instrument.format_quantity(self.oq),
+                                                          strategy_trader.instrument.format_quantity(self.e),
+                                                          entry_fees))
 
         if self.stop_oid or self.stop_ref_oid:
+            stop_order_fees = "%g" % self.stop_order_cum_fees
+
             data.append("Stop order id / ref : %s / %s" % (self.stop_oid, self.stop_ref_oid))
-            data.append("- Qty %g / Exec %g / Fees %g" % (
-                self.stop_order_qty, self.stop_order_exec, self.stop_order_cum_fees))
+            data.append("- Qty %s / Exec %s / Fees %s" % (
+                strategy_trader.instrument.format_quantity(self.stop_order_qty),
+                strategy_trader.instrument.format_quantity(self.stop_order_exec),
+                stop_order_fees))
 
         if self.limit_oid or self.limit_ref_oid:
+            limit_order_fees = "%g" % self.limit_order_cum_fees
+
             data.append("Limit order id / ref : %s / %s" % (self.limit_oid, self.limit_ref_oid))
-            data.append("- Qty %g / Exec %g / Fees %g" % (
-                self.limit_order_qty, self.limit_order_exec, self.limit_order_cum_fees))
+            data.append("- Qty %s / Exec %s / Fees %s" % (
+                strategy_trader.instrument.format_quantity(self.limit_order_qty),
+                strategy_trader.instrument.format_quantity(self.limit_order_exec),
+                limit_order_fees))
 
         if self.position_id:
             data.append("Position id : %s" % (self.position_id,))
+
+        exit_fees = "%g" % self._stats['exit-fees']
+        margin_fees = "%g" % self._stats['margin-fees']
+        total_fees = "%g" % (self._stats['entry-fees'] + self._stats['exit-fees'] + self._stats['margin-fees'])
+
+        data.append("Cumulated fees : Entry %s / Exit %s / Margin %s / Total %s" % (
+            entry_fees, exit_fees, margin_fees, total_fees))
 
         return tuple(data)
 

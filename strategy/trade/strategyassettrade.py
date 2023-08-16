@@ -27,16 +27,52 @@ class StrategyAssetTrade(StrategyTrade):
     Specialization for asset trading : first buy (entry) then sell (exit).
     Only a single initial buy order, and a single exit order (either stop or limit order).
 
-    @todo support of OCO order (close, remove, modify, cancel) if available from market or a specialized model
+    @note About OCO order : OCO order are not planned and will still uncompleted.
 
-    @todo improve trade management in case of fees are in base asset :
-        to know if an exit order is complete it could compare limit/stop_order_qty and limit/stop_exec_qty even
-        in the case where fees are taken on base asset because if we deduce this amount from
-        limit/stop_order_qty and limit/stop_exec_qty comparison will be ok
+    @note About fees :
+        - Fees rates are related to entry notional value.
+        - It is very important to keep fees payed on notional (quote symbol) for multiple reasons.
+            Trader implementation of create_order set flag to specify fees must be on quote symbol and not on
+            base asset.
+            Because else, during entry the traded quantity is reduced from ordered quantity, and during exit
+            the quantity will again be reduced.
+            In that case internal management of fees is more complex and currently not fully supported.
+        - More complex case is when fees are on BNB (binance) or on KFEE (kraken). The amount of fees are related to
+            another market price (BNB) or nothing (KFEE) meaning computation are then invalid (fees rate and net PNL).
+
+    @note About min-notional requirement :
+        - Min notional will be respected for entry. But if a major drop of price cause min-notional not respected for
+            stop order that can be an issue. In that way always take in account that case when setting
+            low trade quantity to avoid this case.
+        - Other issue could occurs when a limit order partially realized the exit, and the remaining part could not
+            respect the min-notional requirement. This can occurs when users manually close a partially filled limit
+            order (on top of a wick) and then the limit order is canceled but the close order could not be accepted.
+            - That can be avoided with checking before canceling but this could have others undesirable effect.
+            - This can else occurs with the dirty flag after a partial entry completion, but not enough to setup the
+                first limit or stop order.
+            - Another case, when the strategy modify the limit or stop price, canceling the current limit/stop order
+                and then trying to open a new one but it will be rejected.
+            - A solution could be to force a kill or fill flag for low amount trades. But it could occurs on wick with
+                big amount trade. There is multiple others solutions :
+                - buy a min-notional amount to sell it again with the residual of the trade
+                - let the trade in an error state needing user support (canceling, manual trade or let the crumb)
+                - never allow user canceling or strategy modifying a trade when min-notional is not reached
+        - In any case those case could make the bot trying to close again and again meaning potential API flood and
+            then it can be a major issue.
+
+    @todo Improve trade management in case of fees are in base asset :
+        - It is not necessary if the requirement to make fees on quote are respected on ordering.
+            To know if an exit order is complete it could compare limit/stop_order_qty and limit/stop_exec_qty even
+        - In the case where fees are taken on base asset because if we deduce this amount from limit/stop_order_qty
+            and limit/stop_exec_qty comparison will be ok
+        - update_stats upnl/rpnl works only if fees are in quote (notional-value)
+        - If fees are on BNB (binance) or KFEE (kraken) how to deal with correct fee computation ?
 
     @todo before close or modifying or canceling stop or limit it is important to compute the notional size
         and to compare with the instrument min-notional size, because else it will be impossible to recreate
         a sell order with the remaining quantity.
+
+    @todo support of OCO order (close, remove, modify, cancel) if available from market or a specialized model
     """
 
     __slots__ = 'entry_ref_oid', 'stop_ref_oid', 'limit_ref_oid', 'oco_ref_oid', \
@@ -266,8 +302,8 @@ class StrategyAssetTrade(StrategyTrade):
 
     def cancel_open(self, trader: Trader, instrument: Instrument) -> int:
         """
-        @todo Before cancel, if the realized quantity is lesser than the min-notional it
-        will be impossible to create an exit order.
+        @todo Before cancel, if the realized quantity is lesser than the min-notional it will be impossible to
+            create an exit order.
         """
         if self.entry_oid:
             # cancel the buy order
@@ -305,6 +341,8 @@ class StrategyAssetTrade(StrategyTrade):
     def cancel_close(self, trader: Trader, instrument: Instrument) -> int:
         """
         @todo for OCO
+        @todo Before cancel, if the non-realized quantity is lesser than the min-notional it will be impossible to
+            create an exit order.
         """
         if self.oco_oid:
             pass
@@ -365,8 +403,8 @@ class StrategyAssetTrade(StrategyTrade):
 
     def modify_take_profit(self, trader: Trader, instrument: Instrument, limit_price: float, hard: bool = True) -> int:
         """
-        @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
-        to create a new order.
+        @todo Before cancel, if the non-realized quantity is lesser than the min-notional it will be impossible to
+            create an exit order.
 
         @note If hard is True and an hard stop order exists it will be removed.
         """
@@ -472,8 +510,8 @@ class StrategyAssetTrade(StrategyTrade):
 
     def modify_stop_loss(self, trader: Trader, instrument: Instrument, stop_price: float, hard: bool = True) -> int:
         """
-        @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
-        to create a new order.
+        @todo Before cancel, if the non-realized quantity is lesser than the min-notional it will be impossible to
+            create an exit order.
 
         @note If hard is True and an hard limit order exists it will be removed.
         """
@@ -579,14 +617,18 @@ class StrategyAssetTrade(StrategyTrade):
 
     def modify_oco(self, trader: Trader, instrument: Instrument, limit_price: float, stop_price: float,
                    hard: bool = True) -> int:
+        """
+        @todo Before cancel, if the non-realized quantity is lesser than the min-notional it will be impossible to
+            create an exit order.
+        """
         # @todo
 
         return self.REJECTED
 
     def close(self, trader: Trader, instrument: Instrument) -> int:
         """
-        @todo Before cancel, if the remaining quantity is lesser than the min-notional it will be impossible
-        to create a new order.
+        @todo Before cancel, if the non-realized quantity is lesser than the min-notional it will be impossible to
+            create an exit order.
         """
         if self._closing:
             # already closing order
@@ -801,6 +843,13 @@ class StrategyAssetTrade(StrategyTrade):
             if 'filled' not in data and 'cumulative-filled' not in data:
                 return
 
+            def update_rpnl():
+                """
+                Inner function to update raw realized profit/loss rate.
+                """
+                if self.aep > 0.0 and self.x > 0.0:
+                    self.pl = ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.x)
+
             def update_exit_qty(order_exec):
                 """
                 Inner function to update the exit qty.
@@ -828,6 +877,8 @@ class StrategyAssetTrade(StrategyTrade):
 
                 #     # average exit price
                 #     self.axp = data['avg-price']
+
+                update_rpnl()
 
                 return _filled
 
@@ -878,19 +929,27 @@ class StrategyAssetTrade(StrategyTrade):
                         #     instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
 
                 elif data.get('cumulative-commission-amount') is not None and \
-                        data['cumulative-commission-amount'] > order_cum_fees:
+                        data['cumulative-commission-amount'] != 0 and \
+                        data['cumulative-commission-amount'] != order_cum_fees:
                     # compute filled commission amount since last signal
                     _filled_commission = data['cumulative-commission-amount'] - order_cum_fees
 
-                elif data.get('commission-amount') is not None and data['commission-amount'] > 0:
+                elif data.get('commission-amount') is not None and data['commission-amount'] != 0:
                     # relative data field
                     _filled_commission = data['commission-amount']
 
                 # realized fees : in cumulated quote or computed from filled quantity and trade execution
-                if _filled_commission > 0:
+                if _filled_commission != 0:
                     # commission asset is asset, have to reduce it from filled exit qty
                     if data.get('commission-asset', "") == instrument.base:
                         self.x = instrument.adjust_quantity(self.x - _filled_commission)
+
+                        # # convert to quote (notional)
+                        # if data.get('avg-price') is not None and data['avg-price'] > 0:
+                        #     _filled_commission *= data['avg-price']
+                        #
+                        # elif data.get('exec-price') is not None and data['exec-price'] > 0:
+                        #     _filled_commission *= data['exec-price']
 
                     self._stats['exit-fees'] += _filled_commission
 
@@ -932,23 +991,48 @@ class StrategyAssetTrade(StrategyTrade):
                     # probably need to update exit orders
                     self._dirty = True
 
+                    # update notional value
+                    self._stats['notional-value'] = self.e * self.aep
+
                 #
                 # fees/commissions
                 #
 
-                if (data.get('commission-asset', "") == instrument.base) and (data.get('commission-amount', 0) > 0):
-                    # commission asset is itself, have to reduce it from filled, done after status determination
-                    # because of the qty reduced by the fee
-                    self.e = instrument.adjust_quantity(self.e - data.get('commission-amount', 0.0))
+                # filled fees/commissions
+                filled_commission = 0
 
-                # realized fees : in cumulated quote or compute from filled quantity and trade execution
-                if 'cumulative-commission-amount' in data:
-                    self._stats['entry-fees'] = data['cumulative-commission-amount']
-                elif 'commission-amount' in data:
-                    self._stats['entry-fees'] += data['commission-amount']
-                # else:
-                #     self._stats['entry-fees'] += filled * (instrument.maker_fee if data.get(
-                #         'maker', False) else instrument.taker_fee)
+                if data.get('cumulative-commission-amount') is None and data.get('commission-amount') is None:
+                    # no value but have an order execution then compute locally
+                    if filled > 0:
+                        # @todo compute on quote or on base or let zero
+                        pass
+                        # filled_commission = filled * (
+                        #     instrument.maker_fee if data.get('maker', False) else instrument.taker_fee)
+
+                elif data.get('cumulative-commission-amount') is not None and \
+                        data['cumulative-commission-amount'] != 0 and \
+                        data['cumulative-commission-amount'] != self._stats['entry-fees']:
+                    # compute filled commission amount since last signal
+                    filled_commission = data['cumulative-commission-amount'] - self._stats['entry-fees']
+
+                elif data.get('commission-amount') is not None and data['commission-amount'] != 0:
+                    # relative data field
+                    filled_commission = data['commission-amount']
+
+                # realized fees : in cumulated quote or computed from filled quantity and trade execution
+                if filled_commission != 0:
+                    # commission asset is asset, have to reduce it from filled exit qty
+                    if data.get('commission-asset', "") == instrument.base:
+                        self.e = instrument.adjust_quantity(self.e - filled_commission)
+
+                        # convert to quote (notional)
+                        # if data.get('avg-price') is not None and data['avg-price'] > 0:
+                        #     filled_commission *= data['avg-price']
+                        #
+                        # elif data.get('exec-price') is not None and data['exec-price'] > 0:
+                        #     filled_commission *= data['exec-price']
+
+                    self._stats['entry-fees'] += filled_commission
 
                 #
                 # state
@@ -989,8 +1073,12 @@ class StrategyAssetTrade(StrategyTrade):
                     self.limit_order_exec = instrument.adjust_quantity(self.limit_order_exec + filled)
 
                 # fees/commissions
-                update_exit_fees_and_qty(self.limit_order_cum_fees, self.limit_order_exec, prev_limit_order_exec,
-                                         self._stats.get('take-profit-order-type', Order.ORDER_MARKET))
+                filled_commission = update_exit_fees_and_qty(
+                    self.limit_order_cum_fees, self.limit_order_exec, prev_limit_order_exec,
+                    self._stats.get('take-profit-order-type', Order.ORDER_MARKET))
+
+                if filled_commission != 0:
+                    self.limit_order_cum_fees += filled_commission
 
                 # state
                 update_exit_state()
@@ -1019,8 +1107,12 @@ class StrategyAssetTrade(StrategyTrade):
                     self.stop_order_exec = instrument.adjust_quantity(self.stop_order_exec + filled)
 
                 # fees/commissions
-                update_exit_fees_and_qty(self.stop_order_cum_fees, self.stop_order_exec, prev_stop_order_exec,
-                                         self._stats.get('stop-order-type', Order.ORDER_MARKET))
+                filled_commission = update_exit_fees_and_qty(
+                    self.stop_order_cum_fees, self.stop_order_exec, prev_stop_order_exec,
+                    self._stats.get('stop-order-type', Order.ORDER_MARKET))
+
+                if filled_commission != 0:
+                    self.stop_order_cum_fees += filled_commission
 
                 # state
                 update_exit_state()
@@ -1294,22 +1386,39 @@ class StrategyAssetTrade(StrategyTrade):
     def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
         data = list(super().info_report(strategy_trader))
 
+        entry_fees = "%g" % self._stats['entry-fees']
+
         if self.entry_oid or self.entry_ref_oid:
             data.append("Entry order id / ref : %s / %s" % (self.entry_oid, self.entry_ref_oid))
-            data.append("- Qty %g / Exec %g / Fees %g" % (self.oq, self.e, self._stats['entry-fees']))
+            data.append("- Qty %s / Exec %s / Fees %s" % (strategy_trader.instrument.format_quantity(self.oq),
+                                                          strategy_trader.instrument.format_quantity(self.e),
+                                                          entry_fees))
 
         if self.stop_oid or self.stop_ref_oid:
+            stop_order_fees = "%g" % self.stop_order_cum_fees
+
             data.append("Stop order id / ref : %s / %s" % (self.stop_oid, self.stop_ref_oid))
-            data.append("- Qty %g / Exec %g / Fees %g" % (
-                self.stop_order_qty, self.stop_order_exec, self.stop_order_cum_fees))
+            data.append("- Qty %s / Exec %s / Fees %s" % (
+                strategy_trader.instrument.format_quantity(self.stop_order_qty),
+                strategy_trader.instrument.format_quantity(self.stop_order_exec),
+                stop_order_fees))
 
         if self.limit_oid or self.limit_ref_oid:
+            limit_order_fees = "%g" % self.limit_order_cum_fees
+
             data.append("Limit order id / ref : %s / %s" % (self.limit_oid, self.limit_ref_oid))
-            data.append("- Qty %g / Exec %g / Fees %g" % (
-                self.limit_order_qty, self.limit_order_exec, self.limit_order_cum_fees))
+            data.append("- Qty %s / Exec %s / Fees %s" % (
+                strategy_trader.instrument.format_quantity(self.limit_order_qty),
+                strategy_trader.instrument.format_quantity(self.limit_order_exec),
+                limit_order_fees))
 
         if self.oco_oid or self.oco_ref_oid:
             data.append("OCO order id / ref : %s / %s" % (self.oco_oid, self.oco_ref_oid))
+
+        exit_fees = "%g" % self._stats['exit-fees']
+        total_fees = "%g" % (self._stats['entry-fees'] + self._stats['exit-fees'])
+
+        data.append("Cumulated fees : Entry %s / Exit %s / Total %s" % (entry_fees, exit_fees, total_fees))
 
         return tuple(data)
 

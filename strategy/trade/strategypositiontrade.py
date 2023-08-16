@@ -30,6 +30,9 @@ class StrategyPositionTrade(StrategyTrade):
     Works with CFD brokers (ig...).
 
     Hedging must be true by to manage position into the two direction at the same time.
+
+    @note Fees are generally included into the spread. But need to implement notional-value and commissions for
+        clearing futures exchanges.
     """
 
     __slots__ = 'create_ref_oid', 'create_oid', 'position_id', 'position_stop', 'position_limit', \
