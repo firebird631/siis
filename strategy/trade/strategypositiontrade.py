@@ -460,8 +460,11 @@ class StrategyPositionTrade(StrategyTrade):
             #     self._stats['profit-loss-currency'] = data['profit-currency']
 
             # realized profit/loss rate
-            if self.aep > 0.0 and self.x > 0.0:
-                self.pl = self.direction * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.x)
+            # if self.aep > 0.0 and self.x > 0.0:
+            #     self.pl = self.direction * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.x)
+
+            if self.aep > 0.0 and self.e > 0.0:
+                self.pl = self.direction * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.e)
 
         if signal_type == Signal.SIGNAL_POSITION_OPENED:
             self.position_id = data['id']  # already defined at open

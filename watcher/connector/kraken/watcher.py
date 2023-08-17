@@ -1318,8 +1318,8 @@ class KrakenWatcher(Watcher):
                         order['exec-price'] = float(order_data['price'])
                         order['cumulative-filled'] = cumulative_filled
                         order['cumulative-commission-amount'] = float(order_data['fee'])
-                        # # order['commission-asset'] =   # is quote symbol because order always use quote fee flag
-                        # # order['maker'] =    # trade execution over or counter the market : true if maker, false if taker
+                        # order['commission-asset'] =   # is quote symbol because order always use quote fee flag
+                        # order['maker'] =    # trade execution over or counter the market : true if maker, false if taker
                         order['fully-filled'] = fully_filled
 
                         # self.__fill_order(order, order_data, filled_volume)
@@ -1353,8 +1353,8 @@ class KrakenWatcher(Watcher):
                         order['exec-price'] = float(order_data['price'])
                         order['cumulative-filled'] = cumulative_filled
                         order['cumulative-commission-amount'] = float(order_data['fee'])
-                        # # order['commission-asset'] =   # is quote symbol because order always use quote fee flag
-                        # # order['maker'] =    # trade execution over or counter the market : true if maker, false if taker
+                        # order['commission-asset'] =   # is quote symbol because order always use quote fee flag
+                        # order['maker'] =    # trade execution over or counter the market : true if maker, false if taker
                         order['fully-filled'] = fully_filled
 
                         self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (symbol, order, client_order_id))
@@ -1391,7 +1391,7 @@ class KrakenWatcher(Watcher):
 
         elif descr['ordertype'] == "take-profit":
             order_type = Order.ORDER_TAKE_PROFIT
-            top_price = float(descr['price']) if 'price' in descr else None
+            stop_price = float(descr['price']) if 'price' in descr else None
 
         elif descr['ordertype'] == "stop-loss-limit":
             order_type = Order.ORDER_STOP_LIMIT

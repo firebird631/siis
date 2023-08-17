@@ -38,7 +38,7 @@ class StrategyIndMarginTrade(StrategyTrade):
     We prefers here to update on trade order signal. A position deleted means to close any related orders.
 
     @todo position maintenance funding fees, but how to ?
-    @todo support of two directional (hedging mode) positions (position id must be compared with its direction too)
+    @todo support of two directional (hedging mode) positions (having a prefix or suffix on trader symbol)
     @todo in case if position closed externally it is necessary to update exit qty/price/fees and update then rpnl
     """
 
@@ -642,13 +642,6 @@ class StrategyIndMarginTrade(StrategyTrade):
             if 'filled' not in data and 'cumulative-filled' not in data:
                 return
 
-            def update_rpnl():
-                """
-                Inner function to update raw realized profit/loss rate.
-                """
-                if self.aep > 0.0 and self.x > 0.0:
-                    self.pl = self.direction * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.x)
-
             def update_exit_qty(order_exec):
                 """
                 Inner function to update the exit qty.
@@ -665,10 +658,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 if data.get('avg-price') is not None and data['avg-price'] > 0:
                     # recompute profit-loss
-                    # if self.dir > 0:
-                    #     self.pl = (data['avg-price'] - self.aep) / self.aep
-                    # elif self.dir < 0:
-                    #     self.pl = (self.aep - data['avg-price']) / self.aep
+                    # self.pl = self.dir * (data['avg-price'] - self.aep) / self.aep
 
                     # in that case we have avg-price already computed
                     self.axp = data['avg-price']
@@ -676,7 +666,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                 elif data.get('exec-price') is not None and data['exec-price'] > 0:
                     # increase/decrease profit/loss (over entry executed quantity)
                     # if self.dir > 0:
-                    #     self.pl += ((data['exec-price'] * _filled) - (self.aep * filled)) / (self.aep * self.e)
+                    #     self.pl += self.dir * ((data['exec-price'] * _filled) - (self.aep * filled)) / (self.aep * self.e)
                     # elif self.dir < 0:
                     #     self.pl += ((self.aep * _filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
 
@@ -684,7 +674,13 @@ class StrategyIndMarginTrade(StrategyTrade):
                     self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * _filled)) / (
                             self.x + _filled))
 
-                update_rpnl()
+                if _filled > 0:
+                    # update realized exit qty
+                    self.x = instrument.adjust_quantity(self.x + _filled)
+
+                    # and realized PNL
+                    if self.aep > 0.0 and self.e > 0.0:
+                        self.pl = ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.e)
 
                 return _filled
 
@@ -893,7 +889,6 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 # cumulative filled exit qty, update trade qty and order related qty
                 if filled > 0:
-                    self.x = instrument.adjust_quantity(self.x + filled)
                     self.limit_order_exec = instrument.adjust_quantity(self.limit_order_exec + filled)
 
                 # fees/commissions
@@ -927,7 +922,6 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                 # cumulative filled exit qty, update trade qty and order related qty
                 if filled > 0:
-                    self.x = instrument.adjust_quantity(self.x + filled)
                     self.stop_order_exec = instrument.adjust_quantity(self.stop_order_exec + filled)
 
                 # fees/commissions
@@ -961,13 +955,6 @@ class StrategyIndMarginTrade(StrategyTrade):
 
         elif signal_type == Signal.SIGNAL_POSITION_DELETED:
 
-            def update_rpnl():
-                """
-                Inner function to update raw realized profit/loss rate.
-                """
-                if self.aep > 0.0 and self.x > 0.0:
-                    self.pl = self.direction * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.x)
-
             # filter only if the signal timestamp occurs after the creation of this trade
             if data.get('timestamp') > self.eot and self.e > 0.0:
                 # no longer related position, have to clean up any related trades in case of manual close, liquidation
@@ -978,17 +965,26 @@ class StrategyIndMarginTrade(StrategyTrade):
                 # but it might not. maybe the timestamp could help to filter
                 if self.x < self.e:
                     # @todo need to fix exit qty, exit price and exit fees as in traded signal and finally update rpnl
-                    # update_rpnl()
 
-                    # mean fill the rest (because qty can concerns many trades...)
-                    filled = instrument.adjust_quantity(self.e - self.x)
+                    # # mean fill the rest (because qty can concerns many trades...)
+                    # filled = instrument.adjust_quantity(self.e - self.x)
 
-                    if data.get('exec-price') is not None and data['exec-price'] > 0:
-                        # increase/decrease profit/loss rate (over entry executed quantity)
-                        if self.dir > 0:
-                            self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
-                        elif self.dir < 0:
-                            self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
+                    # if data.get('exec-price') is not None and data['exec-price'] > 0:
+                    #     # increase/decrease profit/loss rate (over entry executed quantity)
+                    #     if self.dir > 0:
+                    #         self.pl += ((data['exec-price'] * filled) - (self.aep * filled)) / (self.aep * self.e)
+                    #     elif self.dir < 0:
+                    #         self.pl += ((self.aep * filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
+
+                    # update average exit price
+                    # @todo
+
+                    # update realized exit qty
+                    self.x = self.e
+
+                    # and realized PNL
+                    if self.aep > 0.0 and self.e > 0.0:
+                        self.pl = ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.e)
 
                 if self._exit_state != StrategyTrade.STATE_FILLED:
                     # that will cause to remove the trade and then related orders

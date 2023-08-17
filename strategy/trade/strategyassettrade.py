@@ -843,13 +843,6 @@ class StrategyAssetTrade(StrategyTrade):
             if 'filled' not in data and 'cumulative-filled' not in data:
                 return
 
-            def update_rpnl():
-                """
-                Inner function to update raw realized profit/loss rate.
-                """
-                if self.aep > 0.0 and self.x > 0.0:
-                    self.pl = ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.x)
-
             def update_exit_qty(order_exec):
                 """
                 Inner function to update the exit qty.
@@ -865,20 +858,26 @@ class StrategyAssetTrade(StrategyTrade):
 
                 if data.get('exec-price') is not None and data['exec-price'] > 0 and _filled > 0:
                     # profit/loss when reducing the trade (over executed entry qty)
-                    self.pl += ((data['exec-price'] * _filled) - (self.aep * _filled)) / (self.aep * self.e)
+                    # self.pl += ((data['exec-price'] * _filled) - (self.aep * _filled)) / (self.aep * self.e)
 
                     # average exit price
                     self.axp = instrument.adjust_price(((self.axp * self.x) + (
                             data['exec-price'] * _filled)) / (self.x + _filled))
 
-                # elif data.get('avg-price') is not None and data['avg-price'] > 0:
-                #     # average price is directly given
-                #     self.pl = ((data['avg-price'] * (self.x + filled)) - (self.aep * filled)) / (self.aep * self.e)
+                elif data.get('avg-price') is not None and data['avg-price'] > 0:
+                    # average price is directly given
+                    # self.pl = ((data['avg-price'] * (self.x + _filled)) - (self.aep * _filled)) / (self.aep * self.e)
 
-                #     # average exit price
-                #     self.axp = data['avg-price']
+                    # average exit price
+                    self.axp = data['avg-price']
 
-                update_rpnl()
+                if _filled > 0:
+                    # update realized exit qty
+                    self.x = instrument.adjust_quantity(self.x + _filled)
+
+                    # and realized PNL
+                    if self.aep > 0.0 and self.e > 0.0:
+                        self.pl = ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.e)
 
                 return _filled
 
@@ -977,7 +976,7 @@ class StrategyAssetTrade(StrategyTrade):
                     self.aep = data['avg-price']
 
                 elif data.get('exec-price') is not None and data['exec-price'] > 0 and filled > 0:
-                    # compute the average entry price whe increasing the trade
+                    # compute the average entry price when increasing the trade
                     self.aep = instrument.adjust_price(((self.aep * self.e) + (
                             data['exec-price'] * filled)) / (self.e + filled))
 
@@ -1069,7 +1068,6 @@ class StrategyAssetTrade(StrategyTrade):
 
                 # cumulative filled exit qty, update trade qty and order related qty
                 if filled > 0:
-                    self.x = instrument.adjust_quantity(self.x + filled)
                     self.limit_order_exec = instrument.adjust_quantity(self.limit_order_exec + filled)
 
                 # fees/commissions
@@ -1103,7 +1101,6 @@ class StrategyAssetTrade(StrategyTrade):
 
                 # cumulative filled exit qty, update trade qty and order related qty
                 if filled > 0:
-                    self.x = instrument.adjust_quantity(self.x + filled)
                     self.stop_order_exec = instrument.adjust_quantity(self.stop_order_exec + filled)
 
                 # fees/commissions
