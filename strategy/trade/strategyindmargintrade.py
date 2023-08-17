@@ -680,7 +680,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                     # and realized PNL
                     if self.aep > 0.0 and self.e > 0.0:
-                        self.pl = ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.e)
+                        self.pl = self.dir * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.e)
 
                 return _filled
 
@@ -984,7 +984,7 @@ class StrategyIndMarginTrade(StrategyTrade):
 
                     # and realized PNL
                     if self.aep > 0.0 and self.e > 0.0:
-                        self.pl = ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.e)
+                        self.pl = self.dir * ((self.axp * self.x) - (self.aep * self.x)) / (self.aep * self.e)
 
                 if self._exit_state != StrategyTrade.STATE_FILLED:
                     # that will cause to remove the trade and then related orders
