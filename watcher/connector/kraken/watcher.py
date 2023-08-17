@@ -181,7 +181,7 @@ class KrakenWatcher(Watcher):
 
         self._assets = {}
         self._instruments = {}
-        self._wsname_lookup = {}
+        self._ws_name_lookup = {}
         self._markets_aliases = {}
 
         self._last_balance_update = 0.0  # last update of balances (assets) timestamp
@@ -274,7 +274,7 @@ class KrakenWatcher(Watcher):
 
                             # and the related name mapping from WS that is different
                             if instrument.get('wsname'):
-                                self._wsname_lookup[instrument['wsname']] = market_id
+                                self._ws_name_lookup[instrument['wsname']] = market_id
 
                         # and start ws manager if necessary
                         try:
@@ -807,7 +807,7 @@ class KrakenWatcher(Watcher):
             # last update timestamp
             self._ws_ticker_data['timestamp'] = time.time()
 
-            market_id = self._wsname_lookup.get(data[3])
+            market_id = self._ws_name_lookup.get(data[3])
             base_asset, quote_asset = data[3].split('/')
 
             if not market_id:
@@ -881,7 +881,7 @@ class KrakenWatcher(Watcher):
             # last update timestamp
             self._ws_spread_data['timestamp'] = time.time()
 
-            market_id = self._wsname_lookup.get(data[3])
+            market_id = self._ws_name_lookup.get(data[3])
             base_asset, quote_asset = data[3].split('/')
 
             if not market_id:
@@ -941,7 +941,7 @@ class KrakenWatcher(Watcher):
             # last update timestamp
             self._ws_trade_data['timestamp'] = time.time()
 
-            market_id = self._wsname_lookup.get(data[3])
+            market_id = self._ws_name_lookup.get(data[3])
 
             if not market_id:
                 return
@@ -953,7 +953,7 @@ class KrakenWatcher(Watcher):
                 bid_ask = 0
                 spread = 0.0
 
-                # bid or ask depending of order direction and type
+                # bid or ask depending on order direction and type
                 if trade[3] == 'b' and trade[4] == 'l':
                     bid_ask = -1
                 elif trade[3] == 'b' and trade[4] == 'm':
@@ -1072,7 +1072,7 @@ class KrakenWatcher(Watcher):
 
                 exec_logger.info("kraken.com ownTrades : %s - %s" % (trade_id, trade_data))
 
-                symbol = self._wsname_lookup.get(trade_data['pair'])
+                symbol = self._ws_name_lookup.get(trade_data['pair'])
                 if not symbol:
                     continue
 
@@ -1608,7 +1608,7 @@ class KrakenWatcher(Watcher):
                             order_id,))
                     continue
 
-                symbol = self._wsname_lookup.get(order_data['descr']['pair'])
+                symbol = self._ws_name_lookup.get(order_data['descr']['pair'])
                 if not symbol:
                     error_logger.warning(
                         "kraken.com openOrder : Could not retrieve the symbol for %s. Message ignored !" % order_id)
