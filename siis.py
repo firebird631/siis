@@ -266,6 +266,13 @@ def application(argv):
                     # target ohlc generation
                     options['target'] = arg.split('=')[1]
 
+                elif arg.startswith('--target-market='):
+                    # fetch, write data for this market id in place of given market id
+                    options['target-market'] = arg.split('=')[1]
+                elif arg.startswith('--target-broker='):
+                    # fetch, write data for this broker id in place of given broker id
+                    options['target-broker'] = arg.split('=')[1]
+
                 elif arg == '--watcher-only':
                     # feed only with live data, does not run the trader and strategy services
                     options['watcher-only'] = True              

@@ -163,6 +163,9 @@ class DukascopyFetcher(Fetcher):
             ))
             # print(trades[-1])
 
+        if trades:
+            print(trades[-1])
+
         return trades
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None, fetch_option=""):

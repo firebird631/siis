@@ -63,6 +63,18 @@ error_logger = logging.getLogger('siis.error.tools.fetcher')
 #             error_logger.error("Either --from or --update parameters must be defined")
 #             return False
 
+#         if options.get('target-market') and not options.get('target-broker'):
+#             return False
+
+#         if options.get('target-broker') and not options.get('target-market'):
+#             return False
+
+#         if options.get('target-broker') and type(options['target-broker']) is not str:
+#             return False
+
+#         if options.get('target-market') and type(options[target-market']) is not str:
+#             return False
+
 #         return True
 
 #     def init(self, options):
@@ -187,6 +199,12 @@ def do_fetcher(options):
         logger.info("Fetcher authenticated to %s, trying to collect data..." % fetcher.name)
 
         markets = fetcher.matching_symbols_set(options['market'].split(','), fetcher.available_instruments())
+        target_markets = options.get('target-market', "").split(',')
+
+        target_markets_it = iter(target_markets)
+
+        broker_id = options['broker']
+        target_broker_id = options.get('target-broker')
 
         try:
             for market_id in markets:                
@@ -202,13 +220,20 @@ def do_fetcher(options):
                         last = options.get('last')
                         spec = options.get('spec')
 
+                        # map on the same order
+                        target_market_id = next(target_markets_it) if target_markets else None
+
                         print("Init for %s..." % (market_id,))
 
                         if do_update:
                             # update from last entry, compute the from datetime
                             if timeframe <= Instrument.TF_TICK:
                                 # get last datetime from tick storage and add 1 millisecond
-                                last_tick = Database.inst().get_last_tick(options['broker'], market_id)
+                                if target_broker_id and target_market_id:
+                                    last_tick = Database.inst().get_last_tick(target_broker_id, target_market_id)
+                                else:
+                                    last_tick = Database.inst().get_last_tick(broker_id, market_id)
+
                                 next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
 
                                 if next_date:
@@ -216,10 +241,15 @@ def do_fetcher(options):
 
                                 if not from_date:
                                     # or fetch the complete current month else use the from date
-                                    from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
+                                    from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0,
+                                                              tzinfo=UTC())
                             else:
                                 # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
-                                last_ohlc = Database.inst().get_last_ohlc(options['broker'], market_id, timeframe)
+                                if target_broker_id and target_market_id:
+                                    last_ohlc = Database.inst().get_last_ohlc(
+                                        target_broker_id, target_market_id, timeframe)
+                                else:
+                                    last_ohlc = Database.inst().get_last_ohlc(broker_id, market_id, timeframe)
 
                                 if last_ohlc:
                                     # if cascaded is defined, then we need more past data to have a full range
@@ -235,11 +265,18 @@ def do_fetcher(options):
 
                                 if not from_date:
                                     # or fetch the complete current month else use the from date
-                                    from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC())
+                                    from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0,
+                                                              tzinfo=UTC())
 
-                        print("Update %s from %s..." % (market_id, from_date))
+                        if target_broker_id and target_market_id:
+                            print("Update %s from %s to destination %s %s..." % (
+                                market_id, from_date, target_broker_id, target_market_id))
+                        else:
+                            print("Update %s from %s..." % (market_id, from_date))
 
-                        fetcher.fetch_and_generate(market_id, timeframe, from_date, to_date, last, spec, cascaded)
+                        fetcher.fetch_and_generate(market_id, timeframe, from_date, to_date, last, spec, cascaded,
+                                                   target_broker_id=target_broker_id,
+                                                   target_market_id=target_market_id)
 
                 if delay > 0:
                     time.sleep(delay)

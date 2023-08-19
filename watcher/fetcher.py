@@ -6,6 +6,7 @@
 import time
 
 from datetime import datetime, timedelta
+from typing import Optional
 
 from common.utils import matching_symbols_set, timeframe_to_str, UTC
 from terminal.terminal import Terminal
@@ -68,9 +69,11 @@ class Fetcher(object):
         """
         Special '*' symbol mean every symbol.
         Starting with '!' mean except this symbol.
-        Starting with '*' mean every wildchar before the suffix.
+        Starting with '*' mean every wildcard before the suffix.
 
-        @param available_symbols List containing any supported markets symbol of the broker. Used when a wildchar is defined.
+        @param configured_symbols :
+        @param available_symbols : List containing any supported markets symbol of the broker.
+            Used when a wildcard is defined.
         """
         if not available_symbols:
             return configured_symbols
@@ -87,8 +90,10 @@ class Fetcher(object):
     def connected(self) -> bool:
         return False
 
-    def fetch_and_generate(self, market_id, timeframe, from_date=None, to_date=None, n_last=1000,
-                           fetch_option="", cascaded=None):
+    def fetch_and_generate(self, market_id: str, timeframe: int,
+                           from_date: Optional[datetime] = None, to_date: Optional[datetime] = None, n_last: int = 1000,
+                           fetch_option: str = "", cascaded: Optional[int] = None,
+                           target_broker_id: Optional[str] = None, target_market_id: Optional[str] = None):
         """
         Fetch trades, quotes, tickers or OHLCs, depending on the timeframe, for a range of date, or N last entries.
         It is possible to generate higher multiple of the timeframe, until cascaded timeframe. Not that it is important
@@ -102,6 +107,13 @@ class Fetcher(object):
         generators = []
         from_tf = timeframe
 
+        # remapped to another broker/market
+        if not target_market_id:
+            target_market_id = market_id
+
+        if not target_broker_id:
+            target_broker_id = self.name
+
         self._last_ticks = []
         self._last_ohlcs = {}
 
@@ -110,11 +122,14 @@ class Fetcher(object):
             today = datetime.now().astimezone(UTC())
 
             if timeframe == Instrument.TF_MONTH:
-                from_date = (today - timedelta(days=30*n_last)).replace(day=1).replace(hour=0).replace(minute=0).replace(second=0)
+                from_date = (today - timedelta(days=30*n_last)).replace(day=1).replace(hour=0).replace(
+                    minute=0).replace(second=0)
             elif timeframe >= Instrument.TF_1D:
-                from_date = (today - timedelta(days=int(timeframe/Instrument.TF_1D)*n_last)).replace(hour=0).replace(minute=0).replace(second=0)
+                from_date = (today - timedelta(days=int(timeframe/Instrument.TF_1D)*n_last)).replace(
+                    hour=0).replace(minute=0).replace(second=0)
             elif timeframe >= Instrument.TF_1H:
-                from_date = (today - timedelta(hours=int(timeframe/Instrument.TF_1H)*n_last)).replace(minute=0).replace(second=0)
+                from_date = (today - timedelta(hours=int(timeframe/Instrument.TF_1H)*n_last)).replace(
+                    minute=0).replace(second=0)
             elif timeframe >= Instrument.TF_1M:
                 from_date = (today - timedelta(minutes=int(timeframe/Instrument.TF_1M)*n_last)).replace(second=0)
             elif timeframe >= Instrument.TF_1S:
@@ -157,10 +172,15 @@ class Fetcher(object):
         if timeframe == 0:
             for data in self.fetch_trades(market_id, from_date, to_date, None):
                 # store (int timestamp in ms, str bid, str ask, str last, str volume, int direction)
-                Database.inst().store_market_trade((self.name, market_id, data[0], data[1], data[2], data[3], data[4], data[5]))
+                Database.inst().store_market_trade((
+                    target_broker_id, target_market_id, data[0], data[1], data[2], data[3], data[4], data[5]))
 
                 if generators:
-                    self._last_ticks.append((float(data[0]) * 0.001, float(data[1]), float(data[2]), float(data[3]), float(data[4]), int(data[5])))
+                    self._last_ticks.append((float(data[0]) * 0.001,
+                                             float(data[1]), float(data[2]),
+                                             float(data[3]),
+                                             float(data[4]),
+                                             int(data[5])))
 
                 # generate higher candles
                 for generator in generators:
@@ -169,7 +189,7 @@ class Fetcher(object):
 
                         if candles:
                             for c in candles:
-                                self.store_candle(market_id, generator.to_tf, c)
+                                self.store_candle(target_broker_id, target_market_id, generator.to_tf, c)
 
                             self._last_ohlcs[generator.to_tf] += candles
 
@@ -180,7 +200,7 @@ class Fetcher(object):
 
                         if candles:
                             for c in candles:
-                                self.store_candle(market_id, generator.to_tf, c)
+                                self.store_candle(target_broker_id, target_market_id, generator.to_tf, c)
 
                             self._last_ohlcs[generator.to_tf] += candles
 
@@ -209,7 +229,7 @@ class Fetcher(object):
             for data in self.fetch_candles(market_id, timeframe, from_date, to_date, None):
                 # store (int timestamp ms, str open, high, low, close, spread, volume)
                 Database.inst().store_market_ohlc((
-                    self.name, market_id, data[0], int(timeframe),
+                    target_broker_id, target_market_id, data[0], int(timeframe),
                     data[1], data[2], data[3], data[4],  # OHLC
                     data[5],  # spread
                     data[6]))  # vol
@@ -231,7 +251,7 @@ class Fetcher(object):
                     candles = generator.generate_from_candles(self._last_ohlcs[generator.from_tf])
                     if candles:
                         for c in candles:
-                            self.store_candle(market_id, generator.to_tf, c)
+                            self.store_candle(target_broker_id, target_market_id, generator.to_tf, c)
 
                         self._last_ohlcs[generator.to_tf].extend(candles)
 
@@ -254,16 +274,19 @@ class Fetcher(object):
 
     def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None):
         """
-        Retrieve the historical trades data for a certain a period of date.
+        Retrieve the historical trade's data for a certain a period of date.
+        @note It is mostly an internal method.
         @param market_id Specific name of the market
-        @param from_date
-        @param to_date
+        @param from_date :
+        @param to_date :
+        @param n_last :
         """
         return []
 
     def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None):
         """
-        Retrieve the historical candles data for an unit of time and certain a period of date.
+        Retrieve the historical candle's data for a unit of time and certain a period of date.
+        @note It is mostly an internal method.
         @param market_id Specific name of the market
         @param timeframe Time unit in second.
         @param from_date
@@ -272,9 +295,9 @@ class Fetcher(object):
         """
         return []
 
-    def store_candle(self, market_id, timeframe, candle):
+    def store_candle(self, broker_id: str, market_id: str, timeframe: float, candle: Candle):
         Database.inst().store_market_ohlc((
-            self.name, market_id, int(candle.timestamp*1000.0), int(timeframe),
+            broker_id, market_id, int(candle.timestamp*1000.0), int(timeframe),
             str(candle.open), str(candle.high), str(candle.low), str(candle.close),
             str(candle.spread),
             str(candle.volume)))
@@ -373,7 +396,8 @@ class Fetcher(object):
         if market_data.get('position', False):
             market.trade |= Market.TRADE_POSITION
 
-        orders = market_data.get('orders', ('market', 'limit', 'stop-market', 'stop-limit', 'take-profit-market', 'take-profit-limit'))
+        orders = market_data.get('orders', ('market', 'limit', 'stop-market', 'stop-limit',
+                                            'take-profit-market', 'take-profit-limit'))
 
         if 'market' in orders:
             market.orders |= Market.ORDER_MARKET
