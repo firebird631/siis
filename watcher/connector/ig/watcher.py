@@ -1,7 +1,7 @@
 # @date 2018-08-25
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# ig.com watcher implementation
+# dukascopy.com watcher implementation
 
 import copy
 import json
@@ -120,7 +120,8 @@ class IGWatcher(Watcher):
 
                     # from CST and XST
                     password = "CST-%s|XST-%s" % (self._connector.cst, self._connector.xst)
-                    # logger.debug(self._connector.cst, self._connector.xst, self._connector.lightstreamer_endpoint, identity.get('account-id'), self._connector.client_id)
+                    # logger.debug("%s %s %s %s %s" % (self._connector.cst, self._connector.xst, self._connector.lightstreamer_endpoint,
+                    #              identity.get('account-id'), self._connector.client_id))
 
                     if self._lightstreamer:
                         # destroy previous connection
@@ -178,6 +179,8 @@ class IGWatcher(Watcher):
                                 error_logger.error(repr(e))
                                 traceback_logger.error(traceback.format_exc())
 
+                logger.debug("%s connection successes" % self.name)
+
                 self._ready = True
                 self._connecting = False
 
@@ -204,6 +207,8 @@ class IGWatcher(Watcher):
 
     def disconnect(self):
         super().disconnect()
+
+        logger.debug("%s disconnecting..." % self.name)
 
         with self._mutex:
             try:

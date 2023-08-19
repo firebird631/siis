@@ -81,11 +81,11 @@ class AlphaVantageFetcher(Fetcher):
 		return self._connector is not None
 
 	def has_instrument(self, instrument, fetch_option="") -> bool:
-		# we only have a list of currency so assume it can exists...
+		# we only have a list of currency so assume it can exist...
 		return True
 
 	def fetch_trades(self, market_id, from_date=None, to_date=None, n_last=None, fetch_option=""):
-		pass
+		return []
 
 	def fetch_candles(self, market_id, timeframe, from_date=None, to_date=None, n_last=None, fetch_option=""):
 		candles = []

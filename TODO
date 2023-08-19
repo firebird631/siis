@@ -35,9 +35,9 @@ Sum order :
             - quote free + volume executé en quote
             - asset update signal
 
-#125 --object=profile-for-account:\<account-id\> pour supprimer les data de strategy
+- option --object=profile-for-account:\<account-id\> pour supprimer les data de strategy
 
-#127 dans le cadre du reduce :
+- dans le cadre du reduce :
     base trader : OK (tester)
     position trade : OK (tester)
     position : update profit and loss doit tenir compte du realized PNL
@@ -55,15 +55,7 @@ Sum order :
 # WIP #
 #######
 
-- Finir gestion de reco(ws) des trades orders states
-    - quelle gestion du timestamp du dernier event recu
-    - au timestamp de reco subscribed a la WS
-    - soit mise en cache et les strategies trader viennent chercher les info
-      avec un get_order_info et si cache renvoyer le cache pour eviter des API call a outrance
-    - soit avec un replay des event cote watcher
-        - mais donc faire un call manuel apres un load des trades (depuis DB ou fichier)
-            - bien fait apres la fin du load sinon les events n'auront pas d'issue
-    - est-ce que un canceled est tjs a 0 qty et donc different d'un deleted (kraken, binance...)
+- Gestion reco WS apres perte temporaire cas binance (voir comme kraken)
 
 - Dans la vue aggtrade ajouter un avg entry price et total qty par market
 

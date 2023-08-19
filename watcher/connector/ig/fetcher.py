@@ -21,7 +21,7 @@ error_logger = logging.getLogger('siis.error.fetcher.ig')
 
 class IGFetcher(Fetcher):
     """
-    IG watcher data fetcher.
+    IG history and market data fetcher.
     @note Initial limitation to 10000 candles per week.
     @warning UTC timestamp are erroneous in D, W and M because there is an issue with DST changes.
     Then have to fix that cases.

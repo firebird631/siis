@@ -31,5 +31,8 @@
     },
     "bybitfutures.com": {
         "classpath": "watcher.connector.bybitfutures.fetcher.ByBitFuturesFetcher"
+    },
+    "dukascopy.com": {
+        "classpath": "watcher.connector.dukascopy.fetcher.DukascopyFetcher"
     }
 }
