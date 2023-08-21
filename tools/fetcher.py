@@ -242,7 +242,7 @@ def do_fetcher(options):
                         # map if defined
                         target_market_id = target_markets.get(market_id)
 
-                        print("Init for %s..." % (market_id,))
+                        Terminal.inst().info("Init for %s..." % (market_id,))
 
                         if do_update:
                             # update from last entry, compute the from datetime
@@ -288,10 +288,10 @@ def do_fetcher(options):
                                                               tzinfo=UTC())
 
                         if target_broker_id and target_market_id:
-                            print("Update %s from %s to destination %s %s..." % (
+                            Terminal.inst().info("Update %s from %s to destination %s %s..." % (
                                 market_id, from_date, target_broker_id, target_market_id))
                         else:
-                            print("Update %s from %s..." % (market_id, from_date))
+                            Terminal.inst().info("Update %s from %s..." % (market_id, from_date))
 
                         fetcher.fetch_and_generate(market_id, timeframe, from_date, to_date, last, spec, cascaded,
                                                    target_broker_id=target_broker_id,

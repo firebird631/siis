@@ -41,7 +41,9 @@ MAX_PENDING_TICK = 10000
 #     @classmethod
 #     def help(cls):
 #         return ("Process the data OHLC and tick/trade/quote rebuild from a timeframe to a multiple target timeframe.",
-#                 "Specify --broker, --market, --timeframe, --from and --to date, --timeframe, and --target or --cascaded.",)
+#                 "Specify --broker, --market, --from or --update, --timeframe, --timeframe, and --target or --cascaded.",
+#                 "Optional --to date. Until datetime or now if not specified.",)
+#                 "--from or --update are mutually exclusive. If --update is defined it will update from last datetime found from source timeframe.",)
 
 #     @classmethod
 #     def detailed_help(cls):
@@ -58,16 +60,15 @@ MAX_PENDING_TICK = 10000
 
 #     def check_options(self, options):
 #         if not options.get('market') or not options.get('broker'):
+#             error_logger.error("--market and --broker parameters must be defined")
 #             return False
 
-#         if not options.get('to'):
-#             return False
-
-#         if not options.get('from') or not options.get('update'):
+#         if not options.get('from') and not options.get('update'):
+#             error_logger.error("Either --from or --update parameters must be defined")
 #             return False
 
 #         if options.get('from') and options.get('update'):            
-#             error_logger.error("Either --from or --update parameters must be defined")
+#             error_logger.error("Exclusive --from or --update parameter")
 #             return False
 
 #         return True
@@ -150,8 +151,21 @@ def do_rebuilder(options):
 
     from_date = options.get('from')
     to_date = options.get('to')
+    do_update = options.get('update', False)
 
     broker_id = options['broker']
+
+    if not options.get('market') or not options.get('broker'):
+        error_logger.error("--market and --broker parameters must be defined")
+        sys.exit(-1)
+
+    if not options.get('from') and not options.get('update'):
+        error_logger.error("Either --from or --update parameters must be defined")
+        sys.exit(-1)
+
+    if options.get('from') and options.get('update'):
+        error_logger.error("Exclusive --from or --update parameter")
+        sys.exit(-1)
 
     if not to_date:
         today = datetime.now().astimezone(UTC())
@@ -164,12 +178,31 @@ def do_rebuilder(options):
         to_date = to_date.replace(microsecond=0)
 
     if timeframe > 0 and timeframe not in GENERATED_TF:
-        logger.error("Timeframe %s is not allowed !" % timeframe_to_str(timeframe))
+        error_logger.error("Timeframe %s is not allowed !" % timeframe_to_str(timeframe))
         sys.exit(-1)
 
-    for market in options['market'].replace(' ', '').split(','):
-        if market.startswith('!') or market.startswith('*'):
-            continue
+    if '!' in options['market'] or '*' in options['market']:
+        error_logger.error("Target market are defined but market list contains special char that are not "
+                           "compatible. It needs an ordered one per one mapping.")
+        sys.exit(-1)
+
+    markets = options['market'].replace(' ', '').split(',')
+
+    for market in markets:
+        # need a from datetime and timestamp else compute from last value
+        if not from_date and do_update:
+            if timeframe == Instrument.TF_TICK:
+                # begin from last source tick/trade timestamp
+                last_tick = Database.inst().get_last_tick(broker_id, market)
+                if last_tick:
+                    from_date = datetime.utcfromtimestamp(last_tick[0]).replace(tzinfo=UTC())
+            else:
+                # begin from last source OHLC timestamp
+                last_ohlc = Database.inst().get_last_ohlc(broker_id, market, timeframe)
+                if last_ohlc:
+                    from_date = datetime.utcfromtimestamp(last_ohlc.timestamp).replace(tzinfo=UTC())
+
+        Terminal.inst().info("Rebuild from %s..." % from_date.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
         timestamp = from_date.timestamp()
         to_timestamp = to_date.timestamp()
@@ -191,16 +224,18 @@ def do_rebuilder(options):
         last_ticks = []
         last_ohlcs = {}
 
+        # need a source data streamer, either ticks or OHLCs
         if timeframe == Instrument.TF_TICK:
-            tick_streamer = Database.inst().create_tick_streamer(options['broker'], market,
-                                                                 from_date=from_date, to_date=to_date)
             ohlc_streamer = None
-        else:
-            ohlc_streamer = Database.inst().create_ohlc_streamer(options['broker'], market, timeframe,
+            tick_streamer = Database.inst().create_tick_streamer(broker_id, market,
                                                                  from_date=from_date, to_date=to_date)
+        else:
             tick_streamer = None
+            ohlc_streamer = Database.inst().create_ohlc_streamer(broker_id, market, timeframe,
+                                                                 from_date=from_date, to_date=to_date)
 
         def load_ohlc(_timestamp: float, _timeframe: float) -> Candle:
+            # inner function to retrieve to the last OHLC for each generator
             return Database.inst().get_last_ohlc_at(broker_id, market, _timeframe,
                                                     Instrument.basetime(_timeframe, _timestamp))
 
@@ -217,7 +252,7 @@ def do_rebuilder(options):
 
                         # load OHLC at the base timestamp (if exists)
                         generator.current = load_ohlc(timestamp, tf)
-                        # print(generator.current)
+                        # Terminal.inst().debug(generator.current)
 
                         # store for generation
                         last_ohlcs[tf] = []
@@ -237,7 +272,7 @@ def do_rebuilder(options):
 
             # load OHLC at the base timestamp (if exists)
             generator.current = load_ohlc(timestamp, target)
-            # print(generator.current)
+            # Terminal.inst().debug(generator.current)
 
             # store for generation
             last_ohlcs[target] = []
@@ -267,7 +302,7 @@ def do_rebuilder(options):
 
                         if candles:
                             for c in candles:
-                                store_ohlc(options['broker'], market, generator.to_tf, c)
+                                store_ohlc(broker_id, market, generator.to_tf, c)
 
                             last_ohlcs[generator.to_tf] += candles
 
@@ -278,7 +313,7 @@ def do_rebuilder(options):
 
                         if candles:
                             for c in candles:
-                                store_ohlc(options['broker'], market, generator.to_tf, c)
+                                store_ohlc(broker_id, market, generator.to_tf, c)
 
                             last_ohlcs[generator.to_tf] += candles
 

@@ -359,7 +359,8 @@ def application(argv):
 
     # @todo merge as Tool model
     if options.get('tool') == "rebuilder":
-        if options.get('market') and options.get('from') and options.get('broker') and options.get('timeframe'):
+        if options.get('market') and (options.get('from') or options.get('update')) and \
+                options.get('broker') and options.get('timeframe'):
             from tools.rebuilder import do_rebuilder
             do_rebuilder(options)
         else:

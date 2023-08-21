@@ -2,20 +2,18 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2023 Dream Overflow
 # dukascopy.com watcher implementation
-import copy
+
 import io
 import lzma
 import math
 
 import requests
 import struct
-import time
 import traceback
 
 from datetime import datetime, timedelta
 from common.utils import UTC, truncate
 from watcher.fetcher import Fetcher
-from instrument.instrument import Instrument
 
 from .symbols import DUKASCOPY_SYMBOLS_DECIMALS
 
@@ -30,6 +28,8 @@ traceback_logger = logging.getLogger('siis.traceback.fetcher.dukascopy')
 class DukascopyFetcher(Fetcher):
     """
     Dukascopy history and market data fetcher.
+
+    @todo Implement for OHLC.
 
     @note month code is 0 based
     @note url example http://datafeed.dukascopy.com/datafeed/USATECHIDXUSD/2023/07/18/16h_ticks.bi5
