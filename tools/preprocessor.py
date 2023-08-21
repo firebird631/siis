@@ -84,7 +84,7 @@ class Preprocessor(Tool):
         Terminal.inst().info("Starting strategy's service...")
         self._strategy_service = StrategyService(None, None, None, options)
 
-        markets = options['market'].split(',')
+        markets = options['market'].replace(' ', '').split(',')
 
         for market_id in markets:
             preprocessor = self.create_preprocessor()

@@ -204,7 +204,7 @@ def do_exporter(options):
     try:
         # exporting data...
         if timeframe is None:
-            for market in options['market'].split(','):
+            for market in options['market'].replace(' ', '').split(','):
                 if market.startswith('!') or market.startswith('*'):
                     continue
 
@@ -224,7 +224,7 @@ def do_exporter(options):
                 dst = None
 
         elif timeframe == Instrument.TF_TICK:
-            for market in options['market'].split(','):
+            for market in options['market'].replace(' ', '').split(','):
                 if market.startswith('!') or market.startswith('*'):
                     continue
 
@@ -244,7 +244,7 @@ def do_exporter(options):
 
         elif timeframe > 0:
             # particular ohlc
-            for market in options['market'].split(','):
+            for market in options['market'].replace(' ', '').split(','):
                 if market.startswith('!') or market.startswith('*'):
                     continue
 

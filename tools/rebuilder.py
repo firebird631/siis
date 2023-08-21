@@ -85,7 +85,7 @@ MAX_PENDING_TICK = 10000
 #         return True
 
 #     def run(self, options):
-#         markets = options['market'].split(',')
+#         markets = options['market'].replace(' ', '').split(',')
 
 #         return True
 
@@ -167,7 +167,7 @@ def do_rebuilder(options):
         logger.error("Timeframe %s is not allowed !" % timeframe_to_str(timeframe))
         sys.exit(-1)
 
-    for market in options['market'].split(','):
+    for market in options['market'].replace(' ', '').split(','):
         if market.startswith('!') or market.startswith('*'):
             continue
 

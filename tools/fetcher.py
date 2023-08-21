@@ -64,15 +64,16 @@ error_logger = logging.getLogger('siis.error.tools.fetcher')
 #             return False
 
 #         if options.get('target-market') and not options.get('target-broker'):
+#             error_logger.error("Missing --target-broker name")
 #             return False
 
 #         if options.get('target-broker') and not options.get('target-market'):
+#             error_logger.error("Missing --target-market identifier(s)")
 #             return False
 
-#         if options.get('target-broker') and type(options['target-broker']) is not str:
-#             return False
-
-#         if options.get('target-market') and type(options[target-market']) is not str:
+#         if options.get('target-market') and ('!' in options['market'] or '*' in options['market']):
+#             error_logger.error("Target market are defined but market list contains special char that are not "
+#                                "compatible. It needs an ordered one per one mapping.")
 #             return False
 
 #         return True
@@ -91,7 +92,7 @@ error_logger = logging.getLogger('siis.error.tools.fetcher')
 #         Terminal.inst().info("Starting watcher's service...")
 #         self._watcher_service = WatcherService(None, options)
 
-#         markets = options['market'].split(',')
+#         markets = options['market'].replace(' ', '').split(',')
 
 #         fetcher = watcher_service.create_fetcher(options, options['broker'])
 #         if fetcher:
@@ -170,6 +171,16 @@ def do_fetcher(options):
             except:
                 pass
 
+    if options.get('target-market') and ('!' in options['market'] or '*' in options['market']):
+        error_logger.error("Target market are defined but market list contains special char that are not "
+                           "compatible. It needs an ordered one per one mapping.")
+        sys.exit(-1)
+
+    if options.get('target-market') and options['market'].count(',') != options['target-market'].count(','):
+        error_logger.error("Target market must defines a one per one market identifier. "
+                           "Please recheck --market and --target-market parameters.")
+        sys.exit(-1)
+
     if timeframe < 0:
         error_logger.error("Invalid timeframe")
         sys.exit(-1)
@@ -198,13 +209,21 @@ def do_fetcher(options):
     if fetcher.connected:
         logger.info("Fetcher authenticated to %s, trying to collect data..." % fetcher.name)
 
-        markets = fetcher.matching_symbols_set(options['market'].split(','), fetcher.available_instruments())
-        target_markets = options.get('target-market', "").split(',')
+        markets = options['market'].replace(' ', '').split(',')
+        target_markets = {}
 
-        target_markets_it = iter(target_markets)
+        if options.get('target-market'):
+            # map targets and source because set destroy original order
+            targets = options.get('target-market', "").replace(' ', '').split(',')
+
+            for i, market in enumerate(markets):
+                target_markets[market] = targets[i]
 
         broker_id = options['broker']
         target_broker_id = options.get('target-broker')
+
+        # filters only available instruments ('*' and '!' are not compatible with target mapping)
+        markets = fetcher.matching_symbols_set(markets, fetcher.available_instruments())
 
         try:
             for market_id in markets:                
@@ -220,8 +239,8 @@ def do_fetcher(options):
                         last = options.get('last')
                         spec = options.get('spec')
 
-                        # map on the same order
-                        target_market_id = next(target_markets_it) if target_markets else None
+                        # map if defined
+                        target_market_id = target_markets.get(market_id)
 
                         print("Init for %s..." % (market_id,))
 

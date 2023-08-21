@@ -123,7 +123,7 @@ class History(Tool):
             logger.error("Missing watcher name")
             return False
 
-        markets = options['market'].split(',') if options.get('market') else None
+        markets = options['market'].replace(' ', '').split(',') if options.get('market') else None
 
         fetcher = self._watcher_service.create_fetcher(options, options['broker'])
         if fetcher:           

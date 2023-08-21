@@ -141,7 +141,7 @@ class Statistic(Tool):
         market_id = None
 
         if 'market' in options:
-            market_id = options['market'].split(',')
+            market_id = options['market'].replace(' ', '').split(',')
 
         user_closed_trades = Database.inst().get_user_closed_trades(trader_id, account_id, strategy_id,
                                                                     from_date, to_date, market_id)

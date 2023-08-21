@@ -121,6 +121,8 @@ Sum order :
 # Urgent #
 ##########
 
+- certains outils fonctionnent en multi-market list --market=A,B,C...' d'autres ne supporte qu'un seul market (check options)
+
 - auto unsubscribe chart at web client close
 - auto unsubscribe charts when no web client connected on server
 

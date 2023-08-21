@@ -67,7 +67,7 @@ class Syncer(Tool):
         Terminal.inst().info("Starting watcher's service...")
         self._watcher_service = WatcherService(None, options)
 
-        markets = options['market'].split(',')
+        markets = options['market'].replace(' ', '').split(',')
 
         watcher = self._watcher_service.create_watcher(options, options['broker'], markets)
         if watcher:

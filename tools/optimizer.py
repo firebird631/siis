@@ -228,7 +228,7 @@ def do_optimizer(options):
     try:
         # checking data integrity, gap...
         if timeframe is None:
-            for market in options['market'].split(','):
+            for market in options['market'].replace(' ', '').split(','):
                 if market.startswith('!') or market.startswith('*'):
                     continue
 
@@ -238,7 +238,7 @@ def do_optimizer(options):
                     check_ohlcs(options['broker'], market, tf, from_date, to_date)
 
         elif timeframe == Instrument.TF_TICK:
-            for market in options['market'].split(','):
+            for market in options['market'].replace(' ', '').split(','):
                 if market.startswith('!') or market.startswith('*'):
                     continue
 
@@ -248,7 +248,7 @@ def do_optimizer(options):
 
         elif timeframe > 0:
             # particular ohlc
-            for market in options['market'].split(','):
+            for market in options['market'].replace(' ', '').split(','):
                 if market.startswith('!') or market.startswith('*'):
                     continue
 
