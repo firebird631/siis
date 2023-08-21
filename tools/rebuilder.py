@@ -202,7 +202,7 @@ def do_rebuilder(options):
                 if last_ohlc:
                     from_date = datetime.utcfromtimestamp(last_ohlc.timestamp).replace(tzinfo=UTC())
 
-        Terminal.inst().info("Rebuild from %s..." % from_date.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        Terminal.inst().info("Rebuild for %s from %s..." % (market, from_date.strftime("%Y-%m-%dT%H:%M:%SZ")))
 
         timestamp = from_date.timestamp()
         to_timestamp = to_date.timestamp()
