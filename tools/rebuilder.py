@@ -189,18 +189,22 @@ def do_rebuilder(options):
     markets = options['market'].replace(' ', '').split(',')
 
     for market in markets:
-        # need a from datetime and timestamp else compute from last value
+        # need a from datetime and timestamp else compute from last value of the greatest target
         if not from_date and do_update:
-            if timeframe == Instrument.TF_TICK:
-                # begin from last source tick/trade timestamp
-                last_tick = Database.inst().get_last_tick(broker_id, market)
-                if last_tick:
-                    from_date = datetime.utcfromtimestamp(last_tick[0]).replace(tzinfo=UTC())
+            if options.get('target'):
+                # target timeframe
+                test_timeframe = TIMEFRAME_FROM_STR_MAP.get(options.get('target'))
             else:
-                # begin from last source OHLC timestamp
-                last_ohlc = Database.inst().get_last_ohlc(broker_id, market, timeframe)
-                if last_ohlc:
-                    from_date = datetime.utcfromtimestamp(last_ohlc.timestamp).replace(tzinfo=UTC())
+                # higher timeframe
+                test_timeframe = cascaded
+
+            last_ohlc = Database.inst().get_last_ohlc(broker_id, market, test_timeframe)
+            if last_ohlc:
+                from_date = datetime.utcfromtimestamp(last_ohlc.timestamp).replace(tzinfo=UTC())
+
+        if not from_date:
+            error_logger.error("Unable to find timestamp of the previous OHLC for %s !" % market)
+            continue
 
         Terminal.inst().info("Rebuild for %s from %s..." % (market, from_date.strftime("%Y-%m-%dT%H:%M:%SZ")))
 
