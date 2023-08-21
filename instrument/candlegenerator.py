@@ -158,7 +158,7 @@ class CandleGenerator(object):
         From a timeframe, create/update candle to another timeframe, that must be greater and a multiple of.
         Example of creating/updating hourly candle for 1 minute candles.
 
-        Must be called each time a new candle of the lesser timeframe is append.
+        Must be called each time a new candle of the lesser timeframe is appended.
         It only create the last or update the current candle.
 
         A non ended candle is ignored because it will false the volume.
@@ -170,7 +170,8 @@ class CandleGenerator(object):
             return None
 
         if self._from_tf != from_candle.timeframe:
-            raise ValueError("From candle must be of time unit %s but %s is provided" % (self._from_tf, from_candle.timeframe))
+            raise ValueError("From candle must be of time unit %s but %s is provided" % (
+                self._from_tf, from_candle.timeframe))
 
         if from_candle.timestamp <= self._last_timestamp:
             # already done

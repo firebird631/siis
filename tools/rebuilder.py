@@ -190,7 +190,7 @@ def do_rebuilder(options):
 
     for market in markets:
         # need a from datetime and timestamp else compute from last value of the greatest target
-        if not from_date and do_update:
+        if do_update:
             if options.get('target'):
                 # target timeframe
                 test_timeframe = TIMEFRAME_FROM_STR_MAP.get(options.get('target'))
@@ -201,6 +201,7 @@ def do_rebuilder(options):
             last_ohlc = Database.inst().get_last_ohlc(broker_id, market, test_timeframe)
             if last_ohlc:
                 from_date = datetime.utcfromtimestamp(last_ohlc.timestamp).replace(tzinfo=UTC())
+                print(last_ohlc.volume)
 
         if not from_date:
             error_logger.error("Unable to find timestamp of the previous OHLC for %s !" % market)
@@ -243,6 +244,23 @@ def do_rebuilder(options):
             return Database.inst().get_last_ohlc_at(broker_id, market, _timeframe,
                                                     Instrument.basetime(_timeframe, _timestamp))
 
+        def finalize_generators():
+            # need to complete with the current OHLC and store them
+            for _generator in generators:
+                if _generator.from_tf > 0:
+                    # retrieve the 'from' generator and update from its current candle
+                    for gen in generators:
+                        if gen.to_tf == _generator.from_tf:
+                            _candles = _generator.generate_from_candles([gen.current], False)
+                            if _candles:
+                                for _c in _candles:
+                                    store_ohlc(broker_id, market, _generator.to_tf, _c)
+                            break
+
+                if _generator.current:
+                    # and store current candle
+                    store_ohlc(broker_id, market, _generator.to_tf, _generator.current)
+
         # cascaded generation of candles
         if cascaded:
             for tf in GENERATED_TF:
@@ -255,7 +273,10 @@ def do_rebuilder(options):
                         from_tf = tf
 
                         # load OHLC at the base timestamp (if exists)
-                        generator.current = load_ohlc(timestamp, tf)
+                        # not loaded but preferred to regenerate because else volume are accumulated again
+                        # else it will need to know the exact last timestamp of used base timeframe,
+                        # and it is not possible to find this information otherwise than to store it somewhere
+                        # generator.current = load_ohlc(timestamp, tf)
                         # Terminal.inst().debug(generator.current)
 
                         # store for generation
@@ -275,7 +296,8 @@ def do_rebuilder(options):
             generators.append(generator)
 
             # load OHLC at the base timestamp (if exists)
-            generator.current = load_ohlc(timestamp, target)
+            # @see row 276 for reason of comment
+            # generator.current = load_ohlc(timestamp, target)
             # Terminal.inst().debug(generator.current)
 
             # store for generation
@@ -343,6 +365,8 @@ def do_rebuilder(options):
                 while Database.inst().num_pending_ticks_storage() > TICK_STORAGE_DELAY:
                     time.sleep(TICK_STORAGE_DELAY)  # wait a little before continue
 
+            finalize_generators()
+
             if progression < 100:
                 Terminal.inst().info("100%% on %s, %s ticks/trades for last %s minutes, current total of %s..." % (
                     format_datetime(timestamp), count, iterate, total_count))
@@ -399,6 +423,8 @@ def do_rebuilder(options):
                 if len(ohlcs) == 0:
                     # no date for this frame, jump to next one
                     timestamp += timeframe * 100
+
+            finalize_generators()
 
             if progression < 100:
                 Terminal.inst().info("100%% on %s,  %s OHLCs for last bulk of %s OHLCs, current total of %s..." % (
