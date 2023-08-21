@@ -231,8 +231,8 @@ def do_fetcher(options):
                 # map if defined
                 target_market_id = target_markets.get(market_id)
 
-                if not fetcher.has_instrument(target_market_id or market_id, options.get('spec')):
-                    logger.error("Market %s not found !" % (target_market_id or market_id,))
+                if not fetcher.has_instrument(market_id, options.get('spec')):
+                    logger.error("Market %s not found !" % market_id)
 
                 # install market or fetch history
                 if install_market:
