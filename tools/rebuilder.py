@@ -389,9 +389,11 @@ def do_rebuilder(options):
                     iterate = 0
 
                 if timestamp > to_timestamp:
+                    # last timestamp is over to_date, stop here
                     break
 
-                if count == 0:
+                if len(ohlcs) == 0:
+                    # no date for this frame, jump to next one
                     timestamp += timeframe * 100
 
             if progression < 100:
