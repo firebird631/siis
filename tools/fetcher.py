@@ -186,6 +186,7 @@ def do_fetcher(options):
         sys.exit(-1)
 
     do_update = False
+    install_market = options.get('install-market', False)
 
     if options.get('update'):
         # if options.get('from'):
@@ -226,76 +227,77 @@ def do_fetcher(options):
         markets = fetcher.matching_symbols_set(markets, fetcher.available_instruments())
 
         try:
-            for market_id in markets:                
-                if not fetcher.has_instrument(market_id, options.get('spec')):
-                    logger.error("Market %s not found !" % (market_id,))
+            for market_id in markets:
+                # map if defined
+                target_market_id = target_markets.get(market_id)
+
+                if not fetcher.has_instrument(target_market_id or market_id, options.get('spec')):
+                    logger.error("Market %s not found !" % (target_market_id or market_id,))
+
+                # install market or fetch history
+                if install_market:
+                    fetcher.install_market(market_id)
                 else:
-                    if options.get('install-market', False):
-                        fetcher.install_market(market_id)
-                    else:
-                        # reset from initials options
-                        from_date = options.get('from')
-                        to_date = options.get('to')
-                        last = options.get('last')
-                        spec = options.get('spec')
+                    # reset from initials options
+                    from_date = options.get('from')
+                    to_date = options.get('to')
+                    last = options.get('last')
+                    spec = options.get('spec')
 
-                        # map if defined
-                        target_market_id = target_markets.get(market_id)
+                    Terminal.inst().info("Init for %s..." % (market_id,))
 
-                        Terminal.inst().info("Init for %s..." % (market_id,))
-
-                        if do_update:
-                            # update from last entry, compute the from datetime
-                            if timeframe <= Instrument.TF_TICK:
-                                # get last datetime from tick storage and add 1 millisecond
-                                if target_broker_id and target_market_id:
-                                    last_tick = Database.inst().get_last_tick(target_broker_id, target_market_id)
-                                else:
-                                    last_tick = Database.inst().get_last_tick(broker_id, market_id)
-
-                                next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
-
-                                if next_date:
-                                    from_date = next_date
-
-                                if not from_date:
-                                    # or fetch the complete current month else use the from date
-                                    from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0,
-                                                              tzinfo=UTC())
+                    if do_update:
+                        # update from last entry, compute the from datetime
+                        if timeframe <= Instrument.TF_TICK:
+                            # get last datetime from tick storage and add 1 millisecond
+                            if target_broker_id and target_market_id:
+                                last_tick = Database.inst().get_last_tick(target_broker_id, target_market_id)
                             else:
-                                # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
-                                if target_broker_id and target_market_id:
-                                    last_ohlc = Database.inst().get_last_ohlc(
-                                        target_broker_id, target_market_id, timeframe)
-                                else:
-                                    last_ohlc = Database.inst().get_last_ohlc(broker_id, market_id, timeframe)
+                                last_tick = Database.inst().get_last_tick(broker_id, market_id)
 
-                                if last_ohlc:
-                                    # if cascaded is defined, then we need more past data to have a full range
-                                    # (until 7x1d for the week, until 4x1h for the 4h...)
-                                    if cascaded:
-                                        last_timestamp = Instrument.basetime(cascaded, last_ohlc.timestamp)
-                                    else:
-                                        last_timestamp = last_ohlc.timestamp
+                            next_date = datetime.fromtimestamp(last_tick[0] + 0.001, tz=UTC()) if last_tick else None
 
-                                    last_date = datetime.fromtimestamp(last_timestamp, tz=UTC())
+                            if next_date:
+                                from_date = next_date
 
-                                    from_date = last_date
-
-                                if not from_date:
-                                    # or fetch the complete current month else use the from date
-                                    from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0,
-                                                              tzinfo=UTC())
-
-                        if target_broker_id and target_market_id:
-                            Terminal.inst().info("Update %s from %s to destination %s %s..." % (
-                                market_id, from_date, target_broker_id, target_market_id))
+                            if not from_date:
+                                # or fetch the complete current month else use the from date
+                                from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0,
+                                                          tzinfo=UTC())
                         else:
-                            Terminal.inst().info("Update %s from %s..." % (market_id, from_date))
+                            # get last datetime from OHLCs DB, and always overwrite it because if it was not closed
+                            if target_broker_id and target_market_id:
+                                last_ohlc = Database.inst().get_last_ohlc(
+                                    target_broker_id, target_market_id, timeframe)
+                            else:
+                                last_ohlc = Database.inst().get_last_ohlc(broker_id, market_id, timeframe)
 
-                        fetcher.fetch_and_generate(market_id, timeframe, from_date, to_date, last, spec, cascaded,
-                                                   target_broker_id=target_broker_id,
-                                                   target_market_id=target_market_id)
+                            if last_ohlc:
+                                # if cascaded is defined, then we need more past data to have a full range
+                                # (until 7x1d for the week, until 4x1h for the 4h...)
+                                if cascaded:
+                                    last_timestamp = Instrument.basetime(cascaded, last_ohlc.timestamp)
+                                else:
+                                    last_timestamp = last_ohlc.timestamp
+
+                                last_date = datetime.fromtimestamp(last_timestamp, tz=UTC())
+
+                                from_date = last_date
+
+                            if not from_date:
+                                # or fetch the complete current month else use the from date
+                                from_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0,
+                                                          tzinfo=UTC())
+
+                    if target_broker_id and target_market_id:
+                        Terminal.inst().info("Update %s from %s to destination %s %s..." % (
+                            market_id, from_date, target_broker_id, target_market_id))
+                    else:
+                        Terminal.inst().info("Update %s from %s..." % (market_id, from_date))
+
+                    fetcher.fetch_and_generate(market_id, timeframe, from_date, to_date, last, spec, cascaded,
+                                               target_broker_id=target_broker_id,
+                                               target_market_id=target_market_id)
 
                 if delay > 0:
                     time.sleep(delay)
