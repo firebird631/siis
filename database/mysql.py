@@ -207,6 +207,31 @@ class MySql(Database):
 
         return None
 
+    def get_last_ohlc_at(self, broker_id: str, market_id: str, timeframe: float, timestamp: float):
+        cursor = self._db.cursor()
+
+        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp = %s""" % (
+                            broker_id, market_id, timeframe, int(timestamp * 1000.0)))
+
+        row = cursor.fetchone()
+
+        if row:
+            timestamp = float(row[0]) * 0.001  # to float second timestamp
+            ohlc = Candle(timestamp, timeframe)
+
+            ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+
+            ohlc.set_spread(float(row[5]))
+            ohlc.set_volume(float(row[6]))
+
+            if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
+                ohlc.set_consolidated(False)  # current
+
+            return ohlc
+
+        return None
+
     def get_user_closed_trades(self, broker_id, account_id, strategy_id, from_date, to_date, market_id=None):
         # @todo
         return None

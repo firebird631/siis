@@ -29,7 +29,7 @@ class CandleGenerator(object):
     @property
     def current(self):
         """
-        If exists returns the current non closed candle.
+        If exists returns the current non-closed candle.
         """
         return self._candle
 

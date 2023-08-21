@@ -13,7 +13,7 @@ from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, format_d
 from terminal.terminal import Terminal
 from database.database import Database
 
-from instrument.instrument import Instrument
+from instrument.instrument import Instrument, Candle
 from instrument.candlegenerator import CandleGenerator
 
 import logging
@@ -28,13 +28,11 @@ GENERATED_TF = [60, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60
 TICK_STORAGE_DELAY = 0.05  # 50ms
 MAX_PENDING_TICK = 10000
 
+
 # class Rebuilder(Tool):
 #     """
-#     Rebuild a range of OHLCs from a sub-multiple of a timeframe and store them into the local DB.
-#     Note than the start date must start correctly for the target timeframe.
-#     For exemple, think to includes the first day of a week, when rebuild 1W from 1D, same for 4H from 1H,
-#     that will need to be modulo the previous 4H OHLC.
-#     """ 
+#     For generated timeframe it tries to reload the current OHLC for each timeframe generator if exists.
+#     """
 
 #     @classmethod
 #     def alias(cls):
@@ -153,6 +151,8 @@ def do_rebuilder(options):
     from_date = options.get('from')
     to_date = options.get('to')
 
+    broker_id = options['broker']
+
     if not to_date:
         today = datetime.now().astimezone(UTC())
 
@@ -192,12 +192,18 @@ def do_rebuilder(options):
         last_ohlcs = {}
 
         if timeframe == Instrument.TF_TICK:
-            tick_streamer = Database.inst().create_tick_streamer(options['broker'], market, from_date=from_date, to_date=to_date)
+            tick_streamer = Database.inst().create_tick_streamer(options['broker'], market,
+                                                                 from_date=from_date, to_date=to_date)
             ohlc_streamer = None
         else:
-            ohlc_streamer = Database.inst().create_ohlc_streamer(options['broker'], market, timeframe, from_date=from_date, to_date=to_date)
+            ohlc_streamer = Database.inst().create_ohlc_streamer(options['broker'], market, timeframe,
+                                                                 from_date=from_date, to_date=to_date)
             tick_streamer = None
-    
+
+        def load_ohlc(_timestamp: float, _timeframe: float) -> Candle:
+            return Database.inst().get_last_ohlc_at(broker_id, market, _timeframe,
+                                                    Instrument.basetime(_timeframe, _timestamp))
+
         # cascaded generation of candles
         if cascaded:
             for tf in GENERATED_TF:
@@ -205,8 +211,13 @@ def do_rebuilder(options):
                     # from timeframe greater than initial
                     if tf <= cascaded:
                         # until max cascaded timeframe
-                        generators.append(CandleGenerator(from_tf, tf))
+                        generator = CandleGenerator(from_tf, tf)
+                        generators.append(generator)
                         from_tf = tf
+
+                        # load OHLC at the base timestamp (if exists)
+                        generator.current = load_ohlc(timestamp, tf)
+                        # print(generator.current)
 
                         # store for generation
                         last_ohlcs[tf] = []
@@ -221,7 +232,12 @@ def do_rebuilder(options):
                     timeframe_to_str(target), timeframe_to_str(timeframe)))
                 sys.exit(-1)
 
-            generators.append(CandleGenerator(timeframe, target))
+            generator = CandleGenerator(timeframe, target)
+            generators.append(generator)
+
+            # load OHLC at the base timestamp (if exists)
+            generator.current = load_ohlc(timestamp, target)
+            # print(generator.current)
 
             # store for generation
             last_ohlcs[target] = []

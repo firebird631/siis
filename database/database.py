@@ -531,6 +531,10 @@ class Database(object):
         """Load and return only the last found and most recent stored OHLC from a specific timeframe."""
         return None
 
+    def get_last_ohlc_at(self, broker_id: str, market_id: str, timeframe: float, timestamp: float):
+        """Load and return the single OHLC found at given timestamp in seconds from a specific timeframe."""
+        return None
+
     def get_user_closed_trades(self, broker_id: str, account_id: str, strategy_id: str,
                                from_date: datetime, to_date: datetime, market_id: Optional[str] = None):
         """
