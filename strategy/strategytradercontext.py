@@ -490,6 +490,8 @@ class StrategyTraderContext(StrategyTraderContextBase):
     PRICE_HMA = 9
     PRICE_VOL_SR = 10
     PRICE_KIJUN = 11
+    PRICE_BEST1 = 12
+    PRICE_BEST2 = 13
 
     PRICE = {
         'none': PRICE_NONE,
@@ -503,7 +505,9 @@ class StrategyTraderContext(StrategyTraderContextBase):
         'cur-atrsr': PRICE_CUR_ATR_SR,
         'hma': PRICE_HMA,
         'vol-sr': PRICE_VOL_SR,
-        'kijun': PRICE_KIJUN
+        'kijun': PRICE_KIJUN,
+        'best+1': PRICE_BEST1,
+        'best+2': PRICE_BEST2
     }
 
     PRICE_FROM_STR_MAP = {v: k for k, v in PRICE.items()}

@@ -201,7 +201,7 @@ def do_rebuilder(options):
             last_ohlc = Database.inst().get_last_ohlc(broker_id, market, test_timeframe)
             if last_ohlc:
                 from_date = datetime.utcfromtimestamp(last_ohlc.timestamp).replace(tzinfo=UTC())
-                print(last_ohlc.volume)
+                # Terminal.inst().debug(last_ohlc.volume)
 
         if not from_date:
             error_logger.error("Unable to find timestamp of the previous OHLC for %s !" % market)
