@@ -1455,7 +1455,7 @@ class Instrument(object):
         elif self._unit_type == Instrument.UNIT_CONTRACTS:
             return quantity * (self._lot_size * self._contract_size / self._value_per_pip * direction * (last_price - initial_price))
         elif self._unit_type == Instrument.UNIT_SHARES:
-            return quantity * (last_price - initial_price)
+            return quantity * (last_price - initial_price) * direction
         elif self._unit_type == Instrument.UNIT_INVERSE:
             return quantity * (self._lot_size * self._contract_size) * direction * (1.0 / initial_price - 1.0 / last_price)
         else:

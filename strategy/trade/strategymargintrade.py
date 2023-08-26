@@ -29,7 +29,7 @@ class StrategyMarginTrade(StrategyTrade):
     This type of trade is related to margin trading market, allowing or not hedging, where there is a
     position identifier per trade, but generally in the same direction (no hedging) because of the FIFO.
 
-    @todo could be renamed to StrategyMarginFifoTrade
+    @todo could be renamed to StrategyMarginFifoTrade or StrategyFifoPositionTrade
     @todo update as StrategyIndMarginTrade for stop/limit_order_exec and mgmt
     @todo have to check about position_updated qty with direction maybe or take care to have trade signal and 
         distinct entry from exit

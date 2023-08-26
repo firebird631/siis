@@ -163,6 +163,8 @@ Sum order :
 # Bonus #
 #########
 
+- Dans la state view ajouter un flag pour dire qu'un training est en cours
+
 - Ne pas utiliser l'api-key/auth en paper-mode a finir pour binance et binancefutures
 - Ne pas utiliser l'api-key/auth en paper-mode a finir pour bitmex
 

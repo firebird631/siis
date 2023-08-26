@@ -19,10 +19,9 @@ logger = logging.getLogger('siis.trader.papertrader.position')
 def open_position(trader, order, market, open_exec_price):
     """
     Execute the order for margin position.
+    @note Not currently used because papertradermargin.exec_margin_order has the same effect in that case.
+    @note Must be mutex locked.
     """
-    current_position = None
-    positions = []
-
     trader.lock()
 
     # get a new distinct position id
@@ -94,7 +93,8 @@ def open_position(trader, order, market, open_exec_price):
     }
 
     # signal as watcher service (opened + fully traded qty)
-    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (order.symbol, order_data, order.ref_order_id))
+    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_OPENED, trader.name, (
+        order.symbol, order_data, order.ref_order_id))
 
     order_data = {
         'id': order.order_id,
@@ -118,7 +118,8 @@ def open_position(trader, order, market, open_exec_price):
         'commission-asset': trader.account.currency
     }
 
-    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (order.symbol, order_data, order.ref_order_id))
+    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
+        order.symbol, order_data, order.ref_order_id))
 
     #
     # position signal
@@ -139,10 +140,12 @@ def open_position(trader, order, market, open_exec_price):
     }
 
     # signal as watcher service (position opened fully completed)
-    trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_OPENED, trader.name, (order.symbol, position_data, order.ref_order_id))
+    trader.service.watcher_service.notify(Signal.SIGNAL_POSITION_OPENED, trader.name, (
+        order.symbol, position_data, order.ref_order_id))
 
     # and then deleted order
-    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (order.symbol, order.order_id, ""))
+    trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_DELETED, trader.name, (
+        order.symbol, order.order_id, ""))
 
     return True
 
@@ -151,6 +154,7 @@ def close_position(trader, market, position, close_exec_price, order_type=Order.
     """
     Close a position.
     @todo Take care if called after a reduce_position then need avg exit price, previous rpnl...
+    @note Must be mutex locked.
     """
     if not position:
         return False
@@ -339,6 +343,7 @@ def reduce_position(trader, market, position, close_exec_price, reduce_quantity)
     """
     Reduce a position.
     Very similar to close_position above but manage a partial amount.
+    @note Must be mutex locked.
 
     @todo Must to compute and update the avg exit price of the position and adjust PNL.
     """
@@ -525,7 +530,7 @@ def reduce_position(trader, market, position, close_exec_price, reduce_quantity)
         order.symbol, order.order_id, ""))
 
     if position.quantity == 0:
-        # @todo could be a avg exit price
+        # @todo could be an avg exit price
         position.exit(exec_price)
 
     return True

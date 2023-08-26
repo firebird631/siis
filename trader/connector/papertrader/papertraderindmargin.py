@@ -16,6 +16,8 @@ def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_pric
     """
     Execute the order for indivisible margin position.
     @note No hedging possible.
+    @note Must be mutex locked.
+    @note If hedging there must be two distinct positions identifiers (+BTCUSDT or -BTCUSDT for example)
     @todo update to support only indivisible margin order
     @todo partial reduce position (avg exit price, qty of position)
     @warning commission amount cannot be correct if commission/settlement currency is not stable (contract size missing)

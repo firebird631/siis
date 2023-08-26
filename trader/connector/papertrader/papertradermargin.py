@@ -18,29 +18,40 @@ logger = logging.getLogger('siis.trader.papertrader.margin')
 def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
     """
     Execute the order for margin position.
+    @note Must be mutex locked.
     @todo support of hedging else reduce first the opposite direction positions (FIFO method)
     @todo partial reduce position (avg exit price, qty of position)
     """
     current_position = None
-    positions = []
+    positions = []   # sorted most recent firsts
     result = False
 
     trader.lock()
 
     if order.position_id:
+        # acts on a specific position
         current_position = trader._positions.get(order.position_id)
-    else:
+
+    elif market.fifo_position:
+        # or retrieve position of the same market on any directions FIFO ordering (using created timestamp)
         # @todo
         pass
-        # # position of the same market on any directions
-        # for k, pos in trader._positions.items():
-        #     if pos.symbol == order.symbol:
-        #         positions.append(pos)
+        if order.hedging and market.hedging:
+            # filter position by symbol, direction and only if active
+            for k, pos in trader._positions.items():
+                if pos.symbol == order.symbol and pos.direction == order.direction and pos.quantity > 0:
+                    positions.append(pos)
+        else:
+            for k, pos in trader._positions.items():
+                if pos.symbol == order.symbol and pos.quantity > 0:
+                    positions.append(pos)
 
-        # if order.hedging and market.hedging:
-        #     pass
-        # else:
-        #     current_position = positions[-1] if positions else None
+        # order them by created timestamp
+        positions.sort(key=lambda p: p.created_time, reverse=True)
+
+        # begin with the older active position
+        if positions:
+            current_position = positions.pop()
 
     if current_position and current_position.is_opened():
         # increase or reduce the current position
@@ -357,7 +368,8 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
 
         # long are open on ask and short on bid
         position.entry_price = market.open_exec_price(order.direction)
-        # logger.debug("%s %f %f %f %i" % ("el" if position.direction>0 else "es", position.entry_price, market.bid, market.ask, market.bid < market.ask))
+        # logger.debug("%s %f %f %f %i" % ("el" if position.direction>0 else "es", position.entry_price,
+        #     market.bid, market.ask, market.bid < market.ask))
 
         # transaction time is creation position date time
         order.transact_time = position.created_time
@@ -428,7 +440,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
             'commission-asset': commission_asset
         }
 
-        #logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))
+        # logger.info("%s %s %s" % (position.entry_price, position.quantity, order.direction))
         trader.service.watcher_service.notify(Signal.SIGNAL_ORDER_TRADED, trader.name, (
             order.symbol, order_data, order.ref_order_id))
 

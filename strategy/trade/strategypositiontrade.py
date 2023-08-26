@@ -26,10 +26,13 @@ class StrategyPositionTrade(StrategyTrade):
     """
     Specialization for margin individual position trading. 
 
-    This type of trade is related to margin trading market, allowing hedging.
-    Works with CFD brokers (ig...).
+    This type of trade is related to margin trading market, allowing hedging and multiple distinct positions on the
+    same instrument. It works with CFD brokers (ig...).
 
-    Hedging must be true by to manage position into the two direction at the same time.
+    It considers always using hedging capacity and forced-position when opening a new trade.
+    That means it does not work on compensate-position mode neither FIFO position reduction
+
+    Hedging support must be true to manage positions into the two direction at the same time.
 
     @note Fees are generally included into the spread. But need to implement notional-value and commissions for
         clearing futures exchanges.

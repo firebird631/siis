@@ -914,11 +914,13 @@ class Market(object):
         if self._unit_type == Market.UNIT_AMOUNT:
             return quantity * (self._lot_size * self._contract_size) * direction * (last_price - initial_price)
         elif self._unit_type == Market.UNIT_CONTRACTS:
-            return quantity * (self._lot_size * self._contract_size / self._value_per_pip * direction * (last_price - initial_price))
+            return quantity * (self._lot_size * self._contract_size / self._value_per_pip * direction * (
+                    last_price - initial_price))
         elif self._unit_type == Market.UNIT_SHARES:
-            return quantity * (last_price - initial_price)
+            return quantity * (last_price - initial_price) * direction
         elif self._unit_type == Market.UNIT_INVERSE:
-            return quantity * (self._lot_size * self._contract_size) * direction * (1.0 / initial_price - 1.0 / last_price)
+            return quantity * (self._lot_size * self._contract_size) * direction * (
+                    1.0 / initial_price - 1.0 / last_price)
         else:
             return quantity * (self._lot_size * self._contract_size) * direction * (last_price - initial_price)
 
