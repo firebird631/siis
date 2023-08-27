@@ -121,6 +121,8 @@ Sum order :
 # Urgent #
 ##########
 
+- def update_exit_qty(order_exec): fixer le avg exit price car peut être sur plusieurs ordre de sortie
+
 - certains outils fonctionnent en multi-market list --market=A,B,C...' d'autres ne supporte qu'un seul market (check options)
 
 - auto unsubscribe chart at web client close

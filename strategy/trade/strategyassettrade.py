@@ -861,15 +861,18 @@ class StrategyAssetTrade(StrategyTrade):
                     # self.pl += ((data['exec-price'] * _filled) - (self.aep * _filled)) / (self.aep * self.e)
 
                     # average exit price
-                    self.axp = instrument.adjust_price(((self.axp * self.x) + (
-                            data['exec-price'] * _filled)) / (self.x + _filled))
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * _filled)) / (
+                            self.x + _filled))
 
                 elif data.get('avg-price') is not None and data['avg-price'] > 0:
                     # average price is directly given
                     # self.pl = ((data['avg-price'] * (self.x + _filled)) - (self.aep * _filled)) / (self.aep * self.e)
 
-                    # average exit price
-                    self.axp = data['avg-price']
+                    # in that case we have avg-price already computed but not sufficient in case of
+                    # multiple orders for exit
+                    # self.axp = data['avg-price']
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (data['avg-price'] * _filled)) / (
+                            self.x + _filled))
 
                 if _filled > 0:
                     # update realized exit qty

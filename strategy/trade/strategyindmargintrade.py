@@ -578,6 +578,7 @@ class StrategyIndMarginTrade(StrategyTrade):
                     if not self.eot:
                         self.eot = data['timestamp']
 
+                    # but might not have stop-loss neither take-profit for this type of trade
                     if data.get('stop-loss'):
                         self.sl = data['stop-loss']
 
@@ -660,15 +661,16 @@ class StrategyIndMarginTrade(StrategyTrade):
                     # recompute profit-loss
                     # self.pl = self.dir * (data['avg-price'] - self.aep) / self.aep
 
-                    # in that case we have avg-price already computed
-                    self.axp = data['avg-price']
+                    # in that case we have avg-price already computed but not sufficient in case of
+                    # multiple orders for exit
+                    # self.axp = data['avg-price']
+                    self.axp = instrument.adjust_price(((self.axp * self.x) + (data['avg-price'] * _filled)) / (
+                            self.x + _filled))
 
                 elif data.get('exec-price') is not None and data['exec-price'] > 0:
                     # increase/decrease profit/loss (over entry executed quantity)
-                    # if self.dir > 0:
-                    #     self.pl += self.dir * ((data['exec-price'] * _filled) - (self.aep * filled)) / (self.aep * self.e)
-                    # elif self.dir < 0:
-                    #     self.pl += ((self.aep * _filled) - (data['exec-price'] * filled)) / (self.aep * self.e)
+                    # self.pl += self.dir * ((data['exec-price'] * _filled) - (self.aep * _filled)) / (
+                    #     self.aep * self.e)
 
                     # compute the average exit price
                     self.axp = instrument.adjust_price(((self.axp * self.x) + (data['exec-price'] * _filled)) / (
