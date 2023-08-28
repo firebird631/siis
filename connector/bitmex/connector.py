@@ -66,12 +66,24 @@ class Connector(object):
 
             # list all instruments
             endpoint = "/instrument/active"
-            result = self.request(path=endpoint, verb='GET')
 
-            self._all_instruments = []
+            try:
+                results = self.request(path=endpoint, verb='GET')
+            except requests.exceptions.HTTPError as e:
+                # need to reconnect
+                self._session = None
+                raise e
 
-            if isinstance(result, list):
-                for instrument in result:
+            except requests.exceptions.JSONDecodeError as e:
+                # need to reconnect
+                self._session = None
+                raise e
+
+            if isinstance(results, list):
+                # reset here in case to keep previous list in case of error
+                self._all_instruments = []
+
+                for instrument in results:
                     if instrument['typ'] in ('FFCCSX', 'FFWCSX'):
                         self._all_instruments.append(instrument['symbol'])
 
@@ -198,7 +210,7 @@ class Connector(object):
                 # Retry the request
                 return retry()
 
-            # 503 - BitMEX temporary downtime, likely due to a deploy. Try again
+            # 503 - BitMEX temporary downtime, likely due to a deployment. Try again
             elif response.status_code == 503:
                 logger.warning("Unable to contact the BitMEX API (503), retrying.")
                 logger.warning("Request: %s \n %s" % (url, json.dumps(postdict)))
@@ -220,12 +232,12 @@ class Connector(object):
 
                     for i, order in enumerate(order_results):
                         if (order['orderQty'] != abs(postdict['orderQty']) or
-                            order['side'] != ('Buy' if postdict['orderQty'] > 0 else 'Sell') or
-                            order['price'] != postdict['price'] or
-                            order['symbol'] != postdict['symbol']):
+                                order['side'] != ('Buy' if postdict['orderQty'] > 0 else 'Sell') or
+                                order['price'] != postdict['price'] or
+                                order['symbol'] != postdict['symbol']):
 
                             raise Exception('Attempted to recover from duplicate clOrdID, but order returned from API ' +
-                                        'did not match POST.\nPOST data: %s\nReturned order: %s' % (
+                                            'did not match POST.\nPOST data: %s\nReturned order: %s' % (
                                                 json.dumps(orders[i]), json.dumps(order)))
 
                     # All good
@@ -253,9 +265,13 @@ class Connector(object):
             time.sleep(2)
             return retry()
 
+        except requests.exceptions.JSONDecodeError as e:
+            logger.warning("Invalid JSON format request data response for BitMEX API. Retrying. ")
+
         # Reset retry counter on success
         self._retries = 0
 
+        # can raise a requests.exceptions.JSONDecodeError
         return response.json()
 
     @property
@@ -311,6 +327,10 @@ class Connector(object):
                 retry_count += 1
                 if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
                     raise e
+            except requests.exceptions.JSONDecodeError as e:
+                retry_count += 1
+                if retry_count > Connector.TRADES_HISTORY_MAX_RETRY:
+                    raise e
 
             for c in results:
                 if not c['timestamp']:
@@ -343,10 +363,10 @@ class Connector(object):
                     direction = -1
 
                 yield (int(dt.timestamp()*1000),  # integer ms
-                    c['price'], c['price'],  # bid, ask
-                    c['price'],  # last
-                    c['size'],  # volume
-                    direction)
+                       c['price'], c['price'],  # bid, ask
+                       c['price'],  # last
+                       c['size'],  # volume
+                       direction)
 
                 last_datetime = dt
                 last_trade_id = c['trdMatchID']
@@ -415,6 +435,10 @@ class Connector(object):
                 retry_count += 1
                 if retry_count > Connector.CANDLES_HISTORY_MAX_RETRY:
                     raise e
+            except requests.exceptions.JSONDecodeError as e:
+                retry_count += 1
+                if retry_count > Connector.CANDLES_HISTORY_MAX_RETRY:
+                    raise e
 
             for c in results:
                 dt = self._parse_datetime(c['timestamp']).replace(tzinfo=UTC())
@@ -458,7 +482,12 @@ class Connector(object):
             'depth': depth or 0,
         }
 
-        results = self.request(path=endpoint, query=params, verb='GET')
+        try:
+            results = self.request(path=endpoint, query=params, verb='GET')
+        except requests.exceptions.HTTPError as e:
+            results = []
+        except requests.exceptions.JSONDecodeError as e:
+            results = []
 
         buys = []
         sells = []
