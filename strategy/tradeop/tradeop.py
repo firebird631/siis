@@ -85,7 +85,7 @@ class TradeOp(object):
 
     def init(self, parameters: dict):
         """
-        Override this method to setup operation parameters from the parameters dict.
+        Override this method to set up operation parameters from the parameter's dict.
         """
         pass
 

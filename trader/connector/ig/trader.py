@@ -323,20 +323,17 @@ class IGTrader(Trader):
                 # ref_order_id results['dealReference']
                 order.set_position_id(results['dealId'])
 
-                # but it's in local account timezone, not createdDateUTC...
-                # but API v2 provides that
-                # @todo look with header v=2 in place of v=1
+                # date with API v2 provides UTC
                 if results.get('date'):
-                    order.created_time = datetime.strptime(results.get('date', '1970-01-01T00:00:00.000'),
-                                                           "%Y-%m-%dT%H:%M:%S.%f").timestamp()
-                    order.transact_time = datetime.strptime(results.get('date', '1970-01-01T00:00:00.000'),
-                                                            "%Y-%m-%dT%H:%M:%S.%f").timestamp()
-                else:
-                    order.created_time = self.timestamp
-                    order.transact_time = self.timestamp
+                    order.created_time = datetime.strptime(results['date'], "%Y-%m-%dT%H:%M:%S.%f").replace(
+                        tzinfo=UTC()).timestamp()
 
-                # executed price on market order
+                if not order.created_time:
+                    order.created_time = self.timestamp
+
+                # executed price now on market
                 if order.order_type == Order.ORDER_MARKET:
+                    order.transact_time = self.timestamp
                     order.set_executed(order.quantity, True, results.get('level'))
             else:
                 error_logger.error("Trader %s rejected order %s of %s %s - cause : %s !" % (

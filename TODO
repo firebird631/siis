@@ -121,6 +121,8 @@ Sum order :
 # Urgent #
 ##########
 
+- transaction/rollback sur strategy trader save (on save tout ou rien sinon c'est inconsistant)
+
 - def update_exit_qty(order_exec): fixer le avg exit price car peut être sur plusieurs ordre de sortie
 
 - certains outils fonctionnent en multi-market list --market=A,B,C...' d'autres ne supporte qu'un seul market (check options)

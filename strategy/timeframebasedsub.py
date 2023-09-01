@@ -47,10 +47,10 @@ class TimeframeBasedSub(object):
     price: Union[PriceIndicator, None]
     volume: Union[VolumeIndicator, None]
 
-    open_price: Union[float, None]
-    close_price: Union[float, None]
-    prev_open_price: Union[float, None]
-    prev_close_price: Union[float, None]
+    open_price: Union[float, None]          # open price of the last closed candle
+    close_price: Union[float, None]         # close price of the last closed candle
+    prev_open_price: Union[float, None]     # previous open price
+    prev_close_price: Union[float, None]    # previous close price
 
     def __init__(self, strategy_trader: TimeframeBasedStrategyTrader, timeframe: float,
                  depth: int, history: int, params: dict = None):
@@ -172,8 +172,10 @@ class TimeframeBasedSub(object):
             # get just closed OHLC price and swap
             self.prev_close_price = self.close_price
             self.prev_open_price = self.open_price
-            self.close_price = self.price.close[-2]  
-            self.open_price = self.price.open[-2]
+
+            if len(self.price.close) > 1:
+                self.close_price = self.price.close[-2]
+                self.open_price = self.price.open[-2]
 
             # last closed candle processed (reset before next gen)
             # self._last_closed = False
