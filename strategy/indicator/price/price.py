@@ -21,6 +21,7 @@ class PriceIndicator(Indicator):
     PRICE_CLOSE = 0   # return close price
     PRICE_HLC3 = 1    # return (H+L+C)/3
     PRICE_OHLC4 = 2   # return (O+H+L+C)/4
+    PRICE_HL2 = 3     # return (H+L)/2
 
     __slots__ = '_method', '_prev', '_last', '_prices', '_min', '_max', '_open', '_high', '_low', '_close', \
                 '_timestamp', '_last_closed_timestamp', '_consolidated'
@@ -153,6 +154,12 @@ class PriceIndicator(Indicator):
 
             prices = (o_prices + h_prices + l_prices + c_prices) / 4.0
 
+        elif method == PriceIndicator.PRICE_HL2:
+            h_prices = np.array([x.high for x in data])
+            l_prices = np.array([x.low for x in data])
+
+            prices = (h_prices + l_prices) / 2.0
+
         return prices
 
     @staticmethod
@@ -196,6 +203,17 @@ class PriceIndicator(Indicator):
             # @todo interpolate sub_data
             prices = (o_sub_data + h_sub_data + l_sub_data + c_sub_data) / 4.0
 
+        elif method == PriceIndicator.PRICE_HL2:
+            h_prices = [x.high for x in data]
+            l_prices = [x.low for x in data]
+
+            # t_subdata = range(0,len(data),step)
+            h_sub_data = down_sample(h_prices, step) if filtering else np.array(h_prices[::step])
+            l_sub_data = down_sample(l_prices, step) if filtering else np.array(l_prices[::step])
+
+            # @todo interpolate sub_data
+            prices = (h_sub_data + l_sub_data) / 2.0
+
         return prices
 
     def compute(self, timestamp, candles):
@@ -235,7 +253,18 @@ class PriceIndicator(Indicator):
             self._open = o_prices
             self._high = h_prices
             self._low = l_prices
-            self._close = c_prices            
+            self._close = c_prices
+
+        elif self._method == PriceIndicator.PRICE_HL2:
+            h_prices = np.array([x.high for x in candles])
+            l_prices = np.array([x.low for x in candles])
+
+            self._prices = (h_prices + l_prices) / 2.0
+
+            self._open = np.array([x.open for x in candles])
+            self._high = h_prices
+            self._low = l_prices
+            self._close = np.array([x.close for x in candles])
 
         # if self._open[-1] > 5000 and self.timeframe == 86400:
         #     print(">-2 ", candles[-2], ">-1 ", candles[-1])
