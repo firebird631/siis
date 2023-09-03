@@ -40,6 +40,10 @@ class DonchianIndicator(Indicator):
         self._lows = np.empty(0)
 
     @property
+    def length(self):
+        return self._length
+
+    @property
     def prev_low(self):
         return self._prev_low
 
