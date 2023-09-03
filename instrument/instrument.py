@@ -218,7 +218,7 @@ class TradingSession:
 class Instrument(object):
     """
     Instrument is the strategy side of the market model.
-    Its a denormalized model because it duplicate some members used during strategy processing,
+    Its a denormalized model because it duplicates some members used during strategy processing,
     to avoid dealing with the trader thread/process.
 
     @member symbol str Common usual name (ex: EURUSD, BTCUSD).
@@ -334,7 +334,7 @@ class Instrument(object):
                 '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', \
                 '_base', '_quote', '_settlement', '_trade', '_orders', \
                 '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', '_lot_size', '_contract_size',  \
-                '_timezone', '_session_offset', '_session_duration', '_trading_sessions'
+                '_timezone', '_session_offset', '_trading_sessions'
 
     _watchers: Dict[int, Watcher]
     _trading_sessions: List[TradingSession]
@@ -392,7 +392,6 @@ class Instrument(object):
         # evening session from 00h00m00s000ms to 23h59m59s999ms in UTC, tuple with float time offset and time duration
         self._timezone = 0.0         # market timezone UTC+N
         self._session_offset = 0.0   # day session offset from 00:00 in seconds
-        self._session_duration = 24*60*60.0  # day session duration in seconds
 
         # allowed trading session (empty mean anytime) else must be explicit. each session is a TradingSession model.
         self._trading_sessions = []
@@ -579,17 +578,13 @@ class Instrument(object):
     def session_offset(self) -> float:
         return self._session_offset
 
-    @property
-    def session_duration(self) -> float:
-        return self._session_duration
-
     def has_trading_sessions(self) -> bool:
         return len(self._trading_sessions) > 0
 
     @property
     def trading_sessions(self) -> List[TradingSession]:
         """
-        @return: Empty list or each tuple is three values for day of week, hour of day, minute of day
+        @return: Empty list where each tuple is three values for day of week, hour of day, minute of day
         """
         return self._trading_sessions
 
@@ -1480,13 +1475,6 @@ class Instrument(object):
                 error_logger.error("Trading session offset invalid format")
             else:
                 self._session_offset = session_offset
-
-        if 'duration' in data:
-            session_duration = Instrument.duration_from_str(data['duration'])
-            if session_duration is None:
-                error_logger.error("Trading session duration invalid format")
-            else:
-                self._session_duration = session_duration
 
         if 'trading' in data:
             if type(data['trading']) is str:

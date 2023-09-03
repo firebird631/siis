@@ -232,7 +232,6 @@ class StrategyInfoRestAPI(resource.Resource):
                     'sessions': {
                         'timezone': instr.timezone,
                         'offset': instr.session_offset,
-                        'duration': instr.session_duration,
                         'trading': [t.to_dict() for t in instr.trading_sessions]
                     },
                     'trade': {
