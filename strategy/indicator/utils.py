@@ -11,6 +11,7 @@ import scipy.signal as signal
 def down_sample(data, factor, n=4, ftype='iir'):
     return signal.decimate(data, factor, n, ftype)
 
+
 def MM_n(N, data):
     """
     Calcul de la moyenne mobile sur N points.
@@ -35,7 +36,7 @@ def MMexp_n(N, data, has_previous_val = False, previous_value = 0):
     An = 2.0 / (1.0 + N)
     out = np.zeros(len(data))
 
-    if (has_previous_val):
+    if has_previous_val:
         out[0] = data[0]*An + (1-An)*previous_value 
         for (j,d) in enumerate(data[1:]):
             out[j+1] = d*An + (1-An)*out[j]
