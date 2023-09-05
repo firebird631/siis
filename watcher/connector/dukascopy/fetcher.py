@@ -153,6 +153,11 @@ class DukascopyFetcher(Fetcher):
             ask = DukascopyFetcher.fmt_price(t[2], decimal, digits)
             last = (bid + ask) * 0.5
 
+            # some markets have swapped bid/ask...
+            if ask < bid:
+                # swap ask/bid
+                ask, bid = bid, ask
+
             trades.append((
                 t[0] + base_timestamp,
                 bid,

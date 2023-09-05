@@ -119,8 +119,12 @@ class StrategyDataFeeder(object):
                 self.instrument.last_update_time = last_tick[0]
 
                 # set bid/ask from tick, but on trade data we don't have it
-                self.instrument.market_bid = last_tick[1]
-                self.instrument.market_ask = last_tick[2]
+                if last_tick[1] < last_tick[2]:
+                    self.instrument.market_bid = last_tick[1]
+                    self.instrument.market_ask = last_tick[2]
+                else:
+                    self.instrument.market_bid = last_tick[2]
+                    self.instrument.market_ask = last_tick[1]
 
             finished = self._tick_streamer.finished()
 
