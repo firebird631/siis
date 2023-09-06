@@ -15,7 +15,7 @@ logger = logging.getLogger('siis.config')
 error_logger = logging.getLogger('siis.error.config')
 
 
-def merge_parameters(default, user):
+def merge_parameters(default: dict, user: dict) -> dict:
     def merge(a, b):
         if a is not None and b is None:
             return None
@@ -72,6 +72,65 @@ def merge_parameters(default, user):
         # logger.debug(final_params['contexts'])
 
     return final_params
+
+
+def override_dot_format_parameters(src: dict, user: dict) -> dict:
+    """
+    Override default parameter by dot formatted user parameters and return new dict.
+    """
+    dst = copy.deepcopy(src)
+
+    def extract_from_dictionary(dictionary, keys_or_indexes):
+        _value = dictionary
+
+        try:
+            for key_or_index in keys_or_indexes:
+                if type(_value) is dict:
+                    _value = _value[key_or_index]
+                elif type(_value) in (list, tuple):
+                    _value = _value[int(key_or_index)]
+            return True, _value
+
+        except TypeError:
+            return False, None
+
+    def set_to_dictionary(dictionary, l_new_value, keys_or_indexes):
+        _value = dictionary
+
+        try:
+            for i, key_or_index in enumerate(keys_or_indexes):
+                if i == len(keys_or_indexes) - 1:
+                    if type(_value) is dict:
+                        _value[key_or_index] = l_new_value
+                    elif type(_value) in (list, tuple):
+                        _value[int(key_or_index)] = l_new_value
+
+                    return
+
+                if type(_value) is dict:
+                    _value = _value[key_or_index]
+                elif type(_value) in (list, tuple):
+                    _value = _value[int(key_or_index)]
+
+        except TypeError:
+            pass
+
+    for path, new_value in user.items():
+        if path.startswith('_'):
+            # commented
+            continue
+
+        split_path = path.split('.')
+
+        if not split_path:
+            continue
+
+        found, value = extract_from_dictionary(dst, split_path)
+
+        if found:
+            set_to_dictionary(dst, new_value, split_path)
+
+    return dst
 
 
 def identities(config_path):

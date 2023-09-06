@@ -11,6 +11,8 @@ from datetime import datetime
 
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
 
+from docutils.utils.math.latex2mathml import over
+
 if TYPE_CHECKING:
     from watcher.service import WatcherService
     from trader.service import TraderService
@@ -30,7 +32,7 @@ from terminal.terminal import Terminal
 
 from common.runnable import Runnable
 from common.utils import timeframe_to_str, timeframe_from_str
-from config.utils import merge_parameters, write_learning
+from config.utils import merge_parameters, write_learning, override_dot_format_parameters
 
 from common.signal import Signal
 from instrument.instrument import Instrument
@@ -263,9 +265,12 @@ class Strategy(Runnable):
         return self._parameters
 
     def specific_parameters(self, market_id: str) -> dict:
-        """Strategy trader parameters overloaded by per market-id specific if exists"""
+        """
+        Strategy trader parameters overloaded by per market-id specific if exists.
+        Policy is to override using the dot format.
+        """
         if market_id in self._parameters['markets']:
-            return merge_parameters(self._parameters, self._parameters['markets'][market_id])
+            return override_dot_format_parameters(self._parameters, self._parameters['markets'][market_id])
         else:
             return self._parameters
 
