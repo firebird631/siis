@@ -350,6 +350,13 @@ class EXEntry(EntryExit):
 
         return result
 
+    def check_spread(self, instrument: Instrument) -> bool:
+        """Compare spread from entry signal max allowed spread value, only if max-spread parameters is valid"""
+        if self.max_spread <= 0.0:
+            return True
+
+        return instrument.market_spread <= self.max_spread
+
 
 class EXTakeProfit(EntryExit):
 
