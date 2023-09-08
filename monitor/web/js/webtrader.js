@@ -922,7 +922,7 @@ $(window).ready(function() {
             // store api-key into a cookie
             setCookie('identifier', api_key, 15);
 
-            audio_notify('entry');
+            // audio_notify('entry');
         })
         .fail(function() {
             window.server['connected'] = false;
@@ -941,7 +941,8 @@ $(window).ready(function() {
             notify({'message': "Unable to obtain an auth-token !", 'type': 'error'});
             set_conn_state(-1);
 
-            // @todo reconnect
+            // retry in 15 seconds
+            setTimeout(siis_reconnect, 15000);
         });
     };
 
@@ -1024,8 +1025,8 @@ $(window).ready(function() {
             notify({'message': "Unable to obtain an auth-token !", 'title': 'Authentication"', 'type': 'error'});
             set_conn_state(-1);
 
-            // @todo reconnect
-            // reconnect();
+            // retry in 15 seconds
+            setTimeout(siis_reconnect, 15000);
         });
     };
 
@@ -1055,8 +1056,8 @@ $(window).ready(function() {
             set_conn_state(-1); // @todo should try a ping but probably unreachable
             reset_states();
 
-            // @todo reconnect if lost
-            // reconnect();
+            // retry in 15 seconds
+            setTimeout(siis_reconnect, 15000);
         };
 
         ws.onmessage = function (event) {
@@ -1088,6 +1089,14 @@ $(window).ready(function() {
         let port = parseInt(window.location.port || 80);
         return siis_connect(api_key, window.location.hostname, port, port+1);
     };
+
+    siis_reconnect = function() {
+        let identifier = getCookie('identifier');
+
+        if (identifier) {
+            get_auth_token(identifier);
+        }
+    }
 
     // update ping
     function update_states() {
