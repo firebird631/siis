@@ -81,6 +81,7 @@ class SuperTrendIndicator(Indicator):
         return self._up_trends
 
     def trend(self, last_close: float):
+        # superTrend = trendDirection == isUpTrend ? lowerBand : upperBand
         if not last_close or self._last_up <= 0 or self._last_dn <= 0:
             return 0
 
@@ -129,8 +130,28 @@ class SuperTrendIndicator(Indicator):
         c_atrs = self._coeff * ta_ATR(high, low, close, timeperiod=self._length)
         meds = (high + low) * 0.5
 
-        self._dn_trends = meds - c_atrs
-        self._up_trends = meds + c_atrs
+        lower = meds - c_atrs
+        upper = meds + c_atrs
+
+        len = c_atrs.size
+
+        if len != self._up_trends.size:
+            self._up_trends = np.zeros(len)
+            self._dn_trends = np.zeros(len)
+
+        for i in range(1, len):
+            if upper[i] < upper[i-1] or close[i-1] > upper[i-1]:
+                self._up_trends[i] = upper[i]
+            else:
+                self._up_trends[i] = upper[i-1]
+
+            if lower[i] > lower[i-1] or close[i-1] < lower[i-1]:
+                self._dn_trends[i] = lower[i]
+            else:
+                self._dn_trends[i] = lower[i-1]
+
+        self._dn_trends[0] = self._dn_trends[1]
+        self._up_trends[0] = self._up_trends[1]
 
         self._last_dn = self._dn_trends[-1]
         self._last_up = self._up_trends[-1]
