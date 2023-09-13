@@ -173,5 +173,10 @@
         "status": "load",
         "classpath": "strategy.indicator.hma3.hma3.HMA3Indicator",
         "options": {}
+    },
+    "supertrend": {
+        "status": "load",
+        "classpath": "strategy.indicator.supertrend.supertrend.SuperTrendIndicator",
+        "options": {}
     }
 }
