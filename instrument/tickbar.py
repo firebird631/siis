@@ -4,6 +4,9 @@
 # Instrument tickbar models.
 
 import logging
+
+from common.utils import timestamp_to_str
+
 logger = logging.getLogger('siis.instrument.tickbar')
 
 
@@ -132,6 +135,18 @@ class TickBarBase(object):
         #     self._ticks[pos] += volume
         # else:
         #     self._ticks.append()
+
+    #
+    # conversion
+    #
+
+    def __str__(self):
+        return "%s %s %g/%g/%g/%g %g (%g/%g)" % (
+            timestamp_to_str(self._timestamp),
+            "UP" if self._dir > 0 else "DN",
+            self._open, self._high, self._low, self._close,
+            self._volume, self._vol_bid, self._vol_ask
+        ) + (" ENDED" if self._ended else "")
 
     #
     # protected

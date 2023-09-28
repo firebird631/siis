@@ -9,6 +9,9 @@ from instrument.tickbar import TickBarBidAsk  # , TickBarVolume
 
 
 class TickBarBaseGenerator(object):
+    """
+    Base model for tick bar specialized generators.
+    """
 
     __slots__ = '_size', '_last_timestamp', '_last_consumed', '_current', '_tick_size', \
                 '_price_precision', '_tick_scale', '_num_trades'
@@ -96,6 +99,9 @@ class TickBarBaseGenerator(object):
 
 
 class TickBarRangeGenerator(TickBarBaseGenerator):
+    """
+    Specialization for common tick bar.
+    """
 
     def __init__(self, size, tick_scale=1.0):
         """
@@ -105,7 +111,8 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
 
     def _new_tickbar(self, tick):
         # complete the current tick-bar
-        self._current._ended = True
+        if self._current is not None:
+            self._current._ended = True
 
         # return the current as last completed
         last_tickbar = self._current
@@ -127,14 +134,14 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
             last_tickbar = self._new_tickbar(tick)
 
         elif tick[3] > self._current._high:
-            # is the price extend the size of the tick-bar outside of its allowed range
+            # is the price extend the size of the tick-bar outside its allowed range
             size = int((tick[3] - self._current._low) / self._tick_size) + 1
 
             if size > self._size:
                 last_tickbar = self._new_tickbar(tick)
 
         elif tick[3] < self._current._low:
-            # is the price extend the size of the tick-bar outside of its allowed range
+            # is the price extend the size of the tick-bar outside its allowed range
             size = int((self._current._high - tick[3]) / self._tick_size) + 1
 
             if size > self._size:
@@ -173,6 +180,9 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
 
 
 class TickBarReversalGenerator(TickBarBaseGenerator):
+    """
+    Variant of the tick bar generator with a reversal price.
+    """
 
     __slots__ = '_last_price'
 

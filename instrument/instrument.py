@@ -1069,7 +1069,7 @@ class Instrument(object):
 
     def detach_ticks(self) -> List[TickType]:
         """
-        Detach the array of tick and setup a new empty for the instrument.
+        Detach the array of tick and set up a new empty for the instrument.
         """
         ticks = self._ticks
         self._ticks = []
@@ -1117,6 +1117,7 @@ class Instrument(object):
                         tickbars.pop(-1)
 
                     tickbars.append(t)
+                    logger.debug(str(t))
 
                 elif t.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
                     # replace the last tickbar if was not consolidated
@@ -1142,7 +1143,7 @@ class Instrument(object):
         tickbars = self._tickbars
 
         # single tickbar
-        if len(self._tickbars) > 0:
+        if len(tickbars) > 0:
             # ignore the tickbar if older than the latest
             if tickbar.timestamp > tickbars[-1].timestamp:
                 if not tickbars[-1].ended:

@@ -1774,6 +1774,26 @@ class StrategyTrader(object):
         """
         pass
 
+    def check_spread(self, signal: StrategySignal) -> bool:
+        """Compare spread from entry signal max allowed spread value, only if max-spread parameters is valid"""
+        if not signal or not signal.context:
+            return True
+
+        if signal.context.entry.max_spread <= 0.0:
+            return True
+
+        return self.instrument.market_spread <= signal.context.entry.max_spread
+
+    def check_min_profit(self, signal: StrategySignal) -> bool:
+        """Check for a minimal profit based on context parameters"""
+        if not signal or not signal.context:
+            return True
+
+        if signal.context.min_profit <= 0.0:
+            return True
+
+        return signal.profit() >= signal.context.min_profit
+
     #
     # trade method handler (uses this method, not directly them from the trade class
     #
@@ -2699,9 +2719,21 @@ class StrategyTrader(object):
                     logger.error(repr(e))
 
     #
-    # stream helpers
+    # alerts
     #
 
+    def process_alerts(self, timestamp):
+        # check for alert triggers
+        if self.alerts:
+            alerts = self.check_alerts(timestamp, self.instrument.market_bid, self.instrument.market_ask, {})
+
+            if alerts:
+                for alert, result in alerts:
+                    self.notify_alert(timestamp, alert, result)
+
+    #
+    # stream helpers
+    #
     def setup_streaming(self):
         # global stream about compute status, once per compute frame
         self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO,

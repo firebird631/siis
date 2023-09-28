@@ -75,7 +75,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
             generated = self.tickbar_generator.generate(ticks)
             if generated:
-                self.instrument.add_tickbar(generated)
+                self.instrument.add_tickbars(generated)
 
             self.instrument.add_tickbar(copy.copy(self.tickbar_generator.current), self.depth)
 
@@ -97,7 +97,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
             generated = self.tickbar_generator.generate(ticks)
             if generated:
-                self.instrument.add_tickbar(generated)
+                self.instrument.add_tickbars(generated)
 
             self.instrument.add_tickbar(copy.copy(self.tickbar_generator.current), self.depth)
 
