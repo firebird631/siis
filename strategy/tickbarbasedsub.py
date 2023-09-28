@@ -1,36 +1,40 @@
-# @date 2018-08-24
+# @date 2023-09-28
 # @author Frederic Scherma, All rights reserved without prejudices.
-# @license Copyright (c) 2018 Dream Overflow
-# Timeframe based sub-strategy base class.
+# @license Copyright (c) 2023 Dream Overflow
+# Tick bar based sub-strategy base class.
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Tuple, Union
 
+
 if TYPE_CHECKING:
-    from instrument.instrument import Candle
     from monitor.streamable import Streamable
 
-    from .timeframebasedstrategytrader import TimeframeBasedStrategyTrader
+    from .tickbarbasedstrategytrader import TickBarBasedStrategyTrader
     from .strategysignal import StrategySignal
     from .indicator.price.price import PriceIndicator
     from .indicator.volume.volume import VolumeIndicator
 
+    from instrument.rangebargenerator import RangeBarBaseGenerator
+    from instrument.tickbargenerator import TickBarBaseGenerator
+    from instrument.tickbar import TickBarBase
+
 from .strategysub import StrategySub
 
-from instrument.candlegenerator import CandleGenerator
 from common.utils import timeframe_to_str
 
 import logging
-logger = logging.getLogger('siis.strategy.timeframebasedsub')
+
+logger = logging.getLogger('siis.strategy.tickbarbasedsub')
 
 
-class TimeframeBasedSub(StrategySub):
+class TickBarBasedSub(StrategySub):
     """
-    TimeframeBasedSub sub computation base class.
+    TickBarBasedSub sub computation base class.
     """
 
-    strategy_trader: TimeframeBasedStrategyTrader
+    strategy_trader: TickBarBasedStrategyTrader
 
     tf: float
     depth: int
@@ -41,45 +45,45 @@ class TimeframeBasedSub(StrategySub):
     _update_at_close: bool
     _signal_at_close: bool
 
-    candles_gen: CandleGenerator
+    tick_bar_gen: Union[TickBarBaseGenerator, RangeBarBaseGenerator, None]
     _last_closed: bool
-    
+
     last_signal: Union[StrategySignal, None]
 
     price: Union[PriceIndicator, None]
     volume: Union[VolumeIndicator, None]
 
-    open_price: Union[float, None]          # open price of the last closed candle
-    close_price: Union[float, None]         # close price of the last closed candle
-    prev_open_price: Union[float, None]     # previous open price
-    prev_close_price: Union[float, None]    # previous close price
+    open_price: Union[float, None]  # open price of the last closed bar
+    close_price: Union[float, None]  # close price of the last closed bar
+    prev_open_price: Union[float, None]  # previous open price
+    prev_close_price: Union[float, None]  # previous close price
 
-    def __init__(self, strategy_trader: TimeframeBasedStrategyTrader, timeframe: float,
+    def __init__(self, strategy_trader: TickBarBasedStrategyTrader, tickbar: float,
                  depth: int, history: int, params: dict = None):
         self.strategy_trader = strategy_trader  # parent strategy-trader object
 
         params = params or {}
 
-        self.tf = timeframe
-        self.depth = depth       # min samples size needed for processing
-        self.history = history   # sample history size
+        self.tb = tickbar
+        self.depth = depth  # min samples size needed for processing
+        self.history = history  # sample history size
 
         self.last_timestamp = 0.0
 
         self._update_at_close = params.get('update-at-close', False)
         self._signal_at_close = params.get('signal-at-close', False)
 
-        self.candles_gen = CandleGenerator(self.strategy_trader.base_timeframe, self.tf)
-        self._last_closed = False  # last generated candle closed
+        self.tick_bar_gen = None
+        self._last_closed = False  # last generated tickbar closed
 
         self.last_signal = None
 
-        self.price = None   # price indicator
+        self.price = None  # price indicator
         self.volume = None  # volume indicator
 
-        self.open_price = None        # last OHLC open
-        self.close_price = None       # last OHLC close
-        self.prev_open_price = None   # previous OHLC open
+        self.open_price = None  # last OHLC open
+        self.close_price = None  # last OHLC close
+        self.prev_open_price = None  # previous OHLC open
         self.prev_close_price = None  # previous OHLC close
 
     def loads(self, params: dict):
@@ -113,29 +117,18 @@ class TimeframeBasedSub(StrategySub):
             if param is not None:
                 if self.strategy_trader.strategy.indicator(param[0]):
                     # instantiate and setup indicator
-                    indicator = self.strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:])
+                    indicator = self.strategy_trader.strategy.indicator(param[0])(0.0, *param[1:])
                     indicator.setup(self.strategy_trader.instrument)
 
                     # @todo warning if not enough depth/history
 
                     setattr(self, ind, indicator)
                 else:
-                    logger.error("Indicator %s not found for %s on timeframe %s" % (
-                        param[0], ind, timeframe_to_str(self.tf)))
+                    logger.error("Indicator %s not found for %s on tickbar %s" % (
+                        param[0], ind, self.tb))
             else:
-                # logger.info("No indicator for %s on timeframe %s" % (ind, timeframe_to_str(self.tf)))
+                # logger.info("No indicator for %s on tickbar %s" % (ind, self.tb))
                 setattr(self, ind, None)
-
-    def init_candle_generator(self):
-        """
-        Set up the ohlc generator for this sub, using the configured timeframe and the current opened ohlc.
-        This method is called once the initial ohlc are fetched from the strategy setup process.
-        """
-        if self.candles_gen and not self.candles_gen.current:
-            last_candle = self.strategy_trader.instrument.candle(self.tf)
-            if last_candle and not last_candle.ended:
-                # the last candle is not ended, we have to continue it
-                self.candles_gen.current = last_candle
 
     def need_update(self, timestamp: float) -> bool:
         """
@@ -150,7 +143,7 @@ class TimeframeBasedSub(StrategySub):
     def need_signal(self, timestamp: float) -> bool:
         """
         Return True if the signal can be generated and returned at this processing.
-        If signal at close then wait for the last candle close, else always returns true.
+        If signal at close then wait for the last tickbar close, else always returns true.
         """
         if self._signal_at_close:
             return self._last_closed
@@ -163,7 +156,7 @@ class TimeframeBasedSub(StrategySub):
         """
         return None
 
-    def complete(self, candles: List[Candle], timestamp: float):
+    def complete(self, tickbars: List[TickBarBase], timestamp: float):
         """
         Must be called at the end of the process method.
         """
@@ -179,7 +172,7 @@ class TimeframeBasedSub(StrategySub):
                 self.close_price = self.price.close[-2]
                 self.open_price = self.price.open[-2]
 
-            # last closed candle processed (reset before next gen)
+            # last closed tickbar processed (reset before next gen)
             # self._last_closed = False
 
         elif self.close_price is None or self.open_price is None:
@@ -199,14 +192,14 @@ class TimeframeBasedSub(StrategySub):
             self.prev_open_price = None
             self.prev_close_price = None
 
-    def get_candles(self) -> List[Candle]:
+    def get_tickbars(self) -> List[TickBarBase]:
         """
-        Get the candles list to process.
+        Get the tickbar list to process.
         """
-        dataset = self.strategy_trader.instrument.candles(self.tf)
-        candles = dataset[-self.depth:] if dataset else []
+        dataset = self.strategy_trader.instrument.tickbars()
+        tickbars = dataset[-self.depth:] if dataset else []
 
-        return candles
+        return tickbars
 
     #
     # properties
@@ -215,9 +208,16 @@ class TimeframeBasedSub(StrategySub):
     @property
     def timeframe(self) -> float:
         """
-        Timeframe of this strategy-trader in second.
+        Timeframe of this strategy-trader is tick.
         """
-        return self.tf
+        return 0.0
+
+    @property
+    def tickbar(self) -> float:
+        """
+        Tickbar size.
+        """
+        return self.tb
 
     @property
     def samples_depth_size(self) -> int:

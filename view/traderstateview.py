@@ -244,6 +244,9 @@ class TraderStateView(TableView):
                 elif members[i][0] == "timeframe":
                     row[i] = timeframe_to_str(d) if (type(d) in (float, int, np.float64)) else (d if (type(d) is str) else str(d))
 
+                elif members[i][0] == "tickbar":
+                    row[i] = str(d)
+
                 elif members[i][0] == "datetime":
                     if d > 0:
                         row[i] = datetime.fromtimestamp(d).strftime(self._datetime_format) if (

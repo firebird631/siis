@@ -34,7 +34,7 @@ class RangeBarBase(object):
         self._high = price
 
         # or in tickbar indicators (could use X=Full or X>=VolumeFilter)
-        self._volume = 0.0  # total volume for any ticks of the bar
+        self._volume = 0.0    # total volume for any ticks of the bar
 
         self._avg_size = 0.0  # trade average size or aggregated trades average size ( = volume / num_trades)
         self._num_trades = 0  # num of total trades or aggregated trades ( +1 at each trade)

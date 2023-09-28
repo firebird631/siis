@@ -1117,7 +1117,6 @@ class Instrument(object):
                         tickbars.pop(-1)
 
                     tickbars.append(t)
-                    logger.debug(str(t))
 
                 elif t.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
                     # replace the last tickbar if was not consolidated

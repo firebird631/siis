@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Tuple, Dict, Union, Optional, List
 
 if TYPE_CHECKING:
     from .strategy import Strategy
+    from .strategysub import StrategySub
     from .alert.alert import Alert
     from .region.region import Region
     from .handler.handler import Handler
@@ -37,8 +38,8 @@ from .learning.trainer import Trainer
 
 from .indicator.models import Limits
 
-from common.utils import timeframe_to_str, UTC, check_yes_no_opt, yes_no_opt, integer_opt, check_integer_opt, float_opt, \
-    check_float_opt
+from common.utils import timeframe_to_str, UTC, check_yes_no_opt, yes_no_opt, integer_opt, check_integer_opt, \
+    float_opt, check_float_opt
 from strategy.strategysignal import StrategySignal
 from terminal.terminal import Terminal
 
@@ -2267,7 +2268,7 @@ class StrategyTrader(object):
     # signal data streaming and monitoring
     #
 
-    def create_chart_streamer(self, timeframe: float) -> Union[Streamable, None]:
+    def create_chart_streamer(self, strategy_sub: StrategySub) -> Union[Streamable, None]:
         """
         Create a streamer for the chart at a specific timeframe.
         Must be overridden.

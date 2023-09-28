@@ -22,7 +22,8 @@ def merge_parameters(default: dict, user: dict) -> dict:
 
         if isinstance(a, dict) and isinstance(b, dict):
             d = dict(a)
-            d.update({key: merge(a.get(key, None), b[key]) for key in b if key not in ('timeframes', 'contexts')})
+            d.update({key: merge(a.get(key, None), b[key]) for key in b if key not in (
+                'timeframes', 'tickbars', 'contexts')})
             return d
 
         if isinstance(a, list) and isinstance(b, list):
@@ -51,6 +52,26 @@ def merge_parameters(default: dict, user: dict) -> dict:
 
         final_params['timeframes'] = final_timeframes
         # logger.debug(final_params['timeframes'])
+
+    if 'tickbars' in default or 'tickbars' in user:
+        # special case for tickbars and contexts
+        default_tickbars = default.get('tickbars', {})
+        user_tickbars = user.get('tickbars', {})
+        final_tickbars = {}
+
+        for _k, _b in user_tickbars.items():
+            if _k not in default_tickbars:
+                # original from user
+                final_tickbars[_k] = copy.deepcopy(_b)
+            else:
+                # update from default
+                # _a = default_tickbars[_k]
+                # final_tickbars[_k] = merge(_a, _b)
+                # take user version
+                final_tickbars[_k] = copy.deepcopy(_b)
+
+        final_params['tickbars'] = final_tickbars
+        # logger.debug(final_params['tickbars'])
 
     if 'contexts' in default or 'contexts' in user:
         default_contexts = default.get('contexts', {})

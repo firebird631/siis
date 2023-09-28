@@ -603,6 +603,29 @@ class StreamMemberOhlcSerie(StreamMember):
         return {'n': self._name, 'i': self._index, 't': self._type, 'v': self._value, 'b': self._timestamp}
 
 
+class StreamMemberTickBarSerie(StreamMember):
+    """
+    Specialization for a signal tick bar value.
+    """
+
+    TYPE_TICK_BAR_SERIE = "bs"
+
+    def __init__(self, name):
+        super().__init__(name, StreamMemberTickBarSerie.TYPE_TICK_BAR_SERIE)
+
+        self._index = 0
+        self._timestamp = 0.0
+        self._value = (0.0, 0.0, 0.0, 0.0)
+
+    def update(self, v, timestamp):
+        self._value = v  # quadruplet
+        self._timestamp = timestamp
+        self._updated = True
+
+    def content(self):
+        return {'n': self._name, 'i': self._index, 't': self._type, 'v': self._value, 'b': self._timestamp}
+
+
 class StreamMemberWatcherTicker(StreamMember):
     """
     Specialization for a watcher ticker.

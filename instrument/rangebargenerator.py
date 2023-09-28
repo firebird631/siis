@@ -87,6 +87,7 @@ class RangeBarBaseGenerator(object):
         for from_tick in from_ticks:
             to_tickbar = self.update(from_tick)
             if to_tickbar:
+                # logger.debug(str(to_tickbar))
                 to_tickbars.append(to_tickbar)
 
             self._last_consumed += 1

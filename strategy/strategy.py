@@ -1854,6 +1854,9 @@ class Strategy(Runnable):
         # timeframes
         parameters.setdefault('timeframes', {})
 
+        # tickbars
+        parameters.setdefault('tickbars', {})
+
         # markets specifics
         parameters.setdefault('markets', {})
 
@@ -1877,5 +1880,26 @@ class Strategy(Runnable):
             timeframe.setdefault('signal-at-close', False)
 
             convert(timeframe, 'timeframe')
+
+        # for each tickbar
+        removed_tickbars = []
+
+        for k, tickbar in parameters['tickbars'].items():
+            if tickbar is None:
+                removed_tickbars.append(k)
+
+        for rtb in removed_tickbars:
+            del parameters['tickbars'][rtb]
+
+        for k, tickbar in parameters['tickbars'].items():
+            tickbar.setdefault('depth', 0)
+            tickbar.setdefault('history', 0)
+
+            tickbar.setdefault('tickbar', None)
+
+            tickbar.setdefault('update-at-close', False)
+            tickbar.setdefault('signal-at-close', False)
+
+            tickbar['tickbar'] = int(tickbar['tickbar']) if tickbar['tickbar'] else 0
 
         return parameters

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Tuple, List, Dict, Union, Any
 
 if TYPE_CHECKING:
     from .strategy import Strategy
+    from .strategysub import StrategySub
     from instrument.instrument import Instrument
     from timeframebasedsub import TimeframeBasedSub
     from strategytradercontext import StrategyTraderContext
@@ -77,31 +78,31 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         for tf_name, tf_param in timeframes.items():
             mode = tf_param.get('mode')
             if not mode:
-                logger.warning("No mode specified for timeframe %s" % tf_name)
+                logger.warning("No mode specified for timeframe sub %s" % tf_name)
                 continue
 
             clazz_model = self._timeframes_registry.get(mode)
             if clazz_model is None:
-                error_logger.error("Unable to find timeframe model mode %s for %s" % (mode, tf_name))
+                error_logger.error("Unable to find timeframe sub model mode %s for %s" % (mode, tf_name))
                 continue
 
             tf = tf_param.get('timeframe')
             if tf is None:
-                error_logger.error("Missing timeframe parameter for %s" % tf_name)
+                error_logger.error("Missing timeframe sub parameter for %s" % tf_name)
                 continue
 
             if type(tf) is str:
                 tf = timeframe_from_str(tf)
 
             if tf is None:
-                error_logger.error("Invalid timeframe parameter for %s" % tf_name)
+                error_logger.error("Invalid timeframe sub parameter for %s" % tf_name)
                 continue
 
             try:
                 tf_inst = clazz_model(self, tf_param)
                 self.timeframes[tf] = tf_inst
             except Exception:
-                error_logger.error("Unable to instantiate timeframe %s" % tf_name)
+                error_logger.error("Unable to instantiate timeframe sub %s" % tf_name)
                 traceback_logger.error(traceback.format_exc())
                 continue
 
@@ -109,7 +110,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 tf_inst.loads(tf_param)
                 tf_inst.setup_indicators(tf_param)
             except Exception:
-                error_logger.error("Unable to loads timeframe %s" % tf_name)
+                error_logger.error("Unable to loads timeframe sub %s" % tf_name)
                 traceback_logger.error(traceback.format_exc())
 
     def update_parameters(self, params: dict):
@@ -119,31 +120,31 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
         for tf_name, tf_param in timeframes.items():
             tf = tf_param.get('timeframe')
             if tf is None:
-                error_logger.error("Missing timeframe parameter for %s" % tf_name)
+                error_logger.error("Missing timeframe sub parameter for %s" % tf_name)
                 continue
 
             if type(tf) is str:
                 tf = timeframe_from_str(tf)
 
             if tf is None:
-                error_logger.error("Invalid timeframe parameter for %s" % tf_name)
+                error_logger.error("Invalid timeframe sub parameter for %s" % tf_name)
                 continue
 
             timeframe = self.timeframes.get(tf)
             if timeframe is None:
-                error_logger.error("Unable to retrieve timeframe instance %s" % tf_name)
+                error_logger.error("Unable to retrieve timeframe sub instance %s" % tf_name)
                 continue
 
             try:
                 timeframe.loads(tf_param)
             except Exception:
-                error_logger.error("Unable to load timeframe %s" % tf_name)
+                error_logger.error("Unable to load timeframe sub %s" % tf_name)
                 traceback_logger.error(traceback.format_exc())
 
             try:
                 timeframe.setup_indicators(tf_param)
             except Exception:
-                error_logger.error("Unable to setup indicators from timeframe %s" % tf_name)
+                error_logger.error("Unable to setup indicators from timeframe sub %s" % tf_name)
                 traceback_logger.error(traceback.format_exc())
 
         super().update_parameters(params)
@@ -296,9 +297,9 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 if timeframe.tf in self._timeframe_streamers:
                     timeframe.stream(self._timeframe_streamers[timeframe.tf])
 
-    def create_chart_streamer(self, timeframe: TimeframeBasedSub) -> Streamable:
+    def create_chart_streamer(self, timeframe: StrategySub) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
-                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, timeframe.tf))
+                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, timeframe.timeframe))
         streamer.add_member(StreamMemberInt('tf'))
 
         timeframe.setup_streamer(streamer)

@@ -13,7 +13,6 @@ logger = logging.getLogger('siis.instrument.tickbar')
 class TickBarBase(object):
     """
     Tick-bar base model for an instrument.
-    @note Ofr is a synonym for ask.
     """
 
     __slots__ = '_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_ticks', '_num_trades', \

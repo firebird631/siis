@@ -55,6 +55,8 @@ Sum order :
 # WIP #
 #######
 
+- Trainer, gérer les tickbars comme les timeframes
+
 - Gestion reco WS apres perte temporaire cas binance (voir comme kraken)
 
 - Dans la vue aggtrade ajouter un avg entry price et total qty par market

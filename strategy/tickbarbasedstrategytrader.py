@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple
+import traceback
+from typing import TYPE_CHECKING, List, Tuple, Any, Dict
 
 if TYPE_CHECKING:
     from strategytradercontext import StrategyTraderContext
     from trade.strategytrade import StrategyTrade
+
+    from .tickbarbasedsub import TickBarBasedSub
 
 import copy
 
@@ -17,10 +20,13 @@ from instrument.instrument import Instrument
 
 from monitor.streamable import Streamable, StreamMemberInt
 
+from .strategysub import StrategySub
 from .strategytrader import StrategyTrader
 
 import logging
 logger = logging.getLogger('siis.strategy.tickbarbasedstrategytrader')
+error_logger = logging.getLogger('siis.error.strategy.tickbarbasedstrategytrader')
+traceback_logger = logging.getLogger('siis.traceback.strategy.tickbarbasedstrategytrader')
 
 
 class TickBarBasedStrategyTrader(StrategyTrader):
@@ -35,6 +41,10 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     
     A single configuration of tick-bar array can be generated.
     """
+
+    _tickbars_registry: Dict[str, Any]
+    tickbars: Dict[float, TickBarBasedSub]
+    _tickbars_streamers: Dict[float, Streamable]
 
     def __init__(self, strategy, instrument, depth=50, params: dict = None):
         """
@@ -55,10 +65,91 @@ class TickBarBasedStrategyTrader(StrategyTrader):
 
         self.last_timestamp = 0.0
 
-    def update_parameters(self, params: dict):
-        super().update_parameters(params)
+        self._tickbars_registry = {}
+        self.tickbars = {}
+        self._tickbars_streamers = {}
 
-        # @todo depth... reload tickbar generator...
+    def register_tickbar(self, mode: str, class_model: Any):
+        if mode and class_model:
+            self._tickbars_registry[mode] = class_model
+
+    def setup_tickbars(self, params: dict):
+        # reload any tickbars
+        timeframes = params.get('tickbars', {})
+
+        for tf_name, tb_param in timeframes.items():
+            mode = tb_param.get('mode')
+            if not mode:
+                logger.warning("No mode specified for tickbar sub %s" % tf_name)
+                continue
+
+            clazz_model = self._tickbars_registry.get(mode)
+            if clazz_model is None:
+                error_logger.error("Unable to find tickbar sub model mode %s for %s" % (mode, tf_name))
+                continue
+
+            tb = tb_param.get('tickbar')
+            if tb is None:
+                error_logger.error("Missing tickbar sub parameter for %s" % tf_name)
+                continue
+
+            if type(tb) is str:
+                tb = int(tb)
+
+            if tb is None:
+                error_logger.error("Invalid tickbar sub parameter for %s" % tf_name)
+                continue
+
+            try:
+                tb_inst = clazz_model(self, tb_param)
+                self.tickbars[tb] = tb_inst
+            except Exception:
+                error_logger.error("Unable to instantiate tickbar sub %s" % tf_name)
+                traceback_logger.error(traceback.format_exc())
+                continue
+
+            try:
+                tb_inst.loads(tb_param)
+                tb_inst.setup_indicators(tb_param)
+            except Exception:
+                error_logger.error("Unable to loads tickbar sub %s" % tf_name)
+                traceback_logger.error(traceback.format_exc())
+
+    def update_parameters(self, params: dict):
+        # reload any timeframes before contexts
+        tickbar = params.get('tickbars', {})
+
+        for tb_name, tb_param in tickbar.items():
+            tb = tb_param.get('tickbar')
+            if tb is None:
+                error_logger.error("Missing tickbar sub parameter for %s" % tb_name)
+                continue
+
+            if type(tb) is str:
+                tb = int(tb)
+
+            if tb is None:
+                error_logger.error("Invalid tickbar sub parameter for %s" % tb_name)
+                continue
+
+            tickbar = self.tickbars.get(tb)
+            if tickbar is None:
+                error_logger.error("Unable to retrieve tickbar sub instance %s" % tb_name)
+                continue
+
+            try:
+                tickbar.loads(tb_param)
+            except Exception:
+                error_logger.error("Unable to load tickbar sub %s" % tb_name)
+                traceback_logger.error(traceback.format_exc())
+
+            try:
+                tickbar.setup_indicators(tb_param)
+            except Exception:
+                error_logger.error("Unable to setup indicators from tickbar sub %s" % tb_name)
+                traceback_logger.error(traceback.format_exc())
+
+        super().update_parameters(params)
 
     @property
     def is_tickbars_based(self):
@@ -139,12 +230,12 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     def stream(self):
         super().stream()
 
-    def create_chart_streamer(self, timeframe) -> Streamable:
+    def create_chart_streamer(self, strategy_sub: StrategySub) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
-                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, timeframe.tf))
+                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, strategy_sub.timeframe))
         streamer.add_member(StreamMemberInt('tf'))
 
-        timeframe.setup_streamer(streamer)
+        strategy_sub.setup_streamer(streamer)
 
         return streamer
 
@@ -206,13 +297,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         result = super().report_state(mode)
 
         if mode == 0:
-            result['data'] += self.report_tickbar_state()
+            for k, tickbar in self.tickbars.items():
+                result['data'] += tickbar.report_state()
 
         return result
-
-    def report_tickbar_state(self):
-        """
-        Report the properties of the state of the tickbar, according to what is computed and what is implemented.
-        To be overloaded.
-        """
-        return []
