@@ -8,6 +8,8 @@ from __future__ import annotations
 import traceback
 from typing import TYPE_CHECKING, List, Tuple, Any, Dict
 
+from .strategysignal import StrategySignal
+
 if TYPE_CHECKING:
     from strategytradercontext import StrategyTraderContext
     from trade.strategytrade import StrategyTrade
@@ -43,8 +45,8 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     """
 
     _tickbars_registry: Dict[str, Any]
-    tickbars: Dict[float, TickBarBasedSub]
-    _tickbars_streamers: Dict[float, Streamable]
+    tickbars: Dict[int, TickBarBasedSub]
+    _tickbars_streamers: Dict[int, Streamable]
 
     def __init__(self, strategy, instrument, depth=50, params: dict = None):
         """
@@ -54,9 +56,6 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         super().__init__(strategy, instrument, params)
 
         self._base_timeframe = Instrument.TF_TICK
-
-        self.tickbar_generator = None  # can be a TickBarRangeGenerator or TickBarReversalGenerator.
-        self._tickbar_streamer = None
 
         self.depth = depth
 
@@ -155,6 +154,13 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     def is_tickbars_based(self):
         return True
 
+    def setup_tickbar_gen(self):
+        """
+        Call it on receive instrument/market data.
+        """
+        for tf, sub in self.tickbars.items():
+            sub.setup_generator(self.instrument)
+
     def update_tickbar(self, timestamp: float):
         """
         Update the current tickbar according to the last trade and timestamp or create a new tickbar.
@@ -164,11 +170,19 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             # update at tick or trade
             ticks = self.instrument.ticks()  # self.instrument.ticks_after(self.last_timestamp)
 
-            generated = self.tickbar_generator.generate(ticks)
-            if generated:
-                self.instrument.add_tickbars(generated)
+            for tb, sub in self.tickbars.items():
+                # rest the previous last closed flag before update the current
+                sub._last_closed = False
 
-            self.instrument.add_tickbar(copy.copy(self.tickbar_generator.current), self.depth)
+                generated = sub.tick_bar_gen.generate(ticks)
+                if generated:
+                    self.instrument.add_tickbars(tb, generated, sub.depth)
+
+                    # last tick bar close
+                    sub._last_closed = True
+
+                # with the non consolidated
+                self.instrument.add_tickbar(tb, copy.copy(sub.tick_bar_gen.current), sub.depth)
 
             # keep prev and last price at processing step
             if self.instrument.ticks():
@@ -186,11 +200,19 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             # update at tick or trade
             ticks = self.instrument.detach_ticks()
 
-            generated = self.tickbar_generator.generate(ticks)
-            if generated:
-                self.instrument.add_tickbars(generated)
+            for tb, sub in self.tickbars.items():
+                # rest the previous last closed flag before update the current
+                sub._last_closed = False
 
-            self.instrument.add_tickbar(copy.copy(self.tickbar_generator.current), self.depth)
+                generated = sub.tick_bar_gen.generate(ticks)
+                if generated:
+                    self.instrument.add_tickbars(tb, generated, sub.depth)
+
+                    # last tick bar close
+                    sub._last_closed = True
+
+                # with the non consolidated
+                self.instrument.add_tickbar(tb, copy.copy(sub.tick_bar_gen.current), sub.depth)
 
             # keep prev and last price at processing step
             if self.instrument.ticks():
@@ -200,6 +222,37 @@ class TickBarBasedStrategyTrader(StrategyTrader):
                 self.last_price = (self.instrument.ticks()[-1][1] + self.instrument.ticks()[-1][2]) * 0.5
 
             return ticks
+
+    def compute(self, timestamp: float) -> Tuple[List[StrategySignal], List[StrategySignal]]:
+        """
+        Compute the signals for the different tickbars depending on the update policy.
+        """
+        # split entries from exits signals
+        entries = []
+        exits = []
+
+        for tf, sub in self.tickbars.items():
+            if sub.update_at_close:
+                if sub.need_update(timestamp):
+                    compute = True
+                else:
+                    compute = False
+            else:
+                compute = True
+
+            if compute:
+                signal = sub.process(timestamp)
+                if signal:
+                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
+                        entries.append(signal)
+                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
+                        exits.append(signal)
+
+        # finally, sort them by timeframe ascending
+        entries.sort(key=lambda s: s.timeframe)
+        exits.sort(key=lambda s: s.timeframe)
+
+        return entries, exits
 
     #
     # context

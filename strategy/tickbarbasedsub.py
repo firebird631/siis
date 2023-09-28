@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Tuple, Union
 
-
 if TYPE_CHECKING:
     from monitor.streamable import Streamable
 
@@ -18,11 +17,10 @@ if TYPE_CHECKING:
 
     from instrument.rangebargenerator import RangeBarBaseGenerator
     from instrument.tickbargenerator import TickBarBaseGenerator
+    from instrument.instrument import Instrument
     from instrument.tickbar import TickBarBase
 
 from .strategysub import StrategySub
-
-from common.utils import timeframe_to_str
 
 import logging
 
@@ -36,7 +34,7 @@ class TickBarBasedSub(StrategySub):
 
     strategy_trader: TickBarBasedStrategyTrader
 
-    tf: float
+    tb: int
     depth: int
     history: int
 
@@ -58,7 +56,7 @@ class TickBarBasedSub(StrategySub):
     prev_open_price: Union[float, None]  # previous open price
     prev_close_price: Union[float, None]  # previous close price
 
-    def __init__(self, strategy_trader: TickBarBasedStrategyTrader, tickbar: float,
+    def __init__(self, strategy_trader: TickBarBasedStrategyTrader, tickbar: int,
                  depth: int, history: int, params: dict = None):
         self.strategy_trader = strategy_trader  # parent strategy-trader object
 
@@ -124,11 +122,14 @@ class TickBarBasedSub(StrategySub):
 
                     setattr(self, ind, indicator)
                 else:
-                    logger.error("Indicator %s not found for %s on tickbar %s" % (
-                        param[0], ind, self.tb))
+                    logger.error("Indicator %s not found for %s on tickbar %s" % (param[0], ind, self.tb))
             else:
                 # logger.info("No indicator for %s on tickbar %s" % (ind, self.tb))
                 setattr(self, ind, None)
+
+    def setup_generator(self, instrument: Instrument):
+        if self.tick_bar_gen:
+            self.tick_bar_gen.setup(instrument)
 
     def need_update(self, timestamp: float) -> bool:
         """
@@ -164,7 +165,7 @@ class TickBarBasedSub(StrategySub):
 
         # -1 is current
         if self._last_closed and self.price:
-            # get just closed OHLC price and swap
+            # get just closed tick bar price and swap
             self.prev_close_price = self.close_price
             self.prev_open_price = self.open_price
 
@@ -196,7 +197,7 @@ class TickBarBasedSub(StrategySub):
         """
         Get the tickbar list to process.
         """
-        dataset = self.strategy_trader.instrument.tickbars()
+        dataset = self.strategy_trader.instrument.tickbars(self.tb)
         tickbars = dataset[-self.depth:] if dataset else []
 
         return tickbars

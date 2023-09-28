@@ -86,7 +86,7 @@ class StrategySub(object):
         return 0.0
 
     @property
-    def tickbar(self) -> float:
+    def tickbar(self) -> int:
         """
         Tickbar size.
         """

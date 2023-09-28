@@ -85,6 +85,18 @@ class TickBarBase(object):
         return self._close
 
     @property
+    def high(self) -> float:
+        return self._high
+
+    @property
+    def low(self) -> float:
+        return self._low
+
+    @property
+    def volume(self) -> float:
+        return self._volume
+
+    @property
     def abs_height(self) -> float:
         """
         Height in ticks from open to close, always absolute.

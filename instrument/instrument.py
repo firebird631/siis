@@ -382,7 +382,7 @@ class Instrument(object):
         self._ticks = []      # list of tuple(timestamp, bid, ask, last, volume, direction)
         self._candles = {}    # list per timeframe
         self._buy_sells = {}  # list per timeframe
-        self._tickbars = []   # list of TickBar
+        self._tickbars = {}   # list of TickBar per size
 
         self._one_pip_means = 1.0
         self._value_per_pip = 1.0
@@ -1096,86 +1096,102 @@ class Instrument(object):
     # tick-bar
     #
     
-    def add_tickbars(self, tickbars_list: List[TickBarBase], max_tickbars: int = -1):
+    def add_tickbars(self, tb: int, tickbars_list: List[TickBarBase], max_tickbars: int = -1):
         """
         Append an array of new tickbars.
+        @param tb:
         @param tickbars_list
         @param max_tickbars Pop tickbars until num tickbars > max_tickbars.
         """
         if not tickbars_list:
             return
 
-        tickbars = self._tickbars
+        if self._tickbars.get(tb):
+            tickbars = self._tickbars[tb]
 
-        # array of tickbar
-        if len(tickbars) > 0:
-            for t in tickbars_list:
-                # for each tickbar only add it if more recent or replace a non consolidated
-                if t.timestamp > tickbars[-1].timestamp:
-                    if not tickbars[-1].ended:
-                        # remove the last tickbar if was not consolidated
-                        tickbars.pop(-1)
+            # array of tickbar
+            if len(tickbars) > 0:
+                for t in tickbars_list:
+                    # for each tickbar only add it if more recent or replace a non consolidated
+                    if t.timestamp > tickbars[-1].timestamp:
+                        if not tickbars[-1].ended:
+                            # remove the last tickbar if was not consolidated
+                            tickbars.pop(-1)
+                            # tickbars[-1]._ended = True
 
-                    tickbars.append(t)
+                        tickbars.append(t)
 
-                elif t.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
-                    # replace the last tickbar if was not consolidated
-                    tickbars[-1] = t
+                    elif t.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
+                        # replace the last tickbar if was not consolidated
+                        tickbars[-1] = t
+            else:
+                # initiate array
+                self._tickbars = tickbars_list
         else:
             # initiate array
             self._tickbars = tickbars_list
 
         # keep safe size
         if max_tickbars > 1:
-            while(len(tickbars)) > max_tickbars:
-                tickbars.pop(0)
+            tickbars = self._tickbars[tb]
+            if tickbars:
+                while(len(tickbars)) > max_tickbars:
+                    tickbars.pop(0)
 
-    def add_tickbar(self, tickbar: TickBarBase, max_tickbars: int = -1):
+    def add_tickbar(self, tb: int, tickbar: TickBarBase, max_tickbars: int = -1):
         """
         Append a new tickbar.
+        @param tb:
         @param tickbar
         @param max_tickbars Pop tickbars until num tickbars > max_tickbars.
         """
         if not tickbar:
             return
 
-        tickbars = self._tickbars
+        if self._tickbars.get(tb):
+            tickbars = self._tickbars[tb]
 
-        # single tickbar
-        if len(tickbars) > 0:
-            # ignore the tickbar if older than the latest
-            if tickbar.timestamp > tickbars[-1].timestamp:
-                if not tickbars[-1].ended:
+            # single tickbar
+            if len(tickbars) > 0:
+                # ignore the tickbar if older than the latest
+                if tickbar.timestamp > tickbars[-1].timestamp:
+                    if not tickbars[-1].ended:
+                        # replace the last tickbar if was not consolidated
+                        tickbars[-1] = tickbar
+                    else:
+                        tickbars.append(tickbar)
+
+                elif tickbar.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
                     # replace the last tickbar if was not consolidated
                     tickbars[-1] = tickbar
-                else:
-                    tickbars.append(tickbar)
-
-            elif tickbar.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
-                # replace the last tickbar if was not consolidated
-                tickbars[-1] = tickbar
+            else:
+                tickbars.append(tickbar)
         else:
-            tickbars.append(tickbar)
+            self._tickbars[tb] = [tickbar]
 
         # keep safe size
         if max_tickbars > 1:
-            while(len(tickbars)) > max_tickbars:
-                tickbars.pop(0)
+            tickbars = self._tickbars[tb]
+            if tickbars:
+                while(len(tickbars)) > max_tickbars:
+                    tickbars.pop(0)
 
-    def tickbar(self) -> Optional[TickBarBase]:
+    def tickbar(self, tb: int) -> Optional[TickBarBase]:
         """
         Return as possible the last tickbar.
         """
-        if self._tickbars:
-            return self._tickbars[-1]
+        tickbars = self._tickbars.get(tb, [])
+
+        if tickbars:
+            return tickbars[-1]
 
         return None
 
-    def tickbars(self) -> List[TickBarBase]:
+    def tickbars(self, tb: int) -> List[TickBarBase]:
         """
         Returns tickbars list.
         """
-        return self._tickbars
+        return self._tickbars[tb]
 
     #
     # sync

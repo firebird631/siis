@@ -111,11 +111,14 @@ class SuperTrendIndicator(Indicator):
         # if prev_price < self._last_up and last_price > self._last_up:
         #     return 1
 
-        if self._position > 0 and prev_price > self._last and last_price < self._last:
-            return -1
+        if self._trends.size < 2:
+            return 0
 
-        if self._position < 0 and prev_price < self._last and last_price > self._last:
+        if prev_price < self._trends[-2] and last_price > self._trends[-1]:
             return 1
+
+        elif prev_price > self._trends[-2] and last_price < self._trends[-1]:
+            return -1
 
         return 0
 
@@ -136,43 +139,30 @@ class SuperTrendIndicator(Indicator):
         if _len != self._trends.size:
             self._trends = np.zeros(_len)
 
-        position = 0
-
         # first trend
-        if close[0] > upper[0]:
-            self._trends[0] = lower[0]
-            position = 1
-        elif close[0] < lower[0]:
+        if close[0] <= upper[0]:
             self._trends[0] = upper[0]
-            position = -1
+            is_long = True
         else:
-            self._trends[0] = meds[0]
-            position = 0
+            self._trends[0] = lower[0]
+            is_long = False
 
         for i in range(1, len(close)):
-            if close[i] < self._trends[i-1]:# and position > 0:
-                if close[i-1] < close[i]:
-                    self._trends[i] = upper[i]
-                else:
-                    self._trends[i] = self._trends[i-1]
-                position = -1
-            elif close[i] > self._trends[i-1]:# and position < 0:
-                if close[i-1] > close[i]:
-                    self._trends[i] = lower[i]
-                else:
-                    self._trends[i] = self._trends[i-1]
-                position = 1
+            if close[i] <= self._trends[i-1] and not is_long:
+                self._trends[i] = max(upper[i], close[i])
+                is_long = True
+
+            elif close[i] >= self._trends[i-1] and is_long:
+                self._trends[i] = min(lower[i], close[i])
+                is_long = False
             else:
                 self._trends[i] = self._trends[i-1]
 
         self._last = self._trends[-1]
 
-        if position != self._position and position != 0:
-            self._position = position
-
         # logger.debug("%g %s %s %s %i" % (close[-1], lower[-2:], upper[-2:], self._trends[-4:], self._position))
-        logger.info("T %s" % list(self._trends))
-        logger.info("C %s" % list(close))
+        # logger.info("T %s" % list(self._trends))
+        # logger.info("C %s" % list(close))
 
         self._last_timestamp = timestamp
 
