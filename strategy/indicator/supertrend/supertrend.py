@@ -19,7 +19,7 @@ class SuperTrendIndicator(Indicator):
     Based on ATR and high/low.
     """
 
-    __slots__ = '_length', '_coeff', '_trends', '_prev', '_last', '_position'
+    __slots__ = '_length', '_coeff', '_trends', '_ups', '_downs', '_positions', '_prev', '_last'
 
     @classmethod
     def indicator_type(cls):
@@ -36,11 +36,12 @@ class SuperTrendIndicator(Indicator):
         self._coeff = coeff
 
         self._trends = np.array([])
+        self._ups = np.array([])
+        self._downs = np.array([])
+        self._positions = np.array([])
 
         self._last = 0.0
         self._prev = 0.0
-
-        self._position = 0
 
     @property
     def length(self):
@@ -72,7 +73,14 @@ class SuperTrendIndicator(Indicator):
 
     @property
     def position(self):
-        return self._position
+        return self._positions[-1] if self._positions.size > 2 else 0
+
+    @property
+    def position_change(self):
+        if self._positions.size > 2:
+            return self._positions[-1] if self._positions[-1] != self._positions[-2] else 0
+
+        return 0
 
     def bar_crossing(self, prices: np.array):
         """
@@ -92,27 +100,14 @@ class SuperTrendIndicator(Indicator):
         """
         Crossing with the last and previous computed compared to last and previous price -> at ticks.
         """
-        # if self._last_dn <= 0 or self._last_up <= 0 or prev_price <= 0 or last_price <= 0:
-        #     return 0
-
-        # marche mieux sur DAX mais pas conforme avec l'indic
-        # # with up-trend
-        # if prev_price > self._last_up and last_price < self._last_up:
-        #     return -1
-        #
-        # # with dn-trend
-        # if prev_price < self._last_dn and last_price > self._last_dn:
-        #     return 1
-
-        # # conforme et marche mieux sur NAS
-        # if prev_price > self._last_dn and last_price < self._last_dn:
-        #     return -1
-        #
-        # if prev_price < self._last_up and last_price > self._last_up:
-        #     return 1
-
-        if self._trends.size < 2:
+        if self._trends.size < 3 or self._trends[-2] <= 0.0 or self._trends[-1] <= 0.0:
             return 0
+
+        if last_price > self._trends[-1]:
+            return 1
+
+        if last_price < self._trends[-1]:
+            return -1
 
         if prev_price < self._trends[-2] and last_price > self._trends[-1]:
             return 1
@@ -133,30 +128,34 @@ class SuperTrendIndicator(Indicator):
 
         c_atrs[np.isnan(c_atrs)] = 0.0
 
-        upper = meds + c_atrs
-        lower = meds - c_atrs
+        upper = meds - c_atrs
+        lower = meds + c_atrs
 
         if _len != self._trends.size:
             self._trends = np.zeros(_len)
-
-        # first trend
-        if close[0] <= upper[0]:
-            self._trends[0] = upper[0]
-            is_long = True
-        else:
-            self._trends[0] = lower[0]
-            is_long = False
+            self._ups = np.zeros(_len)
+            self._downs = np.zeros(_len)
+            self._positions = np.zeros(_len)
 
         for i in range(1, len(close)):
-            if close[i] <= self._trends[i-1] and not is_long:
-                self._trends[i] = max(upper[i], close[i])
-                is_long = True
+            # TrendUp := close[1]>TrendUp[1]? max(Up,TrendUp[1]) : Up
+            # TrendDown := close[1]<TrendDown[1]? min(Dn,TrendDown[1]) : Dn
+            self._ups[i] = max(upper[i], self._ups[i-1]) if close[i-1] > self._ups[i-1] else upper[i]
+            self._downs[i] = min(lower[i], self._downs[i-1]) if close[i-1] < self._downs[i-1] else lower[i]
 
-            elif close[i] >= self._trends[i-1] and is_long:
-                self._trends[i] = min(lower[i], close[i])
-                is_long = False
+        self._positions[0] = 1  # start with 1
+
+        for i in range(1, len(close)):
+            # Trend := close > TrendDown[1] ? 1: close < TrendUp[1]? -1: nz(Trend[1],1)
+            if close[i] > self._downs[i-1]:
+                self._positions[i] = 1
+            elif close[i] < self._ups[i-1]:
+                self._positions[i] = -1
             else:
-                self._trends[i] = self._trends[i-1]
+                self._positions[i] = self._positions[i-1]
+
+            # Tsl := Trend==1? TrendUp: TrendDown
+            self._trends[i] = self._ups[i] if self._positions[i] > 0 else self._downs[i]
 
         self._last = self._trends[-1]
 

@@ -41,7 +41,7 @@ class RangeBarBase(object):
 
         self._dir = 0
 
-        self._ended = True
+        self._ended = False
 
     #
     # data

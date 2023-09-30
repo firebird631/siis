@@ -54,7 +54,7 @@ class TickBarBase(object):
         # volume change from prev
         # average size
 
-        self._ended = True
+        self._ended = False
 
     #
     # data

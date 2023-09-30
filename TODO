@@ -55,7 +55,8 @@ Sum order :
 # WIP #
 #######
 
-- Trainer, gérer les tickbars comme les timeframes
+- Trainer : gérer les tickbars comme les timeframes
+- Ajouter une option pour caler un spread sur certain tick streamer quand le bid/ask n'est pas présent (cas bitmex par exemple)
 
 - Gestion reco WS apres perte temporaire cas binance (voir comme kraken)
 

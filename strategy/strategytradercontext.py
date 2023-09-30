@@ -61,7 +61,10 @@ class EntryExit(object):
 
     def __init__(self):
         self.type = StrategyTraderContext.PRICE_NONE
+
         self.timeframe = 0.0
+        self.tickbar = 0
+
         self.depth = 1
         self.multi = False
         self.orientation = StrategyTraderContext.ORIENTATION_UP
@@ -84,6 +87,7 @@ class EntryExit(object):
 
         self.type = StrategyTraderContext.PRICE.get(params['type'])
         self.timeframe = timeframe_from_str(params.get('timeframe', "t"))
+        self.tickbar = int(params.get('tickbar', "0"))
 
         # ATR SR need orientation and depth parameters
         if self.type in (StrategyTraderContext.PRICE_ATR_SR,):
@@ -95,6 +99,9 @@ class EntryExit(object):
 
         if self.timeframe < 0:
             raise ValueError("Undefined or unsupported 'timeframe' value for %s" % self.name())
+
+        if self.tickbar < 0:
+            raise ValueError("Undefined or unsupported 'tickbar' value for %s" % self.name())
 
         if params.get('timeout'):
             # optional timeout
@@ -499,6 +506,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
     PRICE_KIJUN = 11
     PRICE_BEST1 = 12
     PRICE_BEST2 = 13
+    PRICE_CUSTOM = 14
 
     PRICE = {
         'none': PRICE_NONE,
@@ -514,7 +522,8 @@ class StrategyTraderContext(StrategyTraderContextBase):
         'vol-sr': PRICE_VOL_SR,
         'kijun': PRICE_KIJUN,
         'best+1': PRICE_BEST1,
-        'best+2': PRICE_BEST2
+        'best+2': PRICE_BEST2,
+        'custom': PRICE_CUSTOM
     }
 
     PRICE_FROM_STR_MAP = {v: k for k, v in PRICE.items()}
@@ -737,7 +746,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
             dynamic_take_profit = EXTakeProfit()
             dynamic_take_profit.loads(strategy_trader, params['dynamic-take-profit'])
 
-            if dynamic_take_profit.timeframe:
+            if dynamic_take_profit.timeframe or dynamic_take_profit.tickbar:
                 return dynamic_take_profit
 
     def load_dynamic_stop_loss(self, strategy_trader, params):
@@ -745,7 +754,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
             dynamic_stop_loss = EXStopLoss()
             dynamic_stop_loss.loads(strategy_trader, params['dynamic-stop-loss'])
 
-            if dynamic_stop_loss.timeframe:
+            if dynamic_stop_loss.timeframe or dynamic_stop_loss.tickbar:
                 return dynamic_stop_loss
 
     def load_breakeven(self, strategy_trader, params):
@@ -753,5 +762,5 @@ class StrategyTraderContext(StrategyTraderContextBase):
             breakeven = EXBreakeven()
             breakeven.loads(strategy_trader, params['breakeven'])
 
-            if breakeven.timeframe:
+            if breakeven.timeframe or breakeven.tickbar:
                 return breakeven

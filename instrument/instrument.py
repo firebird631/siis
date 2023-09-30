@@ -1126,10 +1126,10 @@ class Instrument(object):
                         tickbars[-1] = t
             else:
                 # initiate array
-                self._tickbars = tickbars_list
+                self._tickbars[tb] = tickbars_list
         else:
             # initiate array
-            self._tickbars = tickbars_list
+            self._tickbars[tb] = tickbars_list
 
         # keep safe size
         if max_tickbars > 1:
@@ -1175,6 +1175,9 @@ class Instrument(object):
             if tickbars:
                 while(len(tickbars)) > max_tickbars:
                     tickbars.pop(0)
+
+            # if tb == 4:
+            #     logger.debug("%s %s" % (tickbars[-2], tickbars[-1]))
 
     def tickbar(self, tb: int) -> Optional[TickBarBase]:
         """
