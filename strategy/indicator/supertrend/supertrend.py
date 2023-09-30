@@ -89,7 +89,7 @@ class SuperTrendIndicator(Indicator):
         # with up-trend
         # if prices[-2] > self._up_trends[-2] and prices[-1] < self._up_trends[-1]:
         #     return -1
-        #
+
         # # with dn-trend
         # if prices[-2] < self._dn_trends[-2] and prices[-1] > self.dn_trends[-1]:
         #     return 1

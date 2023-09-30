@@ -11,49 +11,47 @@ import logging
 logger = logging.getLogger('siis.strategy.takeprofit')
 
 
-def search_std_atrsr(direction, timeframe, orientation, depth, price, epsilon=0.0):
-    if not timeframe.atrsr:
+def search_std_atrsr(direction, sub, orientation, depth, price, epsilon=0.0):
+    if not sub.atrsr:
         return 0.0
 
     if orientation > 0:
-        return timeframe.atrsr.search_up(direction, price, depth, epsilon)
+        return sub.atrsr.search_up(direction, price, depth, epsilon)
     elif orientation < 0:
-        return timeframe.atrsr.search_down(direction, price, depth, epsilon)
+        return sub.atrsr.search_down(direction, price, depth, epsilon)
     else:
-        return timeframe.atrsr.search_both(direction, price, depth, epsilon)
+        return sub.atrsr.search_both(direction, price, depth, epsilon)
 
 
-def search_sorted_atrsr(direction, timeframe, orientation, depth, price, epsilon=0.0):
-    if not timeframe.atrsr:
+def search_sorted_atrsr(direction, sub, orientation, depth, price, epsilon=0.0):
+    if not sub.atrsr:
         return 0.0
 
     if orientation > 0:
-        return timeframe.atrsr.search_sorted_up(direction, price, depth, epsilon)
+        return sub.atrsr.search_sorted_up(direction, price, depth, epsilon)
     elif orientation < 0:
-        return timeframe.atrsr.search_sorted_down(direction, price, depth, epsilon)
+        return sub.atrsr.search_sorted_down(direction, price, depth, epsilon)
     else:
-        return timeframe.atrsr.search_sorted_both(direction, price, depth, epsilon)
+        return sub.atrsr.search_sorted_both(direction, price, depth, epsilon)
 
 search_atrsr = search_std_atrsr
 # search_atrsr = search_sorted_atrsr
 
 
-def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsilon=0.0):
-    timeframe = data.take_profit.timeframe
-
+def compute_take_profit(direction, data, sub, entry_price, confidence=1.0, price_epsilon=0.0):
     def compute_distance():
         if direction > 0:
             # never larger than distance in percent if defined
-            if data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+            if data.stop_loss.distance_type == StrategyTraderContext.DIST_PERCENTILE:
                 return entry_price * (1.0 + data.take_profit.distance)
-            elif data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+            elif data.stop_loss.distance_type == StrategyTraderContext.DIST_PRICE:
                 return entry_price + data.take_profit.distance
 
         elif direction < 0:
             # never larger than distance in percent if defined
-            if data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+            if data.stop_loss.distance_type == StrategyTraderContext.DIST_PERCENTILE:
                 return entry_price * (1.0 - data.take_profit.distance)
-            elif data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+            elif data.stop_loss.distance_type == StrategyTraderContext.DIST_PRICE:
                 return entry_price - data.take_profit.distance
 
             return 0.0
@@ -65,7 +63,7 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return 0.0
 
         elif data.take_profit.type == data.PRICE_ATR_SR:
-            atr_take_profit = search_atrsr(direction, data.take_profit.timeframe, data.take_profit.orientation,
+            atr_take_profit = search_atrsr(direction, sub, data.take_profit.orientation,
                                            data.take_profit.depth, entry_price, price_epsilon)
 
             if data.take_profit.distance > 0.0:
@@ -81,7 +79,7 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return atr_take_profit
 
         elif data.take_profit.type == data.PRICE_CUR_ATR_SR:
-            curatr_take_profit = data.take_profit.timeframe.atrsr.cur_up
+            curatr_take_profit = sub.atrsr.cur_up
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
@@ -97,11 +95,11 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
 
         elif data.take_profit.type == data.PRICE_HL2:
             lmin = entry_price
-            lmax = timeframe.bollinger.tops[-1] if timeframe.bollinger and len(timeframe.bollinger.tops) else entry_price
+            lmax = sub.bollinger.tops[-1] if sub.bollinger and len(sub.bollinger.tops) else entry_price
 
             n = int(20 * confidence)
 
-            for p in timeframe.price.high[-n:]:
+            for p in sub.price.high[-n:]:
                 if not np.isnan(p) and p > entry_price:
                     lmax = max(lmax, p)
                     lmin = min(lmin, p)
@@ -109,15 +107,15 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return max((lmin + lmax) * 0.5, entry_price * min_dist)
 
         elif data.take_profit.type == data.PRICE_ICHIMOKU:
-            if not timeframe.ichimoku or not len(timeframe.ichimoku.ssas):
+            if not sub.ichimoku or not len(sub.ichimoku.ssas):
                 return entry_price * min_dist
 
             n = 26
             lmin = 0
 
             for i in range(-n, 0):
-                ssa = timeframe.ichimoku.ssas[i]
-                ssb = timeframe.ichimoku.ssbs[i]
+                ssa = sub.ichimoku.ssas[i]
+                ssb = sub.ichimoku.ssbs[i]
                 v = 0
 
                 if np.isnan(ssa) or np.isnan(ssb):
@@ -138,21 +136,21 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return max(lmin, entry_price * min_dist)
 
         elif data.take_profit.type == data.PRICE_BOLLINGER:
-            if not timeframe.bollinger or not len(timeframe.bollinger.tops):
+            if not sub.bollinger or not len(sub.bollinger.tops):
                 return entry_price * min_dist
 
-            tp = timeframe.bollinger.tops[-1]
+            tp = sub.bollinger.tops[-1]
 
             return max(tp, entry_price * min_dist)
 
-        elif data.take_profit.type == data.PRICE_FIXED_PCT and data.take_profit.distance > 0.0:
-            return entry_price * (1.0 + data.take_profit.distance)
-
-        elif data.take_profit.type == data.PRICE_FIXED_DIST and data.take_profit.distance > 0.0:
-            return entry_price + data.take_profit.distance
+        elif data.take_profit.type == data.PRICE_FIXED and data.take_profit.distance > 0.0:
+            if data.take_profit.distance_type == data.DIST_PERCENTILE:
+                return entry_price * (1.0 + data.take_profit.distance)
+            elif data.take_profit.distance_type == data.DIST_PRICE:
+                return entry_price + data.take_profit.distance
 
         elif data.stop_loss.type == data.PRICE_KIJUN:
-            kijun_stop_loss = data.stop_loss.timeframe.ichimoku.kijuns[-1] if len(data.stop_loss.timeframe.ichimoku.kijuns) else 0.0
+            kijun_stop_loss = sub.ichimoku.kijuns[-1] if len(sub.ichimoku.kijuns) else 0.0
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -173,7 +171,7 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return 0.0
 
         elif data.take_profit.type == data.PRICE_ATR_SR:
-            atr_take_profit = search_atrsr(direction, data.take_profit.timeframe, -data.take_profit.orientation,
+            atr_take_profit = search_atrsr(direction, sub, -data.take_profit.orientation,
                                            data.take_profit.depth, entry_price, price_epsilon)
 
             if data.take_profit.distance > 0.0:
@@ -189,7 +187,7 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return atr_take_profit
 
         elif data.take_profit.type == data.PRICE_CUR_ATR_SR:
-            curatr_take_profit = data.take_profit.timeframe.atrsr.cur_down
+            curatr_take_profit = sub.atrsr.cur_down
 
             if data.take_profit.distance > 0.0:
                 # never lesser than distance in percent if defined
@@ -205,11 +203,11 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
 
         elif data.take_profit.type == data.PRICE_HL2:
             lmin = entry_price
-            lmax = timeframe.bollinger.bottoms[-1] if timeframe.bollinger and len(timeframe.bollinger.bottoms) else entry_price
+            lmax = sub.bollinger.bottoms[-1] if sub.bollinger and len(sub.bollinger.bottoms) else entry_price
 
             n = int(20 * confidence)
 
-            for p in timeframe.price.low[-n:]:
+            for p in sub.price.low[-n:]:
                 if not np.isnan(p) and p < entry_price:
                     lmax = max(lmax, p)
                     lmin = min(lmin, p)
@@ -217,15 +215,15 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return min((lmin + lmax) * 0.5, entry_price * min_dist)
 
         elif data.take_profit.type == data.PRICE_ICHIMOKU:
-            if not timeframe.ichimoku or not len(timeframe.ichimoku.ssas):
+            if not sub.ichimoku or not len(sub.ichimoku.ssas):
                 return entry_price * min_dist
 
             n = 26
             lmax = 0
 
             for i in range(-n, 0):
-                ssa = timeframe.ichimoku.ssas[i]
-                ssb = timeframe.ichimoku.ssbs[i]
+                ssa = sub.ichimoku.ssas[i]
+                ssb = sub.ichimoku.ssbs[i]
                 v = 0
 
                 if np.isnan(ssa) or np.isnan(ssb):
@@ -246,21 +244,21 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
             return min(lmax, entry_price * min_dist)
 
         elif data.take_profit.type == data.PRICE_BOLLINGER:
-            if not timeframe.bollinger or not len(timeframe.bollinger.bottoms):
+            if not sub.bollinger or not len(sub.bollinger.bottoms):
                 return entry_price * min_dist
 
-            tp = timeframe.bollinger.bottoms[-1]
+            tp = sub.bollinger.bottoms[-1]
 
             return min(tp, entry_price * min_dist)
 
-        elif data.take_profit.type == data.PRICE_FIXED_PCT and data.take_profit.distance > 0.0:
-            return entry_price * (1.0 - data.take_profit.distance)
-
-        elif data.take_profit.type == data.PRICE_FIXED_DIST and data.take_profit.distance > 0.0:
-            return entry_price - data.take_profit.distance
+        elif data.take_profit.type == data.PRICE_FIXED and data.take_profit.distance > 0.0:
+            if data.take_profit.distance_type == data.DIST_PERCENTILE:
+                return entry_price * (1.0 - data.take_profit.distance)
+            elif data.take_profit.distance_type == data.DIST_PRICE:
+                return entry_price - data.take_profit.distance
 
         elif data.stop_loss.type == data.PRICE_KIJUN:
-            kijun_stop_loss = data.stop_loss.timeframe.ichimoku.kijuns[-1] if len(data.stop_loss.timeframe.ichimoku.kijuns) else 0.0
+            kijun_stop_loss = sub.ichimoku.kijuns[-1] if len(sub.ichimoku.kijuns) else 0.0
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -277,11 +275,11 @@ def compute_take_profit(direction, data, entry_price, confidence=1.0, price_epsi
     return 0.0
 
 
-def dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_profit_price, price_epsilon):
+def dynamic_take_profit_fixed_bollinger_long(sub, last_price, curr_take_profit_price, price_epsilon):
     take_profit = 0.0
 
-    if timeframe.bollinger and len(timeframe.bollinger.tops) > 0:
-        p = timeframe.bollinger.tops[-1]
+    if sub.bollinger and len(sub.bollinger.tops) > 0:
+        p = sub.bollinger.tops[-1]
 
         if p > curr_take_profit_price and p - price_epsilon > last_price:
             take_profit = p - price_epsilon
@@ -289,11 +287,11 @@ def dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_pr
     return take_profit
 
 
-def dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_profit_price, price_epsilon):
+def dynamic_take_profit_fixed_bollinger_short(sub, last_price, curr_take_profit_price, price_epsilon):
     take_profit = 0.0
 
-    if timeframe.bollinger and len(timeframe.bollinger.bottoms) > 0:
-        p = timeframe.bollinger.bottoms[-1]
+    if sub.bollinger and len(sub.bollinger.bottoms) > 0:
+        p = sub.bollinger.bottoms[-1]
 
         if p < curr_take_profit_price and p + price_epsilon < last_price:
             take_profit = p + price_epsilon
@@ -301,7 +299,7 @@ def dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_p
     return take_profit
 
 
-def dynamic_take_profit_fixed_pct_long(timeframe, last_price, curr_take_profit_price, distance):
+def dynamic_take_profit_fixed_pct_long(sub, last_price, curr_take_profit_price, distance):
     take_profit = 0.0
 
     p = last_price * (1.0 + distance)
@@ -312,7 +310,7 @@ def dynamic_take_profit_fixed_pct_long(timeframe, last_price, curr_take_profit_p
     return take_profit
 
 
-def dynamic_take_profit_fixed_pct_short(timeframe, last_price, curr_take_profit_price, distance):
+def dynamic_take_profit_fixed_pct_short(sub, last_price, curr_take_profit_price, distance):
     take_profit = 0.0
 
     p = last_price * (1.0 - distance)
@@ -323,7 +321,7 @@ def dynamic_take_profit_fixed_pct_short(timeframe, last_price, curr_take_profit_
     return take_profit
 
 
-def dynamic_take_profit_fixed_dist_long(timeframe, last_price, curr_take_profit_price, distance):
+def dynamic_take_profit_fixed_dist_long(sub, last_price, curr_take_profit_price, distance):
     take_profit = 0.0
 
     p = last_price + distance
@@ -334,7 +332,7 @@ def dynamic_take_profit_fixed_dist_long(timeframe, last_price, curr_take_profit_
     return take_profit
 
 
-def dynamic_take_profit_fixed_dist_short(timeframe, last_price, curr_take_profit_price, distance):
+def dynamic_take_profit_fixed_dist_short(sub, last_price, curr_take_profit_price, distance):
     take_profit = 0.0
 
     p = last_price - distance
@@ -345,11 +343,11 @@ def dynamic_take_profit_fixed_dist_short(timeframe, last_price, curr_take_profit
     return take_profit
 
 
-def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price, depth,
+def dynamic_take_profit_atrsr_long(sub, last_price, curr_take_profit_price, depth,
                                    orientation, price_epsilon=0.0):
     # search in short direction because we want a price lower than actual take-profit loss but we keep it
     # only if higher than current close price
-    take_profit = search_atrsr(1, timeframe, orientation, depth, curr_take_profit_price, price_epsilon)
+    take_profit = search_atrsr(1, sub, orientation, depth, curr_take_profit_price, price_epsilon)
 
     if 0 < take_profit > last_price + price_epsilon:
         logger.debug("%s << %s" % (curr_take_profit_price, take_profit))
@@ -358,7 +356,7 @@ def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price
     return 0.0
 
     # # or simply
-    # take_profit = search_atrsr(1, timeframe, orientation, depth, curr_take_profit_price, price_epsilon)
+    # take_profit = search_atrsr(1, sub, orientation, depth, curr_take_profit_price, price_epsilon)
 
     # if take_profit > last_price + price_epsilon and take_profit > curr_take_profit_price:
     #     return take_profit
@@ -366,10 +364,10 @@ def dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price
     # return 0.0
 
 
-def dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_price, depth,
+def dynamic_take_profit_atrsr_short(sub, last_price, curr_take_profit_price, depth,
                                     orientation, price_epsilon=0.0):
     # reverse explanation of the long version (revert orientation)
-    take_profit = search_atrsr(-1, timeframe, -orientation, depth, curr_take_profit_price, price_epsilon)
+    take_profit = search_atrsr(-1, sub, -orientation, depth, curr_take_profit_price, price_epsilon)
 
     if 0 < take_profit < last_price - price_epsilon:
         logger.debug("%s >> %s" % (curr_take_profit_price, take_profit))
@@ -378,7 +376,7 @@ def dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_pric
     return 0.0
 
     # or simply (revert orientation)
-    # take_profit = search_atrsr(-1, timeframe, -orientation, depth, curr_take_profit_price, price_epsilon)
+    # take_profit = search_atrsr(-1, sub, -orientation, depth, curr_take_profit_price, price_epsilon)
 
     # if take_profit > last_price - price_epsilon and take_profit < curr_take_profit_price:
     #     return take_profit
@@ -386,13 +384,13 @@ def dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_pric
     # return 0.0
 
 
-def dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_take_profit_price, depth,
+def dynamic_take_profit_cur_atrsr_long(sub, entry_price, last_price, curr_take_profit_price, depth,
                                        orientation, price_epsilon=0.0):
     take_profit = 0.0
 
-    if timeframe.atrsr and len(timeframe.atrsr._tup):
-        if timeframe.atrsr._tup[-1] > curr_take_profit_price and timeframe.atrsr._tup[-1] > entry_price:
-            take_profit = timeframe.atrsr._tup[-1]      
+    if sub.atrsr and len(sub.atrsr._tup):
+        if sub.atrsr._tup[-1] > curr_take_profit_price and sub.atrsr._tup[-1] > entry_price:
+            take_profit = sub.atrsr._tup[-1]
 
     if take_profit > last_price + price_epsilon:
         return take_profit
@@ -400,13 +398,13 @@ def dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_
     return 0.0
 
 
-def dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr_take_profit_price, depth,
+def dynamic_take_profit_cur_atrsr_short(sub, entry_price, last_price, curr_take_profit_price, depth,
                                         orientation, price_epsilon=0.0):
     take_profit = 0.0
 
-    if timeframe.atrsr and len(timeframe.atrsr._tdn):
-        if timeframe.atrsr._tdn[-1] < curr_take_profit_price and timeframe.atrsr._tdn[-1] < entry_price:
-            take_profit = timeframe.atrsr._tdn[-1]
+    if sub.atrsr and len(sub.atrsr._tdn):
+        if sub.atrsr._tdn[-1] < curr_take_profit_price and sub.atrsr._tdn[-1] < entry_price:
+            take_profit = sub.atrsr._tdn[-1]
 
     if take_profit < last_price - price_epsilon:
         return take_profit
@@ -414,22 +412,12 @@ def dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr
     return 0.0
 
 
-def dynamic_take_profit_volume_sr_long(timeframe, last_price, curr_take_profit_price):
-    # @todo
-    return 0.0
-
-
-def dynamic_take_profit_volume_sr_short(timeframe, last_price, curr_take_profit_price):
-    # @todo
-    return 0.0
-
-
-def dynamic_take_profit_kijun_long(timeframe, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
+def dynamic_take_profit_kijun_long(sub, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
     take_profit = 0.0
 
-    if timeframe.ichimoku and timeframe.ichimoku.kijuns is not None and len(timeframe.ichimoku.kijuns) > 0:
-        if 1:  # timeframe.last_closed:
-            p = timeframe.ichimoku.kijuns[-1]
+    if sub.ichimoku and sub.ichimoku.kijuns is not None and len(sub.ichimoku.kijuns) > 0:
+        if 1:  # sub.last_closed:
+            p = sub.ichimoku.kijuns[-1]
 
             # if p > last_price + price_epsilon:
             if curr_take_profit_price > p > last_price + price_epsilon:
@@ -438,12 +426,12 @@ def dynamic_take_profit_kijun_long(timeframe, entry_price, last_price, curr_take
     return take_profit
 
 
-def dynamic_take_profit_kijun_short(timeframe, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
+def dynamic_take_profit_kijun_short(sub, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
     take_profit = 0.0
 
-    if timeframe.ichimoku and timeframe.ichimoku.kijuns is not None and len(timeframe.ichimoku.kijuns) > 0:
-        if 1:  # timeframe.last_closed:
-            p = timeframe.ichimoku.kijuns[-1]
+    if sub.ichimoku and sub.ichimoku.kijuns is not None and len(sub.ichimoku.kijuns) > 0:
+        if 1:  # sub.last_closed:
+            p = sub.ichimoku.kijuns[-1]
 
             # if p < last_price - price_epsilon:
             if curr_take_profit_price < p < last_price - price_epsilon:
@@ -452,63 +440,56 @@ def dynamic_take_profit_kijun_short(timeframe, entry_price, last_price, curr_tak
     return take_profit
 
 
-def dynamic_take_profit(direction, method, timeframe, entry_price, last_price, curr_take_profit_price, depth=1,
-                        orientation=0, price_epsilon=0.0, distance=0.0):
+def dynamic_take_profit(direction, data, sub, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
 
     if direction > 0:
-        if method == StrategyTraderContext.PRICE_NONE:
+        if data.type == StrategyTraderContext.PRICE_NONE:
             return 0.0
 
-        elif method == StrategyTraderContext.PRICE_ATR_SR:
-            return dynamic_take_profit_atrsr_long(timeframe, last_price, curr_take_profit_price, depth,
-                                                  orientation, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_ATR_SR:
+            return dynamic_take_profit_atrsr_long(sub, last_price, curr_take_profit_price, data.depth,
+                                                  data.orientation, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_CUR_ATR_SR:
-            return dynamic_take_profit_cur_atrsr_long(timeframe, entry_price, last_price, curr_take_profit_price,
-                                                      depth, orientation, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_CUR_ATR_SR:
+            return dynamic_take_profit_cur_atrsr_long(sub, entry_price, last_price, curr_take_profit_price,
+                                                      data.depth, data.orientation, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_BOLLINGER:
-            return dynamic_take_profit_fixed_bollinger_long(timeframe, last_price, curr_take_profit_price,
+        elif data.type == StrategyTraderContext.PRICE_BOLLINGER:
+            return dynamic_take_profit_fixed_bollinger_long(sub, last_price, curr_take_profit_price,
                                                             price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_FIXED_PCT and distance > 0.0:
-            return dynamic_take_profit_fixed_pct_long(timeframe, last_price, curr_take_profit_price, distance)
+        elif data.type == StrategyTraderContext.PRICE_FIXED and data.distance > 0.0:
+            if data.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+                return dynamic_take_profit_fixed_pct_long(sub, last_price, curr_take_profit_price, data.distance)
+            elif data.distance_type == StrategyTraderContext.DIST_PRICE:
+                return dynamic_take_profit_fixed_dist_long(sub, last_price, curr_take_profit_price, data.distance)
 
-        elif method == StrategyTraderContext.PRICE_FIXED_DIST and distance > 0.0:
-            return dynamic_take_profit_fixed_dist_long(timeframe, last_price, curr_take_profit_price, distance)
-
-        elif method == StrategyTraderContext.PRICE_VOL_SR:
-            return dynamic_take_profit_volume_sr_long(timeframe, last_price, curr_take_profit_price)
-
-        elif method == StrategyTraderContext.PRICE_KIJUN:
-            return dynamic_take_profit_kijun_long(timeframe, last_price, curr_take_profit_price, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_KIJUN:
+            return dynamic_take_profit_kijun_long(sub, last_price, curr_take_profit_price, price_epsilon)
 
     elif direction < 0:
-        if method == StrategyTraderContext.PRICE_NONE:
+        if data.type == StrategyTraderContext.PRICE_NONE:
             return 0.0
 
-        elif method == StrategyTraderContext.PRICE_ATR_SR:
-            return dynamic_take_profit_atrsr_short(timeframe, last_price, curr_take_profit_price, depth,
-                                                   orientation, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_ATR_SR:
+            return dynamic_take_profit_atrsr_short(sub, last_price, curr_take_profit_price, data.depth,
+                                                   data.orientation, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_CUR_ATR_SR:
-            return dynamic_take_profit_cur_atrsr_short(timeframe, entry_price, last_price, curr_take_profit_price,
-                                                       depth, orientation, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_CUR_ATR_SR:
+            return dynamic_take_profit_cur_atrsr_short(sub, entry_price, last_price, curr_take_profit_price,
+                                                       data.depth, data.orientation, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_BOLLINGER:
-            return dynamic_take_profit_fixed_bollinger_short(timeframe, last_price, curr_take_profit_price,
+        elif data.type == StrategyTraderContext.PRICE_BOLLINGER:
+            return dynamic_take_profit_fixed_bollinger_short(sub, last_price, curr_take_profit_price,
                                                              price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_FIXED_PCT and distance > 0.0:
-            return dynamic_take_profit_fixed_pct_short(timeframe, last_price, curr_take_profit_price, distance)
+        elif data.type == StrategyTraderContext.PRICE_FIXED and data.distance > 0.0:
+            if data.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+                return dynamic_take_profit_fixed_pct_short(sub, last_price, curr_take_profit_price, data.distance)
+            elif data.distance_type == StrategyTraderContext.DIST_PRICE:
+                return dynamic_take_profit_fixed_dist_short(sub, last_price, curr_take_profit_price, data.distance)
 
-        elif method == StrategyTraderContext.PRICE_FIXED_DIST and distance > 0.0:
-            return dynamic_take_profit_fixed_dist_short(timeframe, last_price, curr_take_profit_price, distance)
-
-        elif method == StrategyTraderContext.PRICE_VOL_SR:
-            return dynamic_take_profit_volume_sr_short(timeframe, last_price, curr_take_profit_price)
-
-        elif method == StrategyTraderContext.PRICE_KIJUN:
-            return dynamic_take_profit_kijun_short(timeframe, last_price, curr_take_profit_price, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_KIJUN:
+            return dynamic_take_profit_kijun_short(sub, last_price, curr_take_profit_price, price_epsilon)
 
     return 0.0

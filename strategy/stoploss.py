@@ -8,53 +8,51 @@ import numpy as np
 from .strategytradercontext import StrategyTraderContext
 
 
-def search_std_atrsr(direction, timeframe, orientation, depth, price, epsilon=0.0):
-    if not timeframe.atrsr:
+def search_std_atrsr(direction, sub, orientation, depth, price, epsilon=0.0):
+    if not sub.atrsr:
         return 0.0
 
     if orientation > 0:
-        return timeframe.atrsr.search_up(direction, price, depth, epsilon)
+        return sub.atrsr.search_up(direction, price, depth, epsilon)
     elif orientation < 0:
-        return timeframe.atrsr.search_down(direction, price, depth, epsilon)
+        return sub.atrsr.search_down(direction, price, depth, epsilon)
     else:
-        return timeframe.atrsr.search_both(direction, price, depth, epsilon)
+        return sub.atrsr.search_both(direction, price, depth, epsilon)
 
 
-def search_sorted_atrsr(direction, timeframe, orientation, depth, price, epsilon=0.0):
-    if not timeframe.atrsr:
+def search_sorted_atrsr(direction, sub, orientation, depth, price, epsilon=0.0):
+    if not sub.atrsr:
         return 0.0
 
     if orientation > 0:
-        return timeframe.atrsr.search_sorted_up(direction, price, depth, epsilon)
+        return sub.atrsr.search_sorted_up(direction, price, depth, epsilon)
     elif orientation < 0:
-        return timeframe.atrsr.search_sorted_down(direction, price, depth, epsilon)
+        return sub.atrsr.search_sorted_down(direction, price, depth, epsilon)
     else:
-        return timeframe.atrsr.search_sorted_both(direction, price, depth, epsilon)
+        return sub.atrsr.search_sorted_both(direction, price, depth, epsilon)
 
 
 search_atrsr = search_std_atrsr
 # search_atrsr = search_sorted_atrsr
 
 
-def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilon=0.0):
+def compute_stop_loss(direction, data, sub, entry_price, confidence=1.0, price_epsilon=0.0):
     """
     Branching to the predefined stop-loss method.
     """
-    timeframe = data.stop_loss.timeframe
-
     def compute_distance():
         if direction > 0:
             # never larger than distance in percent if defined
-            if data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+            if data.stop_loss.distance_type == StrategyTraderContext.DIST_PERCENTILE:
                 return entry_price * (1.0 - data.stop_loss.distance)
-            elif data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+            elif data.stop_loss.distance_type == StrategyTraderContext.DIST_PRICE:
                 return entry_price - data.stop_loss.distance
 
         elif direction < 0:
             # never larger than distance in percent if defined
-            if data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+            if data.stop_loss.distance_type == StrategyTraderContext.DIST_PERCENTILE:
                 return entry_price * (1.0 + data.stop_loss.distance)
-            elif data.stop_loss.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+            elif data.stop_loss.distance_type == StrategyTraderContext.DIST_PRICE:
                 return entry_price + data.stop_loss.distance
 
             return 0.0
@@ -66,7 +64,7 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             return 0.0
 
         elif data.stop_loss.type == data.PRICE_ATR_SR:
-            atr_stop_loss = search_atrsr(-direction, data.stop_loss.timeframe, data.stop_loss.orientation,
+            atr_stop_loss = search_atrsr(-direction, sub, data.stop_loss.orientation,
                                          data.stop_loss.depth, entry_price, price_epsilon)
 
             if data.stop_loss.distance > 0.0:
@@ -82,7 +80,7 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             return atr_stop_loss
 
         elif data.stop_loss.type == data.PRICE_CUR_ATR_SR:
-            curatr_stop_loss = data.stop_loss.timeframe.atrsr.cur_down
+            curatr_stop_loss = sub.atrsr.cur_down
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -102,7 +100,7 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
 
             n = int(20 * confidence)
 
-            for p in timeframe.bollinger.bottoms[-n:]:
+            for p in sub.bollinger.bottoms[-n:]:
                 if not np.isnan(p) and p > 0.0 and p < entry_price:
                     lmax = max(lmax, p)
                     lmin = min(lmin, p)
@@ -110,14 +108,14 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             #return min((lmax + lmin) * 0.5, entry_price * (1.0 - data.stop_loss.distance))
             return min((entry_price + lmin) * 0.5, entry_price * min_dist)
 
-        elif data.stop_loss.type == data.PRICE_FIXED_PCT and data.stop_loss.distance > 0.0:
-            return entry_price * (1.0 - data.stop_loss.distance)
-
-        elif data.stop_loss.type == data.PRICE_FIXED_DIST and data.stop_loss.distance > 0.0:
-            return entry_price - data.stop_loss.distance
+        elif data.stop_loss.type == data.PRICE_FIXED and data.stop_loss.distance > 0.0:
+            if data.stop_loss.distance_type == data.DIST_PERCENTILE:
+                return entry_price * (1.0 - data.stop_loss.distance)
+            elif data.stop_loss.distance_type == data.DIST_PRICE:
+                return entry_price - data.stop_loss.distance
 
         elif data.stop_loss.type == data.PRICE_KIJUN:
-            kijun_stop_loss = data.stop_loss.timeframe.ichimoku.kijuns[-1] if len(data.stop_loss.timeframe.ichimoku.kijuns) else 0.0
+            kijun_stop_loss = sub.ichimoku.kijuns[-1] if len(sub.ichimoku.kijuns) else 0.0
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -138,7 +136,7 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             return 0.0
 
         elif data.stop_loss.type == data.PRICE_ATR_SR:
-            atr_stop_loss = search_atrsr(-direction, data.stop_loss.timeframe, -data.stop_loss.orientation,
+            atr_stop_loss = search_atrsr(-direction, sub, -data.stop_loss.orientation,
                                          data.stop_loss.depth, entry_price, price_epsilon)
 
             if data.stop_loss.distance > 0.0:
@@ -154,7 +152,7 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
             return atr_stop_loss
 
         elif data.stop_loss.type == data.PRICE_CUR_ATR_SR:
-            curatr_stop_loss = data.stop_loss.timeframe.atrsr.cur_up
+            curatr_stop_loss = sub.atrsr.cur_up
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -174,21 +172,21 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
 
             n = int(20 * confidence)
 
-            for p in timeframe.bollinger.tops[-n:]:
+            for p in sub.bollinger.tops[-n:]:
                 if not np.isnan(p) and p > 0.0 and p > entry_price:
                     lmax = max(lmax, p)
                     lmin = min(lmin, p)
 
             return max((lmax - entry_price) * 0.5, entry_price * min_dist)
 
-        elif data.stop_loss.type == data.PRICE_FIXED_PCT and data.stop_loss.distance > 0.0:
-            return entry_price * (1.0 + data.stop_loss.distance)
-
-        elif data.stop_loss.type == data.PRICE_FIXED_DIST and data.stop_loss.distance > 0.0:
-            return entry_price + data.stop_loss.distance
+        elif data.stop_loss.type == data.PRICE_FIXED and data.stop_loss.distance > 0.0:
+            if data.stop_loss.distance_type == data.DIST_PERCENTILE:
+                return entry_price * (1.0 + data.stop_loss.distance)
+            elif data.stop_loss.distance_type == data.DIST_PRICE:
+                return entry_price + data.stop_loss.distance
 
         elif data.stop_loss.type == data.PRICE_KIJUN:
-            kijun_stop_loss = data.stop_loss.timeframe.ichimoku.kijuns[-1] if len(data.stop_loss.timeframe.ichimoku.kijuns) else 0.0
+            kijun_stop_loss = sub.ichimoku.kijuns[-1] if len(sub.ichimoku.kijuns) else 0.0
 
             if data.stop_loss.distance > 0.0:
                 # never larger than distance in percent if defined
@@ -205,14 +203,14 @@ def compute_stop_loss(direction, data, entry_price, confidence=1.0, price_epsilo
     return 0.0
 
 
-def dynamic_stop_loss_fixed_bollinger_long(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+def dynamic_stop_loss_fixed_bollinger_long(sub, last_price, curr_stop_loss_price, price_epsilon=0.0):
     stop_loss = 0.0
 
-    #if timeframe.bollinger and timeframe.bollinger.bottoms is not None and len(timeframe.bollinger.bottoms) > 0:
-    if timeframe.bollinger and timeframe.bollinger.tops is not None and len(timeframe.bollinger.tops) > 0:
-        if 1:  # timeframe.last_closed:
-            #p = timeframe.bollinger.bottoms[-1]
-            p = timeframe.bollinger.tops[-1]
+    #if sub.bollinger and sub.bollinger.bottoms is not None and len(sub.bollinger.bottoms) > 0:
+    if sub.bollinger and sub.bollinger.tops is not None and len(sub.bollinger.tops) > 0:
+        if 1:  # sub.last_closed:
+            #p = sub.bollinger.bottoms[-1]
+            p = sub.bollinger.tops[-1]
 
             if p > curr_stop_loss_price and p < last_price - price_epsilon:
                 stop_loss = p
@@ -220,14 +218,14 @@ def dynamic_stop_loss_fixed_bollinger_long(timeframe, last_price, curr_stop_loss
     return stop_loss
 
 
-def dynamic_stop_loss_fixed_bollinger_short(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+def dynamic_stop_loss_fixed_bollinger_short(sub, last_price, curr_stop_loss_price, price_epsilon=0.0):
     stop_loss = 0.0
 
-    #if timeframe.bollinger and timeframe.bollinger.tops is not None and len(timeframe.bollinger.tops) > 0:
-    if timeframe.bollinger and timeframe.bollinger.bottoms is not None and len(timeframe.bollinger.bottoms) > 0:
-        if 1:  # timeframe.last_closed:
-            # p = timeframe.bollinger.tops[-1]
-            p = timeframe.bollinger.bottoms[-1]
+    #if sub.bollinger and sub.bollinger.tops is not None and len(sub.bollinger.tops) > 0:
+    if sub.bollinger and sub.bollinger.bottoms is not None and len(sub.bollinger.bottoms) > 0:
+        if 1:  # sub.last_closed:
+            # p = sub.bollinger.tops[-1]
+            p = sub.bollinger.bottoms[-1]
 
             if p < curr_stop_loss_price and p > last_price + price_epsilon:
                 stop_loss = p
@@ -235,7 +233,7 @@ def dynamic_stop_loss_fixed_bollinger_short(timeframe, last_price, curr_stop_los
     return stop_loss
 
 
-def dynamic_stop_loss_fixed_pct_long(timeframe, last_price, curr_stop_loss_price, distance):
+def dynamic_stop_loss_fixed_pct_long(sub, last_price, curr_stop_loss_price, distance):
     stop_loss = 0.0
 
     p = last_price * (1.0 - distance)
@@ -246,7 +244,7 @@ def dynamic_stop_loss_fixed_pct_long(timeframe, last_price, curr_stop_loss_price
     return stop_loss
 
 
-def dynamic_stop_loss_fixed_pct_short(timeframe, last_price, curr_stop_loss_price, distance):
+def dynamic_stop_loss_fixed_pct_short(sub, last_price, curr_stop_loss_price, distance):
     stop_loss = 0.0
 
     p = last_price * (1.0 + distance)
@@ -257,7 +255,7 @@ def dynamic_stop_loss_fixed_pct_short(timeframe, last_price, curr_stop_loss_pric
     return stop_loss
 
 
-def dynamic_stop_loss_fixed_dist_long(timeframe, last_price, curr_stop_loss_price, distance):
+def dynamic_stop_loss_fixed_dist_long(sub, last_price, curr_stop_loss_price, distance):
     stop_loss = 0.0
 
     p = last_price - distance
@@ -268,7 +266,7 @@ def dynamic_stop_loss_fixed_dist_long(timeframe, last_price, curr_stop_loss_pric
     return stop_loss
 
 
-def dynamic_stop_loss_fixed_dist_short(timeframe, last_price, curr_stop_loss_price, distance):
+def dynamic_stop_loss_fixed_dist_short(sub, last_price, curr_stop_loss_price, distance):
     stop_loss = 0.0
 
     p = last_price + distance
@@ -279,10 +277,10 @@ def dynamic_stop_loss_fixed_dist_short(timeframe, last_price, curr_stop_loss_pri
     return stop_loss
 
 
-def dynamic_stop_loss_atrsr_long(timeframe, last_price, curr_stop_loss_price, depth, orientation, price_epsilon=0.0):
+def dynamic_stop_loss_atrsr_long(sub, last_price, curr_stop_loss_price, depth, orientation, price_epsilon=0.0):
     # search in long direction because be want a price greater than actual stop loss but we keep it only
     # if lesser than current close price
-    # stop_loss = search_atrsr(1, timeframe, orientation, depth, curr_stop_loss_price, price_epsilon)
+    # stop_loss = search_atrsr(1, sub, orientation, depth, curr_stop_loss_price, price_epsilon)
 
     # if stop_loss < last_price - price_epsilon:
     #     return stop_loss
@@ -290,7 +288,7 @@ def dynamic_stop_loss_atrsr_long(timeframe, last_price, curr_stop_loss_price, de
     # return 0.0
 
     # or simply
-    stop_loss = search_atrsr(-1, timeframe, orientation, depth, last_price, 0)  # price_epsilon)
+    stop_loss = search_atrsr(-1, sub, orientation, depth, last_price, 0)  # price_epsilon)
 
     if stop_loss < last_price - price_epsilon and stop_loss > curr_stop_loss_price:
         return stop_loss
@@ -298,9 +296,9 @@ def dynamic_stop_loss_atrsr_long(timeframe, last_price, curr_stop_loss_price, de
     return 0.0
 
 
-def dynamic_stop_loss_atrsr_short(timeframe, last_price, curr_stop_loss_price, depth, orientation, price_epsilon=0.0):
+def dynamic_stop_loss_atrsr_short(sub, last_price, curr_stop_loss_price, depth, orientation, price_epsilon=0.0):
     # reverse explanation of the long version
-    # stop_loss = search_atrsr(-1, timeframe, -orientation, depth, curr_stop_loss_price, price_epsilon)
+    # stop_loss = search_atrsr(-1, sub, -orientation, depth, curr_stop_loss_price, price_epsilon)
 
     # if stop_loss > last_price + price_epsilon:
     #     return stop_loss
@@ -308,7 +306,7 @@ def dynamic_stop_loss_atrsr_short(timeframe, last_price, curr_stop_loss_price, d
     # return 0.0
 
     # or simply (revert orientation)
-    stop_loss = search_atrsr(1, timeframe, -orientation, depth, last_price, 0)  # price_epsilon)
+    stop_loss = search_atrsr(1, sub, -orientation, depth, last_price, 0)  # price_epsilon)
 
     if stop_loss > last_price + price_epsilon and stop_loss < curr_stop_loss_price:
         return stop_loss
@@ -316,17 +314,17 @@ def dynamic_stop_loss_atrsr_short(timeframe, last_price, curr_stop_loss_price, d
     return 0.0
 
 
-def dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_stop_loss_price,
+def dynamic_stop_loss_cur_atrsr_long(sub, entry_price, last_price, curr_stop_loss_price,
                                      depth, orientation, price_epsilon=0.0):
     stop_loss = 0.0
 
-    if timeframe.atrsr and len(timeframe.atrsr._tdn):
-        if timeframe.atrsr._tdn[-1] > curr_stop_loss_price and timeframe.atrsr._tdn[-1] < last_price:
-            stop_loss = timeframe.atrsr._tdn[-1]
+    if sub.atrsr and len(sub.atrsr._tdn):
+        if sub.atrsr._tdn[-1] > curr_stop_loss_price and sub.atrsr._tdn[-1] < last_price:
+            stop_loss = sub.atrsr._tdn[-1]
 
-    # if timeframe.atrsr and len(timeframe.atrsr._tup):
-    #     if timeframe.atrsr._tup[-1] > curr_stop_loss_price and timeframe.atrsr._tup[-1] < last_price:
-    #         stop_loss = timeframe.atrsr._tup[-1]
+    # if sub.atrsr and len(sub.atrsr._tup):
+    #     if sub.atrsr._tup[-1] > curr_stop_loss_price and sub.atrsr._tup[-1] < last_price:
+    #         stop_loss = sub.atrsr._tup[-1]
 
     # if stop_loss < last_price:
     #     return stop_loss - price_epsilon
@@ -337,17 +335,17 @@ def dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_st
     return 0.0
 
 
-def dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_stop_loss_price,
+def dynamic_stop_loss_cur_atrsr_short(sub, entry_price, last_price, curr_stop_loss_price,
                                       depth, orientation, price_epsilon=0.0):
     stop_loss = 0.0
 
-    if timeframe.atrsr and len(timeframe.atrsr._tup):
-        if timeframe.atrsr._tup[-1] < curr_stop_loss_price and timeframe.atrsr._tup[-1] > last_price:
-            stop_loss = timeframe.atrsr._tup[-1]
+    if sub.atrsr and len(sub.atrsr._tup):
+        if sub.atrsr._tup[-1] < curr_stop_loss_price and sub.atrsr._tup[-1] > last_price:
+            stop_loss = sub.atrsr._tup[-1]
 
-    # if timeframe.atrsr and len(timeframe.atrsr._tdn):
-    #     if timeframe.atrsr._tdn[-1] < curr_stop_loss_price and timeframe.atrsr._tdn[-1] > last_price:
-    #         stop_loss = timeframe.atrsr._tdn[-1]
+    # if sub.atrsr and len(sub.atrsr._tdn):
+    #     if sub.atrsr._tdn[-1] < curr_stop_loss_price and sub.atrsr._tdn[-1] > last_price:
+    #         stop_loss = sub.atrsr._tdn[-1]
 
     # if stop_loss > last_price:
     #     return stop_loss + price_epsilon
@@ -358,12 +356,12 @@ def dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_s
     return 0.0
 
 
-def dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+def dynamic_stop_loss_fixed_hma_long(sub, last_price, curr_stop_loss_price, price_epsilon=0.0):
     stop_loss = 0.0
 
-    if timeframe.hma and timeframe.hma.hmas is not None and len(timeframe.hma.hmas) > 0:
-        if 1:  # timeframe.last_closed:
-            p = timeframe.hma.hmas[-1]
+    if sub.hma and sub.hma.hmas is not None and len(sub.hma.hmas) > 0:
+        if 1:  # sub.last_closed:
+            p = sub.hma.hmas[-1]
 
             if curr_stop_loss_price < p < last_price - price_epsilon:
                 stop_loss = p
@@ -371,12 +369,12 @@ def dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price
     return stop_loss
 
 
-def dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+def dynamic_stop_loss_fixed_hma_short(sub, last_price, curr_stop_loss_price, price_epsilon=0.0):
     stop_loss = 0.0
 
-    if timeframe.hma and timeframe.hma.hmas is not None and len(timeframe.hma.hmas) > 0:
-        if 1:  # timeframe.last_closed:
-            p = timeframe.hma.hmas[-1]
+    if sub.hma and sub.hma.hmas is not None and len(sub.hma.hmas) > 0:
+        if 1:  # sub.last_closed:
+            p = sub.hma.hmas[-1]
 
             if curr_stop_loss_price > p > last_price + price_epsilon:
                 stop_loss = p
@@ -384,12 +382,12 @@ def dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_pric
     return stop_loss
 
 
-def dynamic_stop_loss_kijun_long(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+def dynamic_stop_loss_kijun_long(sub, last_price, curr_stop_loss_price, price_epsilon=0.0):
     stop_loss = 0.0
 
-    if timeframe.ichimoku and timeframe.ichimoku.kijuns is not None and len(timeframe.ichimoku.kijuns) > 0:
+    if sub.ichimoku and sub.ichimoku.kijuns is not None and len(sub.ichimoku.kijuns) > 0:
         if 1:  # timeframe.last_closed:
-            p = timeframe.ichimoku.kijuns[-1]
+            p = sub.ichimoku.kijuns[-1]
 
             if curr_stop_loss_price < p < last_price - price_epsilon:
                 stop_loss = p
@@ -397,12 +395,12 @@ def dynamic_stop_loss_kijun_long(timeframe, last_price, curr_stop_loss_price, pr
     return stop_loss
 
 
-def dynamic_stop_loss_kijun_short(timeframe, last_price, curr_stop_loss_price, price_epsilon=0.0):
+def dynamic_stop_loss_kijun_short(sub, last_price, curr_stop_loss_price, price_epsilon=0.0):
     stop_loss = 0.0
 
-    if timeframe.ichimoku and timeframe.ichimoku.kijuns is not None and len(timeframe.ichimoku.kijuns) > 0:
-        if 1:  # timeframe.last_closed:
-            p = timeframe.ichimoku.kijuns[-1]
+    if sub.ichimoku and sub.ichimoku.kijuns is not None and len(sub.ichimoku.kijuns) > 0:
+        if 1:  # sub.last_closed:
+            p = sub.ichimoku.kijuns[-1]
 
             if curr_stop_loss_price > p > last_price + price_epsilon:
                 stop_loss = p
@@ -410,77 +408,60 @@ def dynamic_stop_loss_kijun_short(timeframe, last_price, curr_stop_loss_price, p
     return stop_loss
 
 
-def dynamic_stop_loss_volume_sr_long(timeframe, last_price, curr_stop_loss_price):
-    # @todo
-    return 0.0
-
-
-def dynamic_stop_loss_volume_sr_short(timeframe, last_price, curr_stop_loss_price):
-    # @todo
-    return 0.0
-
-
-def dynamic_stop_loss(direction, method, timeframe, entry_price, last_price, curr_stop_loss_price, depth=1,
-                      orientation=0, price_epsilon=0.0, distance=0.0):
+def dynamic_stop_loss(direction, data, sub, entry_price, last_price, curr_stop_loss_price, price_epsilon=0.0):
 
     if direction > 0:
-        if method == StrategyTraderContext.PRICE_NONE:
+        if data.type == StrategyTraderContext.PRICE_NONE:
             return 0.0
 
-        elif method == StrategyTraderContext.PRICE_ATR_SR:
-            return dynamic_stop_loss_atrsr_long(timeframe, last_price, curr_stop_loss_price, depth, orientation,
+        elif data.type == StrategyTraderContext.PRICE_ATR_SR:
+            return dynamic_stop_loss_atrsr_long(sub, last_price, curr_stop_loss_price, data.depth, data.orientation,
                                                 price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_CUR_ATR_SR:
-            return dynamic_stop_loss_cur_atrsr_long(timeframe, entry_price, last_price, curr_stop_loss_price, depth,
-                                                    orientation, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_CUR_ATR_SR:
+            return dynamic_stop_loss_cur_atrsr_long(sub, entry_price, last_price, curr_stop_loss_price, data.depth,
+                                                    data.orientation, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_BOLLINGER:
-            return dynamic_stop_loss_fixed_bollinger_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_BOLLINGER:
+            return dynamic_stop_loss_fixed_bollinger_long(sub, last_price, curr_stop_loss_price, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_FIXED_PCT and distance > 0.0:
-            return dynamic_stop_loss_fixed_pct_long(timeframe, last_price, curr_stop_loss_price, distance)
+        elif data.type == StrategyTraderContext.PRICE_FIXED and data.distance > 0.0:
+            if data.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+                return dynamic_stop_loss_fixed_pct_long(sub, last_price, curr_stop_loss_price, data.distance)
+            elif data.distance_type == StrategyTraderContext.DIST_PRICE:
+                return dynamic_stop_loss_fixed_dist_long(sub, last_price, curr_stop_loss_price, data.distance)
 
-        elif method == StrategyTraderContext.PRICE_FIXED_DIST and distance > 0.0:
-            return dynamic_stop_loss_fixed_dist_long(timeframe, last_price, curr_stop_loss_price, distance)
+        elif data.type == StrategyTraderContext.PRICE_HMA:
+            return dynamic_stop_loss_fixed_hma_long(sub, last_price, curr_stop_loss_price, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_HMA:
-            return dynamic_stop_loss_fixed_hma_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
-
-        elif method == StrategyTraderContext.PRICE_VOL_SR:
-            return dynamic_stop_loss_volume_sr_long(timeframe, last_price, curr_stop_loss_price)
-
-        elif method == StrategyTraderContext.PRICE_KIJUN:
-            return dynamic_stop_loss_kijun_long(timeframe, last_price, curr_stop_loss_price, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_KIJUN:
+            return dynamic_stop_loss_kijun_long(sub, last_price, curr_stop_loss_price, price_epsilon)
 
     elif direction < 0:
-        if method == StrategyTraderContext.PRICE_NONE:
+        if data.type == StrategyTraderContext.PRICE_NONE:
             return 0.0
 
-        elif method == StrategyTraderContext.PRICE_ATR_SR:
-            return dynamic_stop_loss_atrsr_short(timeframe, last_price, curr_stop_loss_price, depth, orientation,
+        elif data.type == StrategyTraderContext.PRICE_ATR_SR:
+            return dynamic_stop_loss_atrsr_short(sub, last_price, curr_stop_loss_price, data.depth, data.orientation,
                                                  price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_CUR_ATR_SR:
-            return dynamic_stop_loss_cur_atrsr_short(timeframe, entry_price, last_price, curr_stop_loss_price, depth,
-                                                     orientation, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_CUR_ATR_SR:
+            return dynamic_stop_loss_cur_atrsr_short(sub, entry_price, last_price, curr_stop_loss_price, data.depth,
+                                                     data.orientation, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_BOLLINGER:
-            return dynamic_stop_loss_fixed_bollinger_short(timeframe, last_price, curr_stop_loss_price, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_BOLLINGER:
+            return dynamic_stop_loss_fixed_bollinger_short(sub, last_price, curr_stop_loss_price, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_FIXED_PCT and distance > 0.0:
-            return dynamic_stop_loss_fixed_pct_short(timeframe, last_price, curr_stop_loss_price, distance)
+        elif data.type == StrategyTraderContext.PRICE_FIXED and data.distance > 0.0:
+            if data.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+                return dynamic_stop_loss_fixed_pct_short(sub, last_price, curr_stop_loss_price, data.distance)
+            elif data.distance_type == StrategyTraderContext.DIST_PRICE:
+                return dynamic_stop_loss_fixed_dist_short(sub, last_price, curr_stop_loss_price, data.distance)
 
-        elif method == StrategyTraderContext.PRICE_FIXED_DIST and distance > 0.0:
-            return dynamic_stop_loss_fixed_dist_short(timeframe, last_price, curr_stop_loss_price, distance)
+        elif data.type == StrategyTraderContext.PRICE_HMA:
+            return dynamic_stop_loss_fixed_hma_short(sub, last_price, curr_stop_loss_price, price_epsilon)
 
-        elif method == StrategyTraderContext.PRICE_HMA:
-            return dynamic_stop_loss_fixed_hma_short(timeframe, last_price, curr_stop_loss_price, price_epsilon)
-
-        elif method == StrategyTraderContext.PRICE_VOL_SR:
-            return dynamic_stop_loss_volume_sr_short(timeframe, last_price, curr_stop_loss_price)
-
-        elif method == StrategyTraderContext.PRICE_KIJUN:
-            return dynamic_stop_loss_kijun_short(timeframe, last_price, curr_stop_loss_price, price_epsilon)
+        elif data.type == StrategyTraderContext.PRICE_KIJUN:
+            return dynamic_stop_loss_kijun_short(sub, last_price, curr_stop_loss_price, price_epsilon)
 
     return 0.0

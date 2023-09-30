@@ -3,8 +3,17 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Strategy trader context
 
-from common.utils import timeframe_from_str
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategysignal import StrategySignal
+
+from trader.order import Order
 from instrument.instrument import Instrument
+
+from common.utils import timeframe_from_str
 
 
 class StrategyTraderContextBase(object):
@@ -121,15 +130,15 @@ class EntryExit(object):
             if distance.endswith('%'):
                 # in percent from entry price or limit price
                 self.distance = float(distance[:-1]) * 0.01
-                self.distance_type = StrategyTraderContext.PRICE_FIXED_PCT
+                self.distance_type = StrategyTraderContext.DIST_PERCENTILE
             elif distance.endswith('pip'):
                 # in pips from entry price or limit price
                 self.distance_value = float(distance[:-3])
-                self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+                self.distance_type = StrategyTraderContext.DIST_PRICE
             else:
                 # in price from entry price or limit price
                 self.distance = float(distance)
-                self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+                self.distance_type = StrategyTraderContext.DIST_PRICE
 
         # timeout distance
         timeout_distance = params.get('timeout-distance', "0.0")
@@ -140,17 +149,17 @@ class EntryExit(object):
             if timeout_distance.endswith('%'):
                 # in percent from entry price or limit price
                 self.timeout_distance = float(timeout_distance[:-1]) * 0.01
-                self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_PCT
+                self.timeout_distance_type = StrategyTraderContext.DIST_PERCENTILE
 
             elif timeout_distance.endswith('pip'):
                 # in pips from entry price or limit price
                 self.timeout_distance_value = float(timeout_distance[:-3])
-                self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+                self.timeout_distance_type = StrategyTraderContext.DIST_PRICE
 
             else:
                 # in price from entry price or limit price
                 self.timeout_distance = float(timeout_distance)
-                self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+                self.timeout_distance_type = StrategyTraderContext.DIST_PRICE
 
     def update(self, timestamp):
         if self.timeframe <= 0.0:
@@ -165,49 +174,49 @@ class EntryExit(object):
         if type(distance) is str and distance.endswith('%'):
             # in percent from entry price or limit price
             self.distance = float(distance[:-1]) * 0.01
-            self.distance_type = StrategyTraderContext.PRICE_FIXED_PCT
+            self.distance_type = StrategyTraderContext.DIST_PERCENTILE
 
         elif type(distance) is str and distance.endswith('pip'):
             # in pips from entry price or limit price
             self.distance = float(distance[:-3]) * strategy_trader.instrument.one_pip_means
-            self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+            self.distance_type = StrategyTraderContext.DIST_PRICE
 
         else:
             # in price from entry price or limit price
             self.distance = float(distance)
-            self.distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+            self.distance_type = StrategyTraderContext.DIST_PRICE
 
     def modify_timeout_distance(self, strategy_trader, timeout_distance: str):
         if type(timeout_distance) is str and timeout_distance.endswith('%'):
             # in percent from entry price or limit price
             self.timeout_distance = float(timeout_distance[:-1]) * 0.01
-            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_PCT
+            self.timeout_distance_type = StrategyTraderContext.DIST_PERCENTILE
 
         elif type(timeout_distance) is str and timeout_distance.endswith('pip'):
             # in pips from entry price or limit price
             self.timeout_distance = float(timeout_distance[:-3]) * strategy_trader.instrument.one_pip_means
-            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+            self.timeout_distance_type = StrategyTraderContext.DIST_PRICE
 
         else:
             # in price from entry price or limit price
             self.timeout_distance = float(timeout_distance)
-            self.timeout_distance_type = StrategyTraderContext.PRICE_FIXED_DIST
+            self.timeout_distance_type = StrategyTraderContext.DIST_PRICE
 
     def modify_orientation(self, orientation: str):
         self.orientation = StrategyTraderContext.ORIENTATION.get(orientation, StrategyTraderContext.ORIENTATION_UP)
 
     def distance_to_str(self, strategy_trader) -> str:
-        if self.distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+        if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
             return "%.2f%%" % (self.distance * 100.0)
-        elif self.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+        elif self.distance_type == StrategyTraderContext.DIST_PRICE:
             return strategy_trader.instrument.format_price(self.distance)
         else:
             return strategy_trader.instrument.format_price(self.distance)
 
     def timeout_distance_to_str(self, strategy_trader) -> str:
-        if self.timeout_distance_type == StrategyTraderContext.PRICE_FIXED_PCT:
+        if self.timeout_distance_type == StrategyTraderContext.DIST_PERCENTILE:
             return "%.2f%%" % (self.timeout_distance * 100.0)
-        elif self.timeout_distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+        elif self.timeout_distance_type == StrategyTraderContext.DIST_PRICE:
             return strategy_trader.instrument.format_price(self.timeout_distance)
         else:
             return strategy_trader.instrument.format_price(self.timeout_distance)
@@ -221,13 +230,13 @@ class EntryExit(object):
     def compile(self, strategy_trader):
         # standard distance
         if self.distance_value is not None:
-            if self.distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+            if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
                 # because instrument details are guarantee only at compile time
                 self.distance = self.distance_value * strategy_trader.instrument.one_pip_means
 
         # timeout distance
         if self.timeout_distance_value is not None:
-            if self.timeout_distance_type == StrategyTraderContext.PRICE_FIXED_DIST:
+            if self.timeout_distance_type == StrategyTraderContext.DIST_PRICE:
                 # because instrument details are guarantee only at compile time
                 self.timeout_distance = self.timeout_distance_value * strategy_trader.instrument.one_pip_means
 
@@ -364,6 +373,30 @@ class EXEntry(EntryExit):
 
         return instrument.market_spread <= self.max_spread
 
+    def compute_entry(self, instrument: Instrument, signal: StrategySignal):
+        """
+        Compute a standard entry price and order type according to configured entry type.
+        @note signal direction must be defined before.
+        """
+        if not instrument or not signal:
+            return
+
+        if self.type == StrategyTraderContext.PRICE_LAST:
+            signal.price = instrument.open_exec_price(signal.direction)
+            signal.order_type = Order.ORDER_MARKET
+        elif self.type == StrategyTraderContext.PRICE_BEST1:
+            signal.order_type = Order.ORDER_LIMIT
+            signal.price = instrument.open_exec_price(signal.direction, True)
+        elif self.type == StrategyTraderContext.PRICE_BEST2:
+            signal.order_type = Order.ORDER_LIMIT
+            signal.price = instrument.open_exec_price(signal.direction, True) - signal.direction * instrument.market_spread
+        elif self.type == StrategyTraderContext.PRICE_FIXED:
+            signal.order_type = Order.ORDER_LIMIT
+            if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+                signal.price = instrument.open_exec_price(signal.direction) * (1.0 - signal.direction * self.distance)
+            elif self.distance_type == StrategyTraderContext.DIST_PRICE:
+                signal.price = instrument.open_exec_price(signal.direction) - signal.direction * self.distance
+
 
 class EXTakeProfit(EntryExit):
 
@@ -493,37 +526,41 @@ class EXBreakeven(EntryExit):
 class StrategyTraderContext(StrategyTraderContextBase):
 
     PRICE_NONE = 0
-    PRICE_FIXED_PCT = 1
-    PRICE_FIXED_DIST = 2
-    PRICE_HL2 = 3
-    PRICE_ICHIMOKU = 4
-    PRICE_BOLLINGER = 5
-    PRICE_ATR_SR = 6
-    PRICE_LAST = 7
-    PRICE_CUR_ATR_SR = 8
-    PRICE_HMA = 9
-    PRICE_VOL_SR = 10
-    PRICE_KIJUN = 11
-    PRICE_BEST1 = 12
-    PRICE_BEST2 = 13
-    PRICE_CUSTOM = 14
+    PRICE_CUSTOM = 1
+    PRICE_FIXED = 2
+    PRICE_LAST = 3
+    PRICE_BEST1 = 4
+    PRICE_BEST2 = 5
+    PRICE_HL2 = 6
+    PRICE_ICHIMOKU = 7
+    PRICE_BOLLINGER = 8
+    PRICE_ATR_SR = 9
+    PRICE_CUR_ATR_SR = 10
+    PRICE_HMA = 11
+    PRICE_VOL_SR = 12
+    PRICE_KIJUN = 13
+
+    DIST_NONE = 0
+    DIST_PERCENTILE = 1
+    DIST_PRICE = 2
 
     PRICE = {
         'none': PRICE_NONE,
-        'fixed-pct': PRICE_FIXED_PCT,
-        'fixed-dist': PRICE_FIXED_DIST,
-        'hl2': PRICE_HL2,
-        'bollinger': PRICE_BOLLINGER,
-        'ichimoku': PRICE_ICHIMOKU,
-        'atrsr': PRICE_ATR_SR,
+        'custom': PRICE_CUSTOM,
+        'fixed': PRICE_FIXED,
+        'fixed-pct': PRICE_FIXED,   # @deprecated
+        'fixed-dist': PRICE_FIXED,  # @deprecated
         'last': PRICE_LAST,
+        'best+1': PRICE_BEST1,
+        'best+2': PRICE_BEST2,
+        'hl2': PRICE_HL2,
+        'ichimoku': PRICE_ICHIMOKU,
+        'bollinger': PRICE_BOLLINGER,
+        'atrsr': PRICE_ATR_SR,
         'cur-atrsr': PRICE_CUR_ATR_SR,
         'hma': PRICE_HMA,
         'vol-sr': PRICE_VOL_SR,
         'kijun': PRICE_KIJUN,
-        'best+1': PRICE_BEST1,
-        'best+2': PRICE_BEST2,
-        'custom': PRICE_CUSTOM
     }
 
     PRICE_FROM_STR_MAP = {v: k for k, v in PRICE.items()}
