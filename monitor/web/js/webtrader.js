@@ -1415,6 +1415,7 @@ function fetch_strategy() {
                 'market-id': market['market-id'],
                 'symbol': market['symbol'],
                 'value-per-pip': market['value-per-pip'],
+                'one-pip-means': market['one-pip-means'],
                 'price-limits': market['price-limits'],        // array 4 floats
                 'notional-limits': market['notional-limits'],  // array 4 floats
                 'size-limits': market['size-limits'],          // array 4 floats
