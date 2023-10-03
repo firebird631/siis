@@ -688,7 +688,7 @@ function add_active_trade(market_id, trade) {
         trade_percent.append(trade_percent_pct);
 
         // pips
-        let deltaPip = trade.direction * trade['avg-exit-price'] - trade['avg-entry-price'];
+        let deltaPip = (trade.direction == "long" ? 1 : -1) * (trade.stats['close-exec-price'] - trade['avg-entry-price']);
         deltaPip /= market['one-pip-means'] || 1.0;
 
         let trade_percent_pip = $('<span class="pnl-in-pip">' + deltaPip + 'pips</span>');
@@ -1027,7 +1027,7 @@ function add_historical_trade(market_id, trade) {
     trade_percent.append(trade_percent_pct);
 
     // pips
-    let deltaPip = trade.direction * trade['avg-exit-price'] - trade['avg-entry-price'];
+    let deltaPip = (trade.direction == "long" ? 1 : -1) * (trade['avg-exit-price'] - trade['avg-entry-price']);
     deltaPip /= market['one-pip-means'] || 1.0;
 
     let trade_percent_pip = $('<span class="pnl-in-pip">' + deltaPip + 'pips</span>');
