@@ -208,6 +208,10 @@ $(window).ready(function() {
         'alt': false,
     }
 
+    window.display = {
+        'pip-or-percentile': 'percentile',
+    }
+
     window.default_profiles = {
         'price': {
             'label': 'Price',
@@ -855,6 +859,14 @@ $(window).ready(function() {
 
     $('#toggle_perf_status').on('click', function(elt) {
         $('#perf_status').toggle();
+    });
+
+    $('th.pip-or-percentile').on('click', function(elt) {
+        if (window.display['pip-or-percentile'] == 'percentile') {
+            window.display['pip-or-percentile'] = 'pip';
+        } else if (window.display['pip-or-percentile'] == 'pip') {
+            window.display['pip-or-percentile'] = 'percentile';
+        }
     });
 
     //

@@ -546,3 +546,7 @@ div.chart-buttons {
        overflow-y:auto;
     }
 }
+
+th.pip-or-percentile {
+    cursor: pointer;
+}

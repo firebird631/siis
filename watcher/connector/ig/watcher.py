@@ -825,7 +825,13 @@ class IGWatcher(Watcher):
                         # deal confirmed and accepted
                         order_id = data['dealId']
                         ref_order_id = data['dealReference']
-                        event_time = parse_datetime(data['date'])
+
+                        if 'date' in data:
+                            event_time = parse_datetime(data['date'])
+                        elif 'timestamp' in data:
+                            event_time = parse_datetime(data['timestamp'])
+                        else:
+                            event_time = time.time()
 
                         # direction of the trade
                         if data['direction'] == 'BUY':
