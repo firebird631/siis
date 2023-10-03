@@ -619,7 +619,12 @@ function add_active_trade(market_id, trade) {
     let key = market_id + ':' + trade.id;
     trade_elt.attr('trade-key', key);
 
-    let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
+    let market = window.markets[market_id];
+    if (!market) {
+        return;
+    }
+
+    let symbol = market.symbol;
 
     // info
     let trade_id = $('<span class="trade-id"></span>').text(trade.id);
