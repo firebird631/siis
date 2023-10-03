@@ -865,13 +865,13 @@ $(window).ready(function() {
         if (window.display['pip-or-percentile'] == 'percentile') {
             window.display['pip-or-percentile'] = 'pip';
 
-            $('span.pnl-in-percentile').style('display', 'none');
-            $('span.pnl-in-pip').style('display', 'inline');
+            $('span.pnl-in-percentile').css('display', 'none');
+            $('span.pnl-in-pip').css('display', 'inline');
         } else if (window.display['pip-or-percentile'] == 'pip') {
             window.display['pip-or-percentile'] = 'percentile';
 
-            $('span.pnl-in-percentile').style('display', 'inline');
-            $('span.pnl-in-pip').style('display', 'none');
+            $('span.pnl-in-percentile').css('display', 'inline');
+            $('span.pnl-in-pip').css('display', 'none');
         }
     });
 
