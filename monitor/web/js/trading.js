@@ -874,6 +874,12 @@ function update_active_trade(market_id, trade) {
 
         trade_percent.append('<span class="pnl-in-pip">' + delta + 'pips</span>');
 
+        if (window.display['pip-or-percentile'] == 'percentile') {
+            trade_percent_pip.css('display', 'none');
+        } else if (window.display['pip-or-percentile'] == 'pip') {
+            trade_percent_pct.css('display', 'none');
+        }
+
         // settlement or quote upnl
         trade_upnl.text(format_settlement_price(market_id, trade.stats['profit-loss']) + currency_display);
     } else {
