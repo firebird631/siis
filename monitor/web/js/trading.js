@@ -1013,13 +1013,13 @@ function add_historical_trade(market_id, trade) {
     let trade_percent = $('<span class="trade-percent"></span>');
 
     // percentile
-    trade_percent.text(trade['profit-loss-pct'] + '%');
+    trade_percent.append('<span class="pnl-in-percentile">' + trade['profit-loss-pct'] + '%</span>');
 
     // pips
     let deltaPip = trade.direction * trade.stats['close-exec-price'] - trade['avg-entry-price'];
     deltaPip /= market['one-pip-means'] || 1.0;
 
-    trade_percent.text(deltaPip + 'pips');
+    trade_percent.append('<span class="pnl-in-pip">' + deltaPip + 'pips</span>');
 
     let trade_pnl = $('<span class="trade-pnl"></span>').text(format_settlement_price(market_id,
         trade.stats['profit-loss']) + currency_display);
