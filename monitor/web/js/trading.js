@@ -683,10 +683,10 @@ function add_active_trade(market_id, trade) {
     let trade_upnl = $('<span class="trade-upnl"></span>');
 
     if (parseFloat(trade['filled-entry-qty']) > 0.0 && trade.stats['profit-loss'] != undefined) {
-        if (window.display == 'percentile') {
+        if (window.display['pip-or-percentile'] == 'percentile') {
             // percentile
             trade_percent.text(trade['profit-loss-pct'] + '%');
-        } else if (window.display == 'pip') {
+        } else if (window.display['pip-or-percentile'] == 'pip') {
             // pips
             let delta = trade.direction * trade.stats['close-exec-price'] - trade['avg-entry-price'];
             delta /= market['one-pip-means'] || 1.0;
@@ -1006,10 +1006,10 @@ function add_historical_trade(market_id, trade) {
         .text(trade['label'] ? trade['label'] + ' (' + trade['timeframe'] + ')' : trade['timeframe']);
 
     let trade_percent = $('<span class="trade-percent"></span>');
-    if (window.display == 'percentile') {
+    if (window.display['pip-or-percentile'] == 'percentile') {
         // percentile
         trade_percent.text(trade['profit-loss-pct'] + '%');
-    } else if (window.display == 'pip') {
+    } else if (window.display['pip-or-percentile'] == 'pip') {
         // pips
         let delta = trade.direction * trade.stats['close-exec-price'] - trade['avg-entry-price'];
         delta /= market['one-pip-means'] || 1.0;
