@@ -683,16 +683,12 @@ function add_active_trade(market_id, trade) {
     let trade_upnl = $('<span class="trade-upnl"></span>');
 
     if (parseFloat(trade['filled-entry-qty']) > 0.0 && trade.stats['profit-loss'] != undefined) {
-        if (window.display['pip-or-percentile'] == 'percentile') {
-            // percentile
-            trade_percent.text(trade['profit-loss-pct'] + '%');
-        } else if (window.display['pip-or-percentile'] == 'pip') {
-            // pips
-            let delta = trade.direction * trade.stats['close-exec-price'] - trade['avg-entry-price'];
-            delta /= market['one-pip-means'] || 1.0;
+        trade_percent.append('<span class="pnl-in-percentile">' + trade['profit-loss-pct'] + '%</span>');
 
-            trade_percent.text(delta + 'pips');
-        }
+        let delta = trade.direction * trade.stats['close-exec-price'] - trade['avg-entry-price'];
+        delta /= market['one-pip-means'] || 1.0;
+
+        trade_percent.append('<span class="pnl-in-pip">' + delta + 'pips</span>');
 
         // pnl (quote or settlement currency)
         trade_upnl.text(format_settlement_price(market_id, trade.stats['profit-loss']) + currency_display);
@@ -849,16 +845,12 @@ function update_active_trade(market_id, trade) {
     let trade_upnl = $('<span class="trade-upnl"></span>');
 
     if (parseFloat(trade['filled-entry-qty']) > 0.0 && trade.stats['profit-loss'] != undefined) {
-        if (window.display == 'percentile') {
-            // percentile
-            trade_percent.text(trade['profit-loss-pct'] + '%');
-        } else if (window.display == 'pip') {
-            // pips
-            let delta = trade.direction * trade.stats['close-exec-price'] - trade['avg-entry-price'];
-            delta /= market['one-pip-means'] || 1.0;
+        trade_percent.append('<span class="pnl-in-percentile">' + trade['profit-loss-pct'] + '%</span>');
 
-            trade_percent.text(delta + 'pips');
-        }
+        let delta = trade.direction * trade.stats['close-exec-price'] - trade['avg-entry-price'];
+        delta /= market['one-pip-means'] || 1.0;
+
+        trade_percent.append('<span class="pnl-in-pip">' + delta + 'pips</span>');
 
         trade_upnl.text(format_settlement_price(market_id, trade.stats['profit-loss']) + currency_display);
     } else {

@@ -864,8 +864,14 @@ $(window).ready(function() {
     $('th.pip-or-percentile').on('click', function(elt) {
         if (window.display['pip-or-percentile'] == 'percentile') {
             window.display['pip-or-percentile'] = 'pip';
+
+            $('span.pnl-in-percentile').style('display', 'none');
+            $('span.pnl-in-pip').style('display', 'inline');
         } else if (window.display['pip-or-percentile'] == 'pip') {
             window.display['pip-or-percentile'] = 'percentile';
+
+            $('span.pnl-in-percentile').style('display', 'inline');
+            $('span.pnl-in-pip').style('display', 'none');
         }
     });
 
