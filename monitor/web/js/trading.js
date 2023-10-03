@@ -796,6 +796,11 @@ function update_active_trade(market_id, trade) {
     let container = $('div.active-trade-list-entries tbody');
     let trade_elt = container.find('tr.active-trade[trade-key="' + key + '"]')
 
+    let market = window.markets[market_id];
+    if (!market) {
+        return;
+    }
+
     let trade_symbol = $('<span class="trade-symbol badge"></span>').text(trade.symbol);
     if (trade['filled-entry-qty'] > 0.0) {
         trade_symbol.addClass("badge-info");
@@ -845,13 +850,16 @@ function update_active_trade(market_id, trade) {
     let trade_upnl = $('<span class="trade-upnl"></span>');
 
     if (parseFloat(trade['filled-entry-qty']) > 0.0 && trade.stats['profit-loss'] != undefined) {
+        // percentile
         trade_percent.append('<span class="pnl-in-percentile">' + trade['profit-loss-pct'] + '%</span>');
 
+        // pip
         let delta = trade.direction * trade.stats['close-exec-price'] - trade['avg-entry-price'];
         delta /= market['one-pip-means'] || 1.0;
 
         trade_percent.append('<span class="pnl-in-pip">' + delta + 'pips</span>');
 
+        // settlement or quote upnl
         trade_upnl.text(format_settlement_price(market_id, trade.stats['profit-loss']) + currency_display);
     } else {
         trade_percent.text("-");
@@ -966,6 +974,11 @@ function add_historical_trade(market_id, trade) {
     let trade_elt = $('<tr class="historical-trade"></tr>');
     let key = market_id + ':' + trade.id;
     trade_elt.attr('trade-key', key);
+
+    let market = window.markets[market_id];
+    if (!market) {
+        return;
+    }
 
     let symbol = window.markets[market_id] ? window.markets[market_id]['symbol'] : market_id;
     let currency_display = get_currency_display(trade.stats['profit-loss-currency']);
