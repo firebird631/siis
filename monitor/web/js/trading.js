@@ -864,7 +864,7 @@ function update_active_trade(market_id, trade) {
         trade_percent.append('<span class="pnl-in-percentile">' + trade['profit-loss-pct'] + '%</span>');
 
         // pip
-        let delta = trade.direction * trade.stats['close-exec-price'] - trade['avg-entry-price'];
+        let delta = trade.direction == "long" ? 1 : -1 * (trade.stats['close-exec-price'] - trade['avg-entry-price']);
         delta /= market['one-pip-means'] || 1.0;
 
         trade_percent.append('<span class="pnl-in-pip">' + delta + 'pips</span>');
