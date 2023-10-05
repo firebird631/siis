@@ -296,38 +296,92 @@ function on_close_trade(elt) {
 
     let market = window.markets[market_id];
 
-    if (market_id && market && trade_id) {
-        let data = {
-            'market-id': market['market-id'],
-            'trade-id': trade_id,
-            'action': "close"
-        };
+    if (elt.shiftKey) {
+        // close any trades for this market
+        for (key in window.active_trades) {
+            let trade = window.active_trades[key];
 
-        $.ajax({
-            type: "DELETE",
-            url: url,
-            headers: {
-                'Authorization': "Bearer " + server['auth-token'],
-                'TWISTED_SESSION': server.session,
-            },
-            data: JSON.stringify(data),
-            dataType: 'json',
-            contentType: 'application/json'
-        })
-        .done(function(data) {
-            if (data.error) {
-                for (let msg in data.messages) {
-                    notify({'message': data.messages[msg], 'title': 'Order Close', 'type': 'error'});
+            let parts = key.split(':');
+            if (parts.length != 2) {
+                continue;
+            }
+
+            if (parts[0] != market_id) {
+                continue;
+            }
+
+            market_id = parts[0];
+            trade_id = parseInt(parts[1]);
+
+            if (market_id && market && trade_id) {
+                let data = {
+                    'market-id': market['market-id'],
+                    'trade-id': trade_id,
+                    'action': "close"
+                };
+
+                $.ajax({
+                    type: "DELETE",
+                    url: url,
+                    headers: {
+                        'Authorization': "Bearer " + server['auth-token'],
+                        'TWISTED_SESSION': server.session,
+                    },
+                    data: JSON.stringify(data),
+                    dataType: 'json',
+                    contentType: 'application/json'
+                })
+                .done(function(data) {
+                    if (data.error) {
+                        for (let msg in data.messages) {
+                            notify({'message': data.messages[msg], 'title': 'Order Close', 'type': 'error'});
+                        }
+                    } else {
+                        notify({'message': "Success", 'title': 'Order Close', 'type': 'success'});
+                    }
+                })
+                .fail(function(data) {
+                    for (let msg in data.messages) {
+                        notify({'message': msg, 'title': 'Order Close', 'type': 'error'});
+                    }
+                });
+            }
+        }
+    } else {
+        // single trade close
+        if (market_id && market && trade_id) {
+            let data = {
+                'market-id': market['market-id'],
+                'trade-id': trade_id,
+                'action': "close"
+            };
+
+            $.ajax({
+                type: "DELETE",
+                url: url,
+                headers: {
+                    'Authorization': "Bearer " + server['auth-token'],
+                    'TWISTED_SESSION': server.session,
+                },
+                data: JSON.stringify(data),
+                dataType: 'json',
+                contentType: 'application/json'
+            })
+            .done(function(data) {
+                if (data.error) {
+                    for (let msg in data.messages) {
+                        notify({'message': data.messages[msg], 'title': 'Order Close', 'type': 'error'});
+                    }
+                } else {
+                    notify({'message': "Success", 'title': 'Order Close', 'type': 'success'});
                 }
-            } else {
-                notify({'message': "Success", 'title': 'Order Close', 'type': 'success'});
-            }
-        })
-        .fail(function(data) {
-            for (let msg in data.messages) {
-                notify({'message': msg, 'title': 'Order Close', 'type': 'error'});
-            }
-        });
+            })
+            .fail(function(data) {
+                for (let msg in data.messages) {
+                    notify({'message': msg, 'title': 'Order Close', 'type': 'error'});
+                }
+            });
+        }
     }
 };
 
@@ -512,10 +566,6 @@ function update_status_pnl() {
 //
 // trades list functions
 //
-
-function on_close_all_active_trade(elt) {
-    notify({'message': "todo!", 'type': "error"});
-}
 
 function compute_price_pct(target, base, direction) {
     if (typeof(target) === "string") {
