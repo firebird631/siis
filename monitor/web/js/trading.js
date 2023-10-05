@@ -298,8 +298,8 @@ function on_close_trade(elt) {
 
     if (elt.shiftKey) {
         // close any trades for this market
-        for (key in window.active_trades) {
-            let trade = window.active_trades[key];
+        for (key in window.actives_trades) {
+            let trade = window.actives_trades[key];
 
             let parts = key.split(':');
             if (parts.length != 2) {
