@@ -920,7 +920,7 @@ function update_active_trade(market_id, trade) {
         trade_percent.append(trade_percent_pct);
 
         // pip
-        let deltaPip = trade.direction == "long" ? 1 : -1 * (trade.stats['close-exec-price'] - trade['avg-entry-price']);
+        let deltaPip = (trade.direction == "long" ? 1 : -1) * (trade.stats['close-exec-price'] - trade['avg-entry-price']);
         deltaPip /= market['one-pip-means'] || 1.0;
 
         let trade_percent_pip = $('<span class="pnl-in-pip">' + deltaPip.toFixed(1).replace(/\.?0+$/, '') + 'pips</span>');
