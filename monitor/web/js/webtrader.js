@@ -875,10 +875,6 @@ $(window).ready(function() {
         }
     });
 
-    $('#close_all').on('click', function(elt)) {
-        close_all_positions();
-    }
-
     //
     // session init
     //
