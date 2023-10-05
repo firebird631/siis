@@ -866,13 +866,13 @@ function update_active_trade(market_id, trade) {
 
     if (parseFloat(trade['filled-entry-qty']) > 0.0 && trade.stats['profit-loss'] != undefined) {
         // percentile
-        trade_percent.append('<span class="pnl-in-percentile">' + trade['profit-loss-pct'] + '%</span>');
+        let trade_percent_pct = $('<span class="pnl-in-percentile">' + trade['profit-loss-pct'] + '%</span>');
 
         // pip
         let delta = trade.direction == "long" ? 1 : -1 * (trade.stats['close-exec-price'] - trade['avg-entry-price']);
         delta /= market['one-pip-means'] || 1.0;
 
-        trade_percent.append('<span class="pnl-in-pip">' + delta + 'pips</span>');
+        let trade_percent_pip = $('<span class="pnl-in-pip">' + deltaPip.toFixed(1).replace(/\.?0+$/, '') + 'pips</span>');
 
         if (window.display['pip-or-percentile'] == 'percentile') {
             trade_percent_pip.css('display', 'none');
