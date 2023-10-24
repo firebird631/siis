@@ -597,7 +597,8 @@ class KrakenWatcher(Watcher):
         query_retrieve_events = None
 
         with self._mutex:
-            if self._query_retrieve_events:
+            # only when connected session
+            if not self.connected and self._query_retrieve_events:
                 if 0.0 < self._query_retrieve_events[0] < self._ws_open_orders['timestamp']:
                     query_retrieve_events = self._query_retrieve_events
                     self._query_retrieve_events = None
