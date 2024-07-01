@@ -178,5 +178,10 @@
         "status": "load",
         "classpath": "strategy.indicator.supertrend.supertrend.SuperTrendIndicator",
         "options": {}
+    },
+    "kama": {
+        "status": "load",
+        "classpath": "strategy.indicator.kama.kama.KAMAIndicator",
+        "options": {}
     }
 }

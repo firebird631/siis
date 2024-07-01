@@ -195,7 +195,7 @@ class IchimokuIndicator(Indicator):
         # IchimokuIndicator.rolling_max(high, self._senkou_span_b_l, self._sbrmax_h)
         # IchimokuIndicator.rolling_min(low, self._senkou_span_b_l, self._sbrmin_l)
 
-        # # must be considered as shifted in future (26)
+        # must be considered as shifted in future (26)
         # self._ssbs = (self._sbrmax_h + self._sbrmin_l) * 0.5
         self._ssbs = ta_MIDPRICE(high, low, self._senkou_span_b_l)
 
@@ -203,7 +203,8 @@ class IchimokuIndicator(Indicator):
         # chikou span - lagging span (shifted in past)
         #
 
-        # self._chikous = np.array(close)
+        # a simple copy of close price
+        self._chikous = np.array(close)
 
         self._last_tenkan = self._tenkans[-1]
         self._last_kijun = self._kijuns[-1]

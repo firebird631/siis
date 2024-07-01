@@ -1,0 +1,75 @@
+# @date 2024-07-01
+# @author Frederic Scherma, All rights reserved without prejudices.
+# @license Copyright (c) 2024 Dream Overflow
+# Kaufman Adaptive Moving Average indicator
+
+from strategy.indicator.indicator import Indicator
+from talib import KAMA as ta_KAMA
+
+import numpy as np
+
+
+class KAMAIndicator(Indicator):
+    """
+    Kaufman Adaptative Moving Average indicator
+    @see https://corporatefinanceinstitute.com/resources/career-map/sell-side/capital-markets/kaufmans-adaptive-moving-average-kama/
+    """
+
+    __slots__ = '_length', '_prev', '_last', '_kamas'
+
+    @classmethod
+    def indicator_type(cls):
+        return Indicator.TYPE_TREND
+
+    @classmethod
+    def indicator_class(cls):
+        return Indicator.CLS_OVERLAY
+
+    def __init__(self, timeframe, length=30):
+        super().__init__("kama", timeframe)
+
+        self._length = length   # periods number
+        self._prev = 0.0
+        self._last = 0.0
+
+        self._kamas = np.array([])
+
+    @property
+    def length(self):
+        return self._length
+    
+    @length.setter
+    def length(self, length):
+        self._length = length
+
+    @property
+    def prev(self):
+        return self._prev
+
+    @property
+    def last(self):
+        return self._last
+
+    @property
+    def kamas(self):
+        return self._kamas
+
+    @property
+    def values(self):
+        return self._kamas
+
+    def has_values(self, min_samples=1):
+        return self._kamas.size >= min_samples and not np.isnan(self._kamas[-min_samples])
+
+    def compute(self, timestamp, prices):
+        self._prev = self._last
+
+        if np.isnan(prices[-1]):
+            return self._kamas
+
+        self._kamas = TA_KAMA(prices, self._length)
+
+        self._last = self._kamas[-1]
+        self._last_timestamp = timestamp
+
+        return self._kamas
