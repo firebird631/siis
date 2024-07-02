@@ -196,6 +196,9 @@ Sum order :
     sur une seule de reference et ensuite transferer sur le le wallet de reference
         - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
 
+- ajouter renko bar (voir https://tradewithpython.com/constructing-renko-charts-using-python exemple avec ATR)
+- ajouter unirenko bar
+
 
 ############
 ## Divers ##

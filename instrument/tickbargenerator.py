@@ -136,14 +136,12 @@ class TickBarRangeGenerator(TickBarBaseGenerator):
         elif tick[3] > self._current._high:
             # is the price extend the size of the tick-bar outside its allowed range
             size = int((tick[3] - self._current._low) / self._tick_size) + 1
-
             if size > self._size:
                 last_tickbar = self._new_tickbar(tick)
 
         elif tick[3] < self._current._low:
             # is the price extend the size of the tick-bar outside its allowed range
             size = int((self._current._high - tick[3]) / self._tick_size) + 1
-
             if size > self._size:
                 last_tickbar = self._new_tickbar(tick)
 
@@ -232,14 +230,12 @@ class TickBarReversalGenerator(TickBarBaseGenerator):
         elif tick[3] < self._current._open and self._current._dir > 0:
             # down-tick from open
             size = int((self._current._open - tick[3]) / self._tick_size) + 1
-
             if size > self._size:
                 last_tickbar = self._new_tickbar(tick)
 
         elif tick[3] > self._current._open and self._current._dir < 0:
             # up-tick from open
             size = int((tick[3] - self._current._open) / self._tick_size) + 1
-
             if size > self._size:
                 last_tickbar = self._new_tickbar(tick)
 

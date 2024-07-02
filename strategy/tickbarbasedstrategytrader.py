@@ -188,8 +188,8 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             if self.instrument.ticks():
                 self.prev_price = self.last_price
 
-                # last tick mid
-                self.last_price = (self.instrument.ticks()[-1][1] + self.instrument.ticks()[-1][2]) * 0.5
+                # last close price
+                self.last_price = self.instrument.ticks()[-1][3]
 
             # no longer need them
             self.instrument.clear_ticks()
@@ -221,11 +221,11 @@ class TickBarBasedStrategyTrader(StrategyTrader):
                 self.instrument.add_tickbar(tb, copy.copy(sub.tick_bar_gen.current), sub.depth)
 
             # keep prev and last price at processing step
-            if self.instrument.ticks():
+            if ticks:
                 self.prev_price = self.last_price
 
-                # last tick mid
-                self.last_price = (self.instrument.ticks()[-1][1] + self.instrument.ticks()[-1][2]) * 0.5
+                # last close price
+                self.last_price = ticks[-1][3]
 
             return ticks
 

@@ -3,10 +3,13 @@
 # @license Copyright (c) 2023 Dream Overflow
 # Range bar generators.
 
+import logging
+
 from common.utils import truncate
 
 from instrument.rangebar import RangeBar
 
+logger = logging.getLogger('siis.instrument.rangebar')
 
 class RangeBarBaseGenerator(object):
     """
@@ -87,7 +90,8 @@ class RangeBarBaseGenerator(object):
         for from_tick in from_ticks:
             to_tickbar = self.update(from_tick)
             if to_tickbar:
-                # logger.debug(str(to_tickbar))
+                # if self.size == 32:
+                #     logger.debug(str(to_tickbar))
                 to_tickbars.append(to_tickbar)
 
             self._last_consumed += 1
@@ -112,7 +116,7 @@ class RangeBarGenerator(RangeBarBaseGenerator):
         """
         super().__init__(size, tick_scale)
 
-    def _new_range_bar(self, tick, open_price: float = 0.0):
+    def _new_range_bar(self, tick):
         # complete the current tick-bar
         if self._current is not None:
             self._current._ended = True
@@ -121,39 +125,9 @@ class RangeBarGenerator(RangeBarBaseGenerator):
         last_tickbar = self._current
 
         # create a new tick-bar
-        self._current = RangeBar(tick[0], open_price or tick[3])
+        self._current = RangeBar(tick[0], tick[3])
 
         return last_tickbar
-
-    def _finalize_bar(self, tick) -> float:
-        # one more trade
-        self._num_trades += 1
-
-        # retain the last trade timestamp
-        self._current._last_timestamp = tick[0]
-
-        if tick[3] > self._current._open:
-            # last close and high
-            self._current._close = self._current._open + self._size
-            self._current._high = self._current._close
-
-        elif tick[3] < self._current._open:
-            # last close and low
-            self._current._close = self._current._open - self._size
-            self._current._low = self._current._close
-
-        # cumulative volume per tick-bar or keep volume for the new bar
-        # self._current._volume += tick[4]
-
-        # direction
-        if self._current._close > self._current._open:
-            self._current._dir = 1
-        elif self._current._close < self._current._open:
-            self._current._dir = -1
-        else:
-            self._current._dir = 0
-
-        return self._current._close
 
     def update(self, tick):
         if tick[0] < self._last_timestamp:
@@ -164,21 +138,16 @@ class RangeBarGenerator(RangeBarBaseGenerator):
         if self._current is None:
             last_tickbar = self._new_range_bar(tick)
 
+        # is the price extend the size of the range-bar outside its allowed range
         if tick[3] > self._current._open:
-            # is the price extend the size of the range-bar outside its allowed range
             size = int((tick[3] - self._current._open) / self._tick_size)
-
-            if size >= self._size:
-                close_price = self._finalize_bar(tick)
-                last_tickbar = self._new_range_bar(tick, close_price)
+            if size > self._size:
+                last_tickbar = self._new_range_bar(tick)
 
         elif tick[3] < self._current._open:
-            # is the price extend the size of the tick-bar outside its allowed range
             size = int((self._current._open - tick[3]) / self._tick_size)
-
-            if size >= self._size:
-                close_price = self._finalize_bar(tick)
-                last_tickbar = self._new_range_bar(tick, close_price)
+            if size > self._size:
+                last_tickbar = self._new_range_bar(tick)
 
         # update the current bar
 
