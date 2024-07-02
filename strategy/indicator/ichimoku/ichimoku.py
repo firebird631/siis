@@ -204,7 +204,7 @@ class IchimokuIndicator(Indicator):
         #
 
         # a simple copy of close price
-        self._chikous = np.array(close)
+        # self._chikous = np.array(close)
 
         self._last_tenkan = self._tenkans[-1]
         self._last_kijun = self._kijuns[-1]

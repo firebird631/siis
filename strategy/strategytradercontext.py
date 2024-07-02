@@ -5,10 +5,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from strategy.strategysignal import StrategySignal
+    from strategy.strategytrader import StrategyTrader
+    from strategy.trade.strategytrade import StrategyTrade
 
 from trader.order import Order
 from instrument.instrument import Instrument
@@ -801,3 +803,25 @@ class StrategyTraderContext(StrategyTraderContextBase):
 
             if breakeven.timeframe or breakeven.tickbar:
                 return breakeven
+
+    def compute_signal(self, instrument: Instrument, timestamp: float, prev_price: float, last_price: float,
+                       price_epsilon: float) -> Optional[StrategySignal]:
+        """
+        Could be overridden here to compute a signal par context at time.
+        @param instrument:
+        @param timestamp:
+        @param prev_price:
+        @param last_price:
+        @param price_epsilon:
+        @return:
+        """
+        return None
+
+    def update_trade(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+        """
+        Could be overridden to update the status of a trade.
+        @param strategy_trader:
+        @param trade:
+        @return:
+        """
+        pass

@@ -195,6 +195,12 @@ class TickBarBasedStrategyTrader(StrategyTrader):
             self.instrument.clear_ticks()
 
     def update_tickbar_ext(self, timestamp: float) -> List[Tuple]:
+        """
+        Similar as @see update_tickbar but in detach ticks array in place of taking the array and after cleaning it.
+        This method could be faster.
+        @param timestamp:
+        @return:
+        """
         # update data at tick level
         with self._mutex:
             # update at tick or trade
