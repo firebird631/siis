@@ -232,7 +232,7 @@ class EntryExit(object):
     def compile(self, strategy_trader):
         # standard distance
         if self.distance_value is not None:
-            if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+            if self.distance_type == StrategyTraderContext.DIST_PRICE:
                 # because instrument details are guarantee only at compile time
                 self.distance = self.distance_value * strategy_trader.instrument.one_pip_means
 
@@ -616,7 +616,8 @@ class StrategyTraderContext(StrategyTraderContextBase):
 
         self.name = name
         self.mode = StrategyTraderContext.MODE_NONE
-        self.min_profit = 0.0
+        self.min_profit = 0.0  # in percentile
+
         self.compiled = False
 
         self.entry = EXEntry()

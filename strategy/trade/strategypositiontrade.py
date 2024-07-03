@@ -788,10 +788,11 @@ class StrategyPositionTrade(StrategyTrade):
                 delta_price = self.aep - instrument.market_ask
                 r_delta_price = self.aep - self.axp
 
-            upnl = nrq * (delta_price / (instrument.one_pip_means or 1.0)) * instrument.value_per_pip
-            rpnl = self.x * (r_delta_price / (instrument.one_pip_means or 1.0)) * instrument.value_per_pip
-            # upnl = nrq * delta_price * instrument.contract_size  # no have contract size on instrument
-            # rpnl = self.x * r_delta_price * instrument.contract_size
+            # generally on quote currency
+            # upnl = nrq * (delta_price / (instrument.one_pip_means or 1.0)) * instrument.value_per_pip
+            # rpnl = self.x * (r_delta_price / (instrument.one_pip_means or 1.0)) * instrument.value_per_pip
+            upnl = nrq * delta_price * instrument.contract_size  # no have contract size on instrument
+            rpnl = self.x * r_delta_price * instrument.contract_size
 
             # including fees and realized profit and loss
             self._stats['unrealized-profit-loss'] = instrument.adjust_quote(

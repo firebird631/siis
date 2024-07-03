@@ -50,6 +50,11 @@ Sum order :
     margin trader : idem mais n'est plus utilisé
     strategy margin trade : idem mais n'est plus utilisé
 
+- gérer certains indicateur qui fonctionnement uniquement ou en partie avec des timeserie et non pas de tickbar/rangebar
+ - cas de ATRSR
+ - on ajoute un IDX sur chaque bar, mais ca ne suffit pas car il faudra alors aussi transmettre les series d'idx ou au moins
+   le premier et dernier idx de chaque compute
+
 
 #######
 # WIP #

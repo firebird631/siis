@@ -15,8 +15,9 @@ class TickBarBase(object):
     Tick-bar base model for an instrument.
     """
 
-    __slots__ = '_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_ticks', '_num_trades', \
-        '_pov', '_pov_bid', '_pov_ask', '_vol_bid', '_vol_ask', '_avg_size', '_num_trades', '_low', '_high', '_dir'
+    __slots__ = ('_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_ticks', '_num_trades',
+        '_pov', '_pov_bid', '_pov_ask', '_vol_bid', '_vol_ask', '_avg_size', '_num_trades', '_low', '_high',
+                 '_dir', '_id')
 
     def __init__(self, timestamp: float, price: float):
         """
@@ -54,11 +55,16 @@ class TickBarBase(object):
         # volume change from prev
         # average size
 
+        self._id = 1  # bar index for comparison, always inc by generator
         self._ended = False
 
     #
     # data
     #
+
+    @property
+    def id(self) -> int:
+        return self._id
 
     @property
     def timestamp(self) -> float:
@@ -152,7 +158,8 @@ class TickBarBase(object):
     #
 
     def __str__(self):
-        return "%s %s %g/%g/%g/%g %g (%g/%g)" % (
+        return "#%i %s %s %g/%g/%g/%g %g (%g/%g)" % (
+            self._id,
             timestamp_to_str(self._timestamp),
             "UP" if self._dir > 0 else "DN",
             self._open, self._high, self._low, self._close,

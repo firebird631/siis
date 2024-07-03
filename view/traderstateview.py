@@ -254,6 +254,12 @@ class TraderStateView(TableView):
                     else:
                         row[i] = "-"
 
+                elif members[i][0] == "coef2" and type(d) in (float, np.float64):
+                    row[i] = "{:.2f}".format(d)
+
+                elif members[i][0] == "coef3" and type(d) in (float, np.float64):
+                    row[i] = "{:.3f}".format(d)
+
                 elif members[i][0] == "price" and type(d) in (float, np.float64):
                     strategy_trader = strategy.strategy_trader(self._market_id)
                     if strategy_trader and strategy_trader.instrument:

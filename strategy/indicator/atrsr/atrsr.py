@@ -250,6 +250,8 @@ class ATRSRIndicator(Indicator):
     def compute(self, timestamp, timestamps, high, low, close):
         size = len(close)
 
+        # firstly, compute ATR and detect higher high and higher low and mark them if there is a continuity for
+        # a level
         basis = ta_SMA(close, self._length)
         atrs = ta_ATR(high, low, close, timeperiod=self._length)
 
@@ -314,59 +316,61 @@ class ATRSRIndicator(Indicator):
         #     datetime.utcfromtimestamp(timestamps[-1]).strftime('%Y-%m-%d %H:%M:%S'),
         #     self._tdn[-3], self._tdn[-2], self._tdn[-1], close[-3], close[-2], close[-1], low[-3], low[-2], low[-1], lowest[-3], lowest[-2], lowest[-1]))
 
-        # compact timeserie
-        from_timestamp = Instrument.basetime(self.timeframe, self._last_timestamp)  # inclusive
-        to_timestamp = Instrument.basetime(self.timeframe, timestamp)               # exclusive
+        # compact timeserie, retrieve and store up and down over serie
+        # @todo works only with timeserie because else we need a serie of identifiers to compute delta
+        if self._timeframe > 0.0:
+            from_timestamp = Instrument.basetime(self.timeframe, self._last_timestamp)  # inclusive
+            to_timestamp = Instrument.basetime(self.timeframe, timestamp)               # exclusive
 
-        delta = min(int((to_timestamp - from_timestamp) / self._timeframe) + 1, len(timestamps))
+            delta = min(int((to_timestamp - from_timestamp) / self._timeframe) + 1, len(timestamps))
 
-        # base index
-        num = len(timestamps)
+            # base index
+            num = len(timestamps)
 
-        last_up = self._up[-1] if len(self._up) else np.NaN
-        last_dn = self._down[-1] if len(self._down) else np.NaN
+            last_up = self._up[-1] if len(self._up) else np.NaN
+            last_dn = self._down[-1] if len(self._down) else np.NaN
 
-        # if len(self._tdn) and not np.isnan(self._tdn[-1]) and self._tdn[-1] != last_dn:
-        #     self._down.append(self._tdn[-1])
-        #     last_dn = self._tdn[-1]
-        #     logger.info("> %s %s" % (datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'), last_dn))
+            # if len(self._tdn) and not np.isnan(self._tdn[-1]) and self._tdn[-1] != last_dn:
+            #     self._down.append(self._tdn[-1])
+            #     last_dn = self._tdn[-1]
+            #     logger.info("> %s %s" % (datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'), last_dn))
 
-        # if len(self._tup) and not np.isnan(self._tup[-1]) and self._tup[-1] != last_up:
-        #     self._up.append(self._tup[-1])
+            # if len(self._tup) and not np.isnan(self._tup[-1]) and self._tup[-1] != last_up:
+            #     self._up.append(self._tup[-1])
 
-        for b in range(num-delta, num):
-            # only most recent and complete
-            if from_timestamp <= timestamps[b] < to_timestamp:
-                if not np.isnan(self._tup[b]) and self._tup[b] != last_up and self._tup[b] > 0.0:
-                    last_up = self._tup[b]
+            for b in range(num-delta, num):
+                # only most recent and complete
+                if from_timestamp <= timestamps[b] < to_timestamp:
+                    if not np.isnan(self._tup[b]) and self._tup[b] != last_up and self._tup[b] > 0.0:
+                        last_up = self._tup[b]
 
-                    self._up.append(last_up)
-                    self._both.append(last_up)
+                        self._up.append(last_up)
+                        self._both.append(last_up)
 
-                    if len(self._up) > self._max_history:
-                        self._up.pop(0)
+                        if len(self._up) > self._max_history:
+                            self._up.pop(0)
 
-                    if len(self._both) > 2*self._max_history:
-                        self._both.pop(0)
+                        if len(self._both) > 2*self._max_history:
+                            self._both.pop(0)
 
-                if not np.isnan(self._tdn[b]) and self._tdn[b] != last_dn and self._tdn[b] > 0.0:
-                    last_dn = self._tdn[b]
-                    # logger.info("%s %s" % (datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'), last_dn))
+                    if not np.isnan(self._tdn[b]) and self._tdn[b] != last_dn and self._tdn[b] > 0.0:
+                        last_dn = self._tdn[b]
+                        # logger.info("%s %s" % (datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'), last_dn))
 
-                    self._down.append(last_dn)
-                    self._both.append(last_dn)
+                        self._down.append(last_dn)
+                        self._both.append(last_dn)
 
-                    if len(self._down) > self._max_history:
-                        self._down.pop(0)
+                        if len(self._down) > self._max_history:
+                            self._down.pop(0)
 
-                    if len(self._both) > 2*self._max_history:
-                        self._both.pop(0)
+                        if len(self._both) > 2*self._max_history:
+                            self._both.pop(0)
 
-        # if self.timeframe == 60:
-        #    logger.info("%s %s" % (self._tup, self._tdn))
-        #    logger.info("%s %s" % (self._up, self._down))
-        # if self.timeframe == 60*60*24:
-        #     logger.info("%s" % (self._both))
+            # if self.timeframe == 60:
+            #    logger.info("%s %s" % (self._tup, self._tdn))
+            #    logger.info("%s %s" % (self._up, self._down))
+            # if self.timeframe == 60*60*24:
+            #     logger.info("%s" % (self._both))
 
         if len(atrs):
             # retains last ATR value

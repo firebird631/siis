@@ -15,7 +15,7 @@ class KAMAIndicator(Indicator):
     @see https://corporatefinanceinstitute.com/resources/career-map/sell-side/capital-markets/kaufmans-adaptive-moving-average-kama/
     """
 
-    __slots__ = '_length', '_prev', '_last', '_kamas'
+    __slots__ = '_length', '_fast', '_slow', '_prev', '_last', '_kamas'
 
     @classmethod
     def indicator_type(cls):
@@ -25,10 +25,12 @@ class KAMAIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_OVERLAY
 
-    def __init__(self, timeframe, length=30):
+    def __init__(self, timeframe, length=10, fast=2, slow=30):
         super().__init__("kama", timeframe)
 
         self._length = length   # periods number
+        self._fast = fast       # EMA fast period
+        self._slow = slow       # EMA slow period
         self._prev = 0.0
         self._last = 0.0
 
@@ -67,7 +69,7 @@ class KAMAIndicator(Indicator):
         if np.isnan(prices[-1]):
             return self._kamas
 
-        self._kamas = TA_KAMA(prices, self._length)
+        self._kamas = ta_KAMA(prices, timeperiod=self._length)  #, self._fast, self._slow)
 
         self._last = self._kamas[-1]
         self._last_timestamp = timestamp

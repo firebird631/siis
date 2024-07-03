@@ -90,7 +90,7 @@ class RangeBarBaseGenerator(object):
         for from_tick in from_ticks:
             to_tickbar = self.update(from_tick)
             if to_tickbar:
-                # if self.size == 32:
+                # if self.size == 64:
                 #     logger.debug(str(to_tickbar))
                 to_tickbars.append(to_tickbar)
 
@@ -126,6 +126,9 @@ class RangeBarGenerator(RangeBarBaseGenerator):
 
         # create a new tick-bar
         self._current = RangeBar(tick[0], tick[3])
+
+        if last_tickbar is not None:
+            self._current._id = last_tickbar._id + 1
 
         return last_tickbar
 
