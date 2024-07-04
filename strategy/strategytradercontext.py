@@ -527,20 +527,18 @@ class EXBreakeven(EntryExit):
 
 class StrategyTraderContext(StrategyTraderContextBase):
 
-    PRICE_NONE = 0
-    PRICE_CUSTOM = 1
-    PRICE_FIXED = 2
-    PRICE_LAST = 3
-    PRICE_BEST1 = 4
-    PRICE_BEST2 = 5
-    PRICE_HL2 = 6
-    PRICE_ICHIMOKU = 7
-    PRICE_BOLLINGER = 8
-    PRICE_ATR_SR = 9
-    PRICE_CUR_ATR_SR = 10
-    PRICE_HMA = 11
-    PRICE_VOL_SR = 12
-    PRICE_KIJUN = 13
+    PRICE_NONE = 0    # undefined
+    PRICE_CUSTOM = 1  # custom method
+    PRICE_FIXED = 2   # price at fixed distance in delta or percentile
+    PRICE_LAST = 3    # last trade price
+    PRICE_BEST1 = 4   # best first bid/ask price
+    PRICE_BEST2 = 5   # best second bid/ask price
+    # indicator based methods are deprecated. must be implemented by the strategy context
+    PRICE_BOLLINGER = 6
+    PRICE_ATR_SR = 7
+    PRICE_CUR_ATR_SR = 8
+    PRICE_HMA = 9
+    PRICE_VOL_SR = 10
 
     DIST_NONE = 0
     DIST_PERCENTILE = 1
@@ -550,19 +548,16 @@ class StrategyTraderContext(StrategyTraderContextBase):
         'none': PRICE_NONE,
         'custom': PRICE_CUSTOM,
         'fixed': PRICE_FIXED,
-        'fixed-pct': PRICE_FIXED,   # @deprecated
-        'fixed-dist': PRICE_FIXED,  # @deprecated
+        'fixed-pct': PRICE_FIXED,   # @deprecated use FIXED + dist with %
+        'fixed-dist': PRICE_FIXED,  # @deprecated use FIXED
         'last': PRICE_LAST,
         'best+1': PRICE_BEST1,
         'best+2': PRICE_BEST2,
-        'hl2': PRICE_HL2,
-        'ichimoku': PRICE_ICHIMOKU,
-        'bollinger': PRICE_BOLLINGER,
-        'atrsr': PRICE_ATR_SR,
-        'cur-atrsr': PRICE_CUR_ATR_SR,
-        'hma': PRICE_HMA,
-        'vol-sr': PRICE_VOL_SR,
-        'kijun': PRICE_KIJUN,
+        'bollinger': PRICE_BOLLINGER,  # @deprecated
+        'atrsr': PRICE_ATR_SR,  # @deprecated
+        'cur-atrsr': PRICE_CUR_ATR_SR,  # @deprecated
+        'hma': PRICE_HMA,  # @deprecated
+        'vol-sr': PRICE_VOL_SR,  # @deprecated
     }
 
     PRICE_FROM_STR_MAP = {v: k for k, v in PRICE.items()}

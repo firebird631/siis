@@ -4,6 +4,7 @@
 # terminal statistic commands and registration
 
 from strategy.helpers.closedtradedataset import get_closed_trades
+from strategy.indicator.utils import down_sample
 from terminal.command import Command
 
 from terminal.terminal import Terminal
@@ -62,7 +63,8 @@ class DrawCumulativePNLCommand(Command):
             n += 1
 
         if len(x_serie) > max_width:
-            x_serie = np.reshape(x_serie, max_width).mean(axis=1)
+            # if ratio is more than 13 could issue
+            x_serie = down_sample(x_serie, int(np.ceil(len(x_serie)/max_width)))
 
         content = plot(x_serie, {"height": max_height, "format": "{:5.2f}"})
         Terminal.inst().message(content, view="content")

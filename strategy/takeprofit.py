@@ -42,16 +42,16 @@ def compute_take_profit(direction, data, sub, entry_price, confidence=1.0, price
     def compute_distance():
         if direction > 0:
             # never larger than distance in percent if defined
-            if data.stop_loss.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+            if data.take_profit.distance_type == StrategyTraderContext.DIST_PERCENTILE:
                 return entry_price * (1.0 + data.take_profit.distance)
-            elif data.stop_loss.distance_type == StrategyTraderContext.DIST_PRICE:
+            elif data.take_profit.distance_type == StrategyTraderContext.DIST_PRICE:
                 return entry_price + data.take_profit.distance
 
         elif direction < 0:
             # never larger than distance in percent if defined
-            if data.stop_loss.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+            if data.take_profit.distance_type == StrategyTraderContext.DIST_PERCENTILE:
                 return entry_price * (1.0 - data.take_profit.distance)
-            elif data.stop_loss.distance_type == StrategyTraderContext.DIST_PRICE:
+            elif data.take_profit.distance_type == StrategyTraderContext.DIST_PRICE:
                 return entry_price - data.take_profit.distance
 
             return 0.0
@@ -93,48 +93,6 @@ def compute_take_profit(direction, data, sub, entry_price, confidence=1.0, price
 
             return curatr_take_profit
 
-        elif data.take_profit.type == data.PRICE_HL2:
-            lmin = entry_price
-            lmax = sub.bollinger.tops[-1] if sub.bollinger and len(sub.bollinger.tops) else entry_price
-
-            n = int(20 * confidence)
-
-            for p in sub.price.high[-n:]:
-                if not np.isnan(p) and p > entry_price:
-                    lmax = max(lmax, p)
-                    lmin = min(lmin, p)
-
-            return max((lmin + lmax) * 0.5, entry_price * min_dist)
-
-        elif data.take_profit.type == data.PRICE_ICHIMOKU:
-            if not sub.ichimoku or not len(sub.ichimoku.ssas):
-                return entry_price * min_dist
-
-            n = 26
-            lmin = 0
-
-            for i in range(-n, 0):
-                ssa = sub.ichimoku.ssas[i]
-                ssb = sub.ichimoku.ssbs[i]
-                v = 0
-
-                if np.isnan(ssa) or np.isnan(ssb):
-                    continue
-
-                if ssa < ssb:
-                    v = ssa
-                else:
-                    v = ssb
-
-                if v > entry_price:
-                    if not lmin:
-                        lmin = v
-                    else:
-                        lmin = min(lmin, v)
-
-            # at least 0.5%
-            return max(lmin, entry_price * min_dist)
-
         elif data.take_profit.type == data.PRICE_BOLLINGER:
             if not sub.bollinger or not len(sub.bollinger.tops):
                 return entry_price * min_dist
@@ -148,21 +106,6 @@ def compute_take_profit(direction, data, sub, entry_price, confidence=1.0, price
                 return entry_price * (1.0 + data.take_profit.distance)
             elif data.take_profit.distance_type == data.DIST_PRICE:
                 return entry_price + data.take_profit.distance
-
-        elif data.stop_loss.type == data.PRICE_KIJUN:
-            kijun_stop_loss = sub.ichimoku.kijuns[-1] if len(sub.ichimoku.kijuns) else 0.0
-
-            if data.stop_loss.distance > 0.0:
-                # never larger than distance in percent if defined
-                distance_stop_loss = compute_distance()
-
-                # if no current Kijun return the fixed one, else return the higher
-                if kijun_stop_loss <= 0.0:
-                    return distance_stop_loss
-
-                return max(kijun_stop_loss, distance_stop_loss)
-
-            return kijun_stop_loss
 
     elif direction < 0:
         min_dist = 1.0 - data.min_profit
@@ -201,48 +144,6 @@ def compute_take_profit(direction, data, sub, entry_price, confidence=1.0, price
 
             return curatr_take_profit
 
-        elif data.take_profit.type == data.PRICE_HL2:
-            lmin = entry_price
-            lmax = sub.bollinger.bottoms[-1] if sub.bollinger and len(sub.bollinger.bottoms) else entry_price
-
-            n = int(20 * confidence)
-
-            for p in sub.price.low[-n:]:
-                if not np.isnan(p) and p < entry_price:
-                    lmax = max(lmax, p)
-                    lmin = min(lmin, p)
-
-            return min((lmin + lmax) * 0.5, entry_price * min_dist)
-
-        elif data.take_profit.type == data.PRICE_ICHIMOKU:
-            if not sub.ichimoku or not len(sub.ichimoku.ssas):
-                return entry_price * min_dist
-
-            n = 26
-            lmax = 0
-
-            for i in range(-n, 0):
-                ssa = sub.ichimoku.ssas[i]
-                ssb = sub.ichimoku.ssbs[i]
-                v = 0
-
-                if np.isnan(ssa) or np.isnan(ssb):
-                    continue
-
-                if ssa > ssb:
-                    v = ssa
-                else:
-                    v = ssb
-
-                if v < entry_price:
-                    if not lmax:
-                        lmax = v
-                    else:
-                        lmax = max(lmax, v)
-
-            # at least 0.5%
-            return min(lmax, entry_price * min_dist)
-
         elif data.take_profit.type == data.PRICE_BOLLINGER:
             if not sub.bollinger or not len(sub.bollinger.bottoms):
                 return entry_price * min_dist
@@ -256,21 +157,6 @@ def compute_take_profit(direction, data, sub, entry_price, confidence=1.0, price
                 return entry_price * (1.0 - data.take_profit.distance)
             elif data.take_profit.distance_type == data.DIST_PRICE:
                 return entry_price - data.take_profit.distance
-
-        elif data.stop_loss.type == data.PRICE_KIJUN:
-            kijun_stop_loss = sub.ichimoku.kijuns[-1] if len(sub.ichimoku.kijuns) else 0.0
-
-            if data.stop_loss.distance > 0.0:
-                # never larger than distance in percent if defined
-                distance_stop_loss = compute_distance()
-
-                if kijun_stop_loss <= 0.0:
-                    # if no current Kijun return the fixed one
-                    return distance_stop_loss
-
-                return min(kijun_stop_loss, distance_stop_loss)
-
-            return kijun_stop_loss
 
     return 0.0
 
@@ -412,34 +298,6 @@ def dynamic_take_profit_cur_atrsr_short(sub, entry_price, last_price, curr_take_
     return 0.0
 
 
-def dynamic_take_profit_kijun_long(sub, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
-    take_profit = 0.0
-
-    if sub.ichimoku and sub.ichimoku.kijuns is not None and len(sub.ichimoku.kijuns) > 0:
-        if 1:  # sub.last_closed:
-            p = sub.ichimoku.kijuns[-1]
-
-            # if p > last_price + price_epsilon:
-            if curr_take_profit_price > p > last_price + price_epsilon:
-                take_profit = p
-
-    return take_profit
-
-
-def dynamic_take_profit_kijun_short(sub, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
-    take_profit = 0.0
-
-    if sub.ichimoku and sub.ichimoku.kijuns is not None and len(sub.ichimoku.kijuns) > 0:
-        if 1:  # sub.last_closed:
-            p = sub.ichimoku.kijuns[-1]
-
-            # if p < last_price - price_epsilon:
-            if curr_take_profit_price < p < last_price - price_epsilon:
-                take_profit = p
-
-    return take_profit
-
-
 def dynamic_take_profit(direction, data, sub, entry_price, last_price, curr_take_profit_price, price_epsilon=0.0):
 
     if direction > 0:
@@ -464,9 +322,6 @@ def dynamic_take_profit(direction, data, sub, entry_price, last_price, curr_take
             elif data.distance_type == StrategyTraderContext.DIST_PRICE:
                 return dynamic_take_profit_fixed_dist_long(sub, last_price, curr_take_profit_price, data.distance)
 
-        elif data.type == StrategyTraderContext.PRICE_KIJUN:
-            return dynamic_take_profit_kijun_long(sub, last_price, curr_take_profit_price, price_epsilon)
-
     elif direction < 0:
         if data.type == StrategyTraderContext.PRICE_NONE:
             return 0.0
@@ -488,8 +343,5 @@ def dynamic_take_profit(direction, data, sub, entry_price, last_price, curr_take
                 return dynamic_take_profit_fixed_pct_short(sub, last_price, curr_take_profit_price, data.distance)
             elif data.distance_type == StrategyTraderContext.DIST_PRICE:
                 return dynamic_take_profit_fixed_dist_short(sub, last_price, curr_take_profit_price, data.distance)
-
-        elif data.type == StrategyTraderContext.PRICE_KIJUN:
-            return dynamic_take_profit_kijun_short(sub, last_price, curr_take_profit_price, price_epsilon)
 
     return 0.0

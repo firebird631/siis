@@ -6,6 +6,7 @@
 from terminal.command import Command
 
 from app.help import display_help, display_command_help, display_version
+from terminal.terminal import Terminal
 
 
 class HelpCommand(Command):
@@ -125,9 +126,38 @@ class UnaliasCommand(Command):
         return True, None
 
 
+class MemoCommand(Command):
+
+    SUMMARY = "simply memo few messages and retrieve them later"
+
+    def __init__(self, commands_handler):
+        super().__init__('memo', None)
+
+        self._commands_handler = commands_handler
+        self._memos = []
+
+    def execute(self, args):
+        if len(args) == 0:
+            Terminal.inst().message("Memo contains %i messages :" % len(self._memos), view="content")
+
+            for i, msg in enumerate(self._memos):
+                Terminal.inst().message("  - #%i: %s" % (i+1, msg), view="content")
+
+            return True, None
+        else:
+            msg = " ".join(args)
+            if msg:
+                self._memos.append(msg)
+
+                return True, "Memo recorded. Type memo without parameters to retrieve them all"
+            else:
+                return True, "No message to record"
+
+
 def register_general_commands(commands_handler):
     commands_handler.register(HelpCommand(commands_handler))
     commands_handler.register(UserHelpCommand(commands_handler))
     commands_handler.register(VersionCommand())
     commands_handler.register(AliasCommand(commands_handler))
     commands_handler.register(UnaliasCommand(commands_handler))
+    commands_handler.register(MemoCommand(commands_handler))

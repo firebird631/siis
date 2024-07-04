@@ -114,21 +114,6 @@ def compute_stop_loss(direction, data, sub, entry_price, confidence=1.0, price_e
             elif data.stop_loss.distance_type == data.DIST_PRICE:
                 return entry_price - data.stop_loss.distance
 
-        elif data.stop_loss.type == data.PRICE_KIJUN:
-            kijun_stop_loss = sub.ichimoku.kijuns[-1] if len(sub.ichimoku.kijuns) else 0.0
-
-            if data.stop_loss.distance > 0.0:
-                # never larger than distance in percent if defined
-                distance_stop_loss = compute_distance()
-
-                # if no current Kijun return the fixed one, else return the higher
-                if kijun_stop_loss <= 0.0:
-                    return distance_stop_loss
-
-                return max(kijun_stop_loss, distance_stop_loss)
-
-            return kijun_stop_loss
-
     elif direction < 0:
         min_dist = 1.0 + data.min_profit
 
@@ -184,21 +169,6 @@ def compute_stop_loss(direction, data, sub, entry_price, confidence=1.0, price_e
                 return entry_price * (1.0 + data.stop_loss.distance)
             elif data.stop_loss.distance_type == data.DIST_PRICE:
                 return entry_price + data.stop_loss.distance
-
-        elif data.stop_loss.type == data.PRICE_KIJUN:
-            kijun_stop_loss = sub.ichimoku.kijuns[-1] if len(sub.ichimoku.kijuns) else 0.0
-
-            if data.stop_loss.distance > 0.0:
-                # never larger than distance in percent if defined
-                distance_stop_loss = compute_distance()
-
-                if kijun_stop_loss <= 0.0:
-                    # if no current Kijun return the fixed one
-                    return distance_stop_loss
-
-                return min(kijun_stop_loss, distance_stop_loss)
-
-            return kijun_stop_loss
 
     return 0.0
 
@@ -382,32 +352,6 @@ def dynamic_stop_loss_fixed_hma_short(sub, last_price, curr_stop_loss_price, pri
     return stop_loss
 
 
-def dynamic_stop_loss_kijun_long(sub, last_price, curr_stop_loss_price, price_epsilon=0.0):
-    stop_loss = 0.0
-
-    if sub.ichimoku and sub.ichimoku.kijuns is not None and len(sub.ichimoku.kijuns) > 0:
-        if 1:  # timeframe.last_closed:
-            p = sub.ichimoku.kijuns[-1]
-
-            if curr_stop_loss_price < p < last_price - price_epsilon:
-                stop_loss = p
-
-    return stop_loss
-
-
-def dynamic_stop_loss_kijun_short(sub, last_price, curr_stop_loss_price, price_epsilon=0.0):
-    stop_loss = 0.0
-
-    if sub.ichimoku and sub.ichimoku.kijuns is not None and len(sub.ichimoku.kijuns) > 0:
-        if 1:  # sub.last_closed:
-            p = sub.ichimoku.kijuns[-1]
-
-            if curr_stop_loss_price > p > last_price + price_epsilon:
-                stop_loss = p
-
-    return stop_loss
-
-
 def dynamic_stop_loss(direction, data, sub, entry_price, last_price, curr_stop_loss_price, price_epsilon=0.0):
 
     if direction > 0:
@@ -434,9 +378,6 @@ def dynamic_stop_loss(direction, data, sub, entry_price, last_price, curr_stop_l
         elif data.type == StrategyTraderContext.PRICE_HMA:
             return dynamic_stop_loss_fixed_hma_long(sub, last_price, curr_stop_loss_price, price_epsilon)
 
-        elif data.type == StrategyTraderContext.PRICE_KIJUN:
-            return dynamic_stop_loss_kijun_long(sub, last_price, curr_stop_loss_price, price_epsilon)
-
     elif direction < 0:
         if data.type == StrategyTraderContext.PRICE_NONE:
             return 0.0
@@ -460,8 +401,5 @@ def dynamic_stop_loss(direction, data, sub, entry_price, last_price, curr_stop_l
 
         elif data.type == StrategyTraderContext.PRICE_HMA:
             return dynamic_stop_loss_fixed_hma_short(sub, last_price, curr_stop_loss_price, price_epsilon)
-
-        elif data.type == StrategyTraderContext.PRICE_KIJUN:
-            return dynamic_stop_loss_kijun_short(sub, last_price, curr_stop_loss_price, price_epsilon)
 
     return 0.0
