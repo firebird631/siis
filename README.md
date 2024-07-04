@@ -1,24 +1,39 @@
 SiiS : Self Investor Income System
 ==================================
 
-Copyright (c) 2018-2023 Frédéric Scherma. All rights reserved.
+Copyright (c) 2018-2024 Frédéric Scherma. All rights reserved.
 
 Abstract
 --------
 
-SiiS is a trading bot for forex, indices and cryptocurrencies markets.
+SiiS is a trading bot for Forex, Indices and Cryptocurrencies markets.
 It also supports semi-automated trading in way to manage your entries and exits
-with more possibilities than exchanges allows.
+with more possibilities than exchanges allows using terminal version or Web trader.
 
 It is developed in Python3, using TA-lib, numpy and twisted/autobahn.
 Uses a PostgreSQL database. Can support MySQL (not officially tested).
 
-I have no commercials interests with trading platforms.
+It is co-developed with my secondary project in C++. 
+This Python version can manage the C++ optimized strategies for backtesting and training.
+
+**SiiS** is able to itself optimize a strategy during its live or even during a backtest.
+For realizing training in an acceptable duration it is recommended to manage a C++ version of the strategy.
+
+Any devoted help and supports are welcome.
+
+You can eventually contact me if you want my assistance to develop your strategy and help you for backtesting.
+
+Disclaimers
+-----------
+
+I have no commercials interests with any trading platforms, exchanges or prop-firms.
+Please does not fork this project. So many peoples fork for nothing, consider star and eventually
+submit pull requests.
 
 Current supported version
 -------------------------
 
-The current supported version is 0.3.7 or greater, and release 467 or above.
+The current supported version is 0.3.14 or greater, and release 501 or above.
 Older versions are no longer supported. Any forks are not supported.
 
 Thanks to check that you use only the official repository : [https://github.com/firebird631/siis](https://github.com/firebird631/siis).
@@ -50,10 +65,10 @@ Features
     * [x] Kraken Margin (partial)
     * [ ] ByBit Spot (not planned for now)
     * [ ] ByBit Futures (planned)
-    * [x] FTX Spot (WIP, partial only paper-mode)
-    * [x] FTX Futures (WIP, partial only paper-mode)
+    * [ ] Rithmic(TM) API (planned)
 * Some others source of prices/volumes data fetchers
     * [x] HistData (only to import downloaded files)
+    * [x] Dukascopy
     * [ ] AlphaVantage (planned)
 * Fetching of OHLC history data in SQL database
 * Fetching of ticks or trades history data optimized files
@@ -103,7 +118,7 @@ Features
 * Support for order-flow (WIP)
 * Common indicators are supported :
     * Momentum, RSI, Stochastic, Stochastic RSI
-    * SMA, EMA, HMA, WMA, VWMA, MAMA
+    * SMA, EMA, HMA, WMA, VWMA, MAMA, KAMA
     * MACD
     * Bollinger Bands
     * Donchian Channels
@@ -124,7 +139,7 @@ Features
     * [x] Telegram (with bot commands)
     * [x] Android application (signal, trade, account) with an external project
     * [ ] XMPP (planned)
-* 4 initials strategies serves as examples :
+* 4 initials strategies serves as examples (deprecated, more will come):
     * BitcoinAlpha for big caps coins
     * CryptoAlpha for alt-coins
     * ForexAlpha for FOREX pairs
@@ -150,9 +165,9 @@ Features
 Feel free to donate for my work :
 
 * BTC: 1GVdwcVrvvbqBgzNMii6tGNhTYnGvsJZFE
-* ETH: 0xc2fc512df6ac6b5e2bd23873dc7df4c56bcdc214
-* XLM: GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A / memo: 1030981485
-* DOGE: D5oxDR7u1ssEwkGY444ewUJVHWzsHpCkoA
+* ETH (ERC20): 0xc2fc512df6ac6b5e2bd23873dc7df4c56bcdc214
+* XRP : rNxp4h8apvRis6mJf9Sh8C6iRxfrDWN7AV / memo 313602045
+
 
 Installation
 ------------
@@ -238,10 +253,6 @@ The _sql/_ directory contains the initial SQL script for creations of the tables
 The first line of comment in these files describe a possible way to install them.
 
 #### PostgreSQL ####
-
-##### TimescaleDB #####
-
-The next step is not required at this time.
 
 ###### Debian or Ubuntu ######
 
