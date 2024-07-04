@@ -233,6 +233,10 @@ class StrategySignal(object):
         return result
 
     def check(self) -> bool:
+        """
+        Basic check on take-profit and stop-loss prices.
+        @return:
+        """
         if not self.p or not self.tp or not self.sl:
             return False
 
