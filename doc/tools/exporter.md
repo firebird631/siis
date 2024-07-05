@@ -12,9 +12,9 @@ Why ? The idea is to easily have dump of data, and simply import them later.
 ### Format ###
 
 Its a text file, really simple, the first row is the manifest of the file,
-Each element is seperated by a tab. The header is a list of key=value.
+Each element is separated by a tab. The header is a list of key=value.
 
-There is one ore more block of OHLCs, preceded by a timeframe=value row.
+There is one or more block of OHLCs, preceded by a timeframe=value row.
 The timeframe=value row defined the timeframe of the following OHLCs, or ticks/trades/quotes.
 
 
