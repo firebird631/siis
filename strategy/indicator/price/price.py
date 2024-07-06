@@ -97,14 +97,14 @@ class PriceIndicator(Indicator):
         return self._max
 
     @property
-    def consolidated(self):
+    def consolidated(self) -> bool:
         return self._consolidated
 
     @property
-    def ended(self):
+    def ended(self) -> bool:
         return self._consolidated
 
-    def cross(self, price):
+    def cross(self, price: float) -> float:
         """
         Cross the previous and last price with a specified price (horizontal line).
         @param price:

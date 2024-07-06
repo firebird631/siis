@@ -662,17 +662,6 @@ class StrategyTrader(object):
                         ex_entry_exit.modify_timeout_distance(self, value)
                         return True
 
-                    elif keys[3] == "multi":
-                        v = yes_no_opt(value)
-                        if v is None:
-                            return False
-
-                        if not hasattr(ex_entry_exit, 'multi'):
-                            return False
-
-                        ex_entry_exit.multi = v
-                        return True
-
                     elif keys[3] == "depth":
                         v = integer_opt(value, 0, 20)
                         if v is None:
@@ -2300,9 +2289,18 @@ class StrategyTrader(object):
         Collect the state of the strategy trader (instant) and return a dataset.
         Default only return a basic dataset, it must be overridden per strategy.
 
+        Default as 3 mode :
+            - 0: Data-series (sub)
+            - 1: General states of strategy trader
+            - 2: General states of each strategy context
+
+        States 0 is defined must be common to any data-series of the strategy.
+        States 1 and 2 can be extended by adding members rows tuple(name:value) per row.
+        States 3 and above are free for strategy specific.
+
         @param mode integer Additional report context.
         """
-        return {
+        result = {
             'market-id': self.instrument.market_id,
             'activity': self._activity,
             'affinity': self._affinity,
@@ -2313,8 +2311,119 @@ class StrategyTrader(object):
             'preprocessing': self._preprocessing > 1,
             'members': [],
             'data': [],
-            'num-modes': 1
+            'num-modes': 3
         }
+
+        # mode 0 is reserved to data-series sub
+
+        if mode == 1:
+            # General strategy trader states
+            result['members'] = (
+                ("price", "Name"),
+                ("price", "Value"),
+            )
+
+            result['data'].append((
+                "Bid", self.instrument.format_price(self.instrument.market_bid)))
+
+            result['data'].append((
+                "Ask", self.instrument.format_price(self.instrument.market_ask)))
+
+            result['data'].append((
+                "Spread", self.instrument.format_price(self.instrument.market_spread)))
+
+            if hasattr(self, "price_epsilon"):
+                result['data'].append((
+                    "Epsilon", self.instrument.format_price(getattr(self, "price_epsilon"))))
+
+            result['data'].append(("----", "----"))
+
+            result['data'].append(("Hedging", "Yes" if self.hedging else "No"))
+            result['data'].append(("Reversal", "Yes" if self.reversal else "No"))
+            result['data'].append(("Dual", "Yes" if self.dual else "No"))
+            result['data'].append(("Allow-Short", "Yes" if self.allow_short else "No"))
+            result['data'].append(("Trade-Short", "Yes" if self.trade_short else "No"))
+            result['data'].append(("Region-Allow", "Yes" if self.region_allow else "No"))
+
+            handlers = self.dumps_handlers()
+            if handlers:
+                result['data'].append(("----", "----"))
+
+                for handler in handlers:
+                    result['data'].append(("----", "----"))
+                    result['data'] += ([(k, v) for k, v in handler.items()])
+
+        elif mode == 2:
+            # General context states
+            contexts_ids = ["Context"] + self.contexts_ids()
+
+            result['members'] = tuple(("str", ctx) for ctx in contexts_ids)
+
+            for ctx_id in contexts_ids:
+                ctx = self.retrieve_context(ctx_id)
+
+                if not ctx:
+                    continue
+
+                def print_ex(context, ex):
+                    if hasattr(context, ex):
+                        ex = getattr(context, ex)
+                        if ex:
+                            content = []
+
+                            if hasattr(ex, 'type_to_str'):
+                                content.append(ex.type_to_str())
+
+                            if ex.timeframe:
+                                content.append("tf=%s" % timeframe_to_str(ex.timeframe))
+
+                            if ex.tickbar:
+                                content.append("bar=%i" % ex.tickbar)
+
+                            if ex.depth != 0 and hasattr(ex, 'orientation_to_str'):
+                                content.append("orientation=%s" % ex.orientation_to_str())
+
+                            if ex.distance and hasattr(ex, 'distance_to_str'):
+                                content.append("dist=%s" % ex.distance_to_str(self))
+
+                            if ex.offset and hasattr(ex, 'offset_to_str'):
+                                content.append("ofs=%s" % ex.offset_to_str(self))
+
+                            if hasattr(ex, 'timeout_distance_to_str'):
+                                if ex.timeout and ex.timeout_distance:
+                                    content.append("timeout=%s@%s" % (timeframe_to_str(ex.timeout),
+                                                                      ex.timeout_distance_to_str(self)))
+                                elif ex.timeout:
+                                    content.append("timeout=%s" % timeframe_to_str(ex.timeout))
+
+                            return " ".join(content)
+
+                    return "-"
+
+                trade_quantity = ctx.compute_quantity(self)
+                max_amount = trade_quantity * ctx.max_trades
+
+                result['data'].append(("Mode", ctx.mode_to_str()))
+
+                result['data'].append(("----", "----"))
+
+                result['data'].append(("Max-Trades", "%i" % ctx.max_trades))
+                result['data'].append(("Quantity-Mode", self.instrument.trade_quantity_mode_to_str()))
+                result['data'].append(("Quantity-Type", ctx.trade_quantity_type_to_str()))
+                result['data'].append(("Quantity-Size", "%g" % trade_quantity))
+                result['data'].append(("Quantity-Step", "%g" % ctx.trade_quantity_step))
+                result['data'].append(("Max-Amount", "%g" % max_amount))
+
+                result['data'].append(("----", "----"))
+
+                result['data'].append(("Entry", print_ex(ctx, 'entry')))
+                result['data'].append(("Stop-Loss", print_ex(ctx, 'stop_loss')))
+                result['data'].append(("Take-Profit", print_ex(ctx, 'take_profit')))
+                result['data'].append(("Dynamic Stop-Loss", print_ex(ctx, 'dynamic_stop_loss')))
+                result['data'].append(("Dynamic Take-Profit", print_ex(ctx, 'dynamic_take_profit')))
+                result['data'].append(("Breakeven", print_ex(ctx, 'breakeven')))
+
+        return result
 
     #
     # reporting

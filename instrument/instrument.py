@@ -1194,7 +1194,7 @@ class Instrument(object):
         """
         Returns tickbars list.
         """
-        return self._tickbars[tb]
+        return self._tickbars.get(tb)
 
     #
     # sync

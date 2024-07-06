@@ -124,10 +124,8 @@ class EntryExit(object):
         self.timeframe = 0.0
         self.tickbar = 0
 
-        self.depth = 1       # related to level of depth of support or resistance but not mandatory
-        self.orientation = StrategyTraderContext.ORIENTATION_UP  # related to the depth parameters
-
-        self.multi = False   # for a multi trade signal (exemple 2 entries with different targets)
+        self.depth = 0       # related to level of depth of support or resistance but not mandatory
+        self.orientation = StrategyTraderContext.ORIENTATION_BOTH  # related to the depth parameters
 
         self.timeout = 0.0   # timeout of the entry or exit order
 
@@ -172,9 +170,8 @@ class EntryExit(object):
             # optional timeout
             self.timeout = timeframe_from_str(params.get('timeout', ""))
 
-        self.depth = params.get('depth', 1)
-        self.multi = params.get('multi', False)
-        self.orientation = StrategyTraderContext.ORIENTATION.get(params.get('orientation', 'up'))
+        self.depth = params.get('depth', 0)
+        self.orientation = StrategyTraderContext.ORIENTATION.get(params.get('orientation', 'both'))
 
         # standard distance
         distance = params.get('distance', "0.0")
@@ -239,6 +236,7 @@ class EntryExit(object):
         """
         Must be called at each strategy trader computation to update internal values.
         @param timestamp: Current computation timestamp in seconds.
+        @todo for rangebar
         """
         if self.timeframe <= 0.0:
             return
@@ -401,8 +399,9 @@ class EntryExit(object):
     @property
     def consolidated(self) -> bool:
         """
-        Return True when the context update occurs on a closed timeframe. Exemple if timeframe is defined too 300
+        Return True when the context update occurs on a closed timeframe. Exemple if timeframe is defined to 300
         (5 minutes), this will return True every 5 minutes.
+        @todo for rangebar
         @return:
         """
         if self.timeframe <= 0.0:
@@ -765,25 +764,37 @@ class EXStopLoss(EntryExit):
         @param signal_or_trade:
         @param price: Last close execution price or any other price.
         @return: The price of the stop loss or 0 if not defined.
+        @note The stop price can never be lower in long or higher in short than the current signal or trade stop price.
+        Except if the current value is not defined (stop_price = 0)
         """
         if self.type == StrategyTraderContext.PRICE_FIXED and self.distance > 0.0:
             if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
                 if signal_or_trade.direction > 0:
-                    return price * (1.0 - self.distance)
+                    stop_price = price * (1.0 - self.distance)
+                    if signal_or_trade.stop_loss == 0.0 or stop_price >= signal_or_trade.stop_loss:
+                        return stop_price
+
                 elif signal_or_trade.direction < 0:
-                    return price * (1.0 + self.distance)
+                    stop_price = price * (1.0 + self.distance)
+                    if signal_or_trade.stop_loss == 0.0 or stop_price <= signal_or_trade.stop_loss:
+                        return stop_price
 
             elif self.distance_type == StrategyTraderContext.DIST_PRICE:
                 if signal_or_trade.direction > 0:
-                    return price - self.distance
+                    stop_price = price - self.distance
+                    if signal_or_trade.stop_loss == 0.0 or stop_price >= signal_or_trade.stop_loss:
+                        return stop_price
+
                 elif signal_or_trade.direction < 0:
-                    return price + self.distance
+                    stop_price = price + self.distance
+                    if signal_or_trade.stop_loss == 0.0 or stop_price <= signal_or_trade.stop_loss:
+                        return stop_price
 
         return 0.0
 
     def clamp_stop(self, signal: StrategySignal):
         """
-        Stop loss must not exceed this configured distance.
+        Stop loss must not exceed the configured distance.
         @param signal: Strategy signal
         """
         if signal and self.distance > 0.0:

@@ -152,6 +152,10 @@ Sum order :
     - verifier order_info pour le trader kraken car des bug etrangent se produisent parfois
     - verifier order_info pour le trader binancefutures (plus possible pour l'instant)
 
+- Le context, dans le cas du breakeven, stop-loss dynamic, take-profit dynamic, le parametre timeframe affect la durée
+    de consolidation, mais dans le cas de rangebar/tickbar cela est potentiellement moins cohérent. comment tester
+    que la bar est cloture sans avoir besoin de la tickbar dataserie
+
 
 ##################
 # Uniformization #
@@ -169,6 +173,8 @@ Sum order :
 
 - Gérer la partie locked sur le paper trader en mode asset
     - ne pas tout gérer en free, peu important car ça n'empêche pas de fonctionner
+
+- Peut etre serait il pertinant de renommer les Sub en DataSerie
 
 
 #########
