@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union, Tuple
 
 if TYPE_CHECKING:
     from strategy.strategysignal import StrategySignal
@@ -22,6 +22,7 @@ import logging
 logger = logging.getLogger('siis.strategy.strategytradercontext')
 error_logger = logging.getLogger('siis.error.strategy.strategytradercontext')
 traceback_logger = logging.getLogger('siis.traceback.strategy.strategytradercontext')
+
 
 class StrategyTraderContextBase(object):
     """
@@ -1241,3 +1242,39 @@ class StrategyTraderContext(StrategyTraderContextBase):
         @return:
         """
         pass
+
+    #
+    # context state reporting
+    #
+
+    def report_state_members(self) -> Tuple:
+        """
+        Return a tuple of tuples with the name and format of the value to report.
+        @note Must be of the same length as return by report_state method.
+        @note Works with mode 3.
+        """
+        return ("str", "Name"),
+
+    def report_state(self, instrument: Instrument) -> Tuple:
+        """
+        Return a tuple of tuples with the data value to report.
+        @note Must be of the same length as return by report_state_members method.
+        @note Works with mode 3.
+        """
+        return self.name,
+
+    def report_parameters_members(self) -> Tuple:
+        """
+        Return a tuple of tuples with the name and format of the value to report.
+        @note Must be of the same length as return by report_parameters method.
+        @note Works with mode 4.
+        """
+        return ("str", "Name"),
+
+    def report_parameters(self, instrument: Instrument) -> Tuple:
+        """
+        Return a tuple of tuples with the data value to report.
+        @note Must be of the same length as return by report_state_members method.
+        @note Works with mode 4.
+        """
+        return self.name,

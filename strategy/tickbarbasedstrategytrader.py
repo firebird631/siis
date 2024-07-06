@@ -356,7 +356,41 @@ class TickBarBasedStrategyTrader(StrategyTrader):
         result = super().report_state(mode)
 
         if mode == 0:
+            # data-series values
             for k, tickbar in self.tickbars.items():
-                result['data'] += tickbar.report_state()
+                if not result['members']:
+                    # initialize from first
+                    if not tickbar.report_state_members():
+                        break
+
+                    result['members'] = tickbar.report_state_members()
+
+                result['data'].append(tickbar.report_state())
+
+        elif mode == 3:
+            # context parameters
+            for k, ctx in self._trade_contexts.items():
+                if not result['members']:
+                    # initialize from first
+                    if not ctx.report_parameters_members():
+                        break
+
+                    result['members'] = ctx.report_parameters_members()
+
+                # data from any
+                result['data'].append(ctx.report_parameters(self.instrument))
+
+        elif mode == 4:
+            # context computing states
+            for k, ctx in self._trade_contexts.items():
+                if not result['members']:
+                    # initialize from first
+                    if not ctx.report_state_members():
+                        break
+
+                    result['members'] = ctx.report_state_members()
+
+                # data from any
+                result['data'].append(ctx.report_state(self.instrument))
 
         return result

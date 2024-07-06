@@ -383,7 +383,29 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
 
         if mode == 0:
             for k, timeframe in self.timeframes.items():
-                result['data'] += timeframe.report_state()
+                if not result['members']:
+                    # initialize from first
+                    result['members'] = timeframe.report_state_members()
+
+                result['data'].append(timeframe.report_state())
+
+        elif mode == 3:
+            for k, ctx in self._trade_contexts.items():
+                if not result['members']:
+                    # initialize from first
+                    result['members'] = ctx.report_parameters_members()
+
+                # data from any (append because it is per row)
+                result['data'].append(ctx.report_parameters(self.instrument))
+
+        elif mode == 4:
+            for k, ctx in self._trade_contexts.items():
+                if not result['members']:
+                    # initialize from first
+                    result['members'] = ctx.report_state_members()
+
+                # data from any (append because it is per row)
+                result['data'].append(ctx.report_state(self.instrument))
 
         return result
 

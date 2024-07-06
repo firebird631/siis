@@ -2289,14 +2289,20 @@ class StrategyTrader(object):
         Collect the state of the strategy trader (instant) and return a dataset.
         Default only return a basic dataset, it must be overridden per strategy.
 
-        Default as 3 mode :
+        Default as 5 modes :
             - 0: Data-series (sub)
-            - 1: General states of strategy trader
-            - 2: General states of each strategy context
+            - 1: General states and parameters of strategy trader
+            - 2: General states and parameters of each strategy context
+            - 3: Computation parameters of each strategy context
+            - 4: Computation states of each strategy context
 
-        States 0 is defined must be common to any data-series of the strategy.
-        States 1 and 2 can be extended by adding members rows tuple(name:value) per row.
-        States 3 and above are free for strategy specific.
+        Mode 0 must be common to any data-series of the strategy.
+        Mode 1 and 2 can be extended by adding members rows tuple(name:value) per row.
+        Mode 3 must be common to any contexts of the strategy.
+        Mode 4 must be common to any contexts of the strategy.
+
+        The field num-modes must be incremented as many others necessary modes.
+        Some tables are row oriented (0, 3 & 4) other are column oriented (1 & 2)
 
         @param mode integer Additional report context.
         """
@@ -2311,12 +2317,14 @@ class StrategyTrader(object):
             'preprocessing': self._preprocessing > 1,
             'members': [],
             'data': [],
-            'num-modes': 3
+            'num-modes': 5
         }
 
         # mode 0 is reserved to data-series sub
+        if mode == 0:
+            pass
 
-        if mode == 1:
+        elif mode == 1:
             # General strategy trader states
             result['members'] = (
                 ("price", "Name"),
@@ -2357,7 +2365,29 @@ class StrategyTrader(object):
             # General context states
             contexts_ids = ["Context"] + self.contexts_ids()
 
-            result['members'] = tuple(("str", ctx) for ctx in contexts_ids)
+            # two columns
+            result['members'] = tuple(("str", ctx_name) for ctx_name in contexts_ids)
+
+            # 15 initials rows
+            result['data'].append(["Mode"])
+
+            result['data'].append(["----"])
+
+            result['data'].append(["Max-Trades"])
+            result['data'].append(["Quantity-Mode"])
+            result['data'].append(["Quantity-Type"])
+            result['data'].append(["Quantity-Size"])
+            result['data'].append(["Quantity-Step"])
+            result['data'].append(["Max-Amount"])
+
+            result['data'].append(["----"])
+
+            result['data'].append(["Entry"])
+            result['data'].append(["Stop-Loss"])
+            result['data'].append(["Take-Profit"])
+            result['data'].append(["Dynamic Stop-Loss"])
+            result['data'].append(["Dynamic Take-Profit"])
+            result['data'].append(["Breakeven"])
 
             for ctx_id in contexts_ids:
                 ctx = self.retrieve_context(ctx_id)
@@ -2403,25 +2433,31 @@ class StrategyTrader(object):
                 trade_quantity = ctx.compute_quantity(self)
                 max_amount = trade_quantity * ctx.max_trades
 
-                result['data'].append(("Mode", ctx.mode_to_str()))
+                result['data'][0].append(ctx.mode_to_str())
 
-                result['data'].append(("----", "----"))
+                result['data'][1].append("----")
 
-                result['data'].append(("Max-Trades", "%i" % ctx.max_trades))
-                result['data'].append(("Quantity-Mode", self.instrument.trade_quantity_mode_to_str()))
-                result['data'].append(("Quantity-Type", ctx.trade_quantity_type_to_str()))
-                result['data'].append(("Quantity-Size", "%g" % trade_quantity))
-                result['data'].append(("Quantity-Step", "%g" % ctx.trade_quantity_step))
-                result['data'].append(("Max-Amount", "%g" % max_amount))
+                result['data'][2].append("%i" % ctx.max_trades)
+                result['data'][3].append(self.instrument.trade_quantity_mode_to_str())
+                result['data'][4].append(ctx.trade_quantity_type_to_str())
+                result['data'][5].append("%g" % trade_quantity)
+                result['data'][6].append("%g" % ctx.trade_quantity_step)
+                result['data'][7].append("%g" % max_amount)
 
-                result['data'].append(("----", "----"))
+                result['data'][8].append("----")
 
-                result['data'].append(("Entry", print_ex(ctx, 'entry')))
-                result['data'].append(("Stop-Loss", print_ex(ctx, 'stop_loss')))
-                result['data'].append(("Take-Profit", print_ex(ctx, 'take_profit')))
-                result['data'].append(("Dynamic Stop-Loss", print_ex(ctx, 'dynamic_stop_loss')))
-                result['data'].append(("Dynamic Take-Profit", print_ex(ctx, 'dynamic_take_profit')))
-                result['data'].append(("Breakeven", print_ex(ctx, 'breakeven')))
+                result['data'][9].append(print_ex(ctx, 'entry'))
+                result['data'][10].append(print_ex(ctx, 'stop_loss'))
+                result['data'][11].append(print_ex(ctx, 'take_profit'))
+                result['data'][12].append(print_ex(ctx, 'dynamic_stop_loss'))
+                result['data'][13].append(print_ex(ctx, 'dynamic_take_profit'))
+                result['data'][14].append(print_ex(ctx, 'breakeven'))
+
+        elif mode == 3:
+            pass
+
+        elif mode == 4:
+            pass
 
         return result
 

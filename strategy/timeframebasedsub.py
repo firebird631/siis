@@ -27,7 +27,9 @@ logger = logging.getLogger('siis.strategy.timeframebasedsub')
 
 class TimeframeBasedSub(StrategySub):
     """
-    TimeframeBasedSub sub computation base class.
+    TimeframeBasedSub sub data-series computation base class.
+
+    @note Will be probably renamed TimeframeBasedDataSeries.
     """
 
     strategy_trader: TimeframeBasedStrategyTrader
@@ -254,9 +256,3 @@ class TimeframeBasedSub(StrategySub):
 
     def stream(self, streamer: Streamable):
         pass
-
-    def report_state(self) -> Tuple:
-        """
-        Return a tuple of tuples with the data value to report.
-        """
-        return tuple()

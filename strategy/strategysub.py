@@ -16,7 +16,13 @@ if TYPE_CHECKING:
 
 class StrategySub(object):
     """
-    Base model for strategy sub.
+    Base model for strategy sub data-series per timeframe or any other non-temporal bar method.
+    It is a data-series containing different indicators (mostly oscillators).
+    It is computed at each tick or bar from the strategy trader process.
+
+    @note It will be probably renamed StrategyDataSeries.
+    @see TimeframeBasedSub for temporal timeframe (1m, 1h...)
+    @see TickBarBasedSub for non-temporal bar (range, tick, renko...)
     """
 
     def loads(self, params: dict):
@@ -128,8 +134,20 @@ class StrategySub(object):
     def stream(self, streamer: Streamable):
         pass
 
+    #
+    # data series reporting
+    #
+
+    def report_state_members(self) -> Tuple:
+        """
+        Return a tuple of tuples with the name and format of the value to report.
+        @note Must be of the same length as return by report_state method.
+        """
+        return tuple()
+
     def report_state(self) -> Tuple:
         """
         Return a tuple of tuples with the data value to report.
+        @note Must be of the same length as return by report_state_members method.
         """
         return tuple()

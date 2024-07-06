@@ -29,7 +29,9 @@ logger = logging.getLogger('siis.strategy.tickbarbasedsub')
 
 class TickBarBasedSub(StrategySub):
     """
-    TickBarBasedSub sub computation base class.
+    TickBarBasedSub sub data-series computation base class.
+
+    @note Will be probably renamed TickBarBasedDataSeries.
     """
 
     strategy_trader: TickBarBasedStrategyTrader
@@ -255,9 +257,3 @@ class TickBarBasedSub(StrategySub):
 
     def stream(self, streamer: Streamable):
         pass
-
-    def report_state(self) -> Tuple:
-        """
-        Return a tuple of tuples with the data value to report.
-        """
-        return tuple()
