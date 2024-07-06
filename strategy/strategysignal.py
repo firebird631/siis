@@ -253,6 +253,7 @@ class StrategySignal(object):
     #
 
     def profit(self) -> float:
+        """Profit rate from entry price to take-profit."""
         if self.dir > 0:
             return ((self.tp - self.p) / self.p) if self.p > 0.0 else 0.0
         elif self.dir < 0:
@@ -261,6 +262,7 @@ class StrategySignal(object):
         return 0.0
 
     def second_profit(self) -> float:
+        """Second profit rate from entry price to take-profit."""
         if self.dir > 0:
             return ((self.tp2 - self.p) / self.p) if self.p > 0.0 else 0.0
         elif self.dir < 0:
@@ -269,6 +271,7 @@ class StrategySignal(object):
         return 0.0
 
     def third_profit(self) -> float:
+        """Third profit rate from entry price to take-profit."""
         if self.dir > 0:
             return ((self.tp3 - self.p) / self.p) if self.p > 0.0 else 0.0
         elif self.dir < 0:
@@ -277,6 +280,7 @@ class StrategySignal(object):
         return 0.0
 
     def avg_profit(self) -> float:
+        """Average of the 1,2,3 profit rate from entry price to take-profit."""
         avg_tp = self.avg_take_profit
 
         if self.dir > 0:
@@ -287,6 +291,7 @@ class StrategySignal(object):
         return 0.0
 
     def loss(self) -> float:
+        """Loss rate from entry price to stop-loss."""
         if self.dir > 0:
             return ((self.p - self.sl) / self.p) if self.p > 0.0 else 0.0
         elif self.dir < 0:
@@ -295,12 +300,14 @@ class StrategySignal(object):
         return 0.0
 
     def risk_reward(self) -> float:
+        """Risk : reward ratio."""
         profit = self.profit()
         loss = self.loss()
 
         return loss / profit if profit > 0.0 else 0.0
 
     def profit_dist(self) -> float:
+        """Distance in price from price to take-profit."""
         if self.dir > 0:
             return self.tp - self.p
         elif self.dir < 0:
@@ -309,6 +316,7 @@ class StrategySignal(object):
         return 0.0
 
     def avg_profit_dist(self) -> float:
+        """Average distance in price of the 1,2,3 take-profit from price to target."""
         avg_tp = self.avg_take_profit
 
         if self.dir > 0:
@@ -319,6 +327,7 @@ class StrategySignal(object):
         return 0.0
 
     def loss_dist(self) -> float:
+        """Distance in price from price to stop-loss."""
         if self.dir > 0:
             return self.p - self.sl
         elif self.dir < 0:
@@ -333,7 +342,7 @@ class StrategySignal(object):
     def set(self, key: str, value):
         """
         Add a key:value pair in the extra member dict of the signal.
-        It allow to add you internal trade data, states you want to keep during the live of the trade and
+        It allows to add you internal trade data, states you want to keep during the live of the trade and
         even in persistence
         """
         self._extra[key] = value

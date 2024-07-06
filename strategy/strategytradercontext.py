@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 if TYPE_CHECKING:
     from strategy.strategysignal import StrategySignal
@@ -17,6 +17,11 @@ from instrument.instrument import Instrument
 
 from common.utils import timeframe_from_str
 
+import logging
+
+logger = logging.getLogger('siis.strategy.strategytradercontext')
+error_logger = logging.getLogger('siis.error.strategy.strategytradercontext')
+traceback_logger = logging.getLogger('siis.traceback.strategy.strategytradercontext')
 
 class StrategyTraderContextBase(object):
     """
@@ -134,7 +139,11 @@ class EntryExit(object):
         self.timeout_distance = 0.0         # distance in percentile or price delta for the timeout
         self.timeout_distance_type = StrategyTraderContext.PRICE_NONE  # defines the type of timeout_distance
 
-        self._consolidated = True   # only True after the compute occurs on a bar consolidation (at its close)
+        self.offset_value = None  # internal usage only during compilation of the context parameters
+        self.offset  = 0.0        # offset to add to price (stop on breakeven...) (positive mean in favor of profit)
+        self.offset_type = StrategyTraderContext.DIST_NONE  # type of the distance (percentile or price delta)
+
+        self._consolidated = True   # only True after the computation occurs on a bar consolidation (at its close)
         self._last_closed_timestamp = 0.0   # the timestamp when occurs the last consolidation (close)
 
     def loads(self, strategy_trader, params: dict):
@@ -172,7 +181,6 @@ class EntryExit(object):
         if type(distance) is not str:
             raise ValueError("Invalid format 'distance' must be string for %s" % self.name())
 
-        # standard distance
         if distance is not None:
             if distance.endswith('%'):
                 # in percent from entry price or limit price
@@ -207,6 +215,25 @@ class EntryExit(object):
                 # in price from entry price or limit price
                 self.timeout_distance = float(timeout_distance)
                 self.timeout_distance_type = StrategyTraderContext.DIST_PRICE
+
+        # standard offset
+        offset = params.get('offset', "0.0")
+        if type(offset) is not str:
+            raise ValueError("Invalid format 'offset' must be string for %s" % self.name())
+
+        if offset is not None:
+            if offset.endswith('%'):
+                # in percent from last price
+                self.offset = float(offset[:-1]) * 0.01
+                self.offset_type = StrategyTraderContext.DIST_PERCENTILE
+            elif offset.endswith('pip'):
+                # in pips from entry price or limit price
+                self.offset_value = float(offset[:-3])
+                self.offset_type = StrategyTraderContext.DIST_PRICE
+            else:
+                # in price from entry price or limit price
+                self.offset = float(offset)
+                self.offset_type = StrategyTraderContext.DIST_PRICE
 
     def update(self, timestamp):
         """
@@ -263,6 +290,27 @@ class EntryExit(object):
             self.timeout_distance = float(timeout_distance)
             self.timeout_distance_type = StrategyTraderContext.DIST_PRICE
 
+    def modify_offset(self, strategy_trader, offset):
+        """
+        User modification of the offset parameter.
+        @param strategy_trader:
+        @param offset: Could be a string or a float/int.
+        """
+        if type(offset) is str and offset.endswith('%'):
+            # in percent from last price
+            self.offset = float(offset[:-1]) * 0.01
+            self.offset_type = StrategyTraderContext.DIST_PERCENTILE
+
+        elif type(offset) is str and offset.endswith('pip'):
+            # in pips from last price
+            self.offset = float(offset[:-3]) * strategy_trader.instrument.one_pip_means
+            self.offset_type = StrategyTraderContext.DIST_PRICE
+
+        else:
+            # in price from last price
+            self.offset = float(offset)
+            self.offset_type = StrategyTraderContext.DIST_PRICE
+
     def modify_orientation(self, orientation: str):
         """
         User modification of the orientation parameter.
@@ -296,6 +344,19 @@ class EntryExit(object):
         else:
             return strategy_trader.instrument.format_price(self.timeout_distance)
 
+    def offset_to_str(self, strategy_trader) -> str:
+        """
+        Return the offset parameter in its string format.
+        @param strategy_trader:
+        @return: str
+        """
+        if self.offset_type == StrategyTraderContext.DIST_PERCENTILE:
+            return "%.2f%%" % (self.offset * 100.0)
+        elif self.offset_type == StrategyTraderContext.DIST_PRICE:
+            return strategy_trader.instrument.format_price(self.offset)
+        else:
+            return strategy_trader.instrument.format_price(self.offset)
+
     def orientation_to_str(self) -> str:
         """
         Return the orientation parameter in its string format.
@@ -322,6 +383,12 @@ class EntryExit(object):
             if self.timeout_distance_type == StrategyTraderContext.DIST_PRICE:
                 # because instrument details are guarantee only at compile time
                 self.timeout_distance = self.timeout_distance_value * strategy_trader.instrument.one_pip_means
+
+        # offset distance
+        if self.offset_value is not None:
+            if self.offset_type == StrategyTraderContext.DIST_PRICE:
+                # because instrument details are guarantee only at compile time
+                self.offset = self.offset_value * strategy_trader.instrument.one_pip_means
 
     @property
     def update_at_close(self) -> bool:
@@ -501,79 +568,97 @@ class EXTakeProfit(EntryExit):
         super().__init__()
 
     @staticmethod
-    def percentile_distance_from_limit_price(trade, price: float) -> float:
+    def percentile_distance_from_limit(signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
         """
         Return in percentile the distance from a price (could be close execution price) and trade take profit price.
         The distance is always a positive value.
         """
-        if trade.take_profit > 0.0:
-            return trade.direction * (trade.take_profit - price) / price
+        if signal_or_trade.take_profit > 0.0:
+            return signal_or_trade.direction * (signal_or_trade.take_profit - price) / price
 
         return 0.0
 
     @staticmethod
-    def price_distance_from_limit(trade, price: float) -> float:
+    def price_distance_from_limit(signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
         """
         Return the distance from a price (could be close execution price) and trade take profit price.
         The distance is always a positive value.
         """
-        if trade.take_profit > 0.0:
-            return trade.direction * (trade.take_profit - price)
+        if signal_or_trade.take_profit > 0.0:
+            return signal_or_trade.direction * (signal_or_trade.take_profit - price)
 
         return 0.0
 
-    def clamp_limit(self, signal_or_trade):
+    def clamp_limit(self, signal: StrategySignal):
         """
         Take profit must not exceed his configured distance.
-        @param signal_or_trade: signal or trade
+        @param signal: Strategy signal
         """
-        if signal_or_trade and self.distance > 0.0:
-            if signal_or_trade.direction > 0:
+        if signal and self.distance > 0.0:
+            if signal.direction > 0:
                 # long case
                 if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
-                    if signal_or_trade.take_profit <= 0.0 or self.percentile_distance_from_limit_price(
-                            signal_or_trade, signal_or_trade.entry_price) > self.distance:
-                        signal_or_trade.take_profit = signal_or_trade.entry_price * (1.0 + self.distance)
+                    if signal.take_profit <= 0.0 or self.percentile_distance_from_limit(
+                            signal, signal.entry_price) > self.distance:
+                        signal.take_profit = signal.entry_price * (1.0 + self.distance)
 
                 elif self.distance_type == StrategyTraderContext.DIST_PRICE:
-                    if signal_or_trade.take_profit <= 0.0 or self.price_distance_from_limit(
-                            signal_or_trade, signal_or_trade.entry_price) > self.distance:
-                        signal_or_trade.take_profit = signal_or_trade.entry_price + self.distance
+                    if signal.take_profit <= 0.0 or self.price_distance_from_limit(
+                            signal, signal.entry_price) > self.distance:
+                        signal.take_profit = signal.entry_price + self.distance
 
-            elif signal_or_trade.direction < 0:
+            elif signal.direction < 0:
                 # short case
                 if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
-                    if signal_or_trade.take_profit <= 0.0 or self.percentile_distance_from_limit_price(
-                            signal_or_trade, signal_or_trade.entry_price) > self.distance:
-                        signal_or_trade.take_profit = signal_or_trade.entry_price * (1.0 - self.distance)
+                    if signal.take_profit <= 0.0 or self.percentile_distance_from_limit(
+                            signal, signal.entry_price) > self.distance:
+                        signal.take_profit = signal.entry_price * (1.0 - self.distance)
 
                 elif self.distance_type == StrategyTraderContext.DIST_PRICE:
-                    if signal_or_trade.take_profit <= 0.0 or self.price_distance_from_limit(
-                            signal_or_trade, signal_or_trade.entry_price) > self.distance:
-                        signal_or_trade.take_profit = signal_or_trade.entry_price - self.distance
+                    if signal.take_profit <= 0.0 or self.price_distance_from_limit(
+                            signal, signal.entry_price) > self.distance:
+                        signal.take_profit = signal.entry_price - self.distance
 
-    def compute_take_profit(self, signal_or_trade) -> float:
+    def compute_take_profit(self, signal: StrategySignal) -> float:
         """
-        Compute the fixed take profit price for a trade or signal. Entry price must be defined and direction too.
-        @param signal_or_trade:
+        Compute the fixed take profit price for a signal. Entry price must be defined and direction too.
+        @param signal:
         @return: The price of the take profit or 0 if not defined.
         """
         if self.type == StrategyTraderContext.PRICE_FIXED and self.distance > 0.0:
             if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
-                if signal_or_trade.direction > 0:
-                    signal_or_trade.take_profit = signal_or_trade.entry_price * (1.0 + self.distance)
-                elif signal_or_trade.direction < 0:
-                    signal_or_trade.take_profit = signal_or_trade.entry_price * (1.0 - self.distance)
+                if signal.direction > 0:
+                    signal.take_profit = signal.entry_price * (1.0 + self.distance)
+                elif signal.direction < 0:
+                    signal.take_profit = signal.entry_price * (1.0 - self.distance)
 
             elif self.distance_type == StrategyTraderContext.DIST_PRICE:
-                if signal_or_trade.direction > 0:
-                    signal_or_trade.take_profit = signal_or_trade.entry_price + self.distance
-                elif signal_or_trade.direction < 0:
-                    signal_or_trade.take_profit = signal_or_trade.entry_price - self.distance
+                if signal.direction > 0:
+                    signal.take_profit = signal.entry_price + self.distance
+                elif signal.direction < 0:
+                    signal.take_profit = signal.entry_price - self.distance
 
-        return signal_or_trade.take_profit
+        return signal.take_profit
 
-    def loads(self, strategy_trader, params: dict):
+    def apply_initial_limit(self, strategy_trader: StrategyTrader, trade: StrategyTrade, hard: bool = True):
+        if not trade:
+            return
+
+        if trade.take_profit <= 0.0:
+            return
+
+        if trade.has_limit_order():
+            return
+
+        # initial take-profit to be applied on position or order
+        initial_tp = strategy_trader.instrument.adjust_price(trade.tp)
+        try:
+            # apply as a distant order or position value
+            strategy_trader.trade_modify_take_profit(trade, initial_tp, hard)
+        except Exception as e:
+            error_logger.error(repr(e))
+
+    def loads(self, strategy_trader: StrategyTrader, params: dict):
         super().loads(strategy_trader, params)
 
     def dumps(self) -> dict:
@@ -596,80 +681,137 @@ class EXStopLoss(EntryExit):
         super().__init__()
 
     @staticmethod
-    def percentile_distance_from_stop_price(trade, price: float) -> float:
+    def percentile_distance_from_stop(signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
         """
         Return in percentile the distance from a price (could be close execution price) and trade stop loss price.
         The distance is always a positive value.
         """
-        if trade.stop_loss > 0.0:
-            return trade.direction * (price - trade.stop_loss) / trade.stop_loss
+        if signal_or_trade.stop_loss > 0.0:
+            return signal_or_trade.direction * (price - signal_or_trade.stop_loss) / signal_or_trade.stop_loss
 
         return 0.0
 
     @staticmethod
-    def price_distance_from_stop(trade, price: float) -> float:
+    def price_distance_from_stop(signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
         """
         Return the distance from a price (could be close execution price) and trade stop loss price.
         The distance is always a positive value.
         """
-        if trade.stop_loss > 0.0:
-            return trade.direction * (price - trade.stop_loss)
+        if signal_or_trade.stop_loss > 0.0:
+            return signal_or_trade.direction * (price - signal_or_trade.stop_loss)
 
         return 0.0
 
-    def compute_stop_loss(self, signal_or_trade) -> float:
+    def check_min_distance_from_stop(self, signal_or_trade: Union[StrategyTrade, StrategySignal], price: float) -> bool:
         """
-        Compute the fixed stop loss price for a trade or signal. Entry price must be defined and direction too.
+        Check if the minimal distance price to stop is respected.
+        @param signal_or_trade: Valid trade or signal.
+        @param price: Current price
+        @return:
+        """
+        if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+            return EXStopLoss.percentile_distance_from_stop(signal_or_trade, price) >= self.distance
+
+        elif self.distance_type == StrategyTraderContext.DIST_PRICE:
+            return EXStopLoss.price_distance_from_stop(signal_or_trade, price) >= self.distance
+
+        return False
+
+    def compute_stop_loss(self, signal: StrategySignal) -> float:
+        """
+        Compute the fixed stop loss price for a signal. Entry price must be defined and direction too.
+        And set the value to the signal.
+        @param signal:
+        @return: The price of the stop loss or 0 if not defined.
+        """
+        if self.type == StrategyTraderContext.PRICE_FIXED and self.distance > 0.0:
+            if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+                if signal.direction > 0:
+                    signal.stop_loss = signal.entry_price * (1.0 - self.distance)
+                elif signal.direction < 0:
+                    signal.stop_loss = signal.entry_price * (1.0 + self.distance)
+
+            elif self.distance_type == StrategyTraderContext.DIST_PRICE:
+                if signal.direction > 0:
+                    signal.stop_loss = signal.entry_price - self.distance
+                elif signal.direction < 0:
+                    signal.stop_loss = signal.entry_price + self.distance
+
+        return signal.stop_loss
+
+    def apply_initial_stop(self, strategy_trader: StrategyTrader, trade: StrategyTrade, hard: bool = True):
+        if not trade:
+            return
+
+        if trade.stop_loss <= 0.0:
+            return
+
+        if trade.has_stop_order():
+            return
+
+        # initial stop-loss to be applied on position or order
+        if trade.support_both_order():
+            initial_sl = strategy_trader.instrument.adjust_price(trade.stop_loss)
+            try:
+                # apply as a distant order or position value only if possible
+                strategy_trader.trade_modify_stop_loss(trade, initial_sl, hard)
+            except Exception as e:
+                error_logger.error(repr(e))
+
+    def stop_loss_from_price(self, signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
+        """
+        Compute the fixed stop loss price for a trade or signal from distance to given price.
+        And return the computed value.
         @param signal_or_trade:
+        @param price: Last close execution price or any other price.
         @return: The price of the stop loss or 0 if not defined.
         """
         if self.type == StrategyTraderContext.PRICE_FIXED and self.distance > 0.0:
             if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
                 if signal_or_trade.direction > 0:
-                    signal_or_trade.stop_loss = signal_or_trade.entry_price * (1.0 - self.distance)
+                    return price * (1.0 - self.distance)
                 elif signal_or_trade.direction < 0:
-                    signal_or_trade.stop_loss = signal_or_trade.entry_price * (1.0 + self.distance)
+                    return price * (1.0 + self.distance)
 
             elif self.distance_type == StrategyTraderContext.DIST_PRICE:
                 if signal_or_trade.direction > 0:
-                    signal_or_trade.stop_loss = signal_or_trade.entry_price - self.distance
+                    return price - self.distance
                 elif signal_or_trade.direction < 0:
-                    signal_or_trade.stop_loss = signal_or_trade.entry_price + self.distance
+                    return price + self.distance
 
-        return signal_or_trade.stop_loss
+        return 0.0
 
-    def clamp_stop(self, signal_or_trade):
+    def clamp_stop(self, signal: StrategySignal):
         """
         Stop loss must not exceed this configured distance.
-        @param signal_or_trade: signal or trade
-        @todo for distance in price
+        @param signal: Strategy signal
         """
-        if signal_or_trade and self.distance > 0.0:
-            if signal_or_trade.direction > 0:
+        if signal and self.distance > 0.0:
+            if signal.direction > 0:
                 # long case
                 if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
-                    if signal_or_trade.stop_loss <= 0.0 or self.percentile_distance_from_stop_price(
-                            signal_or_trade, signal_or_trade.entry_price) > self.distance:
-                        signal_or_trade.stop_loss = signal_or_trade.entry_price * (1.0 - self.distance)
+                    if signal.stop_loss <= 0.0 or self.percentile_distance_from_stop(
+                            signal, signal.entry_price) > self.distance:
+                        signal.stop_loss = signal.entry_price * (1.0 - self.distance)
 
                 elif self.distance_type == StrategyTraderContext.DIST_PRICE:
-                    if signal_or_trade.stop_loss <= 0.0 or self.price_distance_from_stop(
-                            signal_or_trade, signal_or_trade.entry_price) > self.distance:
-                        signal_or_trade.stop_loss = signal_or_trade.entry_price - self.distance
+                    if signal.stop_loss <= 0.0 or self.price_distance_from_stop(
+                            signal, signal.entry_price) > self.distance:
+                        signal.stop_loss = signal.entry_price - self.distance
 
-            elif signal_or_trade.direction < 0:
+            elif signal.direction < 0:
                 # short case
                 if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
-                    if signal_or_trade.stop_loss <= 0.0 or self.percentile_distance_from_stop_price(
-                            signal_or_trade, signal_or_trade.entry_price) > self.distance:
-                        signal_or_trade.stop_loss = signal_or_trade.entry_price * (1.0 + self.distance)
+                    if signal.stop_loss <= 0.0 or self.percentile_distance_from_stop(
+                            signal, signal.entry_price) > self.distance:
+                        signal.stop_loss = signal.entry_price * (1.0 + self.distance)
 
                 elif self.distance_type == StrategyTraderContext.DIST_PRICE:
-                    if signal_or_trade.stop_loss <= 0.0 or self.price_distance_from_stop(
-                            signal_or_trade, signal_or_trade.entry_price) > self.distance:
-                        signal_or_trade.stop_loss = signal_or_trade.entry_price + self.distance
+                    if signal.stop_loss <= 0.0 or self.price_distance_from_stop(
+                            signal, signal.entry_price) > self.distance:
+                        signal.stop_loss = signal.entry_price + self.distance
 
-    def loads(self, strategy_trader, params: dict):
+    def loads(self, strategy_trader: StrategyTrader, params: dict):
         super().loads(strategy_trader, params)
 
     def dumps(self) -> dict:
@@ -690,6 +832,70 @@ class EXBreakeven(EntryExit):
 
     def __init__(self):
         super().__init__()
+
+    @staticmethod
+    def percentile_distance_from_entry(signal_or_trade, price: float) -> float:
+        """
+        Return in percentile the distance from a price (could be close execution price) and trade entry price.
+        The distance is always a positive value.
+        """
+        if signal_or_trade.entry_price > 0.0:
+            return signal_or_trade.direction * (price - signal_or_trade.entry_price) / signal_or_trade.entry_price
+
+        return 0.0
+
+    @staticmethod
+    def price_distance_from_entry(signal_or_trade, price: float) -> float:
+        """
+        Return the distance from a price (could be close execution price) and trade entry price.
+        The distance is always a positive value.
+        """
+        if signal_or_trade.entry_price > 0.0:
+            return signal_or_trade.direction * (price - signal_or_trade.entry_price)
+
+        return 0.0
+
+    def check_min_distance_from_entry(self, signal_or_trade: Union[StrategyTrade, StrategySignal], price: float) -> bool:
+        """
+        Check if the minimal distance price to entry is respected.
+        @note It is a gross distance that is compared (does not include fees and commissions).
+        @param signal_or_trade: Valid trade or signal.
+        @param price: Current price
+        @return:
+        """
+        # original test use net worth (entry fees/commission and exit fees/commission estimation)
+        # if trade.estimate_profit_loss_rate(strategy_trader.instrument) <= min_dist:
+
+        if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+            return EXBreakeven.percentile_distance_from_entry(signal_or_trade, price) >= self.distance
+
+        elif self.distance_type == StrategyTraderContext.DIST_PRICE:
+            return EXBreakeven.price_distance_from_entry(signal_or_trade, price) >= self.distance
+
+        return False
+
+    def stop_loss_from_entry_price(self, signal_or_trade: Union[StrategySignal, StrategyTrade]) -> float:
+        """
+        Compute the fixed stop loss price for a trade or signal from distance to entry price.
+        The offset is always applied in favor of the profit.
+        And return the computed value.
+        @param signal_or_trade:
+        @return: The price of the stop loss or 0 if not defined.
+        """
+        if self.type == StrategyTraderContext.PRICE_FIXED and self.distance > 0.0:
+            if self.offset_type == StrategyTraderContext.DIST_PERCENTILE:
+                if signal_or_trade.direction > 0:
+                    return signal_or_trade.entry_price * (1.0 + self.offset)
+                elif signal_or_trade.direction < 0:
+                    return signal_or_trade.entry_price * (1.0 - self.offset)
+
+            elif self.offset_type == StrategyTraderContext.DIST_PRICE:
+                if signal_or_trade.direction > 0:
+                    return signal_or_trade.entry_price + self.offset
+                elif signal_or_trade.direction < 0:
+                    return signal_or_trade.entry_price - self.offset
+
+        return 0.0
 
     def loads(self, strategy_trader, params: dict):
         super().loads(strategy_trader, params)
