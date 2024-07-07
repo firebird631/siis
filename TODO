@@ -156,6 +156,30 @@ Sum order :
     de consolidation, mais dans le cas de rangebar/tickbar cela est potentiellement moins cohérent. comment tester
     que la bar est cloture sans avoir besoin de la tickbar dataserie
 
+- Ajouter statistiques par trade, et on pourrait aussi les mesurer par strategy trader voir trader account :
+    - Max. Time to Recover
+
+- Ajouter statistiques par strategy trader et/ou trader account :
+    - Tout d'abord compter le nombre de jours
+    - Max. Time to Recover, Longest Flat Period
+    - Average MAE, Average MFE, Average ETD
+    - Total : Net Profit, Gross Profit, Gross Loss, Gross Win
+    - Profit Factor
+    - Max. Drawdown
+    - Probability (reach average of the winning trade)
+    - Average : Any Trade, Winning Trade, Losing Trade, Ratio Avg Win / Avg Loss, # of trades per day, Average Time in Market
+    - Profit Per : Day, Week, Month
+    - Average Entry, Exit and Total Efficiency
+
+- D'autre display chart de statistiques
+
+- Ajouter le plot bar CLI
+
+- Finir le volume profile et le composite volume profile
+    - Tester avec un plot bar CLI
+
+- Ajouter un display chart CLI pour un data-serie donné (une couleur par ligne)
+
 
 ##################
 # Uniformization #

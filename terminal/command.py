@@ -4,6 +4,7 @@
 # terminal commands
 
 import json
+import traceback
 
 from app.appexception import CommandHandlerException, CommandException
 from terminal.terminal import Terminal
@@ -11,6 +12,7 @@ from terminal.terminal import Terminal
 import logging
 logger = logging.getLogger('siis.command')
 error_logger = logging.getLogger('siis.error.command')
+traceback_logger = logging.getLogger('siis.traceback.command')
 
 
 class Command(object):
@@ -324,6 +326,7 @@ class CommandsHandler(object):
                     self.print_exec_msg(command_name, success, msgs)
                 except Exception as e:
                     logger.error(str(e))
+                    traceback_logger.error(str(traceback.format_exc()))
                     return False
 
                 return True
@@ -359,6 +362,7 @@ class CommandsHandler(object):
                     self.print_exec_msg(cmd, success, msgs)
                 except Exception as e:
                     logger.error(str(e))
+                    traceback_logger.error(str(traceback.format_exc()))
                     return False
 
                 return True
@@ -371,6 +375,7 @@ class CommandsHandler(object):
                         self.print_exec_msg(command_name, success, msgs)
                     except Exception as e:
                         logger.error(str(e))
+                        traceback_logger.error(str(traceback.format_exc()))
                         return False
 
                     return True
@@ -450,6 +455,7 @@ class CommandsHandler(object):
 
         except Exception as e:
             error_logger.error(str(e))
+            traceback_logger.error(str(traceback.format_exc()))
 
         return args, tab_pos
 

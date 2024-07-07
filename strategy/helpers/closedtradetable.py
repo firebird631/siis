@@ -17,16 +17,19 @@ logger = logging.getLogger('siis.strategy.helpers.closedtradetable')
 error_logger = logging.getLogger('siis.error.strategy.helpers.closedtradetable')
 
 
-def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False,
+def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False, stats=False,
                               percents=False, group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any closed trades.
     """
-    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'Cum (%)', 'Fees(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF',
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'TF',
                'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
 
     if quantities:
         columns += ['RPNL', 'Qty', 'Entry Q', 'Exit Q']
+
+    if stats:
+        columns += ['Cum(%)', 'MFE', 'MAE', 'ETD', 'EEF(%)', 'XEF(%)', 'TEF(%)']
 
     columns = tuple(columns)
     total_size = (len(columns), 0)
@@ -44,21 +47,22 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
         cum_pnl = 0.0
         cum_pnls = {}
 
-        # sort by exit datetime to compute cumulative PNL
-        closed_trades.sort(key=lambda x: str(x['stats']['last-realized-exit-datetime']))
+        # sort by exit datetime to compute statistics
+        if stats:
+            closed_trades.sort(key=lambda x: str(x['stats']['last-realized-exit-datetime']))
 
-        for t in closed_trades:
-            trade_key = t['symbol']+str(t['id'])
+            for t in closed_trades:
+                trade_key = t['symbol']+str(t['id'])
 
-            # sum of RPNL per quote/currency
-            if t['stats']['profit-loss-currency'] not in sub_totals:
-                sub_totals[t['stats']['profit-loss-currency']] = 0.0
+                # sum of RPNL per quote/currency
+                if t['stats']['profit-loss-currency'] not in sub_totals:
+                    sub_totals[t['stats']['profit-loss-currency']] = 0.0
 
-            sub_totals[t['stats']['profit-loss-currency']] += float(t['stats']['profit-loss'])
+                sub_totals[t['stats']['profit-loss-currency']] += float(t['stats']['profit-loss'])
 
-            # PNL over the trades and map it to its trade unique key
-            cum_pnl += t['profit-loss-pct']
-            cum_pnls[trade_key] = cum_pnl
+                # PNL over the trades and map it to its trade unique key
+                cum_pnl += t['profit-loss-pct']
+                cum_pnls[trade_key] = cum_pnl
 
         if offset is None:
             offset = 0
@@ -116,22 +120,6 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 exit_color = None
 
             #
-            # cumulative PNL percent
-            #
-
-            cum_pnl = cum_pnls[trade_key]
-
-            # colorize profit or loss percent
-            if round(cum_pnl * 10) == 0.0:  # equity
-                cum_cr = "%.2f" % cum_pnl
-            elif cum_pnl < 0:  # loss
-                cum_cr = Color.colorize("%.2f" % cum_pnl, Color.RED, style=style)
-            elif cum_pnl > 0:  # profit
-                cum_cr = Color.colorize("%.2f" % cum_pnl, Color.GREEN, style=style)
-            else:
-                cum_cr = "-"
-
-            #
             # realized profit or loss
             rpnl = "%g%s" % (t['stats']['profit-loss'], t['stats']['profit-loss-currency'])
 
@@ -155,23 +143,12 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             if t['direction'] == "long" and aep:
                 slpct = (sl - aep) / aep
                 tppct = (tp - aep) / aep
-
-                bpct = (best - aep) / aep - (t['stats']['fees-pct'] * 0.01)
-                wpct = (worst - aep) / aep - (t['stats']['fees-pct'] * 0.01)
-
             elif t['direction'] == "short" and aep:
                 slpct = (aep - sl) / aep
                 tppct = (aep - tp) / aep
-
-                bpct = (aep - best) / aep - (t['stats']['fees-pct'] * 0.01)
-                wpct = (aep - worst) / aep - (t['stats']['fees-pct'] * 0.01)
-
             else:
                 slpct = 0
                 tppct = 0
-
-                bpct = 0
-                wpct = 0
 
             def format_with_percent(formatted_value, condition, rate):
                 return (("%s (%.2f%%)" % (formatted_value,
@@ -182,13 +159,10 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 t['id'],
                 direction,
                 cr,
-                cum_cr,
                 "%.2f%%" % t['stats']['fees-pct'],  # total fees in percent
                 t['order-price'] if t['order-price'] != "0" else "-",
                 format_with_percent(_sl, sl, slpct),
                 format_with_percent(_tp, tp, tppct),
-                format_with_percent(t['stats']['best-price'], best, bpct),
-                format_with_percent(t['stats']['worst-price'], worst, wpct),
                 t['timeframe'],
                 localize_datetime(t['entry-open-time']),
                 localize_datetime(t['stats']['first-realized-entry-datetime']),
@@ -205,6 +179,59 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 row.append(t['filled-entry-qty'])
                 row.append(t['filled-exit-qty'])
 
+            if stats:
+                # values in percent
+                if t['direction'] == "long" and aep and axp:
+                    mfe_pct = (best - aep) / aep - (t['stats']['fees-pct'] * 0.01)
+                    mae_pct = (worst - aep) / aep - (t['stats']['fees-pct'] * 0.01)
+
+                    etd = best - axp
+                    etd_pct = etd / axp - (t['stats']['fees-pct'] * 0.01)
+                elif t['direction'] == "short" and aep and axp:
+                    mfe_pct = (aep - best) / aep - (t['stats']['fees-pct'] * 0.01)
+                    mae_pct = (aep - worst) / aep - (t['stats']['fees-pct'] * 0.01)
+
+                    etd = axp - best
+                    etd_pct = etd / axp - (t['stats']['fees-pct'] * 0.01)
+                else:
+                    mfe_pct = 0
+                    mae_pct = 0
+
+                    etd = 0
+                    etd_pct = 0
+
+                # Cumulative, MFE, MAE during active...
+                fmt_mfe = format_with_percent(t['stats']['best-price'], mfe_pct, mfe_pct)
+                fmt_mae = format_with_percent(t['stats']['worst-price'], mae_pct, mae_pct)
+                # don't have here the instrument price formatting
+                fmt_etd = format_with_percent("%g" % etd, etd_pct, etd_pct)
+
+                # cumulative PNL percent
+                cum_pnl = cum_pnls[trade_key]
+
+                # colorize profit or loss percent
+                if round(cum_pnl * 10) == 0.0:  # equity
+                    fmt_cum_cr = "%.2f" % cum_pnl
+                elif cum_pnl < 0:  # loss
+                    fmt_cum_cr = Color.colorize("%.2f" % cum_pnl, Color.RED, style=style)
+                elif cum_pnl > 0:  # profit
+                    fmt_cum_cr = Color.colorize("%.2f" % cum_pnl, Color.GREEN, style=style)
+                else:
+                    fmt_cum_cr = "-"
+
+                # efficiency
+                en_eff_pct = (best - aep) / (best - worst)
+                ex_eff_pct = (axp - worst) / (best - worst)
+                to_eff_pct = (axp - aep) / (best - worst)
+
+                row.append(fmt_cum_cr)
+                row.append(fmt_mfe)
+                row.append(fmt_mae)
+                row.append(fmt_etd)
+                row.append("%.2f" % (en_eff_pct * 100.0))
+                row.append("%.2f" % (ex_eff_pct * 100.0))
+                row.append("%.2f" % (to_eff_pct * 100.0))
+
             data.append(row[0:4] + row[4+col_ofs:])
 
     if sub_totals:
@@ -213,13 +240,10 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             '-',
             '-',
             '------',
-            '------',
             '-------',
             '--',
             '--',
             '--',
-            '----',
-            '-----',
             '--',
             '-----------',
             '----------',
@@ -235,6 +259,12 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             row.append('---')
             row.append('-------')
             row.append('------')
+
+        if stats:
+            row.append('------')
+            row.append('---')
+            row.append('---')
+            row.append('---')
 
         data.append(row[0:4] + row[4+col_ofs:])
 
@@ -261,15 +291,18 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             '-',
             '-',
             '-',
-            '-',
-            '-',
-            '-',
-            currency,
+            currency or '-',
             '-',
         ]
 
         if quantities:
             row.append(rpnl)
+            row.append('-')
+            row.append('-')
+            row.append('-')
+
+        if stats:
+            row.append('-')
             row.append('-')
             row.append('-')
             row.append('-')

@@ -10,25 +10,35 @@ Base on original work from https://github.com/kroitor/asciichart/tree/master/asc
 from __future__ import division
 from math import ceil, floor, isnan
 
+reset = '\\0'      # white (normal)
+red = '\\1'        # red
+magenta = '\\2'     # orange
+yellow = '\\3'     # yellow
+blue = '\\4'       # blue
+green = '\\5'      # green
+bmacl = '\\6'     # purple
+cyan = '\\7'       # cyan
+default = '\\8'  # highlight
+lightred = '\\9'   # light-red
 
-black = "\033[30m"
-red = "\033[31m"
-green = "\033[32m"
-yellow = "\033[33m"
-blue = "\033[34m"
-magenta = "\033[35m"
-cyan = "\033[36m"
-lightgray = "\033[37m"
-default = "\033[39m"
-darkgray = "\033[90m"
-lightred = "\033[91m"
-lightgreen = "\033[92m"
-lightyellow = "\033[93m"
-lightblue = "\033[94m"
-lightmagenta = "\033[95m"
-lightcyan = "\033[96m"
-white = "\033[97m"
-reset = "\033[0m"
+# black = "\033[30m"
+# red = "\033[31m"
+# green = "\033[32m"
+# yellow = "\033[33m"
+# blue = "\033[34m"
+# magenta = "\033[35m"
+# cyan = "\033[36m"
+# lightgray = "\033[37m"
+# default = "\033[39m"
+# darkgray = "\033[90m"
+# lightred = "\033[91m"
+# lightgreen = "\033[92m"
+# lightyellow = "\033[93m"
+# lightblue = "\033[94m"
+# lightmagenta = "\033[95m"
+# lightcyan = "\033[96m"
+# white = "\033[97m"
+# reset = "\033[0m"
 
 
 __all__ = [

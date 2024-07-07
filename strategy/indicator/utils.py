@@ -12,39 +12,41 @@ def down_sample(data, factor, n=4, ftype='iir'):
     return signal.decimate(data, factor, n, ftype)
 
 
-def MM_n(N, data):
+def MM_n(length, data):
     """
     Calcul de la moyenne mobile sur N points.
     """
     out = np.zeros(len(data))
 
-    for j in range(N):
+    for j in range(length):
         out[j] = np.average(data[:j+1])
-    for (j,d) in enumerate(data[N-1:]):
-        out[j+N-1] = np.average(data[j:j+N])
+
+    for (j, d) in enumerate(data[length - 1:]):
+        out[j + length - 1] = np.average(data[j:j + length])
 
     return out
 
 
-def MMexp_n(N, data, has_previous_val = False, previous_value = 0):
+def MMexp_n(length, data, has_previous_val=False, previous_value=0):
     """
     Calcul de la moyenne mobile exponentielle sur N periodes
     previous_val permet d'initialiser la 1ere valeur correctement
     Si la valeur n'est pas initialisee (False, par defaut), la fonction calcule la moyenne mobile avec 
     n=1, 2, 3, ..., N pour les N premiers echantillons
     """
-    An = 2.0 / (1.0 + N)
+    a_len = 2.0 / (1.0 + length)
     out = np.zeros(len(data))
 
     if has_previous_val:
-        out[0] = data[0]*An + (1-An)*previous_value 
-        for (j,d) in enumerate(data[1:]):
-            out[j+1] = d*An + (1-An)*out[j]
+        out[0] = data[0]*a_len + (1-a_len)*previous_value
+        for (j, d) in enumerate(data[1:]):
+            out[j+1] = d*a_len + (1-a_len)*out[j]
     else:
-        for j in range(N):
+        for j in range(length):
             out[j] = np.average(data[:j+1])
-        for (j,d) in enumerate(data[N-1:]):
-            out[j+N-1] = d*An + (1-An)*out[j+N-2]
+
+        for (j, d) in enumerate(data[length - 1:]):
+            out[j + length - 1] = d * a_len + (1 - a_len) * out[j + length - 2]
 
     return out
 

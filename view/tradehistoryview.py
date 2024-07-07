@@ -5,6 +5,7 @@
 
 import traceback
 
+from terminal.terminal import Terminal
 from view.tableview import TableView
 
 from common.signal import Signal
@@ -29,8 +30,32 @@ class TradeHistoryView(TableView):
         self._strategy_service = strategy_service
         self._ordering = True  # initially most recent first
 
+        self._quantities = True  # display quantity related columns
+        self._stats = False  # display statistics related columns
+
         # listen to its service
         self.service.add_listener(self)
+
+    def on_key_pressed(self, key):
+        super().on_key_pressed(key)
+
+        if (key == 'KEY_STAB' or key == 'KEY_BTAB') and Terminal.inst().mode == Terminal.MODE_DEFAULT:
+            # make a loop over the two booleans
+            if self._stats and self._quantities:
+                self._quantities = False
+                self._stats = False
+            elif not self._stats and not self._quantities:
+                self._quantities = True
+                self._stats = False
+            elif not self._stats and self._quantities:
+                self._quantities = False
+                self._stats = True
+            elif self._stats and not self._quantities:
+                self._quantities = True
+                self._stats = True
+
+            # force to refresh
+            self._refresh = 0.0
 
     def receiver(self, signal):
         if not signal:
@@ -53,7 +78,7 @@ class TradeHistoryView(TableView):
             try:
                 columns, table, total_size = closed_trades_stats_table(
                     strategy, *self.table_format(),
-                    quantities=True, percents=self._percent,
+                    quantities=self._quantities, stats=self._stats, percents=self._percent,
                     group=self._group, ordering=self._ordering, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)

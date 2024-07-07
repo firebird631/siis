@@ -15,17 +15,20 @@ logger = logging.getLogger('siis.strategy.helpers.activetradetable')
 error_logger = logging.getLogger('siis.error.strategy.helpers.activetradetable')
 
 
-def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False,
+def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False, stats=False,
                        percents=False, group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S',
                        pl_pip=False):
     """
     Returns a table of any active trades.
     """
-    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'Best', 'Worst', 'TF', 'Signal date',
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'TF', 'Signal date',
                'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
 
     if quantities:
         columns += ['UPNL', 'Qty', 'Entry Q', 'Exit Q', 'Quote']
+
+    if stats:
+        columns += ['MFE', 'MAE']
 
     columns = tuple(columns)
     total_size = (len(columns), 0)
@@ -147,9 +150,6 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             sl = format_with_percent(t['sl'], sl, slpct)
             tp = format_with_percent(t['tp'], tp, tppct)
 
-            b = format_with_percent(t['b'], best, bpct)
-            w = format_with_percent(t['w'], worst, wpct)
-
             row = [
                 t['sym'],
                 t['id'],
@@ -158,8 +158,6 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 op,
                 sl,
                 tp,
-                b,
-                w,
                 t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime(datetime_format) if t['eot'] > 0 else '-',
                 datetime.fromtimestamp(t['freot']).strftime(datetime_format) if t['freot'] > 0 else '-',
@@ -177,6 +175,14 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 row.append(t['x'])
                 row.append(t['qs'])
 
+            if stats:
+                # MFE, MAE during active
+                b = format_with_percent(t['b'], best, bpct)
+                w = format_with_percent(t['w'], worst, wpct)
+
+                row.append(b)
+                row.append(w)
+
             data.append(row[0:4] + row[4+col_ofs:])
 
     if sub_totals:
@@ -188,8 +194,6 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             '--',
             '--',
             '--',
-            '----',
-            '-----',
             '--',
             '-----------',
             '----------',
@@ -206,6 +210,10 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             row.append('-------')
             row.append('------')
             row.append('-----')
+
+        if stats:
+            row.append('---')
+            row.append('---')
 
         data.append(row[0:4] + row[4+col_ofs:])
 

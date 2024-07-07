@@ -26,6 +26,30 @@ class TradeView(TableView):
         self._strategy_service = strategy_service
         self._ordering = True  # initially most recent first
 
+        self._quantities = True  # display quantity related columns
+        self._stats = False      # display statistics related columns
+
+    def on_key_pressed(self, key):
+        super().on_key_pressed(key)
+
+        if (key == 'KEY_STAB' or key == 'KEY_BTAB') and Terminal.inst().mode == Terminal.MODE_DEFAULT:
+            # make a loop over the two booleans
+            if self._stats and self._quantities:
+                self._quantities = False
+                self._stats = False
+            elif not self._stats and not self._quantities:
+                self._quantities = True
+                self._stats = False
+            elif not self._stats and self._quantities:
+                self._quantities = False
+                self._stats = True
+            elif self._stats and not self._quantities:
+                self._quantities = True
+                self._stats = True
+
+            # force to refresh
+            self._refresh = 0.0
+
     def refresh(self):
         if not self._strategy_service:
             return
@@ -37,8 +61,11 @@ class TradeView(TableView):
 
             try:
                 columns, table, total_size, num_actives_trades = trades_stats_table(
-                    strategy, *self.table_format(), quantities=True, percents=self._percent,
-                    group=self._group, ordering=self._ordering, datetime_format=self._datetime_format,
+                    strategy, *self.table_format(),
+                    quantities=self._quantities, stats=self._stats,
+                    percents=self._percent,
+                    group=self._group, ordering=self._ordering,
+                    datetime_format=self._datetime_format,
                     pl_pip=self._opt1)
 
                 self.table(columns, table, total_size)
