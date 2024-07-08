@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Call
 
 from docutils.utils.math.latex2mathml import over
 
+from .helpers.statistic import compute_strategy_statistics
+
 if TYPE_CHECKING:
     from watcher.service import WatcherService
     from trader.service import TraderService
@@ -1730,6 +1732,17 @@ class Strategy(Runnable):
     #
 
     def write_trainer_report(self, learning_path: str, filename: str, original_content: dict):
+        """
+        Write a json file once the trainer process complete.
+        Some statistics are computed at each trade or tick and some others are derived from measured data.
+
+        @param learning_path: Where to write to report
+        @param filename: Filename of the report
+        @param original_content: Original content (dict) of the trainer to duplicate and then merged with final results.
+
+        @todo pl_sum could be incorrect : using estimate method, and merge in a single account currency without using
+              conversion.
+        """
         logger.info("Writing results to trainer file %s..." % filename)
 
         new_content = copy.deepcopy(original_content)
@@ -1740,6 +1753,7 @@ class Strategy(Runnable):
         with self._mutex:
             agg_trades = get_agg_trades(self)
 
+        # per strategy trader dataset are merged globally
         pl_sum = 0.0
         perf_sum = 0.0
         best_best = 0.0
@@ -1781,18 +1795,18 @@ class Strategy(Runnable):
 
         trader = self.trader()
 
-        max_draw_down = trader.account.max_draw_down
-        equity = trader.account.balance
-
-        new_content['performance'] = "%.2f%%" % (perf_sum * 100.0)
-        new_content['max-draw-down'] = "%.2f%%" % (max_draw_down * 100.0)
-        new_content['final-equity'] = trader.account.format_price(equity)
+        # final account stats
+        new_content['max-draw-down'] = "%.2f%%" % (trader.account.max_draw_down * 100.0)
+        new_content['final-equity'] = trader.account.format_price(trader.account.balance)
         new_content['stats-samples'] = [x.dumps() for x in trader.account.stats_samples]
 
+        new_content['performance'] = "%.2f%%" % (perf_sum * 100.0)
         new_content['profit-loss'] = trader.account.format_price(pl_sum)
+
         new_content['best'] = "%.2f%%" % (best_best * 100.0)
         new_content['worst'] = "%.2f%%" % (worst_worst * 100.0)
 
+        # winning, loosing, even trades stats
         new_content['succeed-trades'] = success_sum
         new_content['failed-trades'] = failed_sum
         new_content['roe-trades'] = roe_sum
@@ -1807,6 +1821,10 @@ class Strategy(Runnable):
 
         new_content["max-loss-series"] = max_adj_loss
         new_content["max-win-series"] = max_adj_win
+
+        # compute some time statistics and merge them into new_content
+        time_stats = compute_strategy_statistics(self)
+        time_stats.dumps(new_content)
 
         write_learning(learning_path, filename, new_content)
 

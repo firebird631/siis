@@ -26,7 +26,7 @@ class DrawStatsCommand(Command):
     )
 
     CHARTS = ("cum-pnl",
-              "mfe", "mae", "etd", "eef", "xef", "tef",
+              "pnl", "mfe", "mae", "etd", "eef", "xef", "tef",
               "avg-pnl", "avg-mfe", "avg-mae", "avg-etd", "avg-eef", "avg-xef", "avg-tef",
               "std-pnl", "std-mfe", "std-mae", "std-etd", "std-eef", "std-xef", "std-tef")
 
@@ -114,11 +114,14 @@ class DrawStatsCommand(Command):
         # if ratio is more than 13 could issue
         for i in range(0, len(x_series)):
             if len(x_series[i]) > max_width:
-                x_series[i] = down_sample(x_series[i], int(np.ceil(len(x_series[i])/max_width)))
+                x_series[i] = list(down_sample(x_series[i], int(np.ceil(len(x_series[i])/max_width))))
 
         if x_series:
+            # @todo depend if rate, pct or any price
+            fmt = "{:6.2f}"
+
             content = plot(x_series if len(x_series) > 1 else x_series[0], {
-                "height": max_height, "format": "{:5.2f}", "colors": colors})
+                "height": max_height, "colors": colors})  # "format": fmt,
             Terminal.inst().message(content, view="content")
 
         return True, None
@@ -283,7 +286,13 @@ class DrawStatsCommand(Command):
             aep = float(t['avg-entry-price'])
             best = float(t['stats']['best-price'])
 
-            mfe_pct = (best - aep) / aep - (t['stats']['fees-pct'] * 0.01)
+            if t['direction'] == "long" and aep:
+                mfe_pct = (best - aep) / aep - (t['stats']['fees-pct'] * 0.01)
+            elif t['direction'] == "short" and aep:
+                mfe_pct = (aep - best) / aep - (t['stats']['fees-pct'] * 0.01)
+            else:
+                mfe_pct = 0
+
             series.append(mfe_pct * 100.0)
 
         if avg:
@@ -317,7 +326,13 @@ class DrawStatsCommand(Command):
             aep = float(t['avg-entry-price'])
             worst = float(t['stats']['worst-price'])
 
-            mae_pct = (worst - aep) / aep - (t['stats']['fees-pct'] * 0.01)
+            if t['direction'] == "long" and aep:
+                mae_pct = (worst - aep) / aep - (t['stats']['fees-pct'] * 0.01)
+            elif t['direction'] == "short" and aep:
+                mae_pct = (aep - worst) / aep - (t['stats']['fees-pct'] * 0.01)
+            else:
+                mae_pct = 0
+
             series.append(mae_pct * 100.0)
 
         if avg:
@@ -351,19 +366,23 @@ class DrawStatsCommand(Command):
             axp = float(t['avg-exit-price'])
             best = float(t['stats']['best-price'])
 
-            etd = best - axp
-            etd_pct = etd / axp - (t['stats']['fees-pct'] * 0.01)
+            if t['direction'] == "long" and axp:
+                etd_pct = (axp - best) / axp - (t['stats']['fees-pct'] * 0.01)
+            elif t['direction'] == "short" and axp:
+                etd_pct = (axp - best) / axp - (t['stats']['fees-pct'] * 0.01)
+            else:
+                etd_pct = 0
 
             series.append(etd_pct * 100.0)
 
         if avg:
             x_series.append(list(MM_n(7, series)))
-            colors.append(Color.UTERM_COLORS_MAP[Color.RED])
+            colors.append(Color.UTERM_COLORS_MAP[Color.YELLOW])
         elif stddev:
             x, t, b = compute_std_dev(series)
 
             x_series.append(list(x))
-            colors.append(Color.UTERM_COLORS_MAP[Color.RED])
+            colors.append(Color.UTERM_COLORS_MAP[Color.YELLOW])
 
             x_series.append(list(t))
             colors.append(Color.UTERM_COLORS_MAP[Color.PURPLE])
@@ -372,7 +391,7 @@ class DrawStatsCommand(Command):
             colors.append(Color.UTERM_COLORS_MAP[Color.PURPLE])
         else:
             x_series.append(series)
-            colors.append(Color.UTERM_COLORS_MAP[Color.RED])
+            colors.append(Color.UTERM_COLORS_MAP[Color.YELLOW])
 
     def completion(self, args, tab_pos, direction):
         if len(args) <= 1:
@@ -385,11 +404,11 @@ class DrawStatsCommand(Command):
         return args, 0
 
 
-def compute_std_dev(series):
+def compute_std_dev(series, factor=1.0):
     npa = np.array(series)
 
     basis = ta_SMA(npa, 7)
-    dev = 2.0 * ta_STDDEV(npa, 7)
+    dev = factor * ta_STDDEV(npa, 7)
 
     top_series = basis + dev
     bottom_series = basis - dev

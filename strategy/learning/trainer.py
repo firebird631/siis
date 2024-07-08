@@ -287,6 +287,8 @@ class Trainer(object):
 
             logger.info("Trainer apply new parameters to %s." % strategy_trader.instrument.market_id)
 
+            # @todo could display some others
+
             new_parameters = copy.deepcopy(self._strategy_trader_params)
 
             # merge new parameters
@@ -662,19 +664,33 @@ class TrainerJob(threading.Thread):
 
 class TrainerCommander(object):
 
-    BEST_PERF = 0          # select best from the best performance only
-    BEST_WINRATE = 1       # from the best win-rate (win number of loss number)
-    BEST_WORST = 2         # select best from the best worst performance (meaning limiting the worst loss)
-    LOWER_CONT_LOSS = 3    # select the one having the lesser contiguous losses
-    TAKE_PROFIT_RATIO = 4  # select the one having the best ratio of trade exit at take profit versus other exits
+    BEST_PERF = 0          # select best from the best performance in percentage.
+    BEST_PROFIT = 1        # select best from the best profit in currency.
+    BEST_WINRATE = 2       # from the best win-rate (win number / loss number)
+    BEST_WORST = 3         # best from the best worst performance (meaning limiting the worst loss)
+    LOWER_CONT_LOSS = 4    # one having the lesser contiguous losses
+    TAKE_PROFIT_RATIO = 5  # one having the best ratio of trade exit at take profit versus other exits
+    HIGHER_AVG_MFE = 6     # one having the higher average MFE factor
+    LOWER_AVG_MAE = 7      # one having the lower average MAE factor
+    LOWER_AVG_ETD = 8      # one having the lower average ETD factor
+    BEST_STDDEV_MFE = 9    # one have the higher average MFE and the more constant MFE
+    BEST_STDDEV_MAE = 10   # one have the lower average MAE and the more constant MAE
+    BEST_STDDEV_ETD = 11   # one have the lower average ETD and the more constant ETD
 
     SELECTION = {
         'best-performance': BEST_PERF,
+        'best-profit': BEST_PROFIT,
         'best-perf': BEST_PERF,
         'best-winrate': BEST_WINRATE,
         'best-worst': BEST_WORST,
         'lower-cont-loss': LOWER_CONT_LOSS,
-        'take-profit-ratio': TAKE_PROFIT_RATIO
+        'take-profit-ratio': TAKE_PROFIT_RATIO,
+        'higher-avg-mfe': HIGHER_AVG_MFE,
+        'lower-avg-mae': LOWER_AVG_MAE,
+        'lower-avg-etd': LOWER_AVG_ETD,
+        'best-stddev-mfe': BEST_STDDEV_MFE,
+        'best-stddev-mae': BEST_STDDEV_MAE,
+        'best-stddev-etd': BEST_STDDEV_ETD,
     }
 
     _profile_parameters: dict
@@ -792,7 +808,7 @@ class TrainerCommander(object):
 
         max_perf = min_perf
         max_sf_rate = 0.0
-        min_loss_serie = 9999
+        min_loss_series = 9999
         best_take_profit_rate = 0.0
 
         # simple method, the best overall performance
@@ -815,12 +831,16 @@ class TrainerCommander(object):
                     max_perf = performance
                     best_result = result
 
+            elif method == TrainerCommander.BEST_PROFIT:
+                # select best from the best profit in currency. @todo
+                pass
+
             elif method == TrainerCommander.LOWER_CONT_LOSS:
                 # only keep the less max contiguous losses
-                loss_serie = result.get('max-loss-series', 0)
+                loss_series = result.get('max-loss-series', 0)
 
-                if loss_serie < min_loss_serie:
-                    min_loss_serie = loss_serie
+                if loss_series < min_loss_series:
+                    min_loss_series = loss_series
                     best_result = result
 
             elif method == TrainerCommander.BEST_WINRATE:
@@ -842,5 +862,29 @@ class TrainerCommander(object):
                 if take_profit_rate > best_take_profit_rate:
                     best_take_profit_rate = take_profit_rate
                     best_result = result
+
+            elif method == TrainerCommander.HIGHER_AVG_MFE:
+                # one having the higher average MFE factor @todo
+                pass
+
+            elif method == TrainerCommander.LOWER_AVG_MAE:
+                # one having the lower average MAE factor @todo
+                pass
+
+            elif method == TrainerCommander.LOWER_AVG_ETD:
+                # one having the lower average ETD factor @todo
+                pass
+
+            elif method == TrainerCommander.BEST_STDDEV_MFE:
+                # one have the higher average MFE and the more constant MFE @todo
+                pass
+
+            elif method == TrainerCommander.BEST_STDDEV_MAE:
+                # one have the lower average MAE and the more constant MAE @todo
+                pass
+
+            elif method == TrainerCommander.BEST_STDDEV_ETD:
+                # one have the lower average ETD and the more constant ETD @todo
+                pass
 
         return best_result

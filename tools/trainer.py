@@ -528,6 +528,8 @@ class TrainerTool(Tool):
             logger.info("-- open-trades = %s" % best_result.get('open-trades', 0))
             logger.info("-- active-trades = %s" % best_result.get('active-trades', 0))
 
+            # @todo could display some others
+
             # display news values
             logger.info("Selected parameters :")
             for n, v in best_result.get('strategy', {}).get('parameters', {}).items():
@@ -549,6 +551,7 @@ class TrainerTool(Tool):
                 final_strategy_parameters[pname] = value
 
             # keep others best results for further analysis
+            # each result having redundant "trainer", "watchers" and "trader" blocks
             final_learning_config['results'] = self._trainer_commander.results
 
             # and finally update the learning file

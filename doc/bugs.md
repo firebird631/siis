@@ -68,3 +68,16 @@ at line 77 with t = time.process_time(). clock() function is deprecated and defi
 **No orders are created** : Yes the trading part (ordering, user WS) is not implemented for now.
 
 **It does not work at all** : Yes the watching of market data is not fully completed for now. Please consider donation to help the developer.
+
+### Backtesting related ###
+
+During a backtest, the conversion rate (base_exchange_rate) of instruments are unknowns.
+And it will occur to invalid account balance calculation.
+
+This could be a problem for the following cases :
+  * Backtesting multiple instruments on the same profile that have different settlement or quote currency.
+  * Backtesting an instrument having a different settlement or quote currency than the account currency.
+
+Solutions :
+  * Do distinct profiles and backtest per instrument or at least group them by settlements or quote currency.
+  * Always define the account currency as the same as the settlement or quote currency of the instrument.
