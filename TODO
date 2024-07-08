@@ -157,10 +157,6 @@ Sum order :
     que la bar est cloture sans avoir besoin de la tickbar dataserie
 
 - Ajouter statistiques par strategy trader et/ou trader account :
-    - Total : Net Profit, Gross Profit, Gross Loss, Gross Win
-    - Profit Factor
-    - Probability (reach average of the winning trade)
-    - Average : Losing Trade, Ratio Avg Win / Avg Loss, # of trades per day, Average Time in Market
     - Average Entry, Exit and Total Efficiency
 
 - Ajouter le plot bar CLI

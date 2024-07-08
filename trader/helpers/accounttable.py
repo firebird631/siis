@@ -35,8 +35,6 @@ def account_table(trader, style='', offset=None, limit=None, col_ofs=None):
         risk_limit = trader.account.format_price(trader.account.risk_limit) + cd
         upnl = trader.account.format_price(trader.account.profit_loss) + cd
         asset_upnl = trader.account.format_price(trader.account.asset_profit_loss) + cd
-        draw_down = trader.account.draw_down
-        max_draw_down = trader.account.max_draw_down
 
         if (trader.account.currency != trader.account.alt_currency and trader.account.currency_ratio != 1.0 and
                 trader.account.currency_ratio > 0.0):
@@ -78,7 +76,9 @@ def account_table(trader, style='', offset=None, limit=None, col_ofs=None):
         add_row(("Unrealized P/L", upnl))
         add_row(("Asset U. P/L", asset_upnl))
         add_row(("---------------", "---------------"))
-        add_row(("Draw-Down (Max)", "%.2f%% (%.2f%%)" % (draw_down * 100.0, max_draw_down * 100.0)))
+        add_row(("Draw-Down", "%s (%.2f%%)" % (trader.account.draw_down, trader.account.draw_down_rate * 100.0)))
+        add_row(("Max Draw-Down", "%s (%.2f%%)" % (
+            trader.account.max_draw_down, trader.account.max_draw_down_rate * 100.0)))
 
     data = data[offset:limit]
 

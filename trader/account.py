@@ -25,17 +25,19 @@ class AccountStatSample:
     Account statistic sample
     """
 
-    timestamp: float = 0.0
-    performance: float = 0.0
-    profit_loss: float = 0.0
+    timestamp: float = 0.0     # timestamp of the sample
+    performance: float = 0.0   # balance equity
+    profit_loss: float = 0.0   # unrealized balance
+
+    draw_down_rate: float = 0.0
     draw_down: float = 0.0
 
     def dumps(self):
-        return self.timestamp, self.performance, self.profit_loss, self.draw_down
+        return self.timestamp, self.performance, self.profit_loss, self.draw_down_rate, self.draw_down
 
     @staticmethod
     def builder(data):
-        return AccountStatSample(data[0], data[1], data[2], data[3])
+        return AccountStatSample(data[0], data[1], data[2], data[3], data[4])
 
 
 class Account(object):
@@ -99,8 +101,11 @@ class Account(object):
 
         self._guaranteed_stop = False
 
-        self._draw_down = 0.0
-        self._max_draw_down = 0.0
+        self._draw_down = 0.0           # in currency
+        self._max_draw_down = 0.0       # in currency
+
+        self._draw_down_rate = 0.0      # ratio over balance
+        self._max_draw_down_rate = 0.0  # ratio over balance
 
         self._stats_sampling_timeframe = Account.DEFAULT_STATS_SAMPLING_TIMEFRAME
         self._last_stats_update = 0.0
@@ -223,11 +228,11 @@ class Account(object):
 
     @property
     def draw_down(self) -> float:
-        return self._draw_down
+        return self._draw_down_rate
 
     @property
     def max_draw_down(self) -> float:
-        return self._max_draw_down
+        return self._max_draw_down_rate
 
     @property
     def stats_samples(self) -> list[AccountStatSample]:
@@ -355,8 +360,13 @@ class Account(object):
         # update draw down
         dd = (self._profit_loss + self._asset_profit_loss) / self._balance if self._balance > 0 else 0
         if dd < 0.0:
+            self._draw_down_rate = -dd
+
+        dd = self._profit_loss + self._asset_profit_loss
+        if dd < 0.0:
             self._draw_down = -dd
 
+        self._max_draw_down_rate = max(self._max_draw_down_rate, self._draw_down_rate)
         self._max_draw_down = max(self._max_draw_down, self._draw_down)
 
     def update_stats(self, timestamp: float):
@@ -367,6 +377,7 @@ class Account(object):
                 self._last_stats_update,
                 self._balance,
                 self._profit_loss,
+                self._draw_down_rate,
                 self._draw_down))
 
             return
@@ -377,6 +388,7 @@ class Account(object):
                 self._last_stats_update,
                 self._balance,
                 self._profit_loss,
+                self._draw_down_rate,
                 self._draw_down))
 
     #
@@ -394,8 +406,10 @@ class Account(object):
             'asset-profit-loss': self._asset_profit_loss,
             'asset-balance': self._asset_balance,
             'free-asset-balance': self._free_asset_balance,
+            'draw-down-rate': self._draw_down_rate,
             'draw-down': self._draw_down,
-            'max-draw-down': self._max_draw_down,
+            'max-draw-down': self._max_draw_down_rate,
+            'max-draw-down-rate': self._max_draw_down,
             'stats-samples': [x.dumps() for x in self._stats_samples]
         }
 
@@ -409,6 +423,10 @@ class Account(object):
         self._asset_profit_loss = data.get('asset-profit-loss', 0.0)
         self._asset_balance = data.get('asset-balance', 0.0)
         self._free_asset_balance = data.get('free-asset-balance', 0.0)
+
+        self._draw_down_rate = data.get('draw-down-rate', 0.0)
         self._draw_down = data.get('draw-down', 0.0)
+        self._max_draw_down_rate = data.get('max-draw-down-rate', 0.0)
         self._max_draw_down = data.get('max-draw-down', 0.0)
+
         self._stats_samples = [AccountStatSample.builder(d) for d in data.get('stats-samples', [])]

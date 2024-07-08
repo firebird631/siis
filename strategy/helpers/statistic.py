@@ -9,11 +9,15 @@ from common.utils import UTC
 from instrument.instrument import Instrument
 from strategy.helpers.closedtradedataset import get_closed_trades
 
+import scipy.stats as stats
 import numpy as np
 
 import logging
 logger = logging.getLogger('siis.strategy.helpers.statistics')
 error_logger = logging.getLogger('siis.error.strategy.helpers.statistics')
+
+
+RISK_FREE_RATE_OF_RETURN = 0.0
 
 
 def parse_datetime(dt_str: str) -> float:
@@ -35,6 +39,10 @@ class StrategyStatistics:
         avg_loosing_trade: float = 0.0
         avg_win_loss_rate: float = 0.0  # avg_winning_trade / avg_loosing_trade
 
+        sharpe_ratio: float = 1.0
+        sortino_ratio: float = 1.0
+        ulcer_index: float = 0.0
+
         def fmt_value(self, value):
             return value
 
@@ -45,6 +53,10 @@ class StrategyStatistics:
             to_dict['avg-winning-trade'] = self.fmt_value(self.avg_winning_trade)
             to_dict['avg-loosing-trade'] = self.fmt_value(self.avg_loosing_trade)
             to_dict['avg-win-loss-rate'] = self.fmt_value(self.avg_win_loss_rate)
+
+            to_dict['sharpe-ratio'] = self.sharpe_ratio
+            to_dict['sortino-ratio'] = self.sortino_ratio
+            to_dict['ulcer-index'] = self.ulcer_index
 
     class PercentUnit(BaseUnit):
         def fmt_value(self, value):
@@ -72,21 +84,38 @@ class StrategyStatistics:
 def compute_strategy_statistics(strategy):
     """
     Compute some strategy statistics.
+    Monthly draw-down are computed from daily sample of the account (trader). That's mean the balance value and PNL
+    be correctly computed else the Ulcer ratio would be incorrect.
+    Trader balance could be incorrect when backtesting using different market settlement/quote currency or when
+    the account currency is different from these above or if the base exchange rate for each instrument is invalid
+    with some watchers.
+
     @param strategy: Current valid strategy.
     @return: A dataclass StrategyTimeStatistics
-    @todo Per month profit for ratio
+
+    @note The Configured percent mode is without reinvestment.
     """
     if not strategy:
         return StrategyStatistics()
 
+    trader = strategy.trader()
+    if not trader:
+        return StrategyStatistics()
+
     max_time_to_recover_pct = 0.0  # in seconds
-    max_time_to_recover_currency = 0.0  # in seconds
+    max_time_to_recover = 0.0  # in seconds
 
     longest_flat_period = 0.0  # in seconds
 
-    # num_trades_cur_day = 0
-
     avg_time_in_market_samples = []
+
+    profit_per_month_pct = [0.0]
+    profit_per_month = [0.0]
+    draw_down_per_month_pct = [0.0]
+    draw_down_per_month = [0.0]
+
+    draw_downs_sqr_pct = []
+    draw_downs_sqr = []
 
     first_trade_ts = 0.0
     last_trade_ts = 0.0
@@ -104,13 +133,13 @@ def compute_strategy_statistics(strategy):
 
         cum_pnl_pct = 0.0
         cum_winning_pnl_pct = 0.0
-        cum_loosing_pnl_pct = 0.0
+        cum_loosing_pnl_pct = 0.0  # as positive value
         max_pnl_pct = 0.0
         max_pnl_pct_ts = 0.0
 
         cum_pnl = 0.0
         cum_winning_pnl = 0.0
-        cum_loosing_pnl = 0.0
+        cum_loosing_pnl = 0.0  # as positive value
         max_pnl = 0.0
         max_pnl_ts = 0.0
 
@@ -135,7 +164,7 @@ def compute_strategy_statistics(strategy):
             # max time to recover currency
             if cum_pnl >= max_pnl:
                 max_pnl = cum_pnl
-                max_time_to_recover_currency = max(max_time_to_recover_currency, trade_lrx_ts - max_pnl_ts)
+                max_time_to_recover = max(max_time_to_recover, trade_lrx_ts - max_pnl_ts)
                 max_pnl_ts = trade_lrx_ts
 
             # longest flat period and average trades per day
@@ -145,16 +174,13 @@ def compute_strategy_statistics(strategy):
 
                 longest_flat_period = max(longest_flat_period, trade_fre_ts - prev_lrx_ts)
 
-                # # average trades per day
-                # prev_base_bt = Instrument.basetime(prev_fre_ts, Instrument.TF_DAY)
-                # trade_base_bt = Instrument.basetime(trade_fre_ts, Instrument.TF_DAY)
-                #
-                # if prev_base_bt == trade_base_bt:
-                #     # one more trade executed the same day
-                #     num_trades_cur_day += 1
-                # else:
-                #     # reset
-                #     num_trades_cur_day = 1
+                # new monthly sample
+                elapsed_months = int((Instrument.basetime(trade_fre_ts, Instrument.TF_MONTH) - Instrument.basetime(
+                        prev_fre_ts, Instrument.TF_MONTH)) / Instrument.TF_MONTH)
+
+                if elapsed_months > 0:
+                    profit_per_month_pct += [0.0] * elapsed_months
+                    profit_per_month += [0.0] * elapsed_months
 
             # average time in market
             avg_time_in_market_samples.append(trade_lrx_ts - trade_fre_ts)
@@ -173,19 +199,46 @@ def compute_strategy_statistics(strategy):
                 cum_winning_pnl += t['profit-loss']
             elif t['profit-loss-pct'] < 0:
                 num_trades_loss += 1
-                cum_loosing_pnl_pct += t['profit-loss-pct']
-                cum_loosing_pnl += t['profit-loss']
+                cum_loosing_pnl_pct += -t['profit-loss-pct']
+                cum_loosing_pnl += -t['profit-loss']
             else:
                 num_trades_even += 1
 
+            # cumulative per month
+            profit_per_month_pct[-1] += t['profit-loss-pct']
+            profit_per_month[-1] += t['profit-loss']
+
+            # draw-downs square samples for Ulcer ratio
+            # draw_downs_sqr_pct.append(((1.0 + cum_pnl_pct) / (1.0 + max_pnl_pct) - 1.0) ** 2)
+            draw_downs_sqr_pct.append((cum_pnl_pct - max_pnl_pct) ** 2)
+            draw_downs_sqr.append((cum_pnl - max_pnl) ** 2)
+
             # keep the previous trade details
             prev_trade = t
+
+    # per month draw-down from trader account samples
+    prev_sample_month = 0
+
+    for n in range(0, len(trader.account.stats_samples)):
+        if prev_sample_month == 0:
+            prev_sample_month = Instrument.basetime(trader.account.stats_samples[n].timestamp, Instrument.TF_MONTH)
+
+        sample_bt = Instrument.basetime(trader.account.stats_samples[n].timestamp, Instrument.TF_MONTH)
+
+        elapsed_months = int((sample_bt - prev_sample_month) / Instrument.TF_MONTH)
+        if elapsed_months > 0:
+            draw_down_per_month_pct += [0.0] * elapsed_months
+            draw_down_per_month += [0.0] * elapsed_months
+
+        # a positive value
+        draw_down_per_month_pct[-1] = max(draw_down_per_month_pct[-1], trader.account.stats_samples[n].draw_down_rate)
+        draw_down_per_month[-1] = max(draw_down_per_month[-1], trader.account.stats_samples[n].draw_down)
 
     # results
     results = StrategyStatistics()
 
     results.percent.max_time_to_recover = max_time_to_recover_pct
-    results.currency.max_time_to_recover = max_time_to_recover_currency
+    results.currency.max_time_to_recover = max_time_to_recover
 
     results.longest_flat_period = longest_flat_period
 
@@ -194,14 +247,16 @@ def compute_strategy_statistics(strategy):
     first_day_ts = Instrument.basetime(first_trade_ts, Instrument.TF_DAY)
     last_day_ts = Instrument.basetime(last_trade_ts, Instrument.TF_DAY)
 
+    # at least one day because of min one trade
     results.num_traded_days = int((last_day_ts - first_day_ts) / Instrument.TF_DAY) + 1
 
     results.avg_trades_per_day_inc_we = num_trades / results.num_traded_days
     results.avg_trades_per_day = results.avg_trades_per_day_inc_we * (252 / 365)
 
     # estimate profitability per month
-    results.percent.estimate_profit_per_month = (1.0 + cum_pnl_pct) ** (1.0 * (30.5 / results.num_traded_days)) - 1.0
-    results.currency.estimate_profit_per_month = (1.0 + cum_pnl) ** (1.0 * (30.5 / results.num_traded_days)) - 1.0
+    # results.percent.estimate_profit_per_month = (1.0 + cum_pnl_pct) ** (1.0 * (30.5 / results.num_traded_days)) - 1.0
+    results.percent.estimate_profit_per_month = cum_pnl_pct * (30.5 / results.num_traded_days)
+    results.currency.estimate_profit_per_month = cum_pnl * (30.5 / results.num_traded_days)
 
     # average trade
     results.percent.avg_trade = cum_pnl_pct / num_trades
@@ -213,23 +268,27 @@ def compute_strategy_statistics(strategy):
     results.currency.avg_loosing_trade = cum_loosing_pnl / num_trades_loss if num_trades_loss > 0 else 0.0
 
     results.percent.avg_win_loss_rate = results.percent.avg_winning_trade / results.percent.avg_loosing_trade if (
-        results.percent.avg_loosing_trade) else results.percent.avg_loosing_trade
+        results.percent.avg_loosing_trade) else 1.0
 
     results.currency.avg_win_loss_rate = results.currency.avg_winning_trade / results.currency.avg_loosing_trade if (
-        results.currency.avg_loosing_trade) else results.currency.avg_winning_trade
+        results.currency.avg_loosing_trade) else 1.0
 
-    # Probability (Student's t-distribution)
+    # Sharpe Ratio
+    if len(profit_per_month_pct) > 1:
+        # Sharpe ratio
+        results.percent.sharpe_ratio = ((results.percent.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
+                                        np.std(np.array(profit_per_month_pct), ddof=1))
+        results.currency.sharpe_ratio = ((results.currency.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
+                                         np.std(np.array(profit_per_month), ddof=1))
 
-    # Sharpe Ratio @todo
-    # (Profit per Month – risk free Rate of Return) / standard deviation of monthly profits
-    # with risk free Rate of Return = 0
+        # Sortino ratio
+        results.percent.sortino_ratio = ((results.percent.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
+                                         np.std(np.array(draw_down_per_month_pct), ddof=1))
+        results.currency.sortino_ratio = ((results.currency.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
+                                          np.std(np.array(draw_down_per_month), ddof=1))
 
-    # Sortino Ratio @todo
-    # (Profit per Month – risk free Rate of Return) / standard deviation of monthly drawdown
-    # with risk free Rate of Return = 0
-
-    # Ulcer Index @todo
-    # Currency : SQRT(Summation((cumulative currency profit - maximum realized currency profit) ^2 ) / Total # of trades)
-    # Percent : SQRT(Summation((1 + cumulative percent profit / (1 + maximum realized percent profit) - 1) ^2 ) / Total # of trades)
+        # Ulcer index
+        results.percent.ulcer_index = np.sqrt(np.mean(np.array(draw_downs_sqr_pct)))
+        results.currency.ulcer_index = np.sqrt(np.mean(np.array(draw_downs_sqr)))
 
     return results

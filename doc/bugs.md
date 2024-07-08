@@ -69,7 +69,7 @@ at line 77 with t = time.process_time(). clock() function is deprecated and defi
 
 **It does not work at all** : Yes the watching of market data is not fully completed for now. Please consider donation to help the developer.
 
-### Backtesting related ###
+### Backtesting and Training related ###
 
 During a backtest, the conversion rate (base_exchange_rate) of instruments are unknowns.
 And it will occur to invalid account balance calculation.

@@ -1740,8 +1740,13 @@ class Strategy(Runnable):
         @param filename: Filename of the report
         @param original_content: Original content (dict) of the trainer to duplicate and then merged with final results.
 
-        @todo pl_sum could be incorrect : using estimate method, and merge in a single account currency without using
-              conversion.
+        @warning Some data could be incorrect it merge between the different instrument without having the right
+        information of the base exchange rate :
+            - final-equity
+            - max-draw-down
+            - stats-samples
+            - profit-loss
+            - realized-pnl
         """
         logger.info("Writing results to trainer file %s..." % filename)
 
@@ -1754,15 +1759,20 @@ class Strategy(Runnable):
             agg_trades = get_agg_trades(self)
 
         # per strategy trader dataset are merged globally
-        pl_sum = 0.0
-        perf_sum = 0.0
+        pl_sum = 0.0    # pending profit and loss rate
+        perf_sum = 0.0  # sum of realized profit and loss rate
+        rpnl_sum = 0.0  # realized profit and loss in currency
+
         best_best = 0.0
         worst_worst = 0.0
+
         high_sum = 0.0
         low_sum = 0.0
+
         success_sum = 0
         failed_sum = 0
         roe_sum = 0
+
         num_open_trades_sum = 0
         num_actives_trades_sum = 0
 
@@ -1777,19 +1787,26 @@ class Strategy(Runnable):
         for t in agg_trades:
             pl_sum += t['pl']
             perf_sum += t['perf']
+            rpnl_sum += t['rpnl']  # in 'rpnl-currency'
+
             best_best = max(best_best, t['best'])
             worst_worst = min(worst_worst, t['worst'])
+
             high_sum += t['high']
             low_sum += t['low']
+
             success_sum += t['success']
             failed_sum += t['failed']
             roe_sum += t['roe']
+
             num_open_trades_sum += t['num-open-trades']
             num_actives_trades_sum += t['num-actives-trades']
+
             sl_loss += t['sl-loss']
             tp_loss += t['tp-loss']
             sl_win += t['sl-win']
             tp_win += t['tp-win']
+
             max_adj_loss = max(max_adj_loss, t['cont-loss'])
             max_adj_win = max(max_adj_win, t['cont-win'])
 
@@ -1802,6 +1819,7 @@ class Strategy(Runnable):
 
         new_content['performance'] = "%.2f%%" % (perf_sum * 100.0)
         new_content['profit-loss'] = trader.account.format_price(pl_sum)
+        new_content['realized-pnl'] = trader.account.format_price(rpnl_sum)
 
         new_content['best'] = "%.2f%%" % (best_best * 100.0)
         new_content['worst'] = "%.2f%%" % (worst_worst * 100.0)
