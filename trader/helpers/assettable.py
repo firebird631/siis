@@ -12,12 +12,12 @@ error_logger = logging.getLogger('siis.error.trader')
 
 
 def assets_table(trader, style='', offset=None, limit=None, col_ofs=None,
-                 filter_low=True, compute_qty=False,
+                 filter_low=True, compute_qty=False, percent=False,
                  group=None, ordering=None):
     """
     Returns a table of any non-empty assets.
     """
-    columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'Change %', 'P/L', 'Quote', 'Pref Market')
+    columns = ('Asset', 'Locked', 'Free', 'Total', 'Avg price', 'Change', 'P/L', 'Quote', 'Pref Market')
 
     total_size = (len(columns), 0)
     data = []
@@ -69,58 +69,57 @@ def assets_table(trader, style='', offset=None, limit=None, col_ofs=None,
             market_id = asset.market_ids[0] if asset.market_ids else asset.symbol+asset.quote if asset.quote else None
             market = trader._markets.get(market_id)
 
-            change = ""
-            change_percent = ""
-            profit_loss = ""
+            fmt_change = ""
+            fmt_profit_loss = ""
 
             if market:
                 if compute_qty and market.has_spot:
                     locked_qty = computed_qty.get(asset.symbol, 0.0)
 
-                    locked = market.format_quantity(locked_qty)
-                    free = market.format_quantity(asset.quantity - locked_qty)
-                    quantity = market.format_quantity(asset.quantity)
+                    fmt_locked = market.format_quantity(locked_qty)
+                    fmt_free = market.format_quantity(asset.quantity - locked_qty)
+                    fmt_quantity = market.format_quantity(asset.quantity)
                 else:
-                    locked = market.format_quantity(asset.locked)
-                    free = market.format_quantity(asset.free)
-                    quantity = market.format_quantity(asset.quantity)
+                    fmt_locked = market.format_quantity(asset.locked)
+                    fmt_free = market.format_quantity(asset.free)
+                    fmt_quantity = market.format_quantity(asset.quantity)
 
                 if market.bid and asset.price:
-                    change = market.format_price(market.bid - asset.price) + market.quote_display or market.quote
-                    change_percent = (market.bid - asset.price) / asset.price * 100.0 if asset.price else 0.0
+                    fmt_change = market.format_price(market.bid - asset.price) + market.quote_display or market.quote
 
-                    if change_percent > 0.0:
-                        change_percent = Color.colorize("%.2f" % change_percent, Color.GREEN, style)
-                    elif change_percent < 0.0:
-                        change_percent = Color.colorize("%.2f" % change_percent, Color.RED, style)
-                    else:
-                        change_percent = "%.2f" % change_percent
+                    if percent:
+                        change_pct = (market.bid - asset.price) / asset.price if asset.price else 0.0
+                        fmt_change = "%s %.2f%%" % (fmt_change, change_pct * 100.0)
+
+                        if change_pct > 0.0:
+                            fmt_change = Color.colorize(fmt_change, Color.GREEN, style)
+                        elif change_pct < 0.0:
+                            fmt_change = Color.colorize(fmt_change, Color.RED, style)
 
                 if asset.quantity > 0.0:
-                    profit_loss = market.format_price(asset.profit_loss)
+                    fmt_profit_loss = market.format_price(asset.profit_loss)
 
                     if asset.profit_loss > 0.0:
-                        if profit_loss:
-                            profit_loss = Color.colorize(profit_loss, Color.GREEN, style)
+                        if fmt_profit_loss:
+                            fmt_profit_loss = Color.colorize(fmt_profit_loss, Color.GREEN, style)
                     elif asset.profit_loss < 0.0:
-                        if profit_loss:
-                            profit_loss = Color.colorize(profit_loss, Color.RED, style)
+                        if fmt_profit_loss:
+                            fmt_profit_loss = Color.colorize(fmt_profit_loss, Color.RED, style)
 
-                    profit_loss += market.quote_display or market.quote
+                    fmt_profit_loss += market.quote_display or market.quote
             else:
-                locked = ("%.8f" % asset.locked).rstrip('0').rstrip('.')
-                free = ("%.8f" % asset.free).rstrip('0').rstrip('.')
-                quantity = ("%.8f" % asset.quantity).rstrip('0').rstrip('.')
+                fmt_locked = ("%.8f" % asset.locked).rstrip('0').rstrip('.')
+                fmt_free = ("%.8f" % asset.free).rstrip('0').rstrip('.')
+                fmt_quantity = ("%.8f" % asset.quantity).rstrip('0').rstrip('.')
 
             row = (
                 asset.symbol,
-                locked,
-                free,
-                quantity,
+                fmt_locked,
+                fmt_free,
+                fmt_quantity,
                 "%s%s" % (asset.format_price(asset.price), asset.quote) if asset.price else '-',  # charmap.HOURGLASS,
-                change or '-',
-                change_percent or '-',
-                profit_loss or '-',
+                fmt_change or '-',
+                fmt_profit_loss or '-',
                 asset.quote or '-',
                 asset.market_ids[0] if asset.market_ids else '-'
             )

@@ -17,8 +17,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
     """
     Returns a table of any aggregated active and closes trades.
     """
-    columns = ('Symbol', 'P/L(%)', 'Total(%)', 'RPNL', 'Open', 'Best(%)', 'Worst(%)', 'Success', 'Failed', 'ROE',
-               'Closed', 'High(%)', 'Low(%)', 'SL Win/Loss', 'TP Win/Loss')
+    columns = ('Symbol', 'P/L', 'Total', 'RPNL', 'Open', 'Best', 'Worst', 'Success', 'Failed', 'ROE',
+               'Closed', 'High', 'Low', 'SL Win/Loss', 'TP Win/Loss')
     total_size = (len(columns), 0)
     data = []
 
@@ -74,24 +74,24 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
         agg_trades = agg_trades[offset:limit]
 
         for t in agg_trades:
-            cr = Color.colorize_updn("%.2f" % (t['pl']*100.0), 0.0, t['pl'], style=style)
-            cp = Color.colorize_updn("%.2f" % (t['perf']*100.0), 0.0, t['perf'], style=style)
-            rpnl = Color.colorize_updn("%g%s" % (t['rpnl'], t['rpnl-currency']), 0.0, t['rpnl'], style=style)
+            cr_pnl = Color.colorize_updn("%.2f%%" % (t['pl']*100.0), 0.0, t['pl'], style=style)
+            cr_perf = Color.colorize_updn("%.2f%%" % (t['perf']*100.0), 0.0, t['perf'], style=style)
+            cr_rpnl = Color.colorize_updn("%g%s" % (t['rpnl'], t['rpnl-currency']), 0.0, t['rpnl'], style=style)
 
             row = (
                 t['sym'],
-                cr,
-                cp,
-                rpnl,
+                cr_pnl,
+                cr_perf,
+                cr_rpnl,
                 "%s/%s" % (t['num-actives-trades'], t['num-open-trades']),
-                "%.2f" % (t['best']*100.0),
-                "%.2f" % (t['worst']*100.0),
+                "%.2f%%" % (t['best']*100.0),
+                "%.2f%%" % (t['worst']*100.0),
                 t['success'],
                 t['failed'],
                 t['roe'],
                 t['num-closed-trades'],
-                "%.2f" % (t['high']*100.0),
-                "%.2f" % (t['low']*100.0),
+                "%.2f%%" % (t['high']*100.0),
+                "%.2f%%" % (t['low']*100.0),
                 "%s/%s" % (t['sl-win'], t['sl-loss']),
                 "%s/%s" % (t['tp-win'], t['tp-loss']),
             )
@@ -123,17 +123,17 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
 
             data.append(row[0:3] + row[3+col_ofs:])
 
-            cpl_sum = Color.colorize_updn("%.2f" % (pl_sum*100.0), 0.0, pl_sum, style=style)
-            cperf_sum = Color.colorize_updn("%.2f" % (perf_sum*100.0), 0.0, perf_sum, style=style)
+            cr_pl_sum = Color.colorize_updn("%.2f%%" % (pl_sum*100.0), 0.0, pl_sum, style=style)
+            cr_perf_sum = Color.colorize_updn("%.2f%%" % (perf_sum*100.0), 0.0, perf_sum, style=style)
 
             row = (
                 'TOTAL',
-                cpl_sum,
-                cperf_sum,
+                cr_pl_sum,
+                cr_perf_sum,
                 '-',
                 "%s/%s" % (num_actives_trades_sum, num_open_trades_sum),
-                "%.2f" % (best_best*100.0),
-                "%.2f" % (worst_worst*100.0),
+                "%.2f%%" % (best_best*100.0),
+                "%.2f%%" % (worst_worst*100.0),
                 success_sum,
                 failed_sum,
                 roe_sum,

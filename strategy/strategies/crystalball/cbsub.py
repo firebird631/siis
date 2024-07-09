@@ -3,10 +3,10 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Crystal Ball strategy sub-strategy base class.
 
-from strategy.timeframebasedsub import TimeframeBasedSub
+from strategy.strategytimeframeanalyser import StrategyTimeframeAnalyser
 
 
-class CrystalBallStrategySub(TimeframeBasedSub):
+class CrystalBallStrategySub(StrategyTimeframeAnalyser):
     """
     Bitcoin Alpha sub computation.
     """

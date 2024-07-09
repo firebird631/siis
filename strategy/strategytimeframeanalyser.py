@@ -1,7 +1,7 @@
 # @date 2018-08-24
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Timeframe based sub-strategy base class.
+# Timeframe based analyser base class.
 
 from __future__ import annotations
 
@@ -16,20 +16,18 @@ if TYPE_CHECKING:
     from .indicator.price.price import PriceIndicator
     from .indicator.volume.volume import VolumeIndicator
 
-from .strategysub import StrategySub
+from .strategybaseanalyser import StrategyBaseAnalyser
 
 from instrument.candlegenerator import CandleGenerator
 from common.utils import timeframe_to_str
 
 import logging
-logger = logging.getLogger('siis.strategy.timeframebasedsub')
+logger = logging.getLogger('siis.strategy.strategytimeframeanalyser')
 
 
-class TimeframeBasedSub(StrategySub):
+class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
     """
-    TimeframeBasedSub sub data-series computation base class.
-
-    @note Will be probably renamed TimeframeBasedDataSeries.
+    StrategyTimeframeAnalyser Timeframe data-series analyser base class.
     """
 
     strategy_trader: TimeframeBasedStrategyTrader

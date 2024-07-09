@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from strategytradercontext import StrategyTraderContext
     from trade.strategytrade import StrategyTrade
 
-    from .tickbarbasedsub import TickBarBasedSub
+    from .strategybaranalyser import StrategyBarAnalyser
 
 import copy
 
@@ -22,7 +22,7 @@ from instrument.instrument import Instrument
 
 from monitor.streamable import Streamable, StreamMemberInt
 
-from .strategysub import StrategySub
+from .strategybaseanalyser import StrategyBaseAnalyser
 from .strategytrader import StrategyTrader
 
 import logging
@@ -45,7 +45,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     """
 
     _tickbars_registry: Dict[str, Any]
-    tickbars: Dict[int, TickBarBasedSub]
+    tickbars: Dict[int, StrategyBarAnalyser]
     _tickbars_streamers: Dict[int, Streamable]
 
     def __init__(self, strategy, instrument, depth=50, params: dict = None):
@@ -289,7 +289,7 @@ class TickBarBasedStrategyTrader(StrategyTrader):
     def stream(self):
         super().stream()
 
-    def create_chart_streamer(self, strategy_sub: StrategySub) -> Streamable:
+    def create_chart_streamer(self, strategy_sub: StrategyBaseAnalyser) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
                               self.strategy.identifier, "%s:%i" % (self.instrument.market_id, strategy_sub.timeframe))
         streamer.add_member(StreamMemberInt('tf'))

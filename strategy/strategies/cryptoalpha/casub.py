@@ -3,10 +3,10 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Crypto Alpha strategy sub-strategy base class.
 
-from strategy.timeframebasedsub import TimeframeBasedSub
+from strategy.strategytimeframeanalyser import StrategyTimeframeAnalyser
 
 
-class CryptoAlphaStrategySub(TimeframeBasedSub):
+class CryptoAlphaStrategySub(StrategyTimeframeAnalyser):
     """
     CryptoAlpha sub computation.
     """

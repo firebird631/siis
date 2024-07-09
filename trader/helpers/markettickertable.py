@@ -20,7 +20,7 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
     Returns a table of any followed markets tickers.
     """
     columns = ('Market', 'Symbol', 'Mid', 'Bid', 'Ask', 'Spread', 'Base Ex.', 'Vol24h base', 'Vol24h quote',
-               'Time', 'Change(%)', 'Last', 'At')
+               'Time', 'Change', 'Last', 'At')
 
     total_size = (len(columns), 0)
     data = []
@@ -131,7 +131,7 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
             relative_change = (market.price - market.last_mem) / market.last_mem * 100.0 if market.last_mem else 0
 
             if relative_change != 0.0:
-                relative_change = Color.colorize_cond("%.2f" % relative_change, relative_change > 0,
+                relative_change = Color.colorize_cond("%.2f%%" % relative_change, relative_change > 0,
                                                       style=style, true=Color.GREEN, false=Color.RED)
 
                 relative_change += " since %s" % str(timedelta(seconds=int(now - market.last_mem_timestamp)))

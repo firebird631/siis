@@ -23,12 +23,8 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
     """
     Returns a table of any active trades.
     """
-    if pips:
-        columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(pips)', 'OP(pips)', 'SL(pips)', 'TP(pips)', 'TF', 'Signal date',
-                   'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
-    else:
-        columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'OP', 'SL', 'TP', 'TF', 'Signal date',
-                   'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L', 'OP', 'SL', 'TP', 'TF', 'Signal date',
+               'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
 
     if quantities:
         columns += ['UPNL', 'Qty', 'Entry Q', 'Exit Q', 'Quote']
@@ -92,9 +88,9 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             fmt_upnl = "%s%s" % (t['upnl'], t['pnlcur']) if aep else '-'
 
             if pips:
-                fmt_pnl = t['entry-dist-pips']
+                fmt_pnl = "%spts" % t['entry-dist-pips']
             else:
-                fmt_pnl = "%.2f" % (t['pl'] * 100.0)
+                fmt_pnl = "%.2f%%" % (t['pl'] * 100.0)
 
             if t['pl'] < 0:  # loss
                 if (t['d'] == 'long' and best > aep) or (t['d'] == 'short' and best < aep):
@@ -114,7 +110,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                     fmt_upnl = Color.colorize(fmt_upnl, Color.GREEN, style=style)
 
             else:  # equity
-                fmt_pnl = "0.00" if aep else "-"
+                fmt_pnl = "0.00%" if aep else "-"
 
             if t['d'] == 'long' and aep > 0 and best > 0 and worst > 0:
                 best_pct = (best - aep) / aep - t['fees']
@@ -148,16 +144,17 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 op_pct = 0
 
             def format_with_percent(formatted_value, condition, rate):
-                return (("%s (%.2f%%)" % (formatted_value,
-                                          rate * 100)) if percents else formatted_value) if condition else '-'
+                return (("%s %.2f%%" % (formatted_value,
+                                        rate * 100)) if percents else formatted_value) if condition else '-'
 
             if pips:
-                fmt_op = (("%s (%.2f%%)" % (t['order-dist-pips'], op_pct * 100)) if percents and op_pct else t['order-dist-pips']) if op else '-'
+                fmt_op = (("%spts %.2f%%" % (t['order-dist-pips'], op_pct * 100)) if
+                          percents and op_pct else t['order-dist-pips'] + "pts") if op else '-'
 
-                fmt_sl = format_with_percent(t['stop-loss-dist-pips'], sl, sl_pct)
-                fmt_tp = format_with_percent(t['take-profit-dist-pips'], tp, tp_pct)
+                fmt_sl = format_with_percent(t['stop-loss-dist-pips'] + "pts", sl, sl_pct)
+                fmt_tp = format_with_percent(t['take-profit-dist-pips'] + "pts", tp, tp_pct)
             else:
-                fmt_op = (("%s (%.2f%%)" % (t['l'], op_pct * 100)) if percents and op_pct else t['l']) if op else '-'
+                fmt_op = (("%s %.2f%%" % (t['l'], op_pct * 100)) if percents and op_pct else t['l']) if op else '-'
 
                 fmt_sl = format_with_percent(t['sl'], sl, sl_pct)
                 fmt_tp = format_with_percent(t['tp'], tp, tp_pct)
@@ -188,12 +185,16 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 row.append(t['qs'])
 
             if stats:
-                # MFE, MAE during active
-                b = format_with_percent(t['b'], best, best_pct)
-                w = format_with_percent(t['w'], worst, worst_pct)
+                # MFE, MAE when active
+                if pips:
+                    fmt_mfe = format_with_percent(t['mae-dist-pips'] + "pts", best, best_pct)
+                    fmt_mae = format_with_percent(t['mfe-dist-pips'] + "pts", worst, worst_pct)
+                else:
+                    fmt_mfe = format_with_percent(t['b'], best, best_pct)
+                    fmt_mae = format_with_percent(t['w'], worst, worst_pct)
 
-                row.append(b)
-                row.append(w)
+                row.append(fmt_mfe)
+                row.append(fmt_mae)
 
             data.append(row[0:4] + row[4+col_ofs:])
 

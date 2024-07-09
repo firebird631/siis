@@ -20,18 +20,16 @@ if TYPE_CHECKING:
     from instrument.instrument import Instrument
     from instrument.tickbar import TickBarBase
 
-from .strategysub import StrategySub
+from .strategybaseanalyser import StrategyBaseAnalyser
 
 import logging
 
-logger = logging.getLogger('siis.strategy.tickbarbasedsub')
+logger = logging.getLogger('siis.strategy.strategybaranalyser')
 
 
-class TickBarBasedSub(StrategySub):
+class StrategyBarAnalyser(StrategyBaseAnalyser):
     """
-    TickBarBasedSub sub data-series computation base class.
-
-    @note Will be probably renamed TickBarBasedDataSeries.
+    StrategyBarAnalyser data-series per non-temporal bar analyser base class.
     """
 
     strategy_trader: TickBarBasedStrategyTrader

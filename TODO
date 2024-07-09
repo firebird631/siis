@@ -61,7 +61,7 @@ Sum order :
 #######
 
 - Trainer : gérer les tickbars comme les timeframes
-- Ajouter une option pour caler un spread sur certain tick streamer quand le bid/ask n'est pas présent (cas bitmex par exemple)
+- Ajouter une option pour caller un spread sur certain tick streamer quand le bid/ask n'est pas présent (cas bitmex par exemple)
 
 - Gestion reco WS apres perte temporaire cas binance (voir comme kraken)
 
@@ -157,7 +157,7 @@ Sum order :
     que la bar est cloture sans avoir besoin de la tickbar dataserie
 
 - Ajouter statistiques par strategy trader et/ou trader account :
-    - Average Entry, Exit and Total Efficiency
+    - Average Entry, Exit and Total Efficiency -> afficher sur aggtradeview
 
 - Ajouter le plot bar CLI
 
@@ -167,6 +167,13 @@ Sum order :
 - Ajouter un display chart CLI pour un data-serie donné (une couleur par ligne)
 
 - Completer les methodes de comparaisons dans learning/trainer.py
+
+- Dans la vue trades history on n'a pas les valeurs en pts.
+    - Le report ne les calculant pas d'une part (SL, TP, MAE, MFE, ETD, RPNL)
+    - D'autre part si on veut le calculer coté view on n'a pas le one_pip_means
+        - Soit on calcule au moment de reporting soit on donner la valeur one_pip_means dans le rapport
+        - Dans le second cas on pourrait peut être faire de même pour active trades et calculer les valeurs pips
+          coté view aussi. Cette approche semble préférable et uniforme.
 
 
 ##################

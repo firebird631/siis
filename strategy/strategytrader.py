@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Tuple, Dict, Union, Optional, List
 
 if TYPE_CHECKING:
     from .strategy import Strategy
-    from .strategysub import StrategySub
+    from .strategybaseanalyser import StrategyBaseAnalyser
     from .alert.alert import Alert
     from .region.region import Region
     from .handler.handler import Handler
@@ -2257,7 +2257,7 @@ class StrategyTrader(object):
     # signal data streaming and monitoring
     #
 
-    def create_chart_streamer(self, strategy_sub: StrategySub) -> Union[Streamable, None]:
+    def create_chart_streamer(self, strategy_sub: StrategyBaseAnalyser) -> Union[Streamable, None]:
         """
         Create a streamer for the chart at a specific timeframe.
         Must be overridden.

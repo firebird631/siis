@@ -39,7 +39,7 @@ class AssetView(TableView):
             try:
                 columns, table, total_size = assets_table(
                     trader, *self.table_format(),
-                    filter_low=self._opt2, compute_qty=self._opt1,
+                    filter_low=self._opt2, compute_qty=self._opt1, percent=self._percent,
                     group=self._group, ordering=self._ordering)
 
                 self.table(columns, table, total_size)
@@ -55,6 +55,8 @@ class AssetView(TableView):
                 display_opts.append("Desc.")
             else:
                 display_opts.append("Asc.")
+            if self._percent:
+                display_opts.append("%")
             if self._opt1:
                 display_opts.append("Local size")
 

@@ -1,7 +1,7 @@
 # @date 2023-09-28
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2023 Dream Overflow
-# Base model for strategy sub
+# Base model for strategy analyser
 
 from __future__ import annotations
 
@@ -14,15 +14,14 @@ if TYPE_CHECKING:
     from .strategysignal import StrategySignal
 
 
-class StrategySub(object):
+class StrategyBaseAnalyser(object):
     """
-    Base model for strategy sub data-series per timeframe or any other non-temporal bar method.
-    It is a data-series containing different indicators (mostly oscillators).
+    Base model for strategy analyser per timeframe or any other non-temporal bar method.
+    It computes different indicators (mostly oscillators) and some states.
     It is computed at each tick or bar from the strategy trader process.
 
-    @note It will be probably renamed StrategyDataSeries.
-    @see TimeframeBasedSub for temporal timeframe (1m, 1h...)
-    @see TickBarBasedSub for non-temporal bar (range, tick, renko...)
+    @see StrategyTimeframeAnalyser for temporal timeframe (1m, 1h...)
+    @see StrategyBarAnalyser for non-temporal bar (range, tick, renko...)
     """
 
     def loads(self, params: dict):

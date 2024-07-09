@@ -14,14 +14,14 @@ from strategy.indicator import utils
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
     StreamMemberOhlcSerie
 
-from .bcasub import BitcoinAlphaStrategySub
+from .bcaanalyser import BitcoinAlphaAnalyser
 
 import logging
 
 logger = logging.getLogger('siis.strategy.bitcoinalpha')
 
 
-class BitcoinAlphaStrategySubC(BitcoinAlphaStrategySub):
+class BitcoinAlphaCAnalyser(BitcoinAlphaAnalyser):
     """
     Bitcoin Alpha strategy, sub-strategy C.
     """

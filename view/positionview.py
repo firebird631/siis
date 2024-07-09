@@ -36,7 +36,9 @@ class PositionView(TableView):
 
             try:
                 columns, table, total_size = positions_stats_table(
-                    trader, *self.table_format(), quantities=True, datetime_format=self._datetime_format)
+                    trader, *self.table_format(),
+                    quantities=True, percents=self._percent,
+                    datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]
@@ -51,6 +53,8 @@ class PositionView(TableView):
                 display_opts.append("Desc.")
             else:
                 display_opts.append("Asc.")
+            if self._percent:
+                display_opts.append("%")
 
             self.set_title("[Positions %i] %s::%s <%s>" % (
                 num, trader.name, trader.account.name, " - ".join(display_opts)))

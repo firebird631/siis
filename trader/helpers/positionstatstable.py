@@ -23,7 +23,7 @@ def positions_stats_table(trader, style='', offset=None, limit=None, col_ofs=Non
     """
     Returns a table of any active positions.
     """
-    columns = ['Symbol', '#', charmap.ARROWUPDN, 'x', 'P/L(%)', 'SL', 'TP', 'TR', 'Entry date', 'Avg EP',
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'x', 'P/L', 'SL', 'TP', 'TR', 'Entry date', 'Avg EP',
                'Exit date', 'Avg XP', 'UPNL', 'Cost', 'Margin', 'Key']
 
     if quantities:
@@ -58,39 +58,39 @@ def positions_stats_table(trader, style='', offset=None, limit=None, col_ofs=Non
                 tp = float(t['tp']) if t['tp'] else 0.0
 
                 if t['pl'] < 0:  # loss
-                    cr = Color.colorize("%.2f" % (t['pl'] * 100.0), Color.RED, style=style)
-                    pnl = Color.colorize("%s%s" % (t['pnl'], t['pnlcur']), Color.RED, style=style)
+                    cr_pl = Color.colorize("%.2f%%" % (t['pl'] * 100.0), Color.RED, style=style)
+                    cr_pnl = Color.colorize("%s%s" % (t['pnl'], t['pnlcur']), Color.RED, style=style)
                 elif t['pl'] > 0:  # profit
-                    cr = Color.colorize("%.2f" % (t['pl'] * 100.0), Color.GREEN, style=style)
-                    pnl = Color.colorize("%s%s" % (t['pnl'], t['pnlcur']), Color.GREEN, style=style)
+                    cr_pl = Color.colorize("%.2f%%" % (t['pl'] * 100.0), Color.GREEN, style=style)
+                    cr_pnl = Color.colorize("%s%s" % (t['pnl'], t['pnlcur']), Color.GREEN, style=style)
                 else:  # equity
-                    cr = "0.0"
-                    pnl = "%s%s" % (t['pnl'], t['pnlcur'])
+                    cr_pl = "0.0%"
+                    cr_pnl = "%s%s" % (t['pnl'], t['pnlcur'])
 
                 if t['d'] == 'long' and aep:
-                    slpct = (sl - aep) / aep
-                    tppct = (tp - aep) / aep
+                    sl_pct = (sl - aep) / aep
+                    tp_pct = (tp - aep) / aep
                 elif t['d'] == 'short' and aep:
-                    slpct = (aep - sl) / aep
-                    tppct = (aep - tp) / aep
+                    sl_pct = (aep - sl) / aep
+                    tp_pct = (aep - tp) / aep
                 else:
-                    slpct = 0
-                    tppct = 0
+                    sl_pct = 0
+                    tp_pct = 0
 
                 row = [
                     t['sym'],
                     t['id'],
                     direction,
                     "%.2f" % t['l'] if t['l'] else '-',
-                    cr,
-                    "%s (%.2f)" % (t['sl'], slpct * 100) if percents else t['sl'],
-                    "%s (%.2f)" % (t['tp'], tppct * 100) if percents else t['tp'],
+                    cr_pl,
+                    "%s %.2f%%" % (t['sl'], sl_pct * 100) if percents else t['sl'],
+                    "%s %.2f%%" % (t['tp'], tp_pct * 100) if percents else t['tp'],
                     t['tr'],
                     datetime.fromtimestamp(t['et']).strftime(datetime_format) if t['et'] > 0 else "",
                     t['aep'],
                     datetime.fromtimestamp(t['xt']).strftime(datetime_format) if t['xt'] > 0 else "",
                     t['axp'],
-                    pnl,
+                    cr_pnl,
                     t['cost'],
                     t['margin'],
                     t['key']

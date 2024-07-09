@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, Tuple
 
 if TYPE_CHECKING:
-    from .bcasub import BitcoinAlphaStrategySub
+    from .bcaanalyser import BitcoinAlphaAnalyser
     from strategy.strategy import Strategy
 
 from terminal.terminal import Terminal
@@ -21,8 +21,8 @@ from instrument.instrument import Instrument
 
 from strategy.indicator import utils
 
-from .bcasuba import BitcoinAlphaStrategySubA
-from .bcasubb import BitcoinAlphaStrategySubB
+from .bcaaanalyser import BitcoinAlphaAAnalyser
+from .bcabanalyser import BitcoinAlphaBAnalyser
 
 import logging
 logger = logging.getLogger('siis.strategy.bitcoinalpha')
@@ -39,7 +39,7 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     - Stop are taker (market order)
     """
 
-    timeframes: Dict[float, BitcoinAlphaStrategySub]
+    timeframes: Dict[float, BitcoinAlphaAnalyser]
 
     def __init__(self, strategy: Strategy, instrument: Instrument, params: dict):
         super().__init__(strategy, instrument, Instrument.TF_TICK, params)
@@ -50,8 +50,8 @@ class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.sltp_max_rate = params.get('modify-max-rate', 3.0)
         self.sltp_max_timeframe = self.timeframe_from_param(params.get('modify-max-timeframe', '1m'))
 
-        self.register_timeframe('A', BitcoinAlphaStrategySubA)
-        self.register_timeframe('B', BitcoinAlphaStrategySubB)
+        self.register_timeframe('A', BitcoinAlphaAAnalyser)
+        self.register_timeframe('B', BitcoinAlphaBAnalyser)
         self.setup_timeframes(params)
 
         self._last_filter_cache = (0, False, False)

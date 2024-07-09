@@ -18,6 +18,7 @@ import logging
 logger = logging.getLogger('siis.strategy.helpers.activetradedataset')
 error_logger = logging.getLogger('siis.error.strategy.helpers.activetradedataset')
 
+
 def fmt_pips(value):
     return ("%.2f" % value).rstrip('0').rstrip('.')
 
@@ -39,13 +40,13 @@ def get_all_active_trades(strategy):
         sl: str formatted stop-loss price
         rate: float profit/loss rate
         tfs: list of str timeframe generating the trade
-        b: best hit price
-        w: worst hit price
+        b: best hit price (MFE)
+        w: worst hit price (MAE)
         bt: best hit price timestamp
         wt: worst hit price timestamp
-        q: ordered qty
-        e: executed entry qty
-        x: executed exit qty
+        q: ordered quantity
+        e: executed entry quantity
+        x: executed exit quantity
         aep: average entry price
         axp: average exit price
         label: trade label
@@ -57,6 +58,8 @@ def get_all_active_trades(strategy):
         take-profit-dist-pips: distance in pip from take-profit and entry price,
         entry-dist-pips: distance in pips from entry and last price
         order-dist-pips: distance in pips from order price and last price
+        mae-dist-pips: distance in pips from entry price and worst price
+        mfe-dist-pips: distance in pips from entry price and best price
     """
     results = []
 
@@ -70,7 +73,7 @@ def get_all_active_trades(strategy):
                         profit_loss_rate = trade.estimate_profit_loss_rate(strategy_trader.instrument)
 
                         if trade.entry_price or trade.order_price:
-                            sl_dist_pips = (trade.direction * ((trade.entry_price or trade.order_price) - trade.stop_loss)) / pip_means
+                            sl_dist_pips = (trade.direction * (trade.stop_loss - (trade.entry_price or trade.order_price))) / pip_means
                             tp_dist_pips = (trade.direction * (trade.take_profit - (trade.entry_price or trade.order_price))) / pip_means
 
                             entry_dist_pips = (trade.direction * (strategy_trader.instrument.close_exec_price(
@@ -82,6 +85,13 @@ def get_all_active_trades(strategy):
                             tp_dist_pips = 0.0
                             entry_dist_pips = 0.0
                             order_dist_pips = 0.0
+
+                        if trade.entry_price:
+                            mae_dist_pips = trade.direction * (trade.entry_price - trade.worst_price()) / pip_means
+                            mfe_dist_pips = trade.direction * (trade.best_price() - trade.entry_price) / pip_means
+                        else:
+                            mae_dist_pips = 0.0
+                            mfe_dist_pips = 0.0
 
                         results.append({
                             'mid': strategy_trader.instrument.market_id,
@@ -119,6 +129,8 @@ def get_all_active_trades(strategy):
                             'take-profit-dist-pips': fmt_pips(tp_dist_pips),
                             'entry-dist-pips': fmt_pips(entry_dist_pips),
                             'order-dist-pips': fmt_pips(order_dist_pips),
+                            'mae-dist-pips': fmt_pips(mae_dist_pips),
+                            'mfe-dist-pips': fmt_pips(mfe_dist_pips),
                         })
         except Exception as e:
             error_logger.error(repr(e))

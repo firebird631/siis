@@ -4,10 +4,10 @@
 # Forex Alpha strategy sub-strategy base class.
 
 from strategy.indicator.score import Score
-from strategy.timeframebasedsub import TimeframeBasedSub
+from strategy.strategytimeframeanalyser import StrategyTimeframeAnalyser
 
 
-class ForexAlphaStrategySub(TimeframeBasedSub):
+class ForexAlphaStrategySub(StrategyTimeframeAnalyser):
     """
     Forex Alpha strategy sub-strategy base class.
     """

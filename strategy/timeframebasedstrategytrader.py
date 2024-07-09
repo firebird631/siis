@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Tuple, List, Dict, Union, Any
 
 if TYPE_CHECKING:
     from .strategy import Strategy
-    from .strategysub import StrategySub
+    from .strategybaseanalyser import StrategyBaseAnalyser
     from instrument.instrument import Instrument
-    from timeframebasedsub import TimeframeBasedSub
+    from strategytimeframeanalyser import StrategyTimeframeAnalyser
     from strategytradercontext import StrategyTraderContext
     from trade.strategytrade import StrategyTrade
 
@@ -44,7 +44,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
     """
 
     _timeframes_registry: Dict[str, Any]
-    timeframes: Dict[float, TimeframeBasedSub]
+    timeframes: Dict[float, StrategyTimeframeAnalyser]
     _timeframe_streamers: Dict[float, Streamable]
 
     def __init__(self, strategy: Strategy, instrument: Instrument, base_timeframe: float = Instrument.TF_TICK,
@@ -297,7 +297,7 @@ class TimeframeBasedStrategyTrader(StrategyTrader):
                 if timeframe.tf in self._timeframe_streamers:
                     timeframe.stream(self._timeframe_streamers[timeframe.tf])
 
-    def create_chart_streamer(self, timeframe: StrategySub) -> Streamable:
+    def create_chart_streamer(self, timeframe: StrategyBaseAnalyser) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
                               self.strategy.identifier, "%s:%i" % (self.instrument.market_id, timeframe.timeframe))
         streamer.add_member(StreamMemberInt('tf'))

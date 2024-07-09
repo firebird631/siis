@@ -3,10 +3,10 @@
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy sub-strategy base class.
 
-from strategy.timeframebasedsub import TimeframeBasedSub
+from strategy.strategytimeframeanalyser import StrategyTimeframeAnalyser
 
 
-class BitcoinAlphaStrategySub(TimeframeBasedSub):
+class BitcoinAlphaAnalyser(StrategyTimeframeAnalyser):
     """
     Bitcoin Alpha sub computation.
     """

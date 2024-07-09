@@ -25,18 +25,14 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
     @todo cumulative pnl might be computed using trade notional quantity and average by total notional quantity
         to make the difference between strategy having trades of different quantities. could be an option toggle 2
     """
-    if pips:
-        columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(pips)', 'Fees(%)', 'OP(pips)', 'SL(pips)', 'TP(pips)', 'TF',
-                   'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
-    else:
-        columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'TF',
-                   'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L', 'Fees', 'OP', 'SL', 'TP', 'TF',
+               'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
 
     if quantities:
         columns += ['RPNL', 'Qty', 'Entry Q', 'Exit Q']
 
     if stats:
-        columns += ['Cum(%)', 'MFE', 'MAE', 'ETD', 'EEF(%)', 'XEF(%)', 'TEF(%)']
+        columns += ['Cum', 'MFE', 'MAE', 'ETD', 'EEF', 'XEF', 'TEF']
 
     columns = tuple(columns)
     total_size = (len(columns), 0)
@@ -104,29 +100,28 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
 
             # colorize profit or loss percent
             if round(t['profit-loss-pct'] * 10) == 0.0:  # equity
-                cr = "%.2f" % t['profit-loss-pct']
+                cr = "%.2f%%" % t['profit-loss-pct']
                 exit_color = None
             elif t['profit-loss-pct'] < 0:  # loss
                 if (t['direction'] == 'long' and best > aep) or (t['direction'] == 'short' and best < aep):
                     # but was profitable during a time
-                    cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.ORANGE, style=style)
+                    cr = Color.colorize("%.2f%%" % t['profit-loss-pct'], Color.ORANGE, style=style)
                     exit_color = Color.ORANGE
                 else:
-                    cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.RED, style=style)
+                    cr = Color.colorize("%.2f%%" % t['profit-loss-pct'], Color.RED, style=style)
                     exit_color = Color.RED
             elif t['profit-loss-pct'] > 0:  # profit
                 if (t['direction'] == 'long' and worst < aep) or (t['direction'] == 'short' and worst > aep):
                     # but was in lost during a time
-                    cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.BLUE, style=style)
+                    cr = Color.colorize("%.2f%%" % t['profit-loss-pct'], Color.BLUE, style=style)
                     exit_color = Color.BLUE
                 else:
-                    cr = Color.colorize("%.2f" % t['profit-loss-pct'], Color.GREEN, style=style)
+                    cr = Color.colorize("%.2f%%" % t['profit-loss-pct'], Color.GREEN, style=style)
                     exit_color = Color.GREEN
             else:
-                cr = "0.0" if aep else "-"
+                cr = "0.0%" if aep else "-"
                 exit_color = None
 
-            #
             # realized profit or loss
             rpnl = "%g%s" % (t['stats']['profit-loss'], t['stats']['profit-loss-currency'])
 
@@ -156,8 +151,8 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 tp_pct = 0
 
             def format_with_percent(formatted_value, condition, rate):
-                return (("%s (%.2f%%)" % (formatted_value,
-                                          rate * 100)) if percents else formatted_value) if condition else '-'
+                return (("%s %.2f%%" % (formatted_value,
+                                        rate * 100)) if percents else formatted_value) if condition else '-'
 
             row = [
                 t['symbol'],
@@ -216,11 +211,11 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
 
                 # colorize profit or loss percent
                 if round(cum_pnl * 10) == 0.0:  # equity
-                    fmt_cum_cr = "%.2f" % cum_pnl
+                    fmt_cum_cr = "%.2f%%" % cum_pnl
                 elif cum_pnl < 0:  # loss
-                    fmt_cum_cr = Color.colorize("%.2f" % cum_pnl, Color.RED, style=style)
+                    fmt_cum_cr = Color.colorize("%.2f%%" % cum_pnl, Color.RED, style=style)
                 elif cum_pnl > 0:  # profit
-                    fmt_cum_cr = Color.colorize("%.2f" % cum_pnl, Color.GREEN, style=style)
+                    fmt_cum_cr = Color.colorize("%.2f%%" % cum_pnl, Color.GREEN, style=style)
                 else:
                     fmt_cum_cr = "-"
 
@@ -233,9 +228,9 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 row.append(fmt_mfe)
                 row.append(fmt_mae)
                 row.append(fmt_etd)
-                row.append("%.2f" % (en_eff_pct * 100.0))
-                row.append("%.2f" % (ex_eff_pct * 100.0))
-                row.append("%.2f" % (to_eff_pct * 100.0))
+                row.append("%.2f%%" % (en_eff_pct * 100.0))
+                row.append("%.2f%%" % (ex_eff_pct * 100.0))
+                row.append("%.2f%%" % (to_eff_pct * 100.0))
 
             data.append(row[0:4] + row[4+col_ofs:])
 
