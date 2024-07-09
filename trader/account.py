@@ -26,14 +26,14 @@ class AccountStatSample:
     """
 
     timestamp: float = 0.0     # timestamp of the sample
-    performance: float = 0.0   # balance equity
+    balance: float = 0.0       # balance equity
     profit_loss: float = 0.0   # unrealized balance
 
     draw_down_rate: float = 0.0
     draw_down: float = 0.0
 
     def dumps(self):
-        return self.timestamp, self.performance, self.profit_loss, self.draw_down_rate, self.draw_down
+        return self.timestamp, self.balance, self.profit_loss, self.draw_down_rate, self.draw_down
 
     @staticmethod
     def builder(data):
@@ -228,10 +228,18 @@ class Account(object):
 
     @property
     def draw_down(self) -> float:
-        return self._draw_down_rate
+        return self._draw_down
 
     @property
     def max_draw_down(self) -> float:
+        return self._max_draw_down
+
+    @property
+    def draw_down_rate(self) -> float:
+        return self._draw_down_rate
+
+    @property
+    def max_draw_down_rate(self) -> float:
         return self._max_draw_down_rate
 
     @property
@@ -358,9 +366,9 @@ class Account(object):
 
     def update_draw_down(self):
         # update draw down
-        dd = (self._profit_loss + self._asset_profit_loss) / self._balance if self._balance > 0 else 0
-        if dd < 0.0:
-            self._draw_down_rate = -dd
+        dd_rate = (self._profit_loss + self._asset_profit_loss) / self._balance if self._balance > 0 else 0
+        if dd_rate < 0.0:
+            self._draw_down_rate = -dd_rate
 
         dd = self._profit_loss + self._asset_profit_loss
         if dd < 0.0:
@@ -408,8 +416,8 @@ class Account(object):
             'free-asset-balance': self._free_asset_balance,
             'draw-down-rate': self._draw_down_rate,
             'draw-down': self._draw_down,
-            'max-draw-down': self._max_draw_down_rate,
-            'max-draw-down-rate': self._max_draw_down,
+            'max-draw-down-rate': self._max_draw_down_rate,
+            'max-draw-down': self._max_draw_down,
             'stats-samples': [x.dumps() for x in self._stats_samples]
         }
 

@@ -25,16 +25,15 @@ def display_help(commands_handler, user_context=False):
                 Terminal.inst().message(" - '%s' %s " % (entry[0], entry[1]), view='content')
     else:
         # general help
-        Terminal.inst().message("General commands. Direct key actions (single key press), view key are in uppercase:", view='content')
-        # @todo accelerator with Command
-        Terminal.inst().message(" - '?' ping all services", view='content')
+        Terminal.inst().message("General commands. Direct key actions (single key press), view key are in uppercase :",
+                                view='content')
+        Terminal.inst().message("------------------------------------------------------------------------------------",
+                                view='content')
+
         Terminal.inst().message(" - <space> toggle play/pause in backtesting", view='content')
         Terminal.inst().message(" - 'n' toggle desktop notifications", view='content')
         Terminal.inst().message(" - 'a' toggle audible notifications", view='content')
-        Terminal.inst().message(" - '%' toggle table percent display", view='content')
-
-        Terminal.inst().message(" - 'p' list positions (will be replaced by a dedicated view)", view='content')
-        Terminal.inst().message(" - 'o' list orders (will be replaced by a dedicated view)", view='content')
+        Terminal.inst().message(" - '?' ping all services", view='content')
 
         Terminal.inst().message(" - 'A' show account view", view='content')
         Terminal.inst().message(" - 'Q' show assets view", view='content')
@@ -47,24 +46,51 @@ def display_help(commands_handler, user_context=False):
         Terminal.inst().message(" - 'N' show notification/signal view", view='content')
         Terminal.inst().message(" - 'X' show positions view", view='content')
         Terminal.inst().message(" - 'O' show orders view", view='content')
-        Terminal.inst().message(" - 'W' show alerts view", view='content')
+        Terminal.inst().message(" - 'B' show actives alerts view", view='content')
+        Terminal.inst().message(" - 'W' show alerts log view", view='content')
         Terminal.inst().message(" - 'D' show debug view", view='content')
         Terminal.inst().message(" - 'C' clear current view", view='content')
 
+        Terminal.inst().message("", view='content')
+        Terminal.inst().message("View navigation and options :", view='content')
+        Terminal.inst().message("-----------------------------", view='content')
+        Terminal.inst().message(" - 'h' and 'l' shift table column to left/right", view='content')
+        Terminal.inst().message(" - 'j' and 'k' shift table row to up/down", view='content')
+        Terminal.inst().message(" - '<PAGE_UP>' and '<PAGE_DOWN>' shift table row page to up/down", view='content')
+        Terminal.inst().message(" - '+' and '-' On trader states view change tab", view='content')
+        Terminal.inst().message(" - '%' toggle percent display", view='content')
+        Terminal.inst().message(" - '!' toggle datetime format", view='content')
+        Terminal.inst().message(" - ',' toggle group by symbol", view='content')
+        Terminal.inst().message(" - ';' change the direction of ordering. Active and history views by timestamp. "
+                                "Others views by symbol", view='content')
+        Terminal.inst().message(" - '*' on asset view toggle local or distance asset quantity computation. "
+                                "On trades view toggle display in pip or percent", view='content')
+        Terminal.inst().message(" - '$' on asset view show/hide assets with low quantities", view='content')
+        Terminal.inst().message(" - '=' toggle table view style", view='content')
+        Terminal.inst().message(" - '<TAB>' and '<SHIFT>+<TAB>' on trader states view change the refresh rate. "
+                                "On active and history trades toggle quantities and statistics columns", view='content')
+        Terminal.inst().message(" - '<LEFT_ARROW>' and '<RIGHT_ARROW>' on trader states view change market ", view='content')
+
         for entry in commands_handler.get_summary():
             if entry[1]:
-                Terminal.inst().message(" - %s %s " % (entry[0], entry[1]) , view='content')
+                Terminal.inst().message(" - %s %s " % (entry[0], entry[1]), view='content')
 
         Terminal.inst().message("", view='content')
-        Terminal.inst().message("Advanced commands have to be completed by <ENTER> key else <ESC> to cancel. Command typing are avoided after fews seconds.", view='content')
-        Terminal.inst().message(" - ':quit' <save> <term> to exit", view='content')
+        Terminal.inst().message("Advanced commands :", view='content')
+        Terminal.inst().message("-------------------", view='content')
+
+        Terminal.inst().message("", view='content')
+        Terminal.inst().message("The ':' activate the command mode and pressing <ENTER> validate it. "
+                                "Cancel by pressing <ESC>.", view='content')
+
+        Terminal.inst().message("", view='content')
 
         for entry in commands_handler.get_cli_summary():
             if entry[2]:
                 if entry[1]:
-                    Terminal.inst().message(" - ':%s' or ':%s' %s " % (entry[0], entry[1], entry[2]) , view='content')
+                    Terminal.inst().message(" - '%s' or '%s' %s " % (entry[0], entry[1], entry[2]), view='content')
                 else:
-                    Terminal.inst().message(" - ':%s' %s " % (entry[0], entry[2]) , view='content')
+                    Terminal.inst().message(" - '%s' %s " % (entry[0], entry[2]), view='content')
 
 
 def display_command_help(commands_handler, command_name):
@@ -180,10 +206,11 @@ def display_help_tools():
 
 
 def display_welcome():
-    Terminal.inst().info("Console", view='content-head')
+    Terminal.inst().info("[Console]", view='content-head')
     
     Terminal.inst().action("To type a command line, start with a ':', finally validate by <ENTER> or cancel with <ESC>.", view='content')
     Terminal.inst().action("Enter command :help or :h for command details, and :quit or :q to exit", view='content')
+    Terminal.inst().action("Use '<PAGE_UP>' and '<PAGE_DOWN>' or 'j' and 'k' to scroll", view='content')
 
     LOGO1 = """
    SSSSSSSSSSSSSSS IIIIIIIIIIIIIIIIIIII   SSSSSSSSSSSSSSS 

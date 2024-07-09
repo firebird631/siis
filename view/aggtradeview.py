@@ -38,7 +38,16 @@ class AggTradeView(TableView):
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Perf per market trades (%i)%s for strategy %s - %s" % (
-                num, self.display_mode_str(), strategy.name, strategy.identifier))
+            # display options
+            display_opts = []
+            if self._group:
+                display_opts.append("Group")
+            if self._ordering:
+                display_opts.append("Desc.")
+            else:
+                display_opts.append("Asc.")
+
+            self.set_title("[Performance %i] %s::%s <%s>" % (
+                num, strategy.name, strategy.identifier, " - ".join(display_opts)))
         else:
-            self.set_title("Perf per market trades - No configured strategy")
+            self.set_title("[Performances 0] No configured strategy <>")

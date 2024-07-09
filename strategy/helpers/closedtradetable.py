@@ -17,13 +17,20 @@ logger = logging.getLogger('siis.strategy.helpers.closedtradetable')
 error_logger = logging.getLogger('siis.error.strategy.helpers.closedtradetable')
 
 
-def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, quantities=False, stats=False,
-                              percents=False, group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S'):
+def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None,
+                              quantities=False, stats=False, percents=False, pips=False,
+                              group=None, ordering=None, datetime_format='%y-%m-%d %H:%M:%S'):
     """
     Returns a table of any closed trades.
+    @todo cumulative pnl might be computed using trade notional quantity and average by total notional quantity
+        to make the difference between strategy having trades of different quantities. could be an option toggle 2
     """
-    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'TF',
-               'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
+    if pips:
+        columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(pips)', 'Fees(%)', 'OP(pips)', 'SL(pips)', 'TP(pips)', 'TF',
+                   'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
+    else:
+        columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L(%)', 'Fees(%)', 'OP', 'SL', 'TP', 'TF',
+                   'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
 
     if quantities:
         columns += ['RPNL', 'Qty', 'Entry Q', 'Exit Q']
@@ -130,25 +137,23 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             if t['stats']['exit-reason'] in ("stop-loss-market", "stop-loss-limit") and exit_color:
                 _tp = t['take-profit-price']
                 _sl = Color.colorize(t['stop-loss-price'], exit_color, style=style)
-
             elif t['stats']['exit-reason'] in ("take-profit-limit", "take-profit-market") and exit_color:
                 _tp = Color.colorize(t['take-profit-price'], exit_color, style=style)
                 _sl = t['stop-loss-price']
-
             else:
                 _tp = t['take-profit-price']
                 _sl = t['stop-loss-price']
 
             # values in percent
             if t['direction'] == "long" and aep:
-                slpct = (sl - aep) / aep
-                tppct = (tp - aep) / aep
+                sl_pct = (sl - aep) / aep
+                tp_pct = (tp - aep) / aep
             elif t['direction'] == "short" and aep:
-                slpct = (aep - sl) / aep
-                tppct = (aep - tp) / aep
+                sl_pct = (aep - sl) / aep
+                tp_pct = (aep - tp) / aep
             else:
-                slpct = 0
-                tppct = 0
+                sl_pct = 0
+                tp_pct = 0
 
             def format_with_percent(formatted_value, condition, rate):
                 return (("%s (%.2f%%)" % (formatted_value,
@@ -161,8 +166,8 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 cr,
                 "%.2f%%" % t['stats']['fees-pct'],  # total fees in percent
                 t['order-price'] if t['order-price'] != "0" else "-",
-                format_with_percent(_sl, sl, slpct),
-                format_with_percent(_tp, tp, tppct),
+                format_with_percent(_sl, sl, sl_pct),
+                format_with_percent(_tp, tp, tp_pct),
                 t['timeframe'],
                 localize_datetime(t['entry-open-time']),
                 localize_datetime(t['stats']['first-realized-entry-datetime']),

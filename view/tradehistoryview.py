@@ -78,7 +78,7 @@ class TradeHistoryView(TableView):
             try:
                 columns, table, total_size = closed_trades_stats_table(
                     strategy, *self.table_format(),
-                    quantities=self._quantities, stats=self._stats, percents=self._percent,
+                    quantities=self._quantities, stats=self._stats, percents=self._percent, pips=self._opt1,
                     group=self._group, ordering=self._ordering, datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
@@ -87,7 +87,24 @@ class TradeHistoryView(TableView):
                 error_logger.error(str(e))
                 traceback_logger.error(traceback.format_exc())
 
-            self.set_title("Trade history (%i)%s for strategy %s - %s" % (
-                num, self.display_mode_str(), strategy.name, strategy.identifier))
+            # display options
+            display_opts = []
+            if self._group:
+                display_opts.append("Group")
+            if self._ordering:
+                display_opts.append("Desc.")
+            else:
+                display_opts.append("Asc.")
+            if self._opt1:
+                display_opts.append("Pips")
+            if self._percent:
+                display_opts.append("%")
+            if self._quantities:
+                display_opts.append("Quantities")
+            if self._stats:
+                display_opts.append("Stats")
+
+            self.set_title("[Closed trades %i] %s::%s <%s>" % (
+                num, strategy.name, strategy.identifier, " - ".join(display_opts)))
         else:
-            self.set_title("Trade history - No configured strategy")
+            self.set_title("[Closed Trades 0] No configured strategy <>")

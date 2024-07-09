@@ -576,7 +576,7 @@ def application(argv):
     commands_handler.init(options)
 
     # cli commands registration
-    register_general_commands(commands_handler)
+    register_general_commands(commands_handler, strategy_service)
     register_trading_commands(commands_handler, watcher_service, trader_service, strategy_service,
                               monitor_service, notifier_service)
     register_region_commands(commands_handler, strategy_service)
@@ -693,19 +693,8 @@ def application(argv):
                             command_timeout = time.time()
 
                         elif c == '\n':
-                            result = commands_handler.process_cli(value)
+                            commands_handler.process_cli(value)
                             command_timeout = 0
-
-                            if not result:
-                                # maybe an application level command
-                                if value.startswith(':quit'):
-                                    opts = value.split(' ')
-
-                                    if opts[0] == ':quit':
-                                        strategy_service.set_save_on_exit('save' in opts)
-                                        strategy_service.set_terminate_on_exit('term' in opts)
-
-                                        running = False
 
                             # clear command value
                             value_changed = True

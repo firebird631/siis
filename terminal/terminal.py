@@ -956,9 +956,9 @@ class Terminal(object):
         self.set_view('default')
         self._active_content = 'content'
 
-        Terminal.inst().info("Console", view='content-head')
-        Terminal.inst().info("Debug", view='debug-head')
-        Terminal.inst().info("Signal", view='signal-head')
+        Terminal.inst().info("[Console]", view='content-head')
+        Terminal.inst().info("[Debug]", view='debug-head')
+        Terminal.inst().info("[Signal]", view='signal-head')
 
     def restore_term(self):
         if self._fd:

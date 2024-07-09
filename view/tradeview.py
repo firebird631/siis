@@ -63,10 +63,9 @@ class TradeView(TableView):
                 columns, table, total_size, num_actives_trades = trades_stats_table(
                     strategy, *self.table_format(),
                     quantities=self._quantities, stats=self._stats,
-                    percents=self._percent,
+                    percents=self._percent, pips=self._opt1,
                     group=self._group, ordering=self._ordering,
-                    datetime_format=self._datetime_format,
-                    pl_pip=self._opt1)
+                    datetime_format=self._datetime_format)
 
                 self.table(columns, table, total_size)
                 num = total_size[1]
@@ -74,7 +73,24 @@ class TradeView(TableView):
                 error_logger.error(str(e))
                 traceback_logger.error(traceback.format_exc())
 
-            self.set_title("Active trades (%i/%i)%s for strategy %s - %s" % (
-                num_actives_trades, num, self.display_mode_str(), strategy.name, strategy.identifier))
+            # display options
+            display_opts = []
+            if self._group:
+                display_opts.append("Group")
+            if self._ordering:
+                display_opts.append("Desc.")
+            else:
+                display_opts.append("Asc.")
+            if self._opt1:
+                display_opts.append("Pips")
+            if self._percent:
+                display_opts.append("%")
+            if self._quantities:
+                display_opts.append("Quantities")
+            if self._stats:
+                display_opts.append("Stats")
+
+            self.set_title("[Active trades %i/%i] %s::%s <%s>" % (
+                num_actives_trades, num, strategy.name, strategy.identifier, " - ".join(display_opts)))
         else:
-            self.set_title("Active trades - No configured strategy")
+            self.set_title("[Active trades 0/0] No configured strategy <>")

@@ -41,6 +41,10 @@ class AccountView(TableView):
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Account details (%i) for trader %s - %s" % (num, trader.name, trader.account.name))
+            # display options
+            display_opts = []
+
+            self.set_title("[Account details] %s::%s <%s>" % (
+                trader.name, trader.account.name, " - ".join(display_opts)))
         else:
-            self.set_title("Account details - No configured trader")
+            self.set_title("[Account details] No configured trader <>")

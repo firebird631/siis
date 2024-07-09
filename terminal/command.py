@@ -322,6 +322,7 @@ class CommandsHandler(object):
             command = self._commands.get(command_name)
             if command:
                 try:
+                    Terminal.inst().action(command.name, view='content')
                     success, msgs = command.execute(command.default_args())
                     self.print_exec_msg(command_name, success, msgs)
                 except Exception as e:
@@ -358,6 +359,7 @@ class CommandsHandler(object):
 
             if cmd in self._commands:
                 try:
+                    Terminal.inst().action(command_line, view='content')
                     success, msgs = self._commands[cmd].execute(args[1:])
                     self.print_exec_msg(cmd, success, msgs)
                 except Exception as e:
@@ -371,6 +373,7 @@ class CommandsHandler(object):
                 command_name = self._alias[cmd]
                 if command_name in self._commands:
                     try:
+                        Terminal.inst().action(command_line, view='content')
                         success, msgs = self._commands[command_name].execute(args[1:])
                         self.print_exec_msg(command_name, success, msgs)
                     except Exception as e:
@@ -458,6 +461,12 @@ class CommandsHandler(object):
             traceback_logger.error(str(traceback.format_exc()))
 
         return args, tab_pos
+
+    def get_command_list(self):
+        """
+        Return a list with the names of any commands.
+        """
+        return [k for k, v in self._commands.items()]
 
     def get_command_help(self, command_name):
         """

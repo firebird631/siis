@@ -12,7 +12,7 @@ from common.utils import timeframe_from_str, parse_datetime
 class RangeRegionCommand(Command):
 
     SUMMARY = "to manually add a range region on a strategy"
-    HELP = (":range-region <market-id> <low> <high>",
+    HELP = ("range-region <market-id> <low> <high>",
             "optional parameters:",
             "- [C]@<price> : cancellation price",
             "- [@]<timestamp|duration> : expiry",
@@ -104,7 +104,7 @@ class RangeRegionCommand(Command):
 class TrendRegionCommand(Command):
 
     SUMMARY = "to manually add a trend region on a strategy"
-    HELP = (":trend-region <market-id> <low-a> <high-a> <low-b> <high-b>",
+    HELP = ("trend-region <market-id> <low-a> <high-a> <low-b> <high-b>",
             "optional parameters:",
             "- [C@]<price> : cancellation price",
             "- [@]<timestamp|duration> : expiry",

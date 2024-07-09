@@ -43,7 +43,16 @@ class MarketView(TableView):
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Market info list (%i)%s trader %s on account %s" % (
-                num, self.display_mode_str(), trader.name, trader.account.name))
+            # display options
+            display_opts = []
+            if self._group:
+                display_opts.append("Group")
+            if self._ordering:
+                display_opts.append("Desc.")
+            else:
+                display_opts.append("Asc.")
+
+            self.set_title("[Markets details %i] %s::%s <%s>" % (
+                num, trader.name, trader.account.name, " - ".join(display_opts)))
         else:
-            self.set_title("Market info list - No configured trader")
+            self.set_title("[Markets details 0] - No configured trader")

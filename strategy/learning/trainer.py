@@ -263,8 +263,11 @@ class Trainer(object):
 
             # summary
             logger.info("Summary :")
-            logger.info("-- max-draw-down = %s" % learning_result.get('max-draw-down', "0.00%"))
+            logger.info("-- max-draw-down = %s (%s)" % (learning_result.get('max-draw-down', "0"),
+                                                        learning_result.get('max-draw-down-rate', "0.00%")))
             logger.info("-- total-trades = %s" % learning_result.get('total-trades', 0))
+
+            # @todo could display some others
 
             logger.info("-- best = %s" % learning_result.get('best', "0.00%"))
             logger.info("-- worst = %s" % learning_result.get('worst', "0.00%"))
@@ -286,8 +289,6 @@ class Trainer(object):
             logger.info("-- active-trades = %s" % learning_result.get('active-trades', 0))
 
             logger.info("Trainer apply new parameters to %s." % strategy_trader.instrument.market_id)
-
-            # @todo could display some others
 
             new_parameters = copy.deepcopy(self._strategy_trader_params)
 

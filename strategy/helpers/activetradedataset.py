@@ -3,13 +3,23 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy helper to get dataset
 
+# from typing import TYPE_CHECKING
+#
+# if TYPE_CHECKING:
+#     from strategy.strategy import Strategy
+
 import traceback
 
 from common.utils import timeframe_to_str
 
 import logging
+
+
 logger = logging.getLogger('siis.strategy.helpers.activetradedataset')
 error_logger = logging.getLogger('siis.error.strategy.helpers.activetradedataset')
+
+def fmt_pips(value):
+    return ("%.2f" % value).rstrip('0').rstrip('.')
 
 
 def get_all_active_trades(strategy):
@@ -43,6 +53,10 @@ def get_all_active_trades(strategy):
         pnlcur: trade profit loss currency
         fees: total fees rate (entry+exit)
         leop : last exec open price
+        stop-loss-dist-pips: distance in pip from stop and entry price,
+        take-profit-dist-pips: distance in pip from take-profit and entry price,
+        entry-dist-pips: distance in pips from entry and last price
+        order-dist-pips: distance in pips from order price and last price
     """
     results = []
 
@@ -51,7 +65,23 @@ def get_all_active_trades(strategy):
             for k, strategy_trader in strategy._strategy_traders.items():
                 with strategy_trader._mutex:
                     for trade in strategy_trader.trades:
+                        pip_means = strategy_trader.instrument.one_pip_means
+
                         profit_loss_rate = trade.estimate_profit_loss_rate(strategy_trader.instrument)
+
+                        if trade.entry_price or trade.order_price:
+                            sl_dist_pips = (trade.direction * ((trade.entry_price or trade.order_price) - trade.stop_loss)) / pip_means
+                            tp_dist_pips = (trade.direction * (trade.take_profit - (trade.entry_price or trade.order_price))) / pip_means
+
+                            entry_dist_pips = (trade.direction * (strategy_trader.instrument.close_exec_price(
+                                trade.direction) - trade.entry_price)) / pip_means if trade.entry_price else 0.0
+                            order_dist_pips = (trade.direction * (strategy_trader.instrument.open_exec_price(
+                                trade.direction) - trade.order_price)) / pip_means if trade.order_price else 0.0
+                        else:
+                            sl_dist_pips = 0.0
+                            tp_dist_pips = 0.0
+                            entry_dist_pips = 0.0
+                            order_dist_pips = 0.0
 
                         results.append({
                             'mid': strategy_trader.instrument.market_id,
@@ -83,9 +113,12 @@ def get_all_active_trades(strategy):
                             'upnl': strategy_trader.instrument.format_settlement(trade.unrealized_profit_loss),
                             'pnlcur': trade.profit_loss_currency,
                             'fees': trade.entry_fees_rate() + trade.margin_fees_rate() + trade.estimate_exit_fees_rate(strategy_trader.instrument),
-                            'leop': strategy_trader.instrument.format_price(
-                                strategy_trader.instrument.open_exec_price(trade.direction)),
-                            'qs': strategy_trader.instrument.format_quote(trade.invested_quantity)
+                            'leop': strategy_trader.instrument.format_price(strategy_trader.instrument.open_exec_price(trade.direction)),
+                            'qs': strategy_trader.instrument.format_quote(trade.invested_quantity),
+                            'stop-loss-dist-pips': fmt_pips(sl_dist_pips),
+                            'take-profit-dist-pips': fmt_pips(tp_dist_pips),
+                            'entry-dist-pips': fmt_pips(entry_dist_pips),
+                            'order-dist-pips': fmt_pips(order_dist_pips),
                         })
         except Exception as e:
             error_logger.error(repr(e))

@@ -60,7 +60,16 @@ class RegionView(TableView):
                     error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
 
-            self.set_title("Region list (%i)%s for strategy %s - %s" % (
-                num, self.display_mode_str(), strategy.name, strategy.identifier))
+            # display options
+            display_opts = []
+            if self._group:
+                display_opts.append("Group")
+            if self._ordering:
+                display_opts.append("Desc.")
+            else:
+                display_opts.append("Asc.")
+
+            self.set_title("[Regions %i] %s::%s <%s>" % (
+                num, strategy.name, strategy.identifier, " - ".join(display_opts)))
         else:
-            self.set_title("Region list - No configured strategy")
+            self.set_title("[Regions 0] No configured strategy <>")

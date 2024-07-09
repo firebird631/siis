@@ -1742,8 +1742,8 @@ class Strategy(Runnable):
 
         @warning Some data could be incorrect it merge between the different instrument without having the right
         information of the base exchange rate :
+            - max-draw-down & max-draw-down-rate
             - final-equity
-            - max-draw-down
             - stats-samples
             - profit-loss
             - realized-pnl
@@ -1813,7 +1813,8 @@ class Strategy(Runnable):
         trader = self.trader()
 
         # final account stats
-        new_content['max-draw-down'] = "%.2f%%" % (trader.account.max_draw_down * 100.0)
+        new_content['max-draw-down-rate'] = "%.2f%%" % (trader.account.max_draw_down_rate * 100.0)
+        new_content['max-draw-down'] = trader.account.format_price(trader.account.max_draw_down)
         new_content['final-equity'] = trader.account.format_price(trader.account.balance)
         new_content['stats-samples'] = [x.dumps() for x in trader.account.stats_samples]
 
@@ -1840,9 +1841,9 @@ class Strategy(Runnable):
         new_content["max-loss-series"] = max_adj_loss
         new_content["max-win-series"] = max_adj_win
 
-        # compute some time statistics and merge them into new_content
-        time_stats = compute_strategy_statistics(self)
-        time_stats.dumps(new_content)
+        # compute trades and equity statistics and merge them into new_content
+        trades_stats = compute_strategy_statistics(self)
+        trades_stats.dumps(new_content)
 
         write_learning(learning_path, filename, new_content)
 

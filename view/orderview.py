@@ -44,7 +44,16 @@ class OrderView(TableView):
             except Exception as e:
                 error_logger.error(str(e))
 
-            self.set_title("Order list (%i)%s trader %s on account %s" % (
-                num, self.display_mode_str(), trader.name, trader.account.name))
+            # display options
+            display_opts = []
+            if self._group:
+                display_opts.append("Group")
+            if self._ordering:
+                display_opts.append("Desc.")
+            else:
+                display_opts.append("Asc.")
+
+            self.set_title("[Orders %i] %s::%s <%s>" % (
+                num, trader.name, trader.account.name, " - ".join(display_opts)))
         else:
-            self.set_title("Order list - No configured trader")
+            self.set_title("[Orders 0] No configured trader")

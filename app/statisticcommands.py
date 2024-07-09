@@ -19,6 +19,12 @@ error_logger = logging.getLogger('siis.app.statisticcommands')
 
 
 class DrawStatsCommand(Command):
+    """
+    Display in CLI some statistics plots.
+    @todo cumulative pnl might be computed using trade notional quantity and average by total notional quantity
+        to make the difference between strategy having trades of different quantities
+    """
+
     SUMMARY = "to display a CLI chart of a statistic"
     HELP = (
         "param1: <market-id> for strategy only (optional)",
@@ -76,7 +82,7 @@ class DrawStatsCommand(Command):
         closed_trades.sort(key=lambda x: str(x['stats']['last-realized-exit-datetime']))
 
         max_width = Terminal.inst().view("content").width - 3
-        max_height = Terminal.inst().view("content").height - 3
+        max_height = Terminal.inst().view("content").height - 4
 
         for series_name in set(args[arg_offset:]):
             avg = False

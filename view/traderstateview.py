@@ -74,9 +74,22 @@ class TraderStateView(TableView):
             self.prev_instrument()
         elif key == 'KEY_RIGHT':
             self.next_instrument()
+        elif key == 'KEY_UP':
+            with self._mutex:
+                self._report_mode += 1
+                self._refresh = 0.0
+        elif key == 'KEY_DOWN':
+            with self._mutex:
+                self._report_mode = max(0, self._report_mode - 1)
+                self._refresh = 0.0
 
     def on_char(self, char):
         super().on_char(char)
+
+        if char == '4':
+            self.prev_instrument()
+        elif char == '6':
+            self.next_instrument()
 
         if char == '+':
             with self._mutex:
@@ -90,14 +103,17 @@ class TraderStateView(TableView):
     def toggle_update_freq(self):
         if self._upd_freq == TraderStateView.REFRESH_RATE:
             self._upd_freq = TraderStateView.FAST_REFRESH_RATE
+            self._refresh = 0.0
             Terminal.inst().action("Change to fast refresh rate", view="status")
 
         elif self._upd_freq == TraderStateView.FAST_REFRESH_RATE:
             self._upd_freq = TraderStateView.VERY_FAST_REFRESH_RATE
+            self._refresh = 0.0
             Terminal.inst().action("Change to very-fast refresh rate", view="status")
 
         elif self._upd_freq == TraderStateView.VERY_FAST_REFRESH_RATE:
             self._upd_freq = TraderStateView.REFRESH_RATE
+            self._refresh = 0.0
             Terminal.inst().action("Change to default refresh rate", view="status")
 
     def need_refresh(self):
@@ -320,17 +336,30 @@ class TraderStateView(TableView):
                     reported_ready = self._reported_ready
                     reported_affinity = self._reported_affinity
 
-                state = " - ".join((
-                    "active" if reported_activity else "pause",
-                    ("ready" if reported_ready else "pending") + ("(%s)" % reported_affinity),
-                    "bootstrapping" if reported_bootstrapping else ""))
+                # display options
+                tab_info = "%s Tab %i/%i" % (market_id, report_mode + 1, num_report_modes)
 
-                state = state.rstrip(" - ")
+                display_opts = []
 
-                self.set_title("Trader state %s/%s for strategy %s - %s on %s - %s" % (
-                    report_mode + 1 if num_report_modes > 0 else 0, num_report_modes,
-                    strategy.name, strategy.identifier, market_id, state))
+                if reported_activity:
+                    display_opts.append("Active")
+                else:
+                    display_opts.append("Pause")
+
+                if reported_ready:
+                    display_opts.append("Ready")
+                else:
+                    display_opts.append("Pending")
+
+                if reported_bootstrapping:
+                    display_opts.append("Bootstrapping")
+
+                display_opts.append("Affinity=%s" % reported_affinity)
+                display_opts.append("Refresh=%ss" % self._upd_freq)
+
+                self.set_title("[Traders states %s] %s::%s <%s>" % (
+                    tab_info, strategy.name, strategy.identifier, " - ".join(display_opts)))
             else:
-                self.set_title("Trader state - No selected market")
+                self.set_title("[Traders states] No selected market <>")
         else:
-            self.set_title("Trader state - No configured strategy")
+            self.set_title("[Traders states] No configured strategy <>")

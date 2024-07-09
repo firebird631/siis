@@ -479,6 +479,15 @@ class TrainerTool(Tool):
                                 fitness = 9999
                             else:
                                 fitness = -(perf * ((0.55 + tp_win_rate) ** 2))
+
+                        # @todo
+                        # HIGHER_AVG_MFE = 6  # one having the higher average MFE factor
+                        # LOWER_AVG_MAE = 7  # one having the lower average MAE factor
+                        # LOWER_AVG_ETD = 8  # one having the lower average ETD factor
+                        # BEST_STDDEV_MFE = 9  # one have the higher average MFE and the more constant MFE
+                        # BEST_STDDEV_MAE = 10  # one have the lower average MAE and the more constant MAE
+                        # BEST_STDDEV_ETD = 11  # one have the lower average ETD and the more constant ETD
+
                         else:
                             # default : best performance
                             fitness = -perf
@@ -506,8 +515,11 @@ class TrainerTool(Tool):
             # summary
             logger.info("Summary :")
             logger.info("-- performance = %s" % best_result.get('performance', "0.00%"))
-            logger.info("-- max-draw-down = %s" % best_result.get('max-draw-down', "0.00%"))
+            logger.info("-- max-draw-down = %s (%s)" % (best_result.get('max-draw-down', "0"),
+                                                        best_result.get('max-draw-down-rate', "0.00%")))
             logger.info("-- total-trades = %s" % best_result.get('total-trades', 0))
+
+            # @todo could display some others
 
             logger.info("-- best = %s" % best_result.get('best', "0.00%"))
             logger.info("-- worst = %s" % best_result.get('worst', "0.00%"))
@@ -527,8 +539,6 @@ class TrainerTool(Tool):
 
             logger.info("-- open-trades = %s" % best_result.get('open-trades', 0))
             logger.info("-- active-trades = %s" % best_result.get('active-trades', 0))
-
-            # @todo could display some others
 
             # display news values
             logger.info("Selected parameters :")

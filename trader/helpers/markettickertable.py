@@ -19,7 +19,7 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
     """
     Returns a table of any followed markets tickers.
     """
-    columns = ('Market', 'Symbol', 'Mid', 'Bid', 'Ask', 'Spread', 'Vol24h base', 'Vol24h quote',
+    columns = ('Market', 'Symbol', 'Mid', 'Bid', 'Ask', 'Spread', 'Base Ex.', 'Vol24h base', 'Vol24h quote',
                'Time', 'Change(%)', 'Last', 'At')
 
     total_size = (len(columns), 0)
@@ -143,6 +143,7 @@ def markets_tickers_table(trader, style='', offset=None, limit=None, col_ofs=Non
                 bid,
                 ask,
                 spread,
+                ("%.g" % market.base_exchange_rate).rstrip('0').rstrip('.'),
                 market.format_quantity(market.vol24h_base) if market.vol24h_base else '-',  # charmap.HOURGLASS,
                 vol24h_quote,
                 last_timestamp,

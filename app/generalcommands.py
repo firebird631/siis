@@ -3,15 +3,50 @@
 # @license Copyright (c) 2018 Dream Overflow
 # terminal general commands and registration
 
+import sys
+
 from terminal.command import Command
 
 from app.help import display_help, display_command_help, display_version
 from terminal.terminal import Terminal
 
 
+class QuitCommand(Command):
+
+    SUMMARY = "<save> <term> exit application"
+
+    HELP = (
+        "optional parameters only for live mode:",
+        "<save> write current states into the database before exit",
+        "<term> delete any non realized trades before exit.")
+
+    CHOICES = ("save", "term")
+
+    def __init__(self, strategy_service):
+        super().__init__('quit', None)
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if self._strategy_service:
+            self._strategy_service.set_save_on_exit('save' in args)
+            self._strategy_service.set_terminate_on_exit('term' in args)
+
+        if hasattr(sys.modules['__main__'], "running"):
+            setattr(sys.modules['__main__'], "running", False)
+
+        return True, None
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 2:
+            return self.iterate(len(args)-1, list(QuitCommand.CHOICES), args, tab_pos, direction)
+
+        return args, 0
+
+
 class HelpCommand(Command):
 
-    SUMMARY = "for this help"
+    SUMMARY = "for this help or help with a specific command name"
 
     def __init__(self, commands_handler):
         super().__init__('help', 'h')
@@ -27,6 +62,12 @@ class HelpCommand(Command):
             return True, []
 
         return False, None
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._commands_handler.get_command_list(), args, tab_pos, direction)
+
+        return args, 0
 
 
 class UserHelpCommand(Command):
@@ -47,6 +88,12 @@ class UserHelpCommand(Command):
             return True, []
 
         return False, None
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, self._commands_handler.get_command_list(), args, tab_pos, direction)
+
+        return args, 0
 
 
 class VersionCommand(Command):
@@ -154,7 +201,8 @@ class MemoCommand(Command):
                 return True, "No message to record"
 
 
-def register_general_commands(commands_handler):
+def register_general_commands(commands_handler, strategy_service):
+    commands_handler.register(QuitCommand(strategy_service))
     commands_handler.register(HelpCommand(commands_handler))
     commands_handler.register(UserHelpCommand(commands_handler))
     commands_handler.register(VersionCommand())

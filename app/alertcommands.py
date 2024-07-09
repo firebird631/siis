@@ -13,7 +13,7 @@ from strategy.alert.alert import Alert
 class PriceCrossAlertCommand(Command):
 
     SUMMARY = "to manually add a price-cross alert on a strategy"
-    HELP = (":price-cross-alert <market-id> <price>",
+    HELP = ("price-cross-alert <market-id> <price>",
             "optional parameters:",
             "- C@<price> : cancellation price",
             "- @<timestamp|duration> : expiry",

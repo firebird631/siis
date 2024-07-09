@@ -46,7 +46,7 @@ def setup_default_views(view_service: ViewService, watcher_service: WatcherServi
     account = AccountView(view_service, trader_service)
     view_service.add_view(account)
 
-    # 'strategy'
+    # 'trade'
     from view.tradeview import TradeView
     trade = TradeView(view_service, strategy_service)
     view_service.add_view(trade)
