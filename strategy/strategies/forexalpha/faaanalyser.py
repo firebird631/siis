@@ -14,13 +14,13 @@ from instrument.instrument import Instrument
 
 from terminal.terminal import Terminal
 
-from .fasub import ForexAlphaStrategySub
+from .faanalyser import ForexAlphaAnalyser
 
 import logging
 logger = logging.getLogger('siis.strategy.forexalpha')
 
 
-class ForexAlphaStrategySubA(ForexAlphaStrategySub):
+class ForexAlphaAAnalyser(ForexAlphaAnalyser):
     """
     Forex Alpha strategy, sub-strategy A.
     """

@@ -1,35 +1,36 @@
 # @date 2018-08-24
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Crypto Alpha strategy sub-strategy base class.
+# Forex Alpha strategy sub-strategy base class.
 
+from strategy.indicator.score import Score
 from strategy.strategytimeframeanalyser import StrategyTimeframeAnalyser
 
 
-class CryptoAlphaStrategySub(StrategyTimeframeAnalyser):
+class ForexAlphaAnalyser(StrategyTimeframeAnalyser):
     """
-    CryptoAlpha sub computation.
+    Forex Alpha strategy sub-strategy base class.
     """
 
     def __init__(self, strategy_trader, params):
         self.rsi = None
         self.sma = None
         self.ema = None
+        self.atr = None
+        self.vwma = None
+        self.sma200 = None
+        self.sma55 = None
+        self.bsawe = None
         self.stochrsi = None
         self.tomdemark = None
         self.bollingerbands = None
-        self.bsawe = None
-        self.sma55 = None
-        self.sma200 = None
-        self.atr = None
-        self.mama = None
         self.pivotpoint = None
 
         super().__init__(strategy_trader, params['timeframe'], params['depth'], params['history'], params)
 
+        self.score_ratio = params['score-ratio']
+        self.score_level = params['score-level']
+
+        self.score = Score(2, self.depth)
+
         self.setup_indicators(params)
-
-        self.can_long = False
-        self.can_short = False
-
-        self.trend = 0

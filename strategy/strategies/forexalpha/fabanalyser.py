@@ -8,13 +8,13 @@ from strategy.strategysignal import StrategySignal
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
     StreamMemberOhlcSerie
 
-from .fasub import ForexAlphaStrategySub
+from .faanalyser import ForexAlphaAnalyser
 
 import logging
 logger = logging.getLogger('siis.strategy.forexalpha')
 
 
-class ForexAlphaStrategySubB(ForexAlphaStrategySub):
+class ForexAlphaBAnalyser(ForexAlphaAnalyser):
     """
     Forex Alpha strategy, sub-strategy B.
     """

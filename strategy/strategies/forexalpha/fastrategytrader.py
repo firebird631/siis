@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, Tuple
 
 if TYPE_CHECKING:
-    from .fasub import ForexAlphaStrategySub
+    from .faanalyser import ForexAlphaAnalyser
     from strategy.strategy import Strategy
 
 from trader.order import Order
@@ -18,9 +18,9 @@ from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 
 from instrument.instrument import Instrument
 
-from .fasuba import ForexAlphaStrategySubA
-from .fasubb import ForexAlphaStrategySubB
-from .fasubc import ForexAlphaStrategySubC
+from .faaanalyser import ForexAlphaAAnalyser
+from .fabanalyser import ForexAlphaBAnalyser
+from .facanalyser import ForexAlphaCAnalyser
 
 import logging
 logger = logging.getLogger('siis.strategy.forexalpha')
@@ -31,7 +31,7 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     Forex Alpha strategy trader.
     """
 
-    timeframes: Dict[float, ForexAlphaStrategySub]
+    timeframes: Dict[float, ForexAlphaAnalyser]
 
     def __init__(self, strategy: Strategy, instrument: Instrument, params: dict):
         super().__init__(strategy, instrument, Instrument.TF_TICK, params)
@@ -51,9 +51,9 @@ class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
 
         # self.scorify = Scorify(score_trigger, score_increase_factor, score_regression_factor)
 
-        self.register_timeframe('A', ForexAlphaStrategySubA)
-        self.register_timeframe('B', ForexAlphaStrategySubB)
-        self.register_timeframe('C', ForexAlphaStrategySubC)
+        self.register_timeframe('A', ForexAlphaAAnalyser)
+        self.register_timeframe('B', ForexAlphaBAnalyser)
+        self.register_timeframe('C', ForexAlphaCAnalyser)
         self.setup_timeframes(params)
 
         self._last_filter_cache = (0, False, False)

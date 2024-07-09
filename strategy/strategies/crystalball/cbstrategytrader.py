@@ -9,7 +9,7 @@ from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
 
 from instrument.instrument import Instrument
 
-from .cbsuba import CrystalBallStrategySubA
+from .cbaanalyser import CrystalBallAAnalyser
 
 import logging
 logger = logging.getLogger('siis.strategy.crystalball')
@@ -23,7 +23,7 @@ class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
     def __init__(self, strategy, instrument, params):
         super().__init__(strategy, instrument, Instrument.TF_TICK, params)
 
-        self.register_timeframe('A', CrystalBallStrategySubA)
+        self.register_timeframe('A', CrystalBallAAnalyser)
         self.setup_timeframes(params)
 
         self._last_filter_cache = (0, False, False)

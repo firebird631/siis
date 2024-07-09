@@ -13,13 +13,13 @@ from strategy.strategysignal import StrategySignal
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
     StreamMemberOhlcSerie
 
-from .cbsub import CrystalBallStrategySub
+from .cbanalyser import CrystalBallAnalyser
 
 import logging
 logger = logging.getLogger('siis.strategy.crystalball')
 
 
-class CrystalBallStrategySubA(CrystalBallStrategySub):
+class CrystalBallAAnalyser(CrystalBallAnalyser):
     """
     Crystal Ball strategy, sub-strategy A.
     """

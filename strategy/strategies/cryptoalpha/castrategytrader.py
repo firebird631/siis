@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, Tuple
 
 if TYPE_CHECKING:
-    from .casub import CryptoAlphaStrategySub
+    from .caanalyser import CryptoAlphaAnalyser
     from strategy.strategy import Strategy
 
 from terminal.terminal import Terminal
@@ -21,9 +21,9 @@ from instrument.instrument import Instrument
 
 from strategy.indicator import utils
 
-from .casuba import CryptoAlphaStrategySubA
-from .casubb import CryptoAlphaStrategySubB
-from .casubc import CryptoAlphaStrategySubC
+from .caaanalyser import CryptoAlphaAAnalyser
+from .cabanalyser import CryptoAlphaBAnalyser
+from .cacanalyser import CryptoAlphaCAnalyser
 
 import logging
 logger = logging.getLogger('siis.strategy.cryptoalpha')
@@ -43,7 +43,7 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
     timeout only cancel the buy order, keep the trade active of course.
     """
 
-    timeframes: Dict[float, CryptoAlphaStrategySub]
+    timeframes: Dict[float, CryptoAlphaAnalyser]
 
     def __init__(self, strategy: Strategy, instrument: Instrument, params: dict):
         super().__init__(strategy, instrument, Instrument.TF_TICK, params)
@@ -55,9 +55,9 @@ class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
         self.sltp_timeframe = self.timeframe_from_param(params.setdefault('sltp-timeframe', '1h'))
         self.ref_timeframe = self.timeframe_from_param(params.setdefault('ref-timeframe', '1d'))
 
-        self.register_timeframe('A', CryptoAlphaStrategySubA)
-        self.register_timeframe('B', CryptoAlphaStrategySubB)
-        self.register_timeframe('C', CryptoAlphaStrategySubC)
+        self.register_timeframe('A', CryptoAlphaAAnalyser)
+        self.register_timeframe('B', CryptoAlphaBAnalyser)
+        self.register_timeframe('C', CryptoAlphaCAnalyser)
         self.setup_timeframes(params)
 
         self._last_filter_cache = (0, False, False)

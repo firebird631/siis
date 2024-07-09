@@ -6,7 +6,7 @@
 from strategy.strategytimeframeanalyser import StrategyTimeframeAnalyser
 
 
-class CrystalBallStrategySub(StrategyTimeframeAnalyser):
+class CrystalBallAnalyser(StrategyTimeframeAnalyser):
     """
     Bitcoin Alpha sub computation.
     """

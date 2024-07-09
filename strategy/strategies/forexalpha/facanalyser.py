@@ -1,7 +1,7 @@
-# @date 2018-08-24
+# @date 2019-02-16
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Crypto Alpha strategy, sub-strategy B.
+# Forex Alpha strategy, sub-strategy B.
 
 from __future__ import annotations
 
@@ -14,20 +14,30 @@ from strategy.indicator import utils
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
     StreamMemberOhlcSerie
 
-from .casub import CryptoAlphaStrategySub
+from .faanalyser import ForexAlphaAnalyser
 
 import logging
-logger = logging.getLogger('siis.strategy.cryptoalpha')
+logger = logging.getLogger('siis.strategy.forexalpha')
 
 
-class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
+class ForexAlphaCAnalyser(ForexAlphaAnalyser):
     """
-    Crypto Alpha strategy, sub-strategy C.
+    Forex Alpha strategy, sub-strategy C.
     """
 
     def __init__(self, strategy_trader, params):
         super().__init__(strategy_trader, params)
 
+        if 'scores' in params:
+            # for older method
+            self.rsi_score_factor = params['scores']['rsi_factor']
+            self.rsi_trend_score_factor = params['scores']['rsi_trend_factor']
+            self.sma_ema_cross_score_factor = params['scores']['sma_ema_cross_factor']
+            self.ema_vwma_cross_score_factor = params['scores']['ema_vwma_cross_factor']
+            self.price_vwma_cross_score_factor = params['scores']['price_vwma_factor']
+            self.ema_vwma_score_bonus = params['scores']['ema_vwma_cross_bonus']
+            self.rsi_ema_trend_div_score_factor = params['scores']['rsi_ema_trend_div_factor']
+        
         self.rsi_low = params['constants']['rsi_low']
         self.rsi_high = params['constants']['rsi_high']
 
@@ -38,8 +48,8 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
             # not enough samples
             return None
 
-        prices = self.price.compute(timestamp, candles)
-        volumes = self.volume.compute(timestamp, candles)
+        prices = self.price.compute(timestamp, candles)[-self.depth:]
+        volumes = self.volume.compute(timestamp, candles)[-self.depth:]
 
         signal = self.process1(timestamp, self.last_timestamp, candles, prices, volumes)
 
@@ -59,16 +69,17 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
 
         return signal
 
-    def process1(self, timestamp: float, last_timestamp: float, candles, prices,
-                 volumes) -> Union[StrategySignal, None]:
+    def process1(self, timestamp: float, to_ts: float, candles, prices, volumes) -> Union[StrategySignal, None]:
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA
         # volume_sma = utils.MM_n(self.depth-1, self.volume.volumes)
 
+        rsi = 0
         rsi_30_70 = 0  # 1 <30, -1 >70
         rsi_40_60 = 0  # 1 if RSI in 40-60
 
+        stochrsi = 0
         stochrsi_20_80 = 0  # 1 <20, -1 >80
         stochrsi_40_60 = 0  # 1 if stochRSI in 40-60
         
@@ -78,8 +89,7 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
         ema_sma_height = 0
 
         if self.rsi:
-            self.rsi.compute(timestamp, prices)
-            rsi = self.rsi.last
+            rsi = self.rsi.compute(to_ts, prices)[-1]
 
             if self.rsi.last < self.rsi_low:
                 rsi_30_70 = 1.0
@@ -90,14 +100,14 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
                 rsi_40_60 = 1
 
         if self.stochrsi:
-            self.stochrsi.compute(timestamp, prices)
+            stochrsi = self.stochrsi.compute(to_ts, prices)[0][-1]
 
-            if self.stochrsi.last_k < 0.2:
+            if stochrsi < 0.2:
                 stochrsi_20_80 = 1.0
-            elif self.stochrsi.last_k > 0.8:
+            elif stochrsi > 0.8:
                 stochrsi_20_80 = -1.0
 
-            if self.stochrsi.last_k > 0.4 and self.stochrsi.last_k < 0.6:
+            if stochrsi > 0.4 and stochrsi < 0.6:
                 stochrsi_40_60 = 1
 
         # if self.volume.last > volume_sma[-1]:
@@ -106,24 +116,19 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
         #     volume_signal = -1
 
         if self.sma and self.ema:
-            self.sma.compute(timestamp, prices)
-            self.ema.compute(timestamp, prices)
+            sma = self.sma.compute(to_ts, prices)[-2:]
+            ema = self.ema.compute(to_ts, prices)[-2:]
 
             # ema over sma crossing
-            ema_sma_cross = utils.cross((self.ema.prev, self.sma.prev), (self.ema.last, self.sma.last))
+            ema_sma_cross = utils.cross((ema[-2], sma[-2]), (ema[-1], sma[-1]))
 
-            if self.ema.last > self.sma.last:
+            if ema[-1] > sma[-1]:
                 ema_sma_height = 1
-            elif self.ema.last < self.sma.last:
+            elif ema[-1] < sma[-1]:
                 ema_sma_height = -1
 
         if self.atr:
-            if self.last_closed:
-                self.atr.compute(timestamp, self.price.high, self.price.low, self.price.close)
-
-        if self.pivotpoint:
-            if self.pivotpoint.compute_at_close and self.last_closed:
-                self.pivotpoint.compute(timestamp, self.price.open, self.price.high, self.price.low, self.price.close)            
+            self.atr.compute(to_ts, self.price.high, self.price.low, self.price.close)
 
         return signal
 
@@ -148,6 +153,8 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
         streamer.add_member(StreamMemberFloatSerie('hma', 0))
         streamer.add_member(StreamMemberFloatSerie('vwma', 0))
 
+        # stochastic, bollinger, triangle, score, pivotpoint, td9, fibonacci...
+
         streamer.add_member(StreamMemberSerie('end'))
 
         streamer.last_timestamp = self.last_timestamp
@@ -160,24 +167,25 @@ class CryptoAlphaStrategySubC(CryptoAlphaStrategySub):
 
             streamer.member('begin').update(ts)
 
-            streamer.member('ohlc').update((self.price.open[i], self.price.high[i], self.price.low[i], self.price.close[i]), ts)
+            streamer.member('ohlc').update((float(self.price.open[i]),
+                    float(self.price.high[i]), float(self.price.low[i]), float(self.price.close[i])), ts)
 
-            streamer.member('price').update(self.price.prices[i], ts)
-            streamer.member('volume').update(self.volume.volumes[i], ts)
+            streamer.member('price').update(float(self.price.prices[i]), ts)
+            streamer.member('volume').update(float(self.volume.volumes[i]), ts)
 
             streamer.member('rsi-low').update(self.rsi_low, ts)
             streamer.member('rsi-high').update(self.rsi_high, ts)
-            streamer.member('rsi').update(self.rsi.rsis[i], ts)
+            streamer.member('rsi').update(float(self.rsi.rsis[i]), ts)
 
             # streamer.member('stochrsi-low').update(20, ts)
             # streamer.member('stochrsi-high').update(80, ts)
-            # streamer.member('stochrsi-k').update(self.stochrsi.stochrsis[i], ts)
-            # streamer.member('stochrsi-d').update(self.stochrsi.stochrsis[i], ts)
+            # streamer.member('stochrsi-k').update(float(self.stochrsi.stochrsis[i]), ts)
+            # streamer.member('stochrsi-d').update(float(self.stochrsi.stochrsis[i]), ts)
 
-            streamer.member('sma').update(self.sma.smas[i], ts)
-            streamer.member('ema').update(self.ema.emas[i], ts)
-            # streamer.member('hma').update(self.hma.hmas[i], ts)
-            # streamer.member('vwma').update(self.vwma.vwmas[i], ts)
+            streamer.member('sma').update(float(self.sma.smas[i]), ts)
+            streamer.member('ema').update(float(self.ema.emas[i]), ts)
+            # streamer.member('hma').update(float(self.hma.hmas[i]), ts)
+            # streamer.member('vwma').update(float(self.vwma.vwmas[i]), ts)
 
             streamer.member('end').update(ts)
 

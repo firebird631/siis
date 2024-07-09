@@ -7,13 +7,13 @@ from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, StreamMemberOhlcSerie
 
-from .casub import CryptoAlphaStrategySub
+from .caanalyser import CryptoAlphaAnalyser
 
 import logging
 logger = logging.getLogger('siis.strategy.cryptoalpha')
 
 
-class CryptoAlphaStrategySubB(CryptoAlphaStrategySub):
+class CryptoAlphaBAnalyser(CryptoAlphaAnalyser):
     """
     Crypto Alpha strategy, sub-strategy B.
     """
