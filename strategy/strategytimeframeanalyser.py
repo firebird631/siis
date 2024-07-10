@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from instrument.instrument import Candle
     from monitor.streamable import Streamable
 
-    from .timeframebasedstrategytrader import TimeframeBasedStrategyTrader
+    from .timeframestrategytrader import TimeframeStrategyTrader
     from .strategysignal import StrategySignal
     from .indicator.price.price import PriceIndicator
     from .indicator.volume.volume import VolumeIndicator
@@ -30,7 +30,7 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
     StrategyTimeframeAnalyser Timeframe data-series analyser base class.
     """
 
-    strategy_trader: TimeframeBasedStrategyTrader
+    strategy_trader: TimeframeStrategyTrader
 
     tf: float
     depth: int
@@ -54,7 +54,7 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
     prev_open_price: Union[float, None]     # previous open price
     prev_close_price: Union[float, None]    # previous close price
 
-    def __init__(self, strategy_trader: TimeframeBasedStrategyTrader, timeframe: float,
+    def __init__(self, strategy_trader: TimeframeStrategyTrader, timeframe: float,
                  depth: int, history: int, params: dict = None):
         self.strategy_trader = strategy_trader  # parent strategy-trader object
 

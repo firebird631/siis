@@ -1,7 +1,7 @@
 # @date 2020-09-19
 # @author Frederic Scherma
 # @license Copyright (c) 2020 Dream Overflow
-# Tick-bar based strategy trader. 
+# Strategy trader base model using non-temporal bar
 
 from __future__ import annotations
 
@@ -26,14 +26,14 @@ from .strategybaseanalyser import StrategyBaseAnalyser
 from .strategytrader import StrategyTrader
 
 import logging
-logger = logging.getLogger('siis.strategy.tickbarbasedstrategytrader')
-error_logger = logging.getLogger('siis.error.strategy.tickbarbasedstrategytrader')
-traceback_logger = logging.getLogger('siis.traceback.strategy.tickbarbasedstrategytrader')
+logger = logging.getLogger('siis.strategy.barstrategytrader')
+error_logger = logging.getLogger('siis.error.strategy.barstrategytrader')
+traceback_logger = logging.getLogger('siis.traceback.strategy.barstrategytrader')
 
 
-class TickBarBasedStrategyTrader(StrategyTrader):
+class BarStrategyTrader(StrategyTrader):
     """
-    Tick-bar based strategy trader base class.
+    Strategy trader base model using non-temporal bar.
 
     There is no OHLC in this abstraction. It is tick or trade based.
     It only works with a tick or trade data flow.

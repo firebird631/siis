@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 from terminal.terminal import Terminal
 from trader.order import Order
 
-from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
+from strategy.timeframestrategytrader import TimeframeStrategyTrader
 from strategy.trade.strategyindmargintrade import StrategyIndMarginTrade
 
 from instrument.instrument import Instrument
@@ -28,7 +28,7 @@ import logging
 logger = logging.getLogger('siis.strategy.bitcoinalpha')
 
 
-class BitcoinAlphaStrategyTrader(TimeframeBasedStrategyTrader):
+class BitcoinAlphaStrategyTrader(TimeframeStrategyTrader):
     """
     Bitcoin Alpha strategy trader per instrument.
     Based on CryptoAlpha strategy for margin trading (long/short). Does not support asset (buy/sell) markets.

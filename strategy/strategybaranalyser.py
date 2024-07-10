@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, List, Tuple, Union
 if TYPE_CHECKING:
     from monitor.streamable import Streamable
 
-    from .tickbarbasedstrategytrader import TickBarBasedStrategyTrader
+    from .barstrategytrader import BarStrategyTrader
     from .strategysignal import StrategySignal
     from .indicator.price.price import PriceIndicator
     from .indicator.volume.volume import VolumeIndicator
@@ -29,10 +29,10 @@ logger = logging.getLogger('siis.strategy.strategybaranalyser')
 
 class StrategyBarAnalyser(StrategyBaseAnalyser):
     """
-    StrategyBarAnalyser data-series per non-temporal bar analyser base class.
+    StrategyBarAnalyser data-series per non-temporal bar analyser base class (range-bar, reversal-bar, renko...).
     """
 
-    strategy_trader: TickBarBasedStrategyTrader
+    strategy_trader: BarStrategyTrader
 
     tb: int
     depth: int
@@ -56,7 +56,7 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
     prev_open_price: Union[float, None]  # previous open price
     prev_close_price: Union[float, None]  # previous close price
 
-    def __init__(self, strategy_trader: TickBarBasedStrategyTrader, tickbar: int,
+    def __init__(self, strategy_trader: BarStrategyTrader, tickbar: int,
                  depth: int, history: int, params: dict = None):
         self.strategy_trader = strategy_trader  # parent strategy-trader object
 

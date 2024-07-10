@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 from terminal.terminal import Terminal
 from trader.order import Order
 
-from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
+from strategy.timeframestrategytrader import TimeframeStrategyTrader
 from strategy.trade.strategyassettrade import StrategyAssetTrade
 
 from instrument.instrument import Instrument
@@ -29,7 +29,7 @@ import logging
 logger = logging.getLogger('siis.strategy.cryptoalpha')
 
 
-class CryptoAlphaStrategyTrader(TimeframeBasedStrategyTrader):
+class CryptoAlphaStrategyTrader(TimeframeStrategyTrader):
     """
     Crypto Alpha strategy trader per instrument.
     The defined timeframe must form a chained list of multiple of the previous timeframe. One is the root,

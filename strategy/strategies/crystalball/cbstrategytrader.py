@@ -5,7 +5,7 @@
 
 from typing import Tuple
 
-from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
+from strategy.timeframestrategytrader import TimeframeStrategyTrader
 
 from instrument.instrument import Instrument
 
@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger('siis.strategy.crystalball')
 
 
-class CrystalBallStrategyTrader(TimeframeBasedStrategyTrader):
+class CrystalBallStrategyTrader(TimeframeStrategyTrader):
     """
     Crystal Ball indicator strategy trader.
     """

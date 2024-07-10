@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 from trader.order import Order
 
 from strategy.trade.strategypositiontrade import StrategyPositionTrade
-from strategy.timeframebasedstrategytrader import TimeframeBasedStrategyTrader
+from strategy.timeframestrategytrader import TimeframeStrategyTrader
 
 from instrument.instrument import Instrument
 
@@ -26,7 +26,7 @@ import logging
 logger = logging.getLogger('siis.strategy.forexalpha')
 
 
-class ForexAlphaStrategyTrader(TimeframeBasedStrategyTrader):
+class ForexAlphaStrategyTrader(TimeframeStrategyTrader):
     """
     Forex Alpha strategy trader.
     """

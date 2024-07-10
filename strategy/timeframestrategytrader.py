@@ -1,7 +1,7 @@
 # @date 2018-08-24
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Timeframe based strategy trader.
+# Strategy trader base model using temporal bar
 
 from __future__ import annotations
 
@@ -27,14 +27,14 @@ from common.utils import timeframe_from_str, timeframe_to_str
 from monitor.streamable import Streamable, StreamMemberInt
 
 import logging
-logger = logging.getLogger('siis.strategy.timeframebasedstrategytrader')
-error_logger = logging.getLogger('siis.error.strategy.timeframebasedstrategytrader')
-traceback_logger = logging.getLogger('siis.traceback.strategy.timeframebasedstrategytrader')
+logger = logging.getLogger('siis.strategy.timeframestrategytrader')
+error_logger = logging.getLogger('siis.error.strategy.timeframestrategytrader')
+traceback_logger = logging.getLogger('siis.traceback.strategy.timeframestrategytrader')
 
 
-class TimeframeBasedStrategyTrader(StrategyTrader):
+class TimeframeStrategyTrader(StrategyTrader):
     """
-    Timeframe based strategy trader base class.
+    Strategy trader base model using temporal bar (1m, 30m, 1d....).
     Sub timeframe object must be based on TimeframeBasedSub.
     It supports the generation of the OHLCs from tick level, or from others OHLCs of a sub-multiple lower timeframe.
 
