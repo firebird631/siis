@@ -282,7 +282,7 @@ class MySql(Database):
 
             bar.set_volume(float(row[6]))
 
-            if bar.abs_height < size:
+            if bar.height < size:
                 bar.set_consolidated(False)  # current
 
             return bar
@@ -307,7 +307,7 @@ class MySql(Database):
 
             bar.set_volume(float(row[6]))
 
-            if bar.abs_height < size:
+            if bar.height < size:
                 bar.set_consolidated(False)  # current
 
             return bar
@@ -1049,7 +1049,7 @@ class MySql(Database):
 
                         bar.set_volume(float(row[6]))
 
-                        if bar.abs_height < mk[3]:
+                        if bar.height < mk[3]:
                             bar.set_consolidated(False)  # current
 
                         if reverse:

@@ -100,18 +100,11 @@ class TickBarBase(object):
         return self._volume
 
     @property
-    def abs_height(self) -> float:
-        """
-        Height in ticks from open to close, always absolute.
-        """
-        return self._close - self._open if self._close > self._open else self._open - self._close
-
-    @property
     def height(self) -> float:
         """
-        Height in ticks from open to close, always relative.
+        Height in ticks from low to high, always positive.
         """
-        return self._close - self._open
+        return self._high - self._low
 
     @property
     def pov(self) -> float:

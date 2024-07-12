@@ -18,7 +18,7 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
     Returns a table of any aggregated active and closes trades.
     """
     columns = ('Symbol', 'P/L', 'Total', 'RPNL', 'Open', 'Best', 'Worst', 'Success', 'Failed', 'ROE',
-               'Closed', 'High', 'Low', 'SL Win/Loss', 'TP Win/Loss')
+               'Closed', 'max MFE', 'min MAE', 'SL Win/Loss', 'TP Win/Loss')
     total_size = (len(columns), 0)
     data = []
 
@@ -41,8 +41,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
 
         pl_sum = 0.0
         perf_sum = 0.0
-        best_best = 0.0
-        worst_worst = 0.0
+        max_best = 0.0
+        min_worst = 0.0
         success_sum = 0
         failed_sum = 0
         roe_sum = 0
@@ -59,8 +59,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
             for t in agg_trades:
                 pl_sum += t['pl']
                 perf_sum += t['perf']
-                best_best = max(best_best, t['best'])
-                worst_worst = min(worst_worst, t['worst'])
+                max_best = max(max_best, t['best'])
+                min_worst = min(min_worst, t['worst'])
                 success_sum += t['success']
                 failed_sum += t['failed']
                 roe_sum += t['roe']
@@ -132,8 +132,8 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
                 cr_perf_sum,
                 '-',
                 "%s/%s" % (num_actives_trades_sum, num_open_trades_sum),
-                "%.2f%%" % (best_best*100.0),
-                "%.2f%%" % (worst_worst*100.0),
+                "%.2f%%" % (max_best*100.0),
+                "%.2f%%" % (min_worst*100.0),
                 success_sum,
                 failed_sum,
                 roe_sum,

@@ -89,18 +89,11 @@ class RangeBase(object):
         self._ended = cons
 
     @property
-    def abs_height(self) -> float:
-        """
-        Height in ticks from open to close, always absolute.
-        """
-        return self._close - self._open if self._close > self._open else self._open - self._close
-
-    @property
     def height(self) -> float:
         """
-        Height in ticks from open to close, always relative.
+        Height in ticks from low to high. Always positive.
         """
-        return self._close - self._open
+        return self._high - self._low
 
     #
     # processing
