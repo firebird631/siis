@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, List, Union, Optional, Tuple, Dict
 
 if TYPE_CHECKING:
     from watcher.watcher import Watcher
-    from .tickbar import TickBarBase
+    from .rangebar import RangeBar
 
 import math
 
@@ -29,7 +29,10 @@ OHLCType = Tuple[float, float, float, float, float, float, float]
 
 class Candle(object):
     """
-    Candle for an instrument.
+    Candle for an instrument with OHLC, volume, timestamp and timeframe.
+    Ended is true only when the candle is closed (consolidated). It means the current is False.
+    The spread field could be used when backtesting using candle data in place of tick/trade data.
+    It contains the average spread during the timeframe of the candle.
 
     @note 8 floats + 1 bool
     """
@@ -39,7 +42,7 @@ class Candle(object):
     def __init__(self, timestamp: float, timeframe: float):
         self._timestamp = timestamp
         self._timeframe = timeframe
-        
+
         self._open = 0.000000001
         self._high = 0.000000001
         self._low = 0.000000001
@@ -331,7 +334,8 @@ class Instrument(object):
                 '_market_bid', '_market_ask', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', \
                 '_size_limits', '_price_limits', '_notional_limits', '_settlement_precision', \
-                '_ticks', '_tickbars', '_candles', '_buy_sells', '_wanted', \
+                '_ticks', '_range_bars', '_candles', '_buy_sells', \
+                '_needed_timeframes', '_needed_range_bars', \
                 '_base', '_quote', '_settlement', '_trade', '_orders', \
                 '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', '_lot_size', '_contract_size',  \
                 '_timezone', '_session_offset', '_trading_sessions'
@@ -382,7 +386,7 @@ class Instrument(object):
         self._ticks = []      # list of tuple(timestamp, bid, ask, last, volume, direction)
         self._candles = {}    # list per timeframe
         self._buy_sells = {}  # list per timeframe
-        self._tickbars = {}   # list of TickBar per size
+        self._range_bars = {}   # list of TickBar per size
 
         self._one_pip_means = 1.0
         self._value_per_pip = 1.0
@@ -396,7 +400,8 @@ class Instrument(object):
         # allowed trading session (empty mean anytime) else must be explicit. each session is a TradingSession model.
         self._trading_sessions = []
 
-        self._wanted = []  # list of wanted timeframe before be ready (it is only for initialization)
+        self._needed_timeframes = []  # list of needed timeframe before be ready (it is only for initialization)
+        self._needed_range_bars = []  # list of needed range-bar before be ready (it is only for initialization)
 
     def add_watcher(self, watcher_type: int, watcher: Watcher):
         if watcher:
@@ -1093,108 +1098,108 @@ class Instrument(object):
         return results
 
     #
-    # tick-bar
+    # range-bar
     #
     
-    def add_tickbars(self, tb: int, tickbars_list: List[TickBarBase], max_tickbars: int = -1):
+    def add_range_bars(self, size: int, range_bars_list: List[RangeBar], max_range_bars: int = -1):
         """
-        Append an array of new tickbars.
-        @param tb:
-        @param tickbars_list
-        @param max_tickbars Pop tickbars until num tickbars > max_tickbars.
+        Append an array of new range-bars.
+        @param size: Size of the range-bar
+        @param range_bars_list
+        @param max_range_bars Pop range-bars until num range_bars > max_range_bars.
         """
-        if not tickbars_list:
+        if not range_bars_list:
             return
 
-        if self._tickbars.get(tb):
-            tickbars = self._tickbars[tb]
+        if self._range_bars.get(size):
+            range_bars = self._range_bars[size]
 
             # array of tickbar
-            if len(tickbars) > 0:
-                for t in tickbars_list:
+            if len(range_bars) > 0:
+                for range_bar in range_bars_list:
                     # for each tickbar only add it if more recent or replace a non consolidated
-                    if t.timestamp > tickbars[-1].timestamp:
-                        if not tickbars[-1].ended:
-                            # remove the last tickbar if was not consolidated
-                            tickbars.pop(-1)
+                    if range_bar.timestamp > range_bars[-1].timestamp:
+                        if not range_bars[-1].ended:
+                            # remove the last range-bar if was not consolidated
+                            range_bars.pop(-1)
                             # tickbars[-1]._ended = True
 
-                        tickbars.append(t)
+                        range_bars.append(range_bar)
 
-                    elif t.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
-                        # replace the last tickbar if was not consolidated
-                        tickbars[-1] = t
+                    elif range_bar.timestamp == range_bars[-1].timestamp and not range_bars[-1].ended:
+                        # replace the last range-bar if was not consolidated
+                        range_bars[-1] = range_bar
             else:
                 # initiate array
-                self._tickbars[tb] = tickbars_list
+                self._range_bars[size] = range_bars_list
         else:
             # initiate array
-            self._tickbars[tb] = tickbars_list
+            self._range_bars[size] = range_bars_list
 
         # keep safe size
-        if max_tickbars > 1:
-            tickbars = self._tickbars[tb]
-            if tickbars:
-                while(len(tickbars)) > max_tickbars:
-                    tickbars.pop(0)
+        if max_range_bars > 1:
+            range_bars = self._range_bars[size]
+            if range_bars:
+                while(len(range_bars)) > max_range_bars:
+                    range_bars.pop(0)
 
-    def add_tickbar(self, tb: int, tickbar: TickBarBase, max_tickbars: int = -1):
+    def add_range_bar(self, size: int, range_bar: RangeBar, max_range_bars: int = -1):
         """
-        Append a new tickbar.
-        @param tb:
-        @param tickbar
-        @param max_tickbars Pop tickbars until num tickbars > max_tickbars.
+        Append a new range-bar.
+        @param size: Size of the range-bar
+        @param range_bar
+        @param max_range_bars Pop tickbars until num range_bars > max_range_bars.
         """
-        if not tickbar:
+        if not range_bar:
             return
 
-        if self._tickbars.get(tb):
-            tickbars = self._tickbars[tb]
+        if self._range_bars.get(size):
+            range_bars = self._range_bars[size]
 
             # single tickbar
-            if len(tickbars) > 0:
+            if len(range_bars) > 0:
                 # ignore the tickbar if older than the latest
-                if tickbar.timestamp > tickbars[-1].timestamp:
-                    if not tickbars[-1].ended:
+                if range_bar.timestamp > range_bars[-1].timestamp:
+                    if not range_bars[-1].ended:
                         # replace the last tickbar if was not consolidated
-                        tickbars[-1] = tickbar
+                        range_bars[-1] = range_bar
                     else:
-                        tickbars.append(tickbar)
+                        range_bars.append(range_bar)
 
-                elif tickbar.timestamp == tickbars[-1].timestamp and not tickbars[-1].ended:
+                elif range_bar.timestamp == range_bars[-1].timestamp and not range_bars[-1].ended:
                     # replace the last tickbar if was not consolidated
-                    tickbars[-1] = tickbar
+                    range_bars[-1] = range_bar
             else:
-                tickbars.append(tickbar)
+                range_bars.append(range_bar)
         else:
-            self._tickbars[tb] = [tickbar]
+            self._range_bars[size] = [range_bar]
 
         # keep safe size
-        if max_tickbars > 1:
-            tickbars = self._tickbars[tb]
-            if tickbars:
-                while(len(tickbars)) > max_tickbars:
-                    tickbars.pop(0)
+        if max_range_bars > 1:
+            range_bars = self._range_bars[size]
+            if range_bars:
+                while(len(range_bars)) > max_range_bars:
+                    range_bars.pop(0)
 
-            # if tb == 4:
-            #     logger.debug("%s %s" % (tickbars[-2], tickbars[-1]))
+            # if size == 4:
+            #     logger.debug("%s %s" % (range_bars[-2], range_bars[-1]))
 
-    def tickbar(self, tb: int) -> Optional[TickBarBase]:
+    def range_bar(self, size: int) -> Optional[RangeBar]:
         """
-        Return as possible the last tickbar.
+        Return as possible the last range-bar.
         """
-        tickbars = self._tickbars.get(tb, [])
+        range_bars = self._range_bars.get(size, [])
 
-        if tickbars:
-            return tickbars[-1]
+        if range_bars:
+            return range_bars[-1]
 
         return None
 
-    def tickbars(self, tb: int) -> List[TickBarBase]:
+    def range_bars(self, size: int) -> List[RangeBar]:
         """
-        Returns tickbars list.
+        Returns range-bars list.
         """
-        return self._tickbars.get(tb)
+        return self._range_bars.get(size)
 
     #
     # sync
@@ -1204,26 +1209,48 @@ class Instrument(object):
         """
         Return true when ready to process.
         """
-        return not self._wanted
+        return not self._needed_timeframes and not self._needed_range_bars
 
-    def want_timeframe(self, timeframe: float):
+    def need_timeframe(self, timeframe: float):
         """
         Add a required candles for a specific timeframe.
         """
-        self._wanted.append(timeframe)
+        self._needed_timeframes.append(timeframe)
 
-    def is_want_timeframe(self, timeframe: float) -> bool:
+    def need_range_bar(self, size: float):
         """
-        Check if a timeframe is wanted.
+        Add a required candles for a specific range-bar size.
         """
-        return timeframe in self._wanted
+        self._needed_range_bars.append(size)
+
+    def is_need_timeframe(self, timeframe: float) -> bool:
+        """
+        Check if a timeframe is needed.
+        """
+        return timeframe in self._needed_timeframes
+
+    def is_need_range_bar(self, size: int) -> bool:
+        """
+        Check if a certain size of range-bar is needed.
+        """
+        return size in self._needed_range_bars
 
     def ack_timeframe(self, timeframe: float) -> bool:
         """
         Clear wanted timeframe status and returns true if it was wanted.
         """
-        if timeframe in self._wanted:
-            self._wanted.remove(timeframe)
+        if timeframe in self._needed_timeframes:
+            self._needed_timeframes.remove(timeframe)
+            return True
+
+        return False
+
+    def ack_range_bar(self, size: int) -> bool:
+        """
+        Clear wanted range-bar status and returns true if it was wanted.
+        """
+        if size in self._needed_range_bars:
+            self._needed_range_bars.remove(size)
             return True
 
         return False

@@ -11,12 +11,12 @@ from importlib import import_module
 from common.signal import Signal
 
 from instrument.instrument import Instrument, Candle
+from instrument.rangebar import RangeBar
 
 from trader.market import Market
 from trader.asset import Asset
 
-from .ohlcstorage import OhlcStorage, OhlcStreamer
-
+from .ohlcstorage import OhlcStreamer
 from .database import Database, DatabaseException
 
 import logging
@@ -140,7 +140,7 @@ class PgSql(Database):
                 timestamp BIGINT NOT NULL,
                 data TEXT NOT NULL DEFAULT '{}')""")
 
-        cursor.execute("""CREATE INDEX IF NOT EXISTS idx_user_closed_trade_all on user_closed_trade(broker_id, account_id, market_id, strategy_id)""")
+        cursor.execute("""CREATE INDEX IF NOT EXISTS idx_user_closed_trade_all ON user_closed_trade(broker_id, account_id, market_id, strategy_id)""")
 
         self._db.commit()
 
@@ -167,6 +167,42 @@ class PgSql(Database):
                 direction INTEGER NOT NULL,
                 price VARCHAR(32) NOT NULL,
                 quantity VARCHAR(32) NOT NULL)""")
+
+        self._db.commit()
+
+    def setup_range_bar_sql(self):
+        cursor = self._db.cursor()
+
+        # bar table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS range_bar(
+                id SERIAL PRIMARY KEY,
+                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                timestamp BIGINT NOT NULL, duration BIGINT NOT NULL,
+                size INTEGER NOT NULL,
+                open VARCHAR(32) NOT NULL, high VARCHAR(32) NOT NULL, low VARCHAR(32) NOT NULL, close VARCHAR(32) NOT NULL,
+                volume VARCHAR(48) NOT NULL,
+                UNIQUE(broker_id, market_id, timestamp, size))""")
+
+        self._db.commit()
+
+    def setup_volume_profile_sql(self):
+        cursor = self._db.cursor()
+
+        # @todo
+        # cursor.execute("""
+        #     CREATE TABLE IF NOT EXISTS volume_profile (
+        #         id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+        #         timestamp INTEGER NOT NULL, timeframe INTEGER NOT NULL,
+        #         poc VARCHAR(32) NOT NULL,
+        #         low_area VARCHAR(32) NOT NULL,
+        #         high_area VARCHAR(32) NOT NULL,
+        #         volumes VARCHAR(16384) NOT NULL,
+        #         peaks VARCHAR(4096) NOT NULL,
+        #         valleys VARCHAR(4096) NOT NULL,
+        #         sensibility INTEGER NOT NULL,
+        #         volume_area INTEGER NOT NULL,
+        #         UNIQUE (timestamp, timeframe, sensibility, volume_area))""")
 
         self._db.commit()
 
@@ -227,6 +263,70 @@ class PgSql(Database):
                 ohlc.set_consolidated(False)  # current
 
             return ohlc
+
+        return None
+
+    def get_last_range_bar(self, broker_id: str, market_id: str, size: int):
+        cursor = self._db.cursor()
+
+        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar 
+                       WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp DESC LIMIT 1""" % (
+            broker_id, market_id, size))
+
+        row = cursor.fetchone()
+
+        if row:
+            timestamp = float(row[0]) * 0.001  # to float second timestamp
+            bar = RangeBar(timestamp)
+
+            bar.set_duration(float(row[1] * 0.001))  # to float second duration
+            bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+
+            bar.set_volume(float(row[6]))
+
+            if bar.abs_height < size:
+                bar.set_consolidated(False)  # current
+
+            return bar
+
+        return None
+
+    def get_last_range_bar_at(self, broker_id: str, market_id: str, size: int, timestamp: float):
+        cursor = self._db.cursor()
+
+        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp = %s""" % (
+                            broker_id, market_id, size, int(timestamp * 1000.0)))
+
+        row = cursor.fetchone()
+
+        if row:
+            timestamp = float(row[0]) * 0.001  # to float second timestamp
+            bar = RangeBar(timestamp)
+
+            bar.set_duration(float(row[1] * 0.001))  # to float second duration
+            bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+
+            bar.set_volume(float(row[6]))
+
+            if bar.abs_height < size:
+                bar.set_consolidated(False)  # current
+
+            return bar
+
+        return None
+
+    def get_last_volume_profile(self, broker_id: str, market_id: str, vp_type: str):
+        cursor = self._db.cursor()
+
+        # @todo
+
+        return None
+
+    def get_last_volume_profile_at(self, broker_id: str, market_id: str, vp_type: str, timestamp: float):
+        cursor = self._db.cursor()
+
+        # @todo
 
         return None
 
@@ -859,11 +959,13 @@ class PgSql(Database):
 
     def process_ohlc(self):
         #
-        # insert market ohlcs
+        # insert market OHLC
         #
 
-        if self._pending_ohlc_insert and (self._pending_ohlc_select or (len(self._pending_ohlc_insert) >= 500) or (time.time() - self._last_ohlc_flush >= 60)):
-            # some select could need of the last insert, or more than 500 pending insert, or last insert was 60 seconds past or more
+        if self._pending_ohlc_insert and (self._pending_ohlc_select or (len(self._pending_ohlc_insert) >= 500) or (
+                time.time() - self._last_ohlc_flush >= 60)):
+            # some select could need of the last insert, or more than 500 pending insert, or last insert
+            # was 60 seconds past or more
             with self._mutex:
                 mkd = self._pending_ohlc_insert
                 self._pending_ohlc_insert = []
@@ -949,19 +1051,20 @@ class PgSql(Database):
                     self._pending_liquidation_insert = mkd + self._pending_liquidation_insert
 
         #
-        # clean older ohlcs
+        # clean older candles
         #
 
         if self._auto_cleanup:
-            if time.time() - self._last_ohlc_clean >= OhlcStorage.CLEANUP_DELAY:
+            if time.time() - self._last_ohlc_clean >= Database.OHLC_CLEANUP_DELAY:
                 try:
                     now = time.time()
                     cursor = self._db.cursor()
 
-                    for timeframe, timestamp in OhlcStorage.CLEANERS:
+                    for timeframe, timestamp in Database.OHLC_HOLD_DURATION:
                         ts = int(now - timestamp) * 1000
                         # @todo make a count before
-                        cursor.execute("DELETE FROM ohlc WHERE timeframe <= %i AND timestamp < %i" % (timeframe, ts))
+                        cursor.execute("DELETE FROM ohlc WHERE timeframe > 0 AND timeframe <= %i AND timestamp < %i" % (
+                            timeframe, ts))
 
                     self._db.commit()
                     cursor = None
@@ -973,7 +1076,7 @@ class PgSql(Database):
                 self._last_ohlc_clean = time.time()
 
         #
-        # select market ohlcs, only after the inserts are processed
+        # select market OHLC, only after the inserts are processed
         #
 
         with self._mutex:
@@ -1051,6 +1154,233 @@ class PgSql(Database):
                 # retry the next time
                 with self._mutex:
                     self._pending_ohlc_select = mks + self._pending_ohlc_select
+
+    def process_range_bar(self):
+        #
+        # insert market bar
+        #
+
+        if self._pending_range_bar_insert and (self._pending_range_bar_select or (len(self._pending_range_bar_insert) >= 500) or (
+                time.time() - self._last_range_bar_flush >= 60)):
+            # some select could need of the last insert, or more than 500 pending insert, or last insert
+            # was 60 seconds past or more
+            with self._mutex:
+                mkd = self._pending_range_bar_insert
+                self._pending_range_bar_insert = []
+
+            if mkd:
+                try:
+                    cursor = self._db.cursor()
+
+                    elts = []
+                    data = set()
+
+                    for mk in mkd:
+                        if (mk[0], mk[1], mk[2], mk[4]) not in data:
+                            elts.append("('%s', '%s', %i, %i, %i, '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9]))
+                            data.add((mk[0], mk[1], mk[2], mk[4]))
+
+                    query = ' '.join(("INSERT INTO range_bar(broker_id, market_id, timestamp, duration, size, open, high, low, close, volume) VALUES",
+                                ','.join(elts),
+                                "ON CONFLICT (broker_id, market_id, timestamp, size) DO UPDATE SET duration = EXCLUDED.duration, open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low, close = EXCLUDED.close, volume = EXCLUDED.volume"))
+
+                    cursor.execute(query)
+
+                    self._db.commit()
+                    cursor = None
+                except self.psycopg2.OperationalError as e:
+                    self.try_reconnect(e)
+
+                    # retry the next time
+                    with self._mutex:
+                        self._pending_range_bar_insert = mkd + self._pending_range_bar_insert
+                except Exception as e:
+                    self.on_error(e)
+
+                    # retry the next time
+                    with self._mutex:
+                        self._pending_range_bar_insert = mkd + self._pending_range_bar_insert
+
+                self._last_range_bar_flush = time.time()
+
+        #
+        # select market range-bar, only after the inserts are processed
+        #
+
+        with self._mutex:
+            mks = self._pending_range_bar_select
+            self._pending_range_bar_select = []
+
+        if mks:
+            try:
+                for mk in mks:
+                    cursor = self._db.cursor()
+                    reverse = False
+
+                    if mk[4] == 0:
+                        # from to
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[5], mk[6]))
+                    elif mk[4] == 1:
+                        # last n
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp DESC LIMIT %s""" % (
+                                            mk[1], mk[2], mk[3], mk[5]))
+                        reverse = True
+                    elif mk[4] == 2:
+                        # last n to date
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp <= %i ORDER BY timestamp DESC LIMIT %i""" % (
+                                            mk[1], mk[2], mk[3], mk[6], mk[5]))
+                        reverse = True
+                    elif mk[4] == 3:
+                        # from to now
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[5]))
+                    else:
+                        # all @warning should be removed, unused and dangerous
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3]))
+
+                    rows = cursor.fetchall()
+
+                    bars = []
+
+                    for row in rows:
+                        timestamp = float(row[0]) * 0.001  # to float second timestamp
+                        bar = RangeBar(timestamp)
+
+                        bar.set_duration(float(row[1] * 0.001))  # to float second duration
+                        bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+
+                        bar.set_volume(float(row[6]))
+
+                        if bar.abs_height < mk[3]:
+                            bar.set_consolidated(False)  # current
+
+                        if reverse:
+                            bars.insert(0, bar)
+                        else:
+                            bars.append(bar)
+
+                    cursor = None
+
+                    # notify
+                    mk[0].notify(Signal.SIGNAL_RANGE_BAR_DATA_BULK, mk[1], (mk[2], mk[3], bars))
+            except self.psycopg2.OperationalError as e:
+                self.try_reconnect(e)
+
+                # retry the next time
+                with self._mutex:
+                    self._pending_range_bar_select = mks + self._pending_range_bar_select
+            except Exception as e:
+                self.on_error(e)
+
+                # retry the next time
+                with self._mutex:
+                    self._pending_range_bar_select = mks + self._pending_range_bar_select
+
+    def process_volume_profile(self):
+        pass
+
+    # def store_cached_volume_profile(self, broker_id: str, market_id: str, strategy_id: str, timeframe: float,
+    #                                 data: Union[List[VolumeProfile], VolumeProfile],
+    #                                 sensibility: int = 10, volume_area: int = 70):
+    #     """
+    #     @param volume_area:
+    #     @param sensibility:
+    #     @param timeframe:
+    #     @param strategy_id:
+    #     @param market_id:
+    #     @param broker_id:
+    #     @param data A single tuple or a list of tuple.
+    #
+    #     Format of a Volume Profile tuple is (timestamp:float in seconds, POC_price:float, POC_volume:float, Volumes:dict, Peaks:list, Valleys:list)
+    #     Format of a peak or a valley is price as key, volume as value.
+    #     """
+    #     if not data:
+    #         return
+    #
+    #     if type(data) is list:
+    #         # array of VPs
+    #         data_set = [(timeframe, sensibility, volume_area, int(d.timestamp*1000), d.poc, d.low_area, d.high_area,
+    #             json.dumps(tuple((b, v) for b, v in d.volumes.items())), json.dumps(d.peaks), json.dumps(d.valleys)) for d in data]
+    #
+    #         try:
+    #             db = self.open_cached_db(broker_id, market_id, strategy_id)
+    #             cursor = db.cursor()
+    #
+    #             cursor.executemany("""INSERT OR REPLACE INTO volume_profile(timeframe, sensibility, volume_area, timestamp, poc, low_area, high_area, volumes, peaks, valleys)
+    #                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", data_set)
+    #
+    #             db.commit()
+    #         except self.sqlite3.IntegrityError as e:
+    #             error_logger.error(repr(e))
+    #             raise DatabaseException("SQlite Integrity Error: Failed to insert cached Volume Profile for %s %s.\n" % (broker_id, market_id,) + str(e))
+    #
+    #     elif type(data) is VolumeProfile:
+    #         # single VP
+    #         try:
+    #             db = self.open_cached_db(broker_id, market_id, strategy_id)
+    #             cursor = db.cursor()
+    #
+    #             cursor.execute("""INSERT OR REPLACE INTO volume_profile(timeframe, sensibility, volume_area, timestamp, poc, low_area, high_area, volumes, peaks, valleys)
+    #                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", (timeframe, sensibility, volume_area, int(data.timestamp*1000), data.poc, data.low_area, data.high_area,
+    #                         json.dumps(data.volumes), json.dumps(data.peaks), json.dumps(data.valleys)))
+    #
+    #             db.commit()
+    #         except self.sqlite3.IntegrityError as e:
+    #             error_logger.error(repr(e))
+    #             raise DatabaseException("SQlite Integrity Error: Failed to insert cached Volume Profile for %s %s.\n" % (broker_id, market_id,) + str(e))
+
+    # def get_cached_volume_profile(self, broker_id: str, market_id: str, strategy_id: str, timeframe: float,
+    #                               from_date: datetime, to_date: Optional[datetime] = None,
+    #                               sensibility: int = 10, volume_area: int = 70):
+    #     """
+    #     Load TA Volume Profile cache for a specific broker id market id and strategy identifier and inclusive period.
+    #     """
+    #     from_ts = from_date.timestamp()
+    #     to_ts = to_date.timestamp() if to_date else time.time()
+    #
+    #     try:
+    #         db = self.open_cached_db(broker_id, market_id, strategy_id)
+    #         cursor = db.cursor()
+    #
+    #         cursor.execute("""SELECT timestamp, poc, low_area, high_area, volumes, peaks, valleys FROM volume_profile
+    #                         WHERE timeframe = ? AND sensibility = ? AND volume_area = ? AND timestamp >= ? AND timestamp <= ?
+    #                         ORDER BY timestamp ASC""", (
+    #                             timeframe, sensibility, volume_area, int(from_ts * 1000), int(to_ts * 1000)))
+    #
+    #         rows = cursor.fetchall()
+    #         now = time.time()
+    #
+    #         db.close()
+    #         db = None
+    #
+    #         results = []
+    #
+    #         for row in rows:
+    #             timestamp = float(row[0]) * 0.001  # to float second timestamp
+    #             vp = VolumeProfile(timestamp, timeframe, float(row[1]),  float(row[2]), float(row[3]),
+    #                                {b: v for b, v in json.loads(row[4])},
+    #                                json.loads(row[5]),
+    #                                json.loads(row[6]))
+    #
+    #             results.append(vp)
+    #
+    #         return results
+    #
+    #     except Exception as e:
+    #         error_logger.error(repr(e))
+    #         raise DatabaseException("Unable to get a range of cached Volume Profile for %s %s" % (broker_id, market_id))
+    #
+
+    #
+    # states
+    #
 
     def on_error(self, e):
         logger.error(repr(e))  # + '\n' + e.pgerror)

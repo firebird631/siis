@@ -5,24 +5,20 @@
 
 from __future__ import annotations
 
-from typing import Tuple, Optional, Union, List
+from typing import Tuple, Optional
 
-import os
-import json
 import time
 import threading
 import pathlib
 from datetime import datetime
 
-from importlib import import_module
-
-from strategy.indicator.models import Limits, VolumeProfile
+from strategy.indicator.models import VolumeProfile
 
 from config import utils
 
 from .tickstorage import TickStorage, TickStreamer, FirstTickFinder, LastTickFinder
 from .ohlcstorage import OhlcStreamer
-from .quotestorage import QuoteStorage, QuoteStreamer, LastQuoteFinder
+# from .quotestorage import QuoteStorage, QuoteStreamer, LastQuoteFinder
 
 import logging
 logger = logging.getLogger('siis.database')
@@ -36,50 +32,95 @@ class DatabaseException(Exception):
 class Database(object):
     """
     Persistence database.
-    Timestamp during storing are in ms except if there is an object (not raw data).
-    Timestamp fetched are in accordance with the object property (mostly second timestamp).
 
-    @todo store maker/taker fee and commission for each market
+    Timestamp are stored in ms except if there is an object (not raw data).
+    Timestamp fetched are converted as the object property (mostly second timestamp).
 
-    All markets information are stored in postgresql DB.
-    User asset are stored in postgresql DB.
-    User trades and stored in postgresql DB.
-    OHLC are stored in postgresql DB.
+    What are story into the SQL DB :
+        - Market information
+        - Asset information
+        - User asset quantities per account-identifier
+        - User trade and strategy trader per account-identifier/strategy-identifier
+        - OHLC history (any timeframes) but 1m and lower timeframes can create a big amount of data
+        - Market liquidations
+        -
 
     Ticks are run in exclusive read or write mode :
-        - first case is when watcher or fetcher are writing some news data.
-        - second case is during backtesting, streaming data from ticks.
+        - Writing when a watcher, fetcher or a specific tool is writing some news data.
+        - Reading during a backtest, training, streaming data from ticks or generating OHLC from ticks...
+            - During streaming for a backtest or training
+            - Generation of ticks from OHLC
+            - Checking data consistency and gaps
 
-    OHLCs
-    =======
+    OHLC
+    ====
 
-    Preferred ohlc of interest are 1m, 5m, 15m, 1h, 4h, daily, weekly.
+    They can be stored in live by the watcher if the --store-ohlc option is defined but this can create gaps when
+    the program is not running or loss the network connexion.
 
-        - Weekly, daily, 4h and 3h ohlc are always kept and store in the SQL DB.
-        - 2h, 1h and 45m ohlc are kept for 90 days (if the cleaner is executed).
+    It is preferred to executed cron task to fetch each 4h the history of OHLC to stay in sync as possible (
+    not always possible with any exchanges) or to recreate them from the fetched history of ticks/trades.
+
+    The tool "optimizer" can be used to detect gaps.
+    The tool "cleaner" can delete older OHLC according to previously defined rules.
+
+    Purge of OHLC can be done automatically, but it is not really evident to know what to delete and what to keep.
+    So that it is preferable to uses manually SQL operations or using the tool "cleaner" but it is not fully
+    operational at this time (only remove any OHLC for a market, timeframe and specific period will be added).
+
+    Watcher store timeframe of interest are 1m, 5m, 15m, 1h, 4h, daily, weekly but other can be computed using the tool
+    "rebuilder".
+
+    Every OHLC are kept above 2h. Others are cleaned if auto-cleaning is specified (opt-out) :
+        - 2h, 1h and 45m ohlc are kept for 90 days.
         - 30m, 15m, 10m are kept for 21 days.
         - 5m, 3m, 1m are kept for 8 days.
         - 1s, 10s are never kept.
 
-    Optimizer can be used to detect gaps.
-    Cleaner delete older ohlc according to previously defined rules.
+    Tick/Trade
+    ==========
 
-    Ticks
-    =====
+    Ticks are stored per market into multiple binary files or into ASCII files that can be optimized in binary version.
+    Structure is one file per month and each market had its directory structure.
 
-    Ticks are stored per market into multiple text files that can be optimized.
-    Organisation is one file per month.
+    They essentially exist for backtesting purpose and could serve as source to recreate OHLC bar or volume profiles.
 
-    They essentially exists for backtesting purpose. But could serve as source to recreate ohlc also.
-    They are stored in live by the watcher because its difficult to fetch historical data on most of the brokers.
+    They can be stored in live by the watcher if the --store-trade option is defined but this can create gaps when
+    the program is not running or loss the network connexion.
 
-    Optimizer can be used to detect gaps, but some crypto market have few trades per hours.
+    It is preferred to executed cron task to fetch each 4h the history of ticks to stay in sync as possible (
+    not always possible with any exchanges).
 
-    If you launch many watcher writing to the same market it could multiply the ticks entries,
-    or if you make a manual fetch of a specific market. Then the tick file will be broken and need to be optimized
-    or re-fetched.
+    The tool "optimizer" can be used to detect gaps or broken files (datetime inconsistency);
+
+    If you launch many watchers/fetchers at the same time in writing mode to the same market it could multiply
+    the ticks entries. Then some ticks files are corrupted because the implementation is sequential and need that you
+    delete the broken files and fetch them back.
+
+    Purge of ticks must be done manually from the file system.
+
+    Volumes Profile
+    ===============
+
+    Not really functional currently. Use the distinct cache using SQLite (one file per market/strategy-identifier).
+    But this will be centralized into the SQL DB. Generation tool will help to create history for different timeframe
+    and even for non-temporal bar.
+
+    Non-temporal Bar (OHLC)
+    =======================
+
+    It is planned to add the non temporal-bar as temporal OHLC are. It was planned to cache them into distinct
+    SQLite DB but finally will be centralized into the SQL DB.
     """
     __instance = None
+
+    OHLC_CLEANUP_DELAY = 4 * 60 * 60  # each 4 hours
+
+    # from lesser to higher timeframe, higher timeframes are never purged
+    OHLC_HOLD_DURATION = (
+        (5 * 60, 8 * 24 * 60 * 60),  # until 5m keep for 8 days
+        (30 * 60, 21 * 24 * 60 * 60),  # until 30m keep for 21 days
+        (2 * 60 * 60, 90 * 24 * 60 * 60))  # until 2h keep for 90 days
 
     @classmethod
     def inst(cls):
@@ -130,6 +171,12 @@ class Database(object):
         self._pending_ohlc_insert = []
         self._pending_ohlc_select = []
 
+        self._pending_range_bar_insert = []
+        self._pending_range_bar_select = []
+
+        self._pending_volume_profile_insert = []
+        self._pending_volume_profile_select = []
+
         self._pending_user_trade_insert = []
         self._pending_user_trade_select = []
         self._pending_user_trade_delete = []
@@ -143,26 +190,22 @@ class Database(object):
         self._last_ohlc_flush = 0
         self._last_ohlc_clean = time.time()
 
-        self._markets_path = None   # path where data are stored into files (ticks, quotes, cached indicators)
+        self._last_range_bar_flush = 0
+        self._last_vp_flush = 0
+
+        self._markets_path = None   # path where data are stored into the file-system
 
         self._tick_storages = {}    # TickStorage per market
         self._pending_tick_insert = set()
 
-        self._quote_storages = {}   # QuoteStorage per market
-        self._pending_quote_insert = set()
+        # self._quote_storages = {}   # QuoteStorage per market
+        # self._pending_quote_insert = set()
 
-        self._auto_cleanup = False
-        self._fetch = False
+        self._auto_cleanup = False  # default never cleanup older OHLC (bar, volume-profile)
+        self._fetch = False  # is fetch mode flush tick continuously, default is async mode
+
         self._store_trade_text = False
         self._store_trade_binary = True
-
-        # sqlite3 support needed for cached data
-        self.sqlite3 = None
-
-        try:
-            self.sqlite3 = import_module('sqlite3', package='')
-        except ModuleNotFoundError as e:
-            logger.error(repr(e))
 
     def lock(self, blocking: bool = True, timeout: float = -1):
         self._mutex.acquire(blocking, timeout)
@@ -185,6 +228,9 @@ class Database(object):
         self.setup_market_sql()
         self.setup_userdata_sql()
         self.setup_ohlc_sql()
+
+        self.setup_range_bar_sql()
+        self.setup_volume_profile_sql()
 
         # keep data path for usage in per market DB location
         self._markets_path = pathlib.Path(options['markets-path'])
@@ -251,14 +297,14 @@ class Database(object):
             self._tick_storages = {}
             self._pending_tick_insert = set()
 
-        # flush remaining quotes
-        with self._mutex:
-            for k, quote_storage in self._quote_storages.items():
-                quote_storage.flush()
-                quote_storage.close()
-
-            self._quote_storages = {}
-            self._pending_quote_insert = set()
+        # # flush remaining quotes
+        # with self._mutex:
+        #     for k, quote_storage in self._quote_storages.items():
+        #         quote_storage.flush()
+        #         quote_storage.close()
+        #
+        #     self._quote_storages = {}
+        #     self._pending_quote_insert = set()
 
     def setup_market_sql(self):
         pass
@@ -267,6 +313,12 @@ class Database(object):
         pass
 
     def setup_ohlc_sql(self):
+        pass
+
+    def setup_range_bar_sql(self):
+        pass
+
+    def setup_volume_profile_sql(self):
         pass
 
     #
@@ -311,38 +363,38 @@ class Database(object):
             n = len(self._pending_tick_insert)
             return n
 
-    def store_market_quote(self, data: Tuple[str, str, int, int, str, str, str, str, str, str]):
-        """
-        @param data: is a tuple or an array of tuples containing data in that order and format :
-            str broker_id (not empty)
-            str market_id (not empty)
-            integer timestamp (ms since epoch)
-            integer timeframe (time unit un seconds)
-            str open (>= 0)
-            str high (>= 0)
-            str low (>= 0)
-            str close (>= 0)
-            str spread (>= 0)
-            str volume (>= 0)
-        """
-        with self._mutex:
-            # store market per keyed array
-            key = data[0]+'/'+data[1]
-            quote_storage = self._quote_storages.get(key)
-
-            if not quote_storage:
-                quote_storage = QuoteStorage(self._markets_path, data[0], data[1], data[3],
-                                             text=self._store_trade_text, binary=self._store_trade_binary)
-
-                self._quote_storages[key] = quote_storage
-
-            quote_storage.store(data)
-
-            # pending list of QuoteStorage controller having data to process to avoid checking everyone
-            self._pending_quote_insert.add(quote_storage)
-
-        with self._condition:
-            self._condition.notify()
+    # def store_market_quote(self, data: Tuple[str, str, int, int, str, str, str, str, str, str]):
+    #     """
+    #     @param data: is a tuple or an array of tuples containing data in that order and format :
+    #         str broker_id (not empty)
+    #         str market_id (not empty)
+    #         integer timestamp (ms since epoch)
+    #         integer timeframe (time unit un seconds)
+    #         str open (>= 0)
+    #         str high (>= 0)
+    #         str low (>= 0)
+    #         str close (>= 0)
+    #         str spread (>= 0)
+    #         str volume (>= 0)
+    #     """
+    #     with self._mutex:
+    #         # store market per keyed array
+    #         key = data[0]+'/'+data[1]
+    #         quote_storage = self._quote_storages.get(key)
+    #
+    #         if not quote_storage:
+    #             quote_storage = QuoteStorage(self._markets_path, data[0], data[1], data[3],
+    #                                          text=self._store_trade_text, binary=self._store_trade_binary)
+    #
+    #             self._quote_storages[key] = quote_storage
+    #
+    #         quote_storage.store(data)
+    #
+    #         # pending list of QuoteStorage controller having data to process to avoid checking everyone
+    #         self._pending_quote_insert.add(quote_storage)
+    #
+    #     with self._condition:
+    #         self._condition.notify()
 
     def store_market_ohlc(self, data: Tuple[str, str, int, int, str, str, str, str, str, str]):
         """
@@ -350,7 +402,7 @@ class Database(object):
             str broker_id (not empty)
             str market_id (not empty)
             integer timestamp (ms since epoch)
-            integer timeframe (time unit in seconds)        
+            integer timeframe (time unit in seconds)
             str open (>= 0)
             str high (>= 0)
             str low (>= 0)
@@ -441,9 +493,78 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
+    def store_market_range_bar(self, data: Tuple[str, str, int, int, int, str, str, str, str, str]):
+        """
+        @param data: is a tuple or an array of tuples containing data in that order and format :
+            str broker_id (not empty)
+            str market_id (not empty)
+            integer timestamp (ms since epoch) opening timestamp
+            integer duration (ms since timestamp)
+            integer size (>0)
+            str open (>= 0)
+            str high (>= 0)
+            str low (>= 0)
+            str close (>= 0)
+            str volume (>= 0)
+
+        @note Replace if exists.
+        """
+        with self._mutex:
+            if isinstance(data, list):
+                self._pending_range_bar_insert.extend(data)
+            else:
+                self._pending_range_bar_insert.append(data)
+
+        with self._condition:
+            self._condition.notify()
+
+    def store_market_volume_profile(self, data: Tuple[str, str, int]):
+            """
+            @param data: is a tuple or an array of tuples containing data in that order and format :
+                str broker_id (not empty)
+                str market_id (not empty)
+                integer timestamp (ms since epoch)
+                @todo
+
+            @note Replace if exists.
+            """
+            with self._mutex:
+                if isinstance(data, list):
+                    self._pending_volume_profile_insert.extend(data)
+                else:
+                    self._pending_volume_profile_insert.append(data)
+
+            with self._condition:
+                self._condition.notify()
+
     #
     # async loads
     #
+
+    def load_market_list(self, service, broker_id: str):
+        """
+        Load the complete list of market available for a specific broker id.
+        @param service to be notified once done
+        @param broker_id: str
+        """
+        with self._mutex:
+            self._pending_market_list_select.append((service, broker_id))
+
+        with self._condition:
+            self._condition.notify()
+
+    def load_market_info(self, service, broker_id: str, market_id: str):
+        """
+        Load a specific market info given its market id.
+        @param service to be notified once done
+        @param market_id:
+        @param broker_id:
+        """
+        with self._mutex:
+            self._pending_market_info_select.append((service, broker_id, market_id))
+
+        with self._condition:
+            self._condition.notify()
 
     def load_market_ohlc(self, service, broker_id: str, market_id: str, timeframe: float,
                          from_datetime: Optional[datetime] = None, to_datetime: Optional[datetime] = None):
@@ -486,27 +607,84 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_market_info(self, service, broker_id: str, market_id: str):
+    def load_market_range_bar(self, service, broker_id: str, market_id: str, size: int,
+                              from_datetime: Optional[datetime] = None, to_datetime: Optional[datetime] = None):
         """
-        Load a specific market info given its market id.
+        Load a set of market non-temporal bar.
         @param service to be notified once done
-        @param market_id:
-        @param broker_id:
+        @param broker_id: str
+        @param market_id: str
+        @param size: int
+        @param from_datetime datetime
+        @param to_datetime datetime
         """
         with self._mutex:
-            self._pending_market_info_select.append((service, broker_id, market_id))
+            from_ts = int(from_datetime.timestamp() * 1000) if from_datetime else None
+            to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
+
+            mode = 0 if from_ts and to_ts else 3
+            self._pending_range_bar_select.append((service, broker_id, market_id, size, mode, from_ts, to_ts))
 
         with self._condition:
             self._condition.notify()
 
-    def load_market_list(self, service, broker_id: str):
+    def load_market_range_bar_last_n(self, service, broker_id: str, market_id: str, size: int,
+                                     last_n: int, to_datetime: Optional[datetime] = None):
         """
-        Load the complete list of market available for a specific broker id.
+        Load a set of market non-temporal bar.
         @param service to be notified once done
+        @param market_id: str
         @param broker_id: str
+        @param size: int
+        @param last_n: int last max n results to load
+        @param to_datetime
         """
         with self._mutex:
-            self._pending_market_list_select.append((service, broker_id))
+            to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
+
+            mode = 2 if to_ts else 1
+            self._pending_range_bar_select.append((service, broker_id, market_id, size, mode, last_n, to_ts))
+
+        with self._condition:
+            self._condition.notify()
+
+    def load_market_volume_profile(self, service, broker_id: str, market_id: str, vp_type: str,
+                                   from_datetime: Optional[datetime] = None, to_datetime: Optional[datetime] = None):
+        """
+        Load a set of market volume-profile.
+        @param service to be notified once done
+        @param broker_id: str
+        @param market_id: str
+        @param vp_type: str
+        @param from_datetime datetime
+        @param to_datetime datetime
+        """
+        with self._mutex:
+            from_ts = int(from_datetime.timestamp() * 1000) if from_datetime else None
+            to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
+
+            mode = 0 if from_ts and to_ts else 3
+            self._pending_volume_profile_select.append((service, broker_id, market_id, vp_type, mode, from_ts, to_ts))
+
+        with self._condition:
+            self._condition.notify()
+
+    def load_market_volume_profile_last_n(self, service, broker_id: str, market_id: str, vp_type: str,
+                                          last_n: int, to_datetime: Optional[datetime] = None):
+        """
+        Load a set of market volume-profile.
+        @param service to be notified once done
+        @param market_id: str
+        @param broker_id: str
+        @param vp_type: str
+        @param last_n: int last max n results to load
+        @param to_datetime
+        """
+        with self._mutex:
+            to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
+
+            mode = 2 if to_ts else 1
+            self._pending_volume_profile_select.append((service, broker_id, market_id, vp_type, mode, last_n, to_ts))
 
         with self._condition:
             self._condition.notify()
@@ -523,9 +701,9 @@ class Database(object):
         """Load and return only the last found and most recent stored tick."""
         return LastTickFinder(self._markets_path, broker_id, market_id, binary=True).last()
 
-    def get_last_quote(self, broker_id: str, market_id: str, timeframe: float):
-        """Load and return only the last found and most recent stored tick."""
-        return LastQuoteFinder(self._markets_path, broker_id, market_id, timeframe, binary=True).last()
+    # def get_last_quote(self, broker_id: str, market_id: str, timeframe: float):
+    #     """Load and return only the last found and most recent stored tick."""
+    #     return LastQuoteFinder(self._markets_path, broker_id, market_id, timeframe, binary=True).last()
 
     def get_last_ohlc(self, broker_id: str, market_id: str, timeframe: float):
         """Load and return only the last found and most recent stored OHLC from a specific timeframe."""
@@ -533,6 +711,22 @@ class Database(object):
 
     def get_last_ohlc_at(self, broker_id: str, market_id: str, timeframe: float, timestamp: float):
         """Load and return the single OHLC found at given timestamp in seconds from a specific timeframe."""
+        return None
+
+    def get_last_range_bar(self, broker_id: str, market_id: str, bar_type: str):
+        """Load and return only the last found and most recent stored range-bar from a specific size."""
+        return None
+
+    def get_last_range_bar_at(self, broker_id: str, market_id: str, bar_type: str, timestamp: float):
+        """Load and return the single range-bar found at given timestamp in seconds from a specific size."""
+        return None
+
+    def get_last_volume_profile(self, broker_id: str, market_id: str, vp_type: str):
+        """Load and return only the last found and most recent stored volume-profile from a specific type."""
+        return None
+
+    def get_last_volume_profile_at(self, broker_id: str, market_id: str, vp_type: str, timestamp: float):
+        """Load and return the single volume-profile found at given timestamp in seconds from a specific type."""
         return None
 
     def get_user_closed_trades(self, broker_id: str, account_id: str, strategy_id: str,
@@ -725,9 +919,11 @@ class Database(object):
                 self.process_userdata()
                 self.process_market()
                 self.process_ohlc()
+                self.process_range_bar()
+                self.process_volume_profile()
 
             self.process_tick()
-            self.process_quote()
+            # self.process_quote()
 
     def process_market(self):
         pass
@@ -736,6 +932,12 @@ class Database(object):
         pass
 
     def process_ohlc(self):
+        pass
+
+    def process_range_bar(self):
+        pass
+
+    def process_volume_profile(self):
         pass
 
     def process_tick(self):
@@ -757,24 +959,24 @@ class Database(object):
                     with self._mutex:
                         self._pending_tick_insert.add(tick_storage)
 
-    def process_quote(self):
-        with self._mutex:
-            # are there some quotes to store
-            if not self._pending_quote_insert:
-                return
-
-            pqi = self._pending_quote_insert
-            self._pending_quote_insert = set()
-
-        for quote_storage in pqi:
-            if self._fetch or quote_storage.can_flush():
-                if quote_storage.has_data():
-                    quote_storage.flush(close_at_end=not self._fetch)
-
-                if quote_storage.has_data():
-                    # data remaining
-                    with self._mutex:
-                        self._pending_quote_insert.add(quote_storage)
+    # def process_quote(self):
+    #     with self._mutex:
+    #         # are there some quotes to store
+    #         if not self._pending_quote_insert:
+    #             return
+    #
+    #         pqi = self._pending_quote_insert
+    #         self._pending_quote_insert = set()
+    #
+    #     for quote_storage in pqi:
+    #         if self._fetch or quote_storage.can_flush():
+    #             if quote_storage.has_data():
+    #                 quote_storage.flush(close_at_end=not self._fetch)
+    #
+    #             if quote_storage.has_data():
+    #                 # data remaining
+    #                 with self._mutex:
+    #                     self._pending_quote_insert.add(quote_storage)
 
     #
     # Extra
@@ -789,210 +991,3 @@ class Database(object):
         @note This is a synchronous method.
         """
         pass
-
-    #
-    # sync cache data
-    #
-
-    def get_cached_db_filename(self, broker_id: str, market_id: str, strategy_id: str):
-        cleanup_name = strategy_id
-        return os.path.join(self._markets_path, broker_id, market_id, 'C', cleanup_name + '.db')
-
-    def open_cached_db(self, broker_id: str, market_id: str, strategy_id: str):
-        filename = self.get_cached_db_filename(broker_id, market_id, strategy_id)
-        db = None
-        exist = False
-
-        if os.path.exists(filename):
-            exist = True
-        else:
-            cached_path = pathlib.Path(self._markets_path, broker_id, market_id, 'C')
-            if not cached_path.exists():
-                cached_path.mkdir(parents=True)
-
-        try:
-            db = self.sqlite3.connect(filename)
-        except Exception as e:
-            error_logger.error(repr(e))
-
-        if not exist:
-            try:
-                self.setup_cached_limits_sql(db)
-                self.setup_cached_volume_profile_sql(db)
-            except Exception as e:
-                error_logger.error(repr(e))
-
-        return db
-
-    def setup_cached_limits_sql(self, db):
-        cursor = db.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS limits (
-                id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-                from_timestamp INTEGER NOT NULL,
-                last_timestamp INTEGER NOT NULL,
-                min_price VARCHAR(16) NOT NULL,
-                max_price VARCHAR(16) NOT NULL)""")
-        db.commit()
-
-    def setup_cached_volume_profile_sql(self, db):
-        """
-        market_id
-        peaks and valleys are JSON dict price:volume
-        """
-        cursor = db.cursor()
-        # The volume profile table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS volume_profile (
-                id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-                timestamp INTEGER NOT NULL, timeframe INTEGER NOT NULL,
-                poc VARCHAR(32) NOT NULL,
-                low_area VARCHAR(32) NOT NULL,
-                high_area VARCHAR(32) NOT NULL,
-                volumes VARCHAR(16384) NOT NULL,
-                peaks VARCHAR(4096) NOT NULL,
-                valleys VARCHAR(4096) NOT NULL,
-                sensibility INTEGER NOT NULL,
-                volume_area INTEGER NOT NULL,
-                UNIQUE (timestamp, timeframe, sensibility, volume_area))""")
-
-        db.commit()
-
-    def get_cached_limits(self, broker_id: str, market_id: str, strategy_id: str):
-        """Load TA limits from the data cache for a specific broker id market id and strategy identifier."""
-        try:
-            db = self.open_cached_db(broker_id, market_id, strategy_id)
-            cursor = db.cursor()
-
-            cursor.execute("""SELECT from_timestamp, last_timestamp, min_price, max_price FROM limits""")
-            row = cursor.fetchone()
-
-            db.close()
-            db = None
-
-            if row:
-                return Limits(
-                    float(row[0]) * 0.001, float(row[1]) * 0.001,
-                    float(row[2]), float(row[3])
-                )
-            else:
-                return None
-        except Exception as e:
-            error_logger.error(repr(e))
-            raise DatabaseException("Unable to get cached limits for %s %s" % (broker_id, market_id))
-
-    def get_cached_volume_profile(self, broker_id: str, market_id: str, strategy_id: str, timeframe: float,
-                                  from_date: datetime, to_date: Optional[datetime] = None,
-                                  sensibility: int = 10, volume_area: int = 70):
-        """
-        Load TA Volume Profile cache for a specific broker id market id and strategy identifier and inclusive period.
-        """
-        from_ts = from_date.timestamp()
-        to_ts = to_date.timestamp() if to_date else time.time()
-
-        try:
-            db = self.open_cached_db(broker_id, market_id, strategy_id)
-            cursor = db.cursor()
-
-            cursor.execute("""SELECT timestamp, poc, low_area, high_area, volumes, peaks, valleys FROM volume_profile
-                            WHERE timeframe = ? AND sensibility = ? AND volume_area = ? AND timestamp >= ? AND timestamp <= ?
-                            ORDER BY timestamp ASC""", (
-                                timeframe, sensibility, volume_area, int(from_ts * 1000), int(to_ts * 1000)))
-
-            rows = cursor.fetchall()
-            now = time.time()
-
-            db.close()
-            db = None
-
-            results = []
-
-            for row in rows:
-                timestamp = float(row[0]) * 0.001  # to float second timestamp
-                vp = VolumeProfile(timestamp, timeframe, float(row[1]),  float(row[2]), float(row[3]),
-                                   {b: v for b, v in json.loads(row[4])},
-                                   json.loads(row[5]),
-                                   json.loads(row[6]))
-
-                results.append(vp)
-
-            return results
-
-        except Exception as e:
-            error_logger.error(repr(e))
-            raise DatabaseException("Unable to get a range of cached Volume Profile for %s %s" % (broker_id, market_id))
-
-    def store_cached_limits(self, broker_id: str, market_id: str, strategy_id: str, limits: Limits):
-        """
-        limits is Limits dataclass.
-        """
-        if not limits:
-            return
-
-        try:
-            db = self.open_cached_db(broker_id, market_id, strategy_id)
-            cursor = db.cursor()
-
-            cursor.execute("""INSERT OR REPLACE INTO limits(from_timestamp, last_timestamp, min_price, max_price) VALUES (?, ?, ?, ?)""", (
-                int(limits.from_timestamp * 1000),
-                int(limits.last_timestamp * 1000),
-                limits.min_price, limits.max_price))
-
-            db.commit()
-
-            db.close()
-            db = None
-        except self.sqlite3.IntegrityError as e:
-            error_logger.error(repr(e))
-            raise DatabaseException("SQlite Integrity Error: Failed to insert cached Limits for %s.\n" % (
-                market_id,) + str(e))
-
-    def store_cached_volume_profile(self, broker_id: str, market_id: str, strategy_id: str, timeframe: float,
-                                    data: Union[List[VolumeProfile], VolumeProfile],
-                                    sensibility: int = 10, volume_area: int = 70):
-        """
-        @param volume_area:
-        @param sensibility:
-        @param timeframe:
-        @param strategy_id:
-        @param market_id:
-        @param broker_id:
-        @param data A single tuple or a list of tuple.
-
-        Format of a Volume Profile tuple is (timestamp:float in seconds, POC_price:float, POC_volume:float, Volumes:dict, Peaks:list, Valleys:list)
-        Format of a peak or a valley is price as key, volume as value.
-        """
-        if not data:
-            return
-
-        if type(data) is list:
-            # array of VPs
-            data_set = [(timeframe, sensibility, volume_area, int(d.timestamp*1000), d.poc, d.low_area, d.high_area,
-                json.dumps(tuple((b, v) for b, v in d.volumes.items())), json.dumps(d.peaks), json.dumps(d.valleys)) for d in data]
-
-            try:
-                db = self.open_cached_db(broker_id, market_id, strategy_id)
-                cursor = db.cursor()
-                
-                cursor.executemany("""INSERT OR REPLACE INTO volume_profile(timeframe, sensibility, volume_area, timestamp, poc, low_area, high_area, volumes, peaks, valleys) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", data_set)
-
-                db.commit()
-            except self.sqlite3.IntegrityError as e:
-                error_logger.error(repr(e))
-                raise DatabaseException("SQlite Integrity Error: Failed to insert cached Volume Profile for %s %s.\n" % (broker_id, market_id,) + str(e))
-
-        elif type(data) is VolumeProfile:
-            # single VP
-            try:
-                db = self.open_cached_db(broker_id, market_id, strategy_id)
-                cursor = db.cursor()
-
-                cursor.execute("""INSERT OR REPLACE INTO volume_profile(timeframe, sensibility, volume_area, timestamp, poc, low_area, high_area, volumes, peaks, valleys) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", (timeframe, sensibility, volume_area, int(data.timestamp*1000), data.poc, data.low_area, data.high_area,
-                            json.dumps(data.volumes), json.dumps(data.peaks), json.dumps(data.valleys)))
-
-                db.commit()
-            except self.sqlite3.IntegrityError as e:
-                error_logger.error(repr(e))
-                raise DatabaseException("SQlite Integrity Error: Failed to insert cached Volume Profile for %s %s.\n" % (broker_id, market_id,) + str(e))

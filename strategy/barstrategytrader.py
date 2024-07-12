@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from strategytradercontext import StrategyTraderContext
     from trade.strategytrade import StrategyTrade
 
-    from .strategybaranalyser import StrategyBarAnalyser
+    from .strategyrangebaranalyser import StrategyRangeBarAnalyser
 
 import copy
 
@@ -33,7 +33,8 @@ traceback_logger = logging.getLogger('siis.traceback.strategy.barstrategytrader'
 
 class BarStrategyTrader(StrategyTrader):
     """
-    Strategy trader base model using non-temporal bar.
+    Strategy trader base model using non-temporal bar (range-bar, reversal-bar, volume-bar, renko).
+    @note Currently support only range-bars.
 
     There is no OHLC in this abstraction. It is tick or trade based.
     It only works with a tick or trade data flow.
@@ -45,7 +46,7 @@ class BarStrategyTrader(StrategyTrader):
     """
 
     _tickbars_registry: Dict[str, Any]
-    tickbars: Dict[int, StrategyBarAnalyser]
+    tickbars: Dict[int, StrategyRangeBarAnalyser]
     _tickbars_streamers: Dict[int, Streamable]
 
     def __init__(self, strategy, instrument, depth=50, params: dict = None):
@@ -74,78 +75,78 @@ class BarStrategyTrader(StrategyTrader):
 
     def setup_tickbars(self, params: dict):
         # reload any tickbars
-        timeframes = params.get('tickbars', {})
+        tickbars = params.get('tickbars', {})
 
-        for tf_name, tb_param in timeframes.items():
-            mode = tb_param.get('mode')
+        for tickbar_id, tickbar_params in tickbars.items():
+            mode = tickbar_params.get('mode')
             if not mode:
-                logger.warning("No mode specified for tickbar sub %s" % tf_name)
+                logger.warning("No mode specified for tickbar analyser %s" % tickbar_id)
                 continue
 
             clazz_model = self._tickbars_registry.get(mode)
             if clazz_model is None:
-                error_logger.error("Unable to find tickbar sub model mode %s for %s" % (mode, tf_name))
+                error_logger.error("Unable to find tickbar analyser model mode %s for %s" % (mode, tickbar_id))
                 continue
 
-            tb = tb_param.get('tickbar')
-            if tb is None:
-                error_logger.error("Missing tickbar sub parameter for %s" % tf_name)
+            tickbar_size = tickbar_params.get('tickbar')
+            if tickbar_size is None:
+                error_logger.error("Missing tickbar analyser parameter for %s" % tickbar_id)
                 continue
 
-            if type(tb) is str:
-                tb = int(tb)
+            if type(tickbar_size) is str:
+                tickbar_size = int(tickbar_size)
 
-            if tb is None:
-                error_logger.error("Invalid tickbar sub parameter for %s" % tf_name)
+            if tickbar_size is None:
+                error_logger.error("Invalid tickbar analyser parameter for %s" % tickbar_id)
                 continue
 
             try:
-                tb_inst = clazz_model(self, tb_param)
-                self.tickbars[tb] = tb_inst
+                tickbar_inst = clazz_model(self, tickbar_params)
+                self.tickbars[tickbar_size] = tickbar_inst
             except Exception:
-                error_logger.error("Unable to instantiate tickbar sub %s" % tf_name)
+                error_logger.error("Unable to instantiate tickbar analyser %s" % tickbar_id)
                 traceback_logger.error(traceback.format_exc())
                 continue
 
             try:
-                tb_inst.loads(tb_param)
-                tb_inst.setup_indicators(tb_param)
+                tickbar_inst.loads(tickbar_params)
+                tickbar_inst.setup_indicators(tickbar_params)
             except Exception:
-                error_logger.error("Unable to loads tickbar sub %s" % tf_name)
+                error_logger.error("Unable to loads tickbar analyser %s" % tickbar_id)
                 traceback_logger.error(traceback.format_exc())
 
     def update_parameters(self, params: dict):
         # reload any timeframes before contexts
-        tickbar = params.get('tickbars', {})
+        tickbars = params.get('tickbars', {})
 
-        for tb_name, tb_param in tickbar.items():
-            tb = tb_param.get('tickbar')
+        for tickbar_id, tickbar_params in tickbars.items():
+            tb = tickbar_params.get('tickbar')
             if tb is None:
-                error_logger.error("Missing tickbar sub parameter for %s" % tb_name)
+                error_logger.error("Missing tickbar analyser parameter for %s" % tickbar_id)
                 continue
 
             if type(tb) is str:
                 tb = int(tb)
 
             if tb is None:
-                error_logger.error("Invalid tickbar sub parameter for %s" % tb_name)
+                error_logger.error("Invalid tickbar analyser parameter for %s" % tickbar_id)
                 continue
 
-            tickbar = self.tickbars.get(tb)
-            if tickbar is None:
-                error_logger.error("Unable to retrieve tickbar sub instance %s" % tb_name)
+            tickbars = self.tickbars.get(tb)
+            if tickbars is None:
+                error_logger.error("Unable to retrieve tickbar analyser instance %s" % tickbar_id)
                 continue
 
             try:
-                tickbar.loads(tb_param)
+                tickbars.loads(tickbar_params)
             except Exception:
-                error_logger.error("Unable to load tickbar sub %s" % tb_name)
+                error_logger.error("Unable to load tickbar analyser %s" % tickbar_id)
                 traceback_logger.error(traceback.format_exc())
 
             try:
-                tickbar.setup_indicators(tb_param)
+                tickbars.setup_indicators(tickbar_params)
             except Exception:
-                error_logger.error("Unable to setup indicators from tickbar sub %s" % tb_name)
+                error_logger.error("Unable to setup indicators from tickbar analyser %s" % tickbar_id)
                 traceback_logger.error(traceback.format_exc())
 
         super().update_parameters(params)
@@ -158,8 +159,8 @@ class BarStrategyTrader(StrategyTrader):
         """
         Call it on receive instrument/market data.
         """
-        for tf, sub in self.tickbars.items():
-            sub.setup_generator(self.instrument)
+        for tb, tickbar in self.tickbars.items():
+            tickbar.setup_generator(self.instrument)
 
     def update_tickbar(self, timestamp: float):
         """
@@ -170,19 +171,19 @@ class BarStrategyTrader(StrategyTrader):
             # update at tick or trade
             ticks = self.instrument.ticks()  # self.instrument.ticks_after(self.last_timestamp)
 
-            for tb, sub in self.tickbars.items():
+            for tickbar_id, tickbar in self.tickbars.items():
                 # rest the previous last closed flag before update the current
-                sub._last_closed = False
+                tickbar._last_closed = False
 
-                generated = sub.tick_bar_gen.generate(ticks)
+                generated = tickbar.range_bar_gen.generate(ticks)
                 if generated:
-                    self.instrument.add_tickbars(tb, generated, sub.depth)
+                    self.instrument.add_range_bars(tickbar_id, generated, tickbar.depth)
 
                     # last tick bar close
-                    sub._last_closed = True
+                    tickbar._last_closed = True
 
                 # with the non consolidated
-                self.instrument.add_tickbar(tb, copy.copy(sub.tick_bar_gen.current), sub.depth)
+                self.instrument.add_range_bar(tickbar_id, copy.copy(tickbar.range_bar_gen.current), tickbar.depth)
 
             # keep prev and last price at processing step
             if self.instrument.ticks():
@@ -206,19 +207,19 @@ class BarStrategyTrader(StrategyTrader):
             # update at tick or trade
             ticks = self.instrument.detach_ticks()
 
-            for tb, sub in self.tickbars.items():
+            for tickbar_id, tickbar in self.tickbars.items():
                 # rest the previous last closed flag before update the current
-                sub._last_closed = False
+                tickbar._last_closed = False
 
-                generated = sub.tick_bar_gen.generate(ticks)
+                generated = tickbar.range_bar_gen.generate(ticks)
                 if generated:
-                    self.instrument.add_tickbars(tb, generated, sub.depth)
+                    self.instrument.add_range_bars(tickbar_id, generated, tickbar.depth)
 
                     # last tick bar close
-                    sub._last_closed = True
+                    tickbar._last_closed = True
 
                 # with the non consolidated
-                self.instrument.add_tickbar(tb, copy.copy(sub.tick_bar_gen.current), sub.depth)
+                self.instrument.add_range_bar(tickbar_id, copy.copy(tickbar.range_bar_gen.current), tickbar.depth)
 
             # keep prev and last price at processing step
             if ticks:
@@ -237,9 +238,9 @@ class BarStrategyTrader(StrategyTrader):
         entries = []
         exits = []
 
-        for tf, sub in self.tickbars.items():
-            if sub.update_at_close:
-                if sub.need_update(timestamp):
+        for tickbar_id, tickbar in self.tickbars.items():
+            if tickbar.update_at_close:
+                if tickbar.need_update(timestamp):
                     compute = True
                 else:
                     compute = False
@@ -247,7 +248,7 @@ class BarStrategyTrader(StrategyTrader):
                 compute = True
 
             if compute:
-                signal = sub.process(timestamp)
+                signal = tickbar.process(timestamp)
                 if signal:
                     if signal.signal == StrategySignal.SIGNAL_ENTRY:
                         entries.append(signal)

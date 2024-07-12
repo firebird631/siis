@@ -2,13 +2,6 @@
 # Tasks to resolve #
 ####################
 
-Limitations de IG des 10k candle/mois en fetch :
-    - IG n'offre que les historique des commodities, des indices et des forex (et pas des actions)
-    - selon la stratégie on en a besoin au moins de 50 par timeframe par symbol à chaque démarrage pour se synchroniser,
-
-Distance et timeout-distance si en DIST doivent être supporté par distance_type et timeout_distance_type
-dans les methode de SL/TP et dynamiques.
-
 Bootstrap et Preprocess risque de se recouvrer dans certains cas :
     - comment éviter cela si la stratégie execute les 2 méthodes ?
     - le bootstrap devrait être retiré au profit d'une initialisation des signaux
@@ -68,12 +61,13 @@ Sum order :
 - Dans la vue aggtrade ajouter un avg entry price et total qty par market
 
 - kraken watcher et trader :
-    - fetch des positions
-    - fetch des trades history et calcule des prix d'entré moyen par asset
-    - finir WS des positions (margin)
+    - fetch des positions pour margin
+    - fetch des trades history et calcule des prix d'entré moyen par asset mais c'est lourd
+    - parfois certains messages sont pas garantie dans le WS donc on rate une sortie ou une entrée
+       - les check automatique sont pertinent mais faut éviter de saturer l'API si beaucoup de trade distinct.
+       - peut etre qu'il faut considérer que kraken c'est plutôt de l'invest que du trading et donc ajuster les stratégies
     - comment savoir si trade maker ou taker ?
     - revoir que si besoin ownTrade pour signal ORDER_TRADED
-    - calcule des qty locked par asset en fonction des ordres ouverts (attention aux arrondis)
 
 - WebTrader
     - HTTP :
@@ -166,6 +160,8 @@ Sum order :
 
 - Ajouter un display chart CLI pour un data-serie donné (une couleur par ligne)
 
+- ajouter un rangebarreversalgenerator inspiré du tickbarreversalgenerator sans la partie volume
+
 - Completer les methodes de comparaisons dans learning/trainer.py
 
 - Dans la vue trades history on n'a pas les valeurs en pts.
@@ -195,10 +191,19 @@ Sum order :
 
 - Peut etre serait il pertinant de renommer les Sub en DataSerie
 
+- Dans les profiles tickbars et confusant car il fait mention aux range-bars actuellement
+    - Soit on renomme, avec toutes les configs
+    - Soit on précise avec les options qu'il s'agit de range-bar ou autre avec tickbar restant générique
+
+- Est-il possible de merger timeframe+range-bar+session-bar... au sein du même strategytrader :
+    - Dans l'absolu oui mais le bootstrap pose un problème car il devient encore plus complexe
+    - Est ce qu'on a vraiment besoin de stratégie mélan plusieurs types de bar ?
 
 #########
 # Bonus #
 #########
+
+- market profile (+session offset/duration)
 
 - tool trainer :: run doit override les parameters markets specifics si presents
 
@@ -229,6 +234,9 @@ Sum order :
 - ajouter renko bar (voir https://tradewithpython.com/constructing-renko-charts-using-python exemple avec ATR)
 - ajouter unirenko bar
 
+- update to latest IG API
+
+- cumulative volume delta indicateur mais doit être calculé par tick (comme vwap, volume profile...)
 
 ############
 ## Divers ##

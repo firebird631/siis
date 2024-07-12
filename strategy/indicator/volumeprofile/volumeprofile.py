@@ -172,8 +172,8 @@ class BaseVolumeProfileIndicator(Indicator):
         """
         Simplest method to detect the volume area.
         Starting from the POC goes left and right until having the inner volume reached.
-        Its not perfect because it could miss some peaks that will be important to have
-        and sometime the best choice might not be try with centered algorithm.
+        It is not perfect because it could miss some peaks that will be important to have
+        and sometimes the best choice might not be try with centered algorithm.
         """
         if not volumes_by_price or not poc_price:
             return 0.0, 0.0
@@ -288,7 +288,7 @@ class BaseVolumeProfileIndicator(Indicator):
 
 class VolumeProfileIndicator(BaseVolumeProfileIndicator):
     """
-     Volume Profile indicator based on OHLCs list update.
+    Volume Profile indicator based on OHLCs list update.
     """
 
     def __init__(self, timeframe, length=10, sensibility=10, volume_area=70):

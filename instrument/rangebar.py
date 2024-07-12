@@ -10,20 +10,20 @@ from common.utils import timestamp_to_str
 logger = logging.getLogger('siis.instrument.rangebar')
 
 
-class RangeBarBase(object):
+class RangeBase(object):
     """
-    Range bar base model for an instrument.
+    Non-temporal bar model for an instrument.
+    Support range-bar, reversal-bar, volume-bar, renko.
     """
 
-    __slots__ = '_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_ticks', '_num_trades', \
-        '_avg_size', '_num_trades', '_low', '_high', '_dir', '_id'
+    __slots__ = ('_timestamp', '_duration', '_open', '_close', '_low', '_high', '_volume', '_ended')
 
-    def __init__(self, timestamp: float, price: float):
+    def __init__(self, timestamp: float, price: float = 0.0):
         """
         @param timestamp Opening timestamp in seconds.
         """
         self._timestamp = timestamp
-        self._last_timestamp = timestamp
+        self._duration = 0.0
 
         # initial open/close
         self._open = price
@@ -33,15 +33,8 @@ class RangeBarBase(object):
         self._low = price
         self._high = price
 
-        # or in tickbar indicators (could use X=Full or X>=VolumeFilter)
         self._volume = 0.0    # total volume for any ticks of the bar
 
-        self._avg_size = 0.0  # trade average size or aggregated trades average size ( = volume / num_trades)
-        self._num_trades = 0  # num of total trades or aggregated trades ( +1 at each trade)
-
-        self._dir = 0
-
-        self._id = 1  # bar index for comparison, always inc by generator
         self._ended = False
 
     #
@@ -49,16 +42,12 @@ class RangeBarBase(object):
     #
 
     @property
-    def id(self) -> int:
-        return self._id
-
-    @property
     def timestamp(self) -> float:
         return self._timestamp
 
     @property
-    def last_timestamp(self) -> float:
-        return self._last_timestamp
+    def duration(self) -> float:
+        return self._duration
 
     @property
     def ended(self) -> bool:
@@ -81,12 +70,23 @@ class RangeBarBase(object):
         return self._low
 
     @property
-    def high(self) -> float:
-        return self._high
-
-    @property
     def volume(self) -> float:
         return self._volume
+
+    def set_ohlc(self, o: float, h: float, l: float, c: float):
+        self._open = o
+        self._high = h
+        self._low = l
+        self._close = c
+
+    def set_volume(self, ltv: float):
+        self._volume = ltv
+
+    def set_duration(self, duration: float):
+        self._duration = duration
+
+    def set_consolidated(self, cons: bool):
+        self._ended = cons
 
     @property
     def abs_height(self) -> float:
@@ -102,10 +102,6 @@ class RangeBarBase(object):
         """
         return self._close - self._open
 
-    @property
-    def direction(self) -> int:
-        return self._dir
-
     #
     # processing
     #
@@ -118,15 +114,15 @@ class RangeBarBase(object):
     #
 
     def __str__(self):
-        return "#%i %s %s %g/%g/%g/%g %g (h=%g)" % (
-            self._id,
+        return "%s %gs %s %g/%g/%g/%g %g (h=%g)" % (
             timestamp_to_str(self._timestamp),
-            "UP" if self._dir > 0 else "DN",
+            self._duration,
+            "UP" if self._close > self._open else "DN",
             self._open, self._high, self._low, self._close,
             self._volume,
             self.height,
         ) + (" ENDED" if self._ended else "")
 
 
-class RangeBar(RangeBarBase):
+class RangeBar(RangeBase):
     pass

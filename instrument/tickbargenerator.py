@@ -101,6 +101,7 @@ class TickBarBaseGenerator(object):
 class TickBarRangeGenerator(TickBarBaseGenerator):
     """
     Specialization for common tick bar.
+    @todo to be tested, uses RangeBarGenerator and RangeBar for the moment.
     """
 
     def __init__(self, size, tick_scale=1.0):

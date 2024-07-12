@@ -107,7 +107,7 @@ class Connection(object):
         self.api_key = ""
 
         self.host = ""
-        self.port = ""
+        self.port = 0
 
         self.ws = None
         self.wst = None

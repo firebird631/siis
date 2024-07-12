@@ -86,7 +86,7 @@ def compute_strategy_statistics(strategy):
     Compute some strategy statistics.
     Monthly draw-down are computed from daily sample of the account (trader). That's mean the balance value and PNL
     be correctly computed else the Ulcer ratio would be incorrect.
-    Trader balance could be incorrect when backtesting using different market settlement/quote currency or when
+    Trader balance could be incorrect when backtesting using different market settlement/quote currencies or when
     the account currency is different from these above or if the base exchange rate for each instrument is invalid
     with some watchers.
 
@@ -275,17 +275,19 @@ def compute_strategy_statistics(strategy):
 
     # Sharpe Ratio
     if len(profit_per_month_pct) > 1:
-        # Sharpe ratio
-        results.percent.sharpe_ratio = ((results.percent.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                        np.std(np.array(profit_per_month_pct), ddof=1))
-        results.currency.sharpe_ratio = ((results.currency.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                         np.std(np.array(profit_per_month), ddof=1))
+        dof = len(profit_per_month_pct) - 1
 
-        # Sortino ratio
+        # Sharpe ratio (Student t distribution)
+        results.percent.sharpe_ratio = ((results.percent.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
+                                        np.std(np.array(profit_per_month_pct), ddof=dof))
+        results.currency.sharpe_ratio = ((results.currency.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
+                                         np.std(np.array(profit_per_month), ddof=dof))
+
+        # Sortino ratio (Student t distribution)
         results.percent.sortino_ratio = ((results.percent.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                         np.std(np.array(draw_down_per_month_pct), ddof=1))
+                                         np.std(np.array(draw_down_per_month_pct), dof))
         results.currency.sortino_ratio = ((results.currency.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                          np.std(np.array(draw_down_per_month), ddof=1))
+                                          np.std(np.array(draw_down_per_month), dof))
 
         # Ulcer index
         results.percent.ulcer_index = np.sqrt(np.mean(np.array(draw_downs_sqr_pct)))

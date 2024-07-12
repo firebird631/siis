@@ -4,6 +4,7 @@
 # Range bar generators.
 
 import logging
+from typing import Union
 
 from common.utils import truncate
 
@@ -11,15 +12,25 @@ from instrument.rangebar import RangeBar
 
 logger = logging.getLogger('siis.instrument.rangebar')
 
+
 class RangeBarBaseGenerator(object):
     """
     Base model for range bar specialized generators.
     """
 
     __slots__ = '_size', '_last_timestamp', '_last_consumed', '_current', '_tick_size', '_last_price', \
-        '_price_precision', '_tick_scale', '_num_trades'
+        '_price_precision', '_tick_scale'
 
-    def __init__(self, size, tick_scale=1.0):
+    _size: int
+    _tick_scale: float
+    _price_precision: int
+    _tick_size: float
+    _last_consumed: int
+    _last_timestamp: float
+    _last_price: float
+    _current: Union[RangeBar, None]
+
+    def __init__(self, size: int, tick_scale: float = 1.0):
         """
         @param size Generated tick bar tick number.
         @param tick_scale Regroup ticks by a scalar (default 1.0 for non grouping).
@@ -37,7 +48,6 @@ class RangeBarBaseGenerator(object):
         self._last_price = 0.0
 
         self._current = None
-        self._num_trades = 0
 
     @property
     def size(self):
@@ -82,7 +92,7 @@ class RangeBarBaseGenerator(object):
 
     def generate(self, from_ticks):
         """
-        Generate as many tick-bar as possible from the array of ticks or trades given in parameters.
+        Generate as many range-bar as possible from the array of ticks or trades given in parameters.
         """
         to_tickbars = []
         self._last_consumed = 0
@@ -110,7 +120,7 @@ class RangeBarGenerator(RangeBarBaseGenerator):
     Specialization for common range bar.
     """
 
-    def __init__(self, size, tick_scale=1.0):
+    def __init__(self, size: int, tick_scale: float = 1.0):
         """
         @param size Generated tick bar tick number.
         """
@@ -126,9 +136,6 @@ class RangeBarGenerator(RangeBarBaseGenerator):
 
         # create a new tick-bar
         self._current = RangeBar(tick[0], tick[3])
-
-        if last_tickbar is not None:
-            self._current._id = last_tickbar._id + 1
 
         return last_tickbar
 
@@ -154,11 +161,8 @@ class RangeBarGenerator(RangeBarBaseGenerator):
 
         # update the current bar
 
-        # one more trade
-        self._num_trades += 1
-
-        # retain the last trade timestamp
-        self._current._last_timestamp = tick[0]
+        # duration of the bar in seconds
+        self._current._duration = tick[0] - self._current._timestamp
 
         # last trade price as close price
         self._current._close = tick[3]
@@ -170,13 +174,25 @@ class RangeBarGenerator(RangeBarBaseGenerator):
         self._current._low = min(self._current._low, tick[3])
         self._current._high = max(self._current._high, tick[3])
 
-        # direction
-        if self._current._close > self._current._open:
-            self._current._dir = 1
-        elif self._current._close < self._current._open:
-            self._current._dir = -1
-        else:
-            self._current._dir = 0
-
         # return the last completed bar or None
         return last_tickbar
+
+
+class RangeBarReversalGenerator(RangeBarBaseGenerator):
+    """
+    Specialization for range bar with reversal price.
+    @todo implement
+    """
+
+    __slots__ = '_reversal'
+
+    _reversal: int
+
+    def __init__(self, size: int, reversal: int, tick_scale=1.0):
+        """
+        @param size Generated tick bar tick number.
+        """
+        super().__init__(size, tick_scale)
+
+        self._reversal = reversal
+

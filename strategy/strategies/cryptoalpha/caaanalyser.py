@@ -572,6 +572,8 @@ class CryptoAlphaAAnalyser(CryptoAlphaAnalyser):
 
         if self.bsawe:
             bsawe = self.bsawe.compute(timestamp, self.price.high, self.price.low, self.price.close)
+        else:
+            bsawe = 0.0
 
         ema_sma = 0
 

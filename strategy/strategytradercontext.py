@@ -90,6 +90,7 @@ class StrategyTraderContextBase(object):
 class EntryExit(object):
     """
     Entry exit base model used by a context @see StrategyTraderContext.
+    @note Either timeframe or tickbar must be defined.
     """
 
     EX_UNDEFINED = 0     # Undefined type
@@ -122,11 +123,8 @@ class EntryExit(object):
     def __init__(self):
         self.type = StrategyTraderContext.PRICE_NONE
 
-        self.timeframe = 0.0
-        self.tickbar = 0
-
-        self.depth = 0       # related to level of depth of support or resistance but not mandatory
-        self.orientation = StrategyTraderContext.ORIENTATION_BOTH  # related to the depth parameters
+        self.timeframe = 0.0  # 0 or a timeframe duration. each new bar of this timeframe a consolidated is then true
+        self.tickbar = 0      # 0 or similar as timeframe duration, but it is a count in number of bars (range-bar...)
 
         self.timeout = 0.0   # timeout of the entry or exit order
 
@@ -139,11 +137,14 @@ class EntryExit(object):
         self.timeout_distance_type = StrategyTraderContext.PRICE_NONE  # defines the type of timeout_distance
 
         self.offset_value = None  # internal usage only during compilation of the context parameters
-        self.offset  = 0.0        # offset to add to price (stop on breakeven...) (positive mean in favor of profit)
+        self.offset = 0.0         # offset to add to price (stop on breakeven...) (positive mean in favor of profit)
         self.offset_type = StrategyTraderContext.DIST_NONE  # type of the distance (percentile or price delta)
 
         self._consolidated = True   # only True after the computation occurs on a bar consolidation (at its close)
         self._last_closed_timestamp = 0.0   # the timestamp when occurs the last consolidation (close)
+
+        self.depth = 0       # related to level of depth of support or resistance but not mandatory
+        self.orientation = StrategyTraderContext.ORIENTATION_BOTH  # related to the depth parameters
 
     def loads(self, strategy_trader, params: dict):
         if 'type' not in params or params.get('type') not in StrategyTraderContext.PRICE:
@@ -152,14 +153,6 @@ class EntryExit(object):
         self.type = StrategyTraderContext.PRICE.get(params['type'])
         self.timeframe = timeframe_from_str(params.get('timeframe', "t"))
         self.tickbar = int(params.get('tickbar', "0"))
-
-        # ATR SR need orientation and depth parameters
-        if self.type in (StrategyTraderContext.PRICE_ATR_SR,):
-            if 'orientation' not in params or params.get('orientation') not in StrategyTraderContext.ORIENTATION:
-                raise ValueError("Undefined or unsupported 'orientation' value for %s" % self.name())
-
-            if 'depth' not in params:
-                raise ValueError("Undefined 'depth' value for %s" % self.name())
 
         if self.timeframe < 0:
             raise ValueError("Undefined or unsupported 'timeframe' value for %s" % self.name())
@@ -170,9 +163,6 @@ class EntryExit(object):
         if params.get('timeout'):
             # optional timeout
             self.timeout = timeframe_from_str(params.get('timeout', ""))
-
-        self.depth = params.get('depth', 0)
-        self.orientation = StrategyTraderContext.ORIENTATION.get(params.get('orientation', 'both'))
 
         # standard distance
         distance = params.get('distance', "0.0")
@@ -233,11 +223,29 @@ class EntryExit(object):
                 self.offset = float(offset)
                 self.offset_type = StrategyTraderContext.DIST_PRICE
 
+        # some indicator need (like ATR-SR) need an orientation and a depth
+        if self.type in (StrategyTraderContext.PRICE_ATR_SR,):
+            if 'orientation' not in params or params.get('orientation') not in StrategyTraderContext.ORIENTATION:
+                raise ValueError("Undefined or unsupported 'orientation' value for %s" % self.name())
+
+            if 'depth' not in params:
+                raise ValueError("Undefined 'depth' value for %s" % self.name())
+
+        self.depth = params.get('depth', 0)
+        self.orientation = StrategyTraderContext.ORIENTATION.get(params.get('orientation', 'both'))
+
+    def dumps(self) -> dict:
+        result = {}
+
+        # @todo
+
+        return result
+
     def update(self, timestamp):
         """
         Must be called at each strategy trader computation to update internal values.
         @param timestamp: Current computation timestamp in seconds.
-        @todo for rangebar
+        @todo for tickbar
         """
         if self.timeframe <= 0.0:
             return
@@ -402,20 +410,13 @@ class EntryExit(object):
         """
         Return True when the context update occurs on a closed timeframe. Exemple if timeframe is defined to 300
         (5 minutes), this will return True every 5 minutes.
-        @todo for rangebar
-        @return:
+        @todo for tickbar
+        @return: True if the bar just consolidate.
         """
         if self.timeframe <= 0.0:
             return True
 
         return self._consolidated
-
-    def dumps(self) -> dict:
-        result = {}
-
-        # @todo
-
-        return result
 
 
 class EXEntry(EntryExit):
@@ -430,14 +431,6 @@ class EXEntry(EntryExit):
     def __init__(self):
         super().__init__()
 
-        self.cautious = True
-
-        self.risk_value = None
-        self.risk = 0.0
-
-        self.reward_value = None
-        self.reward = 0.0
-
         self.max_spread_value = None
         self.max_spread = 0.0
 
@@ -447,41 +440,6 @@ class EXEntry(EntryExit):
         # mandatory timeout
         if not self.timeout:
             raise ValueError("Undefined or unsupported 'timeout' value for %s" % self.name())
-
-        # optional cautious, true by default
-        self.cautious = params.get('cautious', True)
-
-        # risk, 0.0 mean no check
-        risk = params.get('risk', "0.0")
-        if risk is not None:
-            if type(risk) in (float, int):
-                # value in delta price
-                self.risk = risk
-            elif type(risk) is str:
-                if risk.endswith('pip'):
-                    # value in pips
-                    self.risk_value = float(risk[:-3])
-                else:
-                    # in delta price
-                    self.risk = float(risk)
-            else:
-                raise ValueError("Invalid format 'risk' must be string, int or float for %s" % self.name())
-
-        # reward
-        reward = params.get('reward', "0.0")
-        if reward is not None:
-            if type(reward) in (float, int):
-                # value in delta price
-                self.reward = reward
-            elif type(reward) is str:
-                if reward.endswith('pip'):
-                    # value in pips
-                    self.reward_value = float(reward[:-3])
-                else:
-                    # in delta price
-                    self.reward = float(reward)
-            else:
-                raise ValueError("Invalid format 'reward' must be string, int or float for %s" % self.name())
 
         # max-spread
         max_spread = params.get('max-spread', "0.0")
@@ -501,16 +459,6 @@ class EXEntry(EntryExit):
 
     def compile(self, strategy_trader):
         super().compile(strategy_trader)
-
-        # risk, 0.0 mean no check
-        if self.risk_value is not None:
-            # value in pips
-            self.risk = self.risk_value * strategy_trader.instrument.one_pip_means
-
-        # reward
-        if self.reward_value is not None:
-            # value in pips
-            self.reward = self.reward_value * strategy_trader.instrument.one_pip_means
 
         # max-spread
         if self.max_spread_value is not None:
@@ -1234,12 +1182,125 @@ class StrategyTraderContext(StrategyTraderContextBase):
         """
         return None
 
+    #
+    # trade management
+    #
+
     def update_trade(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
         """
-        To be overridden to update the status of a trade.
+        Overload it to update the targets of a trade.
         @param strategy_trader:
         @param trade:
-        @return:
+        """
+        pass
+
+    def custom_dynamic_stop_loss(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+        """
+        Overload it to update the stop-loss of a trade.
+        This method is called only if the method is set to custom.
+        @param strategy_trader:
+        @param trade:
+        @return New stop-loss price or 0 if no changes.
+        """
+        return 0.0
+
+    def apply_breakeven(self, strategy_trader: StrategyTrader, trade: StrategyTrade, hard=True):
+        """
+        Default breakeven policy. It checks if the breakeven apply to a trade and modify the stop-loss price
+        if necessary according to the rules.
+        @param strategy_trader:
+        @param trade:
+        @param hard:
+        """
+        if not trade or not strategy_trader or not self.breakeven:
+            return
+
+        if self.breakeven.consolidated:
+            # only if timeframe is configured
+            return
+
+        # never apply if the stop price is already defined at even or in profit
+        if trade.stop_loss > 0.0 and ((trade.is_long and trade.stop_loss >= trade.entry_price) or
+                                      (trade.is_short and trade.stop_loss <= trade.entry_price)):
+            return
+
+        close_exec_price = strategy_trader.instrument.close_exec_price(trade.dir)
+        if not close_exec_price:
+            return
+
+        # minimal distance before apply. gross distance in that case.
+        if not self.breakeven.check_min_distance_from_entry(trade, close_exec_price):
+            return
+
+        new_stop_price = self.breakeven.stop_loss_from_entry_price(trade)
+
+        if new_stop_price > 0.0:
+            new_stop_price = strategy_trader.instrument.adjust_price(new_stop_price)
+            try:
+                strategy_trader.trade_modify_stop_loss(trade, new_stop_price, hard)
+            except Exception as e:
+                error_logger.error(repr(e))
+
+    def apply_dynamic_stop_loss(self, strategy_trader: StrategyTrader, trade: StrategyTrade, hard=False):
+        """
+        Default dynamic stop-loss policy. It checks if the dynamic stop-loss policy apply to a trade and modify
+        the stop-loss price if necessary.
+        If the mode is set to PRICE_CUSTOM then custom_dynamic_stop_loss is called in place.
+
+        If a breakeven is configured the minimum distance of breakeven must be reached else it will reject any
+        changes.
+
+        @param strategy_trader:
+        @param trade:
+        @param hard:
+        """
+        if not trade or not strategy_trader or not self.dynamic_stop_loss:
+            return
+
+        # only if timeframe is configured
+        if self.dynamic_stop_loss.consolidated:
+            return
+
+        close_exec_price = strategy_trader.instrument.close_exec_price(trade.dir)
+        if not close_exec_price:
+            return
+
+        # check for min distance from breakeven if provided (gross distance)
+        if self.breakeven:
+            if not self.breakeven.check_min_distance_from_entry(trade, close_exec_price):
+                return
+
+        # last stop must be at minimal defined distance (gross distance)
+        if not self.dynamic_stop_loss.check_min_distance_from_stop(trade, close_exec_price):
+            return
+
+        new_stop_price = 0.0
+
+        if self.dynamic_stop_loss.type == self.PRICE_FIXED:
+            # fixed distance without offset or spread
+            new_stop_price = self.dynamic_stop_loss.stop_loss_from_price(trade, close_exec_price)
+
+        elif self.dynamic_stop_loss.type == self.PRICE_CUSTOM:
+            # custom method call
+            new_stop_price = self.custom_dynamic_stop_loss(strategy_trader, trade)
+
+        if new_stop_price > 0.0:
+            new_stop_price = strategy_trader.instrument.adjust_price(new_stop_price)
+            if new_stop_price != trade.stop_loss:
+                try:
+                    strategy_trader.trade_modify_stop_loss(trade, new_stop_price, hard)
+                except Exception as e:
+                    error_logger.error(repr(e))
+
+    def apply_dynamic_take_profit(self, strategy_trader: StrategyTrader, trade: StrategyTrade, hard=True):
+        """
+        Default dynamic take-profit policy. It checks if the dynamic take-profit policy apply to a trade and modify
+        the take-profit price if necessary.
+        If the mode is set to PRICE_CUSTOM then custom_dynamic_take_profit is called in place.
+
+        @param strategy_trader:
+        @param trade:
+        @param hard:
         """
         pass
 

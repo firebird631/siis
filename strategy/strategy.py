@@ -1078,12 +1078,23 @@ class Strategy(Runnable):
 
                                 do_update.add(strategy_trader)
 
+                elif signal.signal_type == Signal.SIGNAL_RANGE_BAR_DATA:
+                    # interest in range-bar data
+                    strategy_trader = self._strategy_traders.get(signal.data[0])
+                    if strategy_trader:
+                        # add the new range-bar to the instrument in live mode
+                        with strategy_trader.mutex:
+                            if strategy_trader.instrument.ready():
+                                strategy_trader.instrument.add_range_bar(signal.data[1], signal.data[2])
+
+                                do_update.add(strategy_trader)
+
                 if signal.signal_type == Signal.SIGNAL_TICK_DATA_BULK:
                     # incoming bulk of history ticks
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         with strategy_trader.mutex:
-                            initial = strategy_trader.instrument.is_want_timeframe(0)
+                            initial = strategy_trader.instrument.is_need_timeframe(0)
 
                         # insert the bulk of ticks into the instrument
                         if signal.data[1]:
@@ -1109,7 +1120,7 @@ class Strategy(Runnable):
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         with strategy_trader.mutex:
-                            initial = strategy_trader.instrument.is_want_timeframe(signal.data[1])
+                            initial = strategy_trader.instrument.is_need_timeframe(signal.data[1])
 
                         # insert the bulk of candles into the instrument
                         if signal.data[2]:
@@ -1150,6 +1161,51 @@ class Strategy(Runnable):
 
                                 # necessary call for strategy complete initialization
                                 strategy_trader.on_received_initial_candles(signal.data[1])
+
+                            do_update.add(strategy_trader)
+
+                elif signal.signal_type == Signal.SIGNAL_RANGE_BAR_DATA_BULK:
+                    # incoming bulk of history bars
+                    strategy_trader = self._strategy_traders.get(signal.data[0])
+                    if strategy_trader:
+                        with strategy_trader.mutex:
+                            initial = strategy_trader.instrument.is_need_range_bar(signal.data[1])
+
+                        # insert the bulk of bars into the instrument
+                        if signal.data[2]:
+                            # in live mode directly add range-bars to instrument
+                            with strategy_trader.mutex:
+                                strategy_trader.instrument.add_range_bars(signal.data[1], signal.data[2])
+
+                            # initials range-bars loaded
+                            if initial:
+                                instrument = strategy_trader.instrument
+
+                                logger.debug("Retrieved %s range-bars for %s in %s" % (
+                                    len(signal.data[2]), instrument.market_id, signal.data[1]))
+
+                                # append the current bar from the watcher on live mode
+                                with strategy_trader.mutex:
+                                    # bar type acquired
+                                    instrument.ack_range_bar(signal.data[1])
+
+                                strategy_trader.on_received_initial_range_bars(signal.data[1])
+
+                            do_update.add(strategy_trader)
+                        else:
+                            # initials range-bars loaded but empty results
+                            if initial:
+                                instrument = strategy_trader.instrument
+
+                                logger.debug("Retrieved no range-bars for %s in %s" % (
+                                    instrument.market_id, signal.data[1]))
+
+                                with strategy_trader.mutex:
+                                    # range-bar acquired
+                                    instrument.ack_range_bar(signal.data[1])
+
+                                # necessary call for strategy complete initialization
+                                strategy_trader.on_received_initial_range_bars(signal.data[1])
 
                             do_update.add(strategy_trader)
 
@@ -1931,6 +1987,7 @@ class Strategy(Runnable):
         for k, tickbar in parameters['tickbars'].items():
             tickbar.setdefault('depth', 0)
             tickbar.setdefault('history', 0)
+            tickbar.setdefault('tick-scale', 1.0)
 
             tickbar.setdefault('tickbar', None)
 

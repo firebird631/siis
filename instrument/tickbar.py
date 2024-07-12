@@ -13,11 +13,13 @@ logger = logging.getLogger('siis.instrument.tickbar')
 class TickBarBase(object):
     """
     Tick-bar base model for an instrument.
+    It is mostly for futures market where tick step are fixed by instrument but the generator can use a specific
+    range of price to make aggregates.
+    This is a more complex object than RangeBar. Tick-bar is similar to what is found with foot-print.
     """
 
-    __slots__ = ('_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_ticks', '_num_trades',
-        '_pov', '_pov_bid', '_pov_ask', '_vol_bid', '_vol_ask', '_avg_size', '_num_trades', '_low', '_high',
-                 '_dir', '_id')
+    __slots__ = ('_timestamp', '_last_timestamp', '_volume', '_ended', '_open', '_close', '_low', '_high', '_ticks',
+                 '_pov', '_pov_bid', '_pov_ask', '_vol_bid', '_vol_ask', '_avg_size', '_num_trades', '_dir')
 
     def __init__(self, timestamp: float, price: float):
         """
@@ -55,16 +57,11 @@ class TickBarBase(object):
         # volume change from prev
         # average size
 
-        self._id = 1  # bar index for comparison, always inc by generator
         self._ended = False
 
     #
     # data
     #
-
-    @property
-    def id(self) -> int:
-        return self._id
 
     @property
     def timestamp(self) -> float:
@@ -141,7 +138,6 @@ class TickBarBase(object):
 
     def complete(self):
         self._ended = True
-
         self._update_pov()
 
     def add_tick(self, price, volume):
@@ -158,8 +154,7 @@ class TickBarBase(object):
     #
 
     def __str__(self):
-        return "#%i %s %s %g/%g/%g/%g %g (%g/%g)" % (
-            self._id,
+        return "%s %s %g/%g/%g/%g %g (%g/%g)" % (
             timestamp_to_str(self._timestamp),
             "UP" if self._dir > 0 else "DN",
             self._open, self._high, self._low, self._close,

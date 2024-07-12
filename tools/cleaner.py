@@ -18,7 +18,7 @@ error_logger = logging.getLogger('siis.error.tools.cleaner')
 class Cleaner(Tool):
     """
     Clean the database for a specific data set.
-    @todo timeframe(s), --from, --to
+    @todo range-bar, timeframe, --from, --to,
     """ 
 
     @classmethod

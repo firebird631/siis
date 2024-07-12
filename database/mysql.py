@@ -11,12 +11,12 @@ from importlib import import_module
 from common.signal import Signal
 
 from instrument.instrument import Instrument, Candle
+from instrument.rangebar import RangeBar
 
 from trader.market import Market
 from trader.asset import Asset
 
-from .ohlcstorage import OhlcStorage, OhlcStreamer
-
+from .ohlcstorage import OhlcStreamer
 from .database import Database, DatabaseException
 
 import logging
@@ -138,9 +138,15 @@ class MySql(Database):
                     timestamp BIGINT NOT NULL,
                     data TEXT NOT NULL DEFAULT '{}')""")
 
-        # @todo index on user_closed_trade(broker_id, account_id, market_id, strategy_id)
-
         self._db.commit()
+
+        try:
+            cursor = self._db.cursor()
+            cursor.execute("""CREATE INDEX idx_user_closed_trade_all ON user_closed_trade(broker_id, account_id, market_id, strategy_id)""")
+            self._db.commit()
+        except:
+            # already exists workaround (errno 1061)...
+            pass
 
     def setup_ohlc_sql(self):
         cursor = self._db.cursor()
@@ -169,6 +175,32 @@ class MySql(Database):
                     direction INTEGER NOT NULL,
                     price VARCHAR(32) NOT NULL,
                     quantity VARCHAR(32) NOT NULL) ENGINE=InnoDB""")
+
+        self._db.commit()
+
+    def setup_range_bar_sql(self):
+        cursor = self._db.cursor()
+
+        # bar table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS range_bar(
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+                timestamp BIGINT NOT NULL, duration BIGINT NOT NULL,  
+                size INTEGER NOT NULL,
+                open VARCHAR(32) NOT NULL, high VARCHAR(32) NOT NULL, low VARCHAR(32) NOT NULL, close VARCHAR(32) NOT NULL,
+                volume VARCHAR(48) NOT NULL,
+                UNIQUE(broker_id, market_id, timestamp, size)) ENGINE=InnoDB""")
+
+        self._db.commit()
+
+    def setup_volume_profile_sql(self):
+        cursor = self._db.cursor()
+
+        # volume_profile table @todo
+        # cursor.execute("""
+        #     CREATE TABLE IF NOT EXISTS volume_profile(
+        #         UNIQUE(broker_id, market_id, timestamp, bar_type)) ENGINE=InnoDB""")
 
         self._db.commit()
 
@@ -232,9 +264,110 @@ class MySql(Database):
 
         return None
 
-    def get_user_closed_trades(self, broker_id, account_id, strategy_id, from_date, to_date, market_id=None):
-        # @todo
+    def get_last_range_bar(self, broker_id: str, market_id: str, size: int):
+        cursor = self._db.cursor()
+
+        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar 
+                       WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp DESC LIMIT 1""" % (
+                            broker_id, market_id, size))
+
+        row = cursor.fetchone()
+
+        if row:
+            timestamp = float(row[0]) * 0.001  # to float second timestamp
+            bar = RangeBar(timestamp)
+
+            bar.set_duration(float(row[1] * 0.001))  # to float second duration
+            bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+
+            bar.set_volume(float(row[6]))
+
+            if bar.abs_height < size:
+                bar.set_consolidated(False)  # current
+
+            return bar
+
         return None
+
+    def get_last_range_bar_at(self, broker_id: str, market_id: str, size: int, timestamp: float):
+        cursor = self._db.cursor()
+
+        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp = %s""" % (
+                            broker_id, market_id, size, int(timestamp * 1000.0)))
+
+        row = cursor.fetchone()
+
+        if row:
+            timestamp = float(row[0]) * 0.001  # to float second timestamp
+            bar = RangeBar(timestamp)
+
+            bar.set_duration(float(row[1] * 0.001))  # to float second duration
+            bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+
+            bar.set_volume(float(row[6]))
+
+            if bar.abs_height < size:
+                bar.set_consolidated(False)  # current
+
+            return bar
+
+        return None
+
+    def get_last_volume_profile(self, broker_id: str, market_id: str, vp_type: str):
+        cursor = self._db.cursor()
+
+        # @todo
+
+        return None
+
+    def get_last_volume_profile_at(self, broker_id: str, market_id: str, vp_type: str, timestamp: float):
+        cursor = self._db.cursor()
+
+        # @todo
+
+        return None
+
+    def get_user_closed_trades(self, broker_id, account_id, strategy_id, from_date, to_date, market_id=None):
+        if not broker_id or not account_id or not strategy_id:
+            return None
+
+        if not from_date or not to_date:
+            return None
+
+        user_closed_trades = []
+
+        cursor = self._db.cursor()
+
+        from_time = int(from_date.timestamp())  # * 1000)
+        to_time = int(to_date.timestamp())  # * 1000)
+
+        if market_id:
+            if type(market_id) is str:
+                cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
+                                WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND market_id = '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
+                                    broker_id, account_id, strategy_id, market_id, from_time, to_time))
+            elif type(market_id) is list or type(market_id) is tuple:
+                cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
+                                WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND market_id IN '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
+                                    broker_id, account_id, strategy_id, market_id, from_time, to_time))
+            else:
+                return None
+        else:
+            cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
+                            WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
+                                broker_id, account_id, strategy_id, from_time, to_time))
+
+        rows = cursor.fetchall()
+
+        for row in rows:
+            ts = float(row[1])  # * 0.001
+            user_closed_trades.append((row[0], ts, json.loads(row[2])))
+
+        self._db.commit()
+        cursor = None
+
+        return user_closed_trades
 
     #
     # Processing
@@ -664,11 +797,13 @@ class MySql(Database):
 
     def process_ohlc(self):
         #
-        # insert market ohlcs
+        # insert market ohlc
         #
 
-        if self._pending_ohlc_insert and (self._pending_ohlc_select or (len(self._pending_ohlc_insert) >= 500) or (time.time() - self._last_ohlc_flush >= 60)):
-            # some select could need of the last insert, or more than 500 pending insert, or last insert was 60 secondes past or more
+        if self._pending_ohlc_insert and (self._pending_ohlc_select or (len(self._pending_ohlc_insert) >= 500) or (
+                time.time() - self._last_ohlc_flush >= 60)):
+            # some select could need of the last insert, or more than 500 pending insert
+            # or last insert was 60 seconds past or more
             with self._mutex:
                 mkd = self._pending_ohlc_insert
                 self._pending_ohlc_insert = []
@@ -727,19 +862,20 @@ class MySql(Database):
                     self._pending_liquidation_insert = mkd + self._pending_liquidation_insert
 
         #
-        # clean older ohlcs
+        # clean older candles
         #
 
         if self._auto_cleanup:
-            if time.time() - self._last_ohlc_clean >= OhlcStorage.CLEANUP_DELAY:
+            if time.time() - self._last_ohlc_clean >= Database.OHLC_CLEANUP_DELAY:
                 try:
                     now = time.time()
                     cursor = self._db.cursor()
 
-                    for timeframe, timestamp in OhlcStorage.CLEANERS:
+                    for timeframe, timestamp in Database.OHLC_HOLD_DURATION:
                         ts = int(now - timestamp) * 1000
                         # @todo make a count before
-                        cursor.execute("DELETE FROM ohlc WHERE timeframe <= %i AND timestamp < %i" % (timeframe, ts))
+                        cursor.execute("DELETE FROM ohlc WHERE timeframe > 0 AND timeframe <= %i AND timestamp < %i" % (
+                            timeframe, ts))
 
                     self._db.commit()
                     cursor = None
@@ -749,7 +885,7 @@ class MySql(Database):
                 self._last_ohlc_clean = time.time()
 
         #
-        # select market ohlcs, only after the inserts are processed
+        # select market OHLC, only after the inserts are processed
         #
 
         with self._mutex:
@@ -822,6 +958,123 @@ class MySql(Database):
                 with self._mutex:
                     self._pending_ohlc_select = mks + self._pending_ohlc_select
 
+    def process_range_bar(self):
+        #
+        # insert market range-bars
+        #
+
+        if self._pending_range_bar_insert and (self._pending_ohlc_select or (len(self._pending_range_bar_insert) >= 500) or (
+                time.time() - self._last_ohlc_flush >= 60)):
+            # some select could need of the last insert, or more than 500 pending insert
+            # or last insert was 60 seconds past or more
+            with self._mutex:
+                mkd = self._pending_range_bar_insert
+                self._pending_range_bar_insert = []
+
+            if mkd:
+                try:
+                    cursor = self._db.cursor()
+
+                    query = ' '.join((
+                        "INSERT INTO range_bar(broker_id, market_id, timestamp, duration, size, open, high, low, close, volume) VALUES",
+                        ','.join(["('%s', '%s', %i, %i, %i, '%s', '%s', '%s', '%s', '%s')" % (mk[0], mk[1], mk[2], mk[3], mk[4], mk[5], mk[6], mk[7], mk[8], mk[9]) for mk in mkd]),
+                        "ON DUPLICATE KEY UPDATE duration = VALUES(duration), open = VALUES(open), high = VALUES(high), low = VALUES(low), close = VALUES(close), volume = VALUES(volume)"
+                    ))
+
+                    cursor.execute(query)
+
+                    self._db.commit()
+                    cursor = None
+                except Exception as e:
+                    self.on_error(e)
+
+                    # retry the next time
+                    with self._mutex:
+                        self._pending_range_bar_insert = mkd + self._pending_range_bar_insert
+
+                self._last_range_bar_flush = time.time()
+
+        #
+        # select market range-bar, only after the inserts are processed
+        #
+
+        with self._mutex:
+            mks = self._pending_range_bar_select
+            self._pending_range_bar_select = []
+
+        if mks:
+            try:
+                for mk in mks:
+                    cursor = self._db.cursor()
+                    reverse = False
+
+                    if mk[4] == 0:
+                        # from to
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[5], mk[6]))
+                    elif mk[4] == 1:
+                        # last n
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp DESC LIMIT %s""" % (
+                                            mk[1], mk[2], mk[3], mk[5]))
+                        reverse = True
+                    elif mk[4] == 2:
+                        # last n to date
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp <= %i ORDER BY timestamp DESC LIMIT %i""" % (
+                                            mk[1], mk[2], mk[3], mk[6], mk[5]))
+                        reverse = True
+                    elif mk[4] == 3:
+                        # from to now
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3], mk[5]))
+                    else:
+                        # all @warning should be removed, unused and dangerous
+                        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp ASC""" % (
+                                            mk[1], mk[2], mk[3]))
+
+                    rows = cursor.fetchall()
+
+                    bars = []
+
+                    for row in rows:
+                        timestamp = float(row[0]) * 0.001  # to float second timestamp
+                        bar = RangeBar(timestamp)
+
+                        bar.set_duration(float(row[1] * 0.001))  # to float second duration
+                        bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+
+                        bar.set_volume(float(row[6]))
+
+                        if bar.abs_height < mk[3]:
+                            bar.set_consolidated(False)  # current
+
+                        if reverse:
+                            bars.insert(0, bar)
+                        else:
+                            bars.append(bar)
+
+                    cursor = None
+
+                    # notify
+                    mk[0].notify(Signal.SIGNAL_RANGE_BAR_DATA_BULK, mk[1], (mk[2], mk[3], bars))
+            except Exception as e:
+                self.on_error(e)
+
+                # retry the next time
+                with self._mutex:
+                    self._pending_range_bar_select = mks + self._pending_range_bar_select
+
+    def process_volume_profile(self):
+        pass
+
+    #
+    # states
+    #
+
     def on_error(self, e):
         logger.error(repr(e))
         time.sleep(5.0)
@@ -842,7 +1095,7 @@ class MySql(Database):
             return
 
         # @todo timeframes, from_date, to_date
-    
+
         if not market_id:
             cursor = self._db.cursor()
             cursor.execute("DELETE FROM ohlc WHERE broker_id = '%s'" % (broker_id,))

@@ -15,26 +15,26 @@ if TYPE_CHECKING:
     from .indicator.price.price import PriceIndicator
     from .indicator.volume.volume import VolumeIndicator
 
-    from instrument.rangebargenerator import RangeBarBaseGenerator
-    from instrument.tickbargenerator import TickBarBaseGenerator
     from instrument.instrument import Instrument
-    from instrument.tickbar import TickBarBase
+    from instrument.rangebar import RangeBase
+
+from instrument.rangebargenerator import RangeBarGenerator
 
 from .strategybaseanalyser import StrategyBaseAnalyser
 
 import logging
 
-logger = logging.getLogger('siis.strategy.strategybaranalyser')
+logger = logging.getLogger('siis.strategy.strategyrangebaranalyser')
 
 
-class StrategyBarAnalyser(StrategyBaseAnalyser):
+class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
     """
-    StrategyBarAnalyser data-series per non-temporal bar analyser base class (range-bar, reversal-bar, renko...).
+    StrategyRangeBarAnalyser data-series per non-temporal range-bar analyser base class.
     """
 
     strategy_trader: BarStrategyTrader
 
-    tb: int
+    rb: int
     depth: int
     history: int
 
@@ -43,7 +43,7 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
     _update_at_close: bool
     _signal_at_close: bool
 
-    tick_bar_gen: Union[TickBarBaseGenerator, RangeBarBaseGenerator, None]
+    range_bar_gen: Union[RangeBarGenerator, None]
     _last_closed: bool
 
     last_signal: Union[StrategySignal, None]
@@ -56,13 +56,13 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
     prev_open_price: Union[float, None]  # previous open price
     prev_close_price: Union[float, None]  # previous close price
 
-    def __init__(self, strategy_trader: BarStrategyTrader, tickbar: int,
+    def __init__(self, strategy_trader: BarStrategyTrader, range_bar_size: int,
                  depth: int, history: int, params: dict = None):
         self.strategy_trader = strategy_trader  # parent strategy-trader object
 
         params = params or {}
 
-        self.tb = tickbar
+        self.rb = range_bar_size
         self.depth = depth  # min samples size needed for processing
         self.history = history  # sample history size
 
@@ -71,8 +71,8 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
         self._update_at_close = params.get('update-at-close', False)
         self._signal_at_close = params.get('signal-at-close', False)
 
-        self.tick_bar_gen = None
-        self._last_closed = False  # last generated tickbar closed
+        self.range_bar_gen = RangeBarGenerator(range_bar_size, params.get('tick-scale', 1.0))
+        self._last_closed = False  # last generated bar closed
 
         self.last_signal = None
 
@@ -122,14 +122,14 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
 
                     setattr(self, ind, indicator)
                 else:
-                    logger.error("Indicator %s not found for %s on tickbar %s" % (param[0], ind, self.tb))
+                    logger.error("Indicator %s not found for %s on bar %s" % (param[0], ind, self.rb))
             else:
-                # logger.info("No indicator for %s on tickbar %s" % (ind, self.tb))
+                # logger.info("No indicator for %s on bar %s" % (ind, self.tb))
                 setattr(self, ind, None)
 
     def setup_generator(self, instrument: Instrument):
-        if self.tick_bar_gen:
-            self.tick_bar_gen.setup(instrument)
+        if self.range_bar_gen:
+            self.range_bar_gen.setup(instrument)
 
     def need_update(self, timestamp: float) -> bool:
         """
@@ -144,7 +144,7 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
     def need_signal(self, timestamp: float) -> bool:
         """
         Return True if the signal can be generated and returned at this processing.
-        If signal at close then wait for the last tickbar close, else always returns true.
+        If signal at close then wait for the last bar close, else always returns true.
         """
         if self._signal_at_close:
             return self._last_closed
@@ -157,7 +157,7 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
         """
         return None
 
-    def complete(self, tickbars: List[TickBarBase], timestamp: float):
+    def complete(self, range_bars: List[RangeBase], timestamp: float):
         """
         Must be called at the end of the process method.
         """
@@ -173,7 +173,7 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
                 self.close_price = self.price.close[-2]
                 self.open_price = self.price.open[-2]
 
-            # last closed tickbar processed (reset before next gen)
+            # last closed bar processed (reset before next gen)
             # self._last_closed = False
 
         elif self.close_price is None or self.open_price is None:
@@ -193,14 +193,14 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
             self.prev_open_price = None
             self.prev_close_price = None
 
-    def get_tickbars(self) -> List[TickBarBase]:
+    def get_range_bars(self) -> List[RangeBase]:
         """
-        Get the tickbar list to process.
+        Get the range-bar list to process.
         """
-        dataset = self.strategy_trader.instrument.tickbars(self.tb)
-        tickbars = dataset[-self.depth:] if dataset else []
+        dataset = self.strategy_trader.instrument.range_bars(self.rb)
+        range_bars = dataset[-self.depth:] if dataset else []
 
-        return tickbars
+        return range_bars
 
     #
     # properties
@@ -209,16 +209,16 @@ class StrategyBarAnalyser(StrategyBaseAnalyser):
     @property
     def timeframe(self) -> float:
         """
-        Timeframe of this strategy-trader is tick.
+        Timeframe of this strategy-trader is bar.
         """
         return 0.0
 
     @property
-    def tickbar(self) -> float:
+    def range_bar_size(self) -> float:
         """
         Tickbar size.
         """
-        return self.tb
+        return self.rb
 
     @property
     def samples_depth_size(self) -> int:

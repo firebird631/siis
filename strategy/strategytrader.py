@@ -354,7 +354,7 @@ class StrategyTrader(object):
     def apply_trade_context(self, trade: StrategyTrade, context: StrategyTraderContext) -> bool:
         """
         Apply a trade context to a valid trade.
-        Overridden by subclasses TimeframeBasedStrategyTrader and TickBarBasedStrategyTrader.
+        Overridden by subclasses TimeframeStrategyTrader and BarStrategyTrader.
         """
         if not trade or not context:
             return False
@@ -1761,6 +1761,12 @@ class StrategyTrader(object):
     def on_received_initial_candles(self, timeframe: float):
         """
         Slot called once the initial bulk of candles are received for each timeframe.
+        """
+        pass
+
+    def on_received_initial_range_bars(self, size: int):
+        """
+        Slot called once the initial bulk of range-bars are received for each timeframe.
         """
         pass
 

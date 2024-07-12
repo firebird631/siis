@@ -212,49 +212,49 @@ class HTTP(_HTTPManager):
             auth=True
         )
 
-    def enable_universal_transfer(self, **kwargs):
-        """
-        :param kwargs: See
-            https://bybit-exchange.github.io/docs/account_asset/#t-deposit_addr_info.
-        :returns: Request results as dictionary.
+    # def enable_universal_transfer(self, **kwargs):
+    #     """
+    #     :param kwargs: See
+    #         https://bybit-exchange.github.io/docs/account_asset/#t-deposit_addr_info.
+    #     :returns: Request results as dictionary.
+    #
+    #     """
+    #     return self._submit_request(
+    #         method="POST",
+    #         path=self.endpoint + "/asset/v1/private/transferable-subs/save",
+    #         query=kwargs,
+    #         auth=True
+    #     )
 
-        """
-        return self._submit_request(
-            method="POST",
-            path=self.endpoint + "/asset/v1/private/transferable-subs/save",
-            query=kwargs,
-            auth=True
-        )
+    # def create_universal_transfer(self, **kwargs):
+    #     """
+    #     :param kwargs: See
+    #         https://bybit-exchange.github.io/docs/account_asset/#t-deposit_addr_info.
+    #     :returns: Request results as dictionary.
+    #
+    #     """
+    #     return self._submit_request(
+    #         method="POST",
+    #         path=self.endpoint + "/asset/v1/private/universal/transfer",
+    #         query=kwargs,
+    #         auth=True
+    #     )
 
-    def create_universal_transfer(self, **kwargs):
-        """
-        :param kwargs: See
-            https://bybit-exchange.github.io/docs/account_asset/#t-deposit_addr_info.
-        :returns: Request results as dictionary.
-
-        """
-        return self._submit_request(
-            method="POST",
-            path=self.endpoint + "/asset/v1/private/universal/transfer",
-            query=kwargs,
-            auth=True
-        )
-
-    def query_universal_transfer_list(self, **kwargs):
-        """
-        Rules: Subaccount can not deposit
-
-        :param kwargs: See
-            https://bybit-exchange.github.io/docs/account_asset/#t-deposit_addr_info.
-        :returns: Request results as dictionary.
-
-        """
-        return self._submit_request(
-            method="POST",
-            path=self.endpoint + "/asset/v1/private/transferable-subs/save",
-            query=kwargs,
-            auth=True
-        )
+    # def query_universal_transfer_list(self, **kwargs):
+    #     """
+    #     Rules: Subaccount can not deposit
+    #
+    #     :param kwargs: See
+    #         https://bybit-exchange.github.io/docs/account_asset/#t-deposit_addr_info.
+    #     :returns: Request results as dictionary.
+    #
+    #     """
+    #     return self._submit_request(
+    #         method="POST",
+    #         path=self.endpoint + "/asset/v1/private/transferable-subs/save",
+    #         query=kwargs,
+    #         auth=True
+    #     )
 
     def enable_universal_transfer(self, **kwargs):
         """

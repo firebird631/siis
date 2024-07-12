@@ -1,7 +1,7 @@
 # @date 2020-10-29
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2020 Dream Overflow
-# Quote streaming per market
+# Quote streaming per market using file system in the same manner as TickStorage.
 
 import os
 import time
@@ -28,6 +28,9 @@ class QuoteStorage(object):
 
     Price and volume should be formatted with the asset precision if possible but scientific notation
     is tolerated.
+
+    @note It is not used because main database contains OHLC, but planned for the of the data source only returns
+        history as OHLC and not as tick/trade.
     """
 
     FLUSH_DELAY = 60.0
@@ -173,7 +176,6 @@ class QuoteStorage(object):
 class QuoteStreamer(object):
     """
     Streamer that read data from an initial position.
-    This models is inspired from the quote streamer.
     """
 
     QUOTE_SIZE = 7*8  # 56bytes
@@ -524,59 +526,3 @@ class LastQuoteFinder(object):
                                                           minute=0, second=0, microsecond=0)
 
         return quote
-
-    # def __bufferize(self):
-    #     if self._curr_date < self._to_date:
-    #         if not self._file:
-    #             self.open()
-    #
-    #         file_end = False
-    #
-    #         if self._file:
-    #             if self._is_binary:
-    #                 arr = self._file.read(LastQuoteFinder.QUOTE_SIZE*self._buffer_size)
-    #                 data = self._struct.iter_unpack(arr)
-    #
-    #                 if len(arr) < self._buffer_size:
-    #                    file_end = True
-    #
-    #                 # speedup using numpy fromfile but its a one shot loads
-    #                 # data = np.fromfile(self._file, dtype=self._format)
-    #                 # file_end = True
-    #
-    #                 self._buffer.extend(data)
-    #
-    #                 # not really necessary, its slow
-    #                 # no longer necessary because open() at the best initial position
-    #                 # for d in data:
-    #                 #     if d[0] >= self._from_date.timestamp():
-    #                 #         self._buffer.append(d)
-    #             else:
-    #                 # text
-    #                 for n in range(0, self._buffer_size):
-    #                     row = self._file.readline()
-    #
-    #                     if not row:
-    #                         file_end = True
-    #                         break
-    #
-    #                     ts, o, h, l, c, s, vol = row.rstrip('\n').split('\t')
-    #
-    #                     ts = float(ts) * 0.001
-    #                     if ts < self._from_date.timestamp():
-    #                         # ignore older than initial date
-    #                         continue
-    #
-    #                     self._buffer.append((ts, float(o), float(h), float(l), float(c), float(s), float(vol)))
-    #         else:
-    #             file_end = True
-    #
-    #         if file_end:
-    #             self.close()
-    #
-    #             # prev month/year
-    #             if self._curr_date.month == 1:
-    #                 self._curr_date = datetime(year=self._curr_date.year-1, month=12, day=1, tzinfo=UTC())
-    #             else:
-    #                 self._curr_date = datetime(year=self._curr_date.year, month=self._curr_date.month-1,
-    #                                            day=1, tzinfo=UTC())

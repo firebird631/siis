@@ -50,18 +50,21 @@ as possible the amount, but it is strongly recommended to use BNB tokens to avoi
 
 ### IG related ###
 
-**IG candle limit 10k reached** : Do the maths, how many markets do you want to initiate, to fetch, how many candles history you will need,
-find your way, or try to ask if they can increase your limitations. I have no solution for this problem because it is out of my possibility.
+**IG candle limit 10k reached** : Using the demo account it is possible to double the limit to 20k.
+Do the maths : how many markets to initiate, to fetch, how many candles history is needed ? 
+Try to contact IG support to increase limitations. A solution is to use another fetcher and map data to IG. 
+Then only fetch from IG the most recent history at startup using --initial-fetch and never store them (
+don't use --store-ohlc neither --store-trade else it will create history inconsistencies).
+Take care to check that starting many times the instance per week that it will not reach limits.
+
+**IG provides live and history data for limited markets types** : commodities, indices, forex and crypto. 
+You will not be able to get data for stocks. In that case you can fetch history using another source and map them to IG. 
+For live data you will need a specific watcher. Take care of a possible price spread between your different source 
+of price and IG market price.
 
 **siis.error.watcher.ig AttributeError("module 'time' has no attribute 'clock'")** : Since Python 3.9 the Crypto package is not maintained. 
 Two solutions : replace by its alternative (remove the current, install its replacement) or manually fix the file lib/python3.<9|10>/site-packages/Crypto/Random/_UserFriendlyRNG.py
 at line 77 with t = time.process_time(). clock() function is deprecated and definitively removed since Python 3.9.
-
-### FTX related ###
-
-**No orders are created** : Yes the trading part (ordering, user WS) is not implemented for now.
-
-**It does not work at all** : Yes since FTX exit scam it is no longer working, please consider using another exchange.
 
 ### ByBit related ###
 

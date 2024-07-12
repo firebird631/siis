@@ -91,7 +91,7 @@ class StrategyBaseAnalyser(object):
         return 0.0
 
     @property
-    def tickbar(self) -> int:
+    def range_bar_size(self) -> int:
         """
         Tickbar size.
         """

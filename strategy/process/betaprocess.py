@@ -1,7 +1,7 @@
 # @date 2020-11-10
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2020 Dream Overflow
-# Strategy beta processor.
+# @deprecated Strategy beta processor. No longer necessary because this idea of cache is abandoned.
 
 import time
 import traceback
@@ -69,8 +69,7 @@ def beta_preprocess(strategy, strategy_trader):
     """
     Load previous cached data and compute missing part of data, cache them.
 
-    @todo to be continued and tested
-    @todo must be configurable to take quote streamer in place of trade streamer
+    @deprecated no longer planned neither used
     """
     with strategy_trader._mutex:
         if strategy_trader._preprocessing >= 2:
@@ -80,7 +79,7 @@ def beta_preprocess(strategy, strategy_trader):
         # preprocessing in progress, avoid live until complete
         strategy_trader._preprocessing = 2
 
-    # @todo non blocking preprocessing       
+    # @todo non-blocking preprocessing
     instrument = strategy_trader.instrument       
 
     limits = None
@@ -91,72 +90,72 @@ def beta_preprocess(strategy, strategy_trader):
         if strategy_trader._preprocessing == 2:
             logger.debug("%s preprocess begin, now is %s..." % (instrument.market_id, strategy.timestamp))
 
-            try:
-                limits = Database.inst().get_cached_limits(strategy.trader_service.trader().name,
-                                                           instrument.market_id, strategy.identifier)
-            except Exception as e:
-                error_logger.error(repr(e))
-                limits = None
-
-            if limits is None:
-                limits = Limits()
-
-            from_date = datetime.now()  # @todo initial
-
-            if limits.min_price <= 0.0 or limits.max_price <= 0.0:
-                # compute limits from the oldest tick
-                first_tick = Database.inst().get_first_tick(strategy.trader_service.trader().name, instrument.market_id)
-                from_date = datetime.fromtimestamp(first_tick[0], tz=UTC()) if first_tick else None
-
-                logger.debug("%s preprocess missing of trade data, abort %s..." % (
-                    instrument.market_id, strategy.timestamp))
-
-                with strategy_trader._mutex:
-                    strategy_trader._preprocessing = 0
-
-                return
-                # strategy_trader._preprocess_streamer = get_tick_streamer(strategy, strategy_trader, from_date=from_date)
-            else:
-                # update limits from last computed date
-                strategy_trader._preprocess_streamer = strategy_trader.get_tick_streamer(
-                    strategy, strategy_trader, timestamp=limits.last_timestamp+0.000001)
-
-            # range of preprocessed data
-            strategy_trader._preprocess_range[0] = from_date
-            strategy_trader._preprocess_range[1] = datetime.fromtimestamp(time.time(), tz=UTC())
-
-            if strategy_trader._preprocess_streamer:
-                timestamp = strategy_trader._preprocess_streamer.from_date.timestamp() + 60*15  # next 15 minutes
-
-                while not strategy_trader._preprocess_streamer.finished():
-                    trades = strategy_trader._preprocess_streamer.next(timestamp)
-
-                    for trade in trades:
-                        if limits.max_price <= 0.0:
-                            limits.max_price = trade[3]
-
-                        if limits.min_price <= 0.0:
-                            limits.min_price = trade[3]
-
-                        limits.min_price = min(limits.min_price, trade[3])
-                        limits.max_price = max(limits.max_price, trade[3])
-
-                        if limits.from_timestamp <= 0.0:
-                            # init first
-                            limits.from_timestamp = trade[0]
-
-                        limits.last_timestamp = trade[0]
-
-                        if strategy_trader._preprocess_from_timestamp <= 0:
-                            strategy_trader._preprocess_from_timestamp = trade[0]
-
-                    timestamp += 60*15  # next 15 minutes
-
-                # store them
-                strategy_trader._limits = limits
-
-                # now limits are computed, reset for the next step
-                strategy_trader._preprocess_streamer.reset()
+            # try:
+            #     limits = Database.inst().get_cached_limits(strategy.trader_service.trader().name,
+            #                                                instrument.market_id, strategy.identifier)
+            # except Exception as e:
+            #     error_logger.error(repr(e))
+            #     limits = None
+            #
+            # if limits is None:
+            #     limits = Limits()
+            #
+            # from_date = datetime.now()  # @todo initial
+            #
+            # if limits.min_price <= 0.0 or limits.max_price <= 0.0:
+            #     # compute limits from the oldest tick
+            #     first_tick = Database.inst().get_first_tick(strategy.trader_service.trader().name, instrument.market_id)
+            #     from_date = datetime.fromtimestamp(first_tick[0], tz=UTC()) if first_tick else None
+            #
+            #     logger.debug("%s preprocess missing of trade data, abort %s..." % (
+            #         instrument.market_id, strategy.timestamp))
+            #
+            #     with strategy_trader._mutex:
+            #         strategy_trader._preprocessing = 0
+            #
+            #     return
+            #     # strategy_trader._preprocess_streamer = get_tick_streamer(strategy, strategy_trader, from_date=from_date)
+            # else:
+            #     # update limits from last computed date
+            #     strategy_trader._preprocess_streamer = strategy_trader.get_tick_streamer(
+            #         strategy, strategy_trader, timestamp=limits.last_timestamp+0.000001)
+            #
+            # # range of preprocessed data
+            # strategy_trader._preprocess_range[0] = from_date
+            # strategy_trader._preprocess_range[1] = datetime.fromtimestamp(time.time(), tz=UTC())
+            #
+            # if strategy_trader._preprocess_streamer:
+            #     timestamp = strategy_trader._preprocess_streamer.from_date.timestamp() + 60*15  # next 15 minutes
+            #
+            #     while not strategy_trader._preprocess_streamer.finished():
+            #         trades = strategy_trader._preprocess_streamer.next(timestamp)
+            #
+            #         for trade in trades:
+            #             if limits.max_price <= 0.0:
+            #                 limits.max_price = trade[3]
+            #
+            #             if limits.min_price <= 0.0:
+            #                 limits.min_price = trade[3]
+            #
+            #             limits.min_price = min(limits.min_price, trade[3])
+            #             limits.max_price = max(limits.max_price, trade[3])
+            #
+            #             if limits.from_timestamp <= 0.0:
+            #                 # init first
+            #                 limits.from_timestamp = trade[0]
+            #
+            #             limits.last_timestamp = trade[0]
+            #
+            #             if strategy_trader._preprocess_from_timestamp <= 0:
+            #                 strategy_trader._preprocess_from_timestamp = trade[0]
+            #
+            #         timestamp += 60*15  # next 15 minutes
+            #
+            #     # store them
+            #     strategy_trader._limits = limits
+            #
+            #     # now limits are computed, reset for the next step
+            #     strategy_trader._preprocess_streamer.reset()
 
             with strategy_trader._mutex:
                 strategy_trader._preprocessing = 3
@@ -164,15 +163,15 @@ def beta_preprocess(strategy, strategy_trader):
         if strategy_trader._preprocessing == 3:
             logger.debug("%s preprocess load cache, now is %s..." % (instrument.market_id, strategy.timestamp))
 
-            to_date = datetime.fromtimestamp(strategy.timestamp, tz=UTC())
-
-            if strategy.service.backtesting:
-                # start timestamp exclusive
-                to_date = to_date - timedelta(microseconds=1)
-
-            from_date = to_date - timedelta(seconds=strategy_trader._preprocess_depth)
-
-            strategy_trader.preprocess_load_cache(from_date, to_date)
+            # to_date = datetime.fromtimestamp(strategy.timestamp, tz=UTC())
+            #
+            # if strategy.service.backtesting:
+            #     # start timestamp exclusive
+            #     to_date = to_date - timedelta(microseconds=1)
+            #
+            # from_date = to_date - timedelta(seconds=strategy_trader._preprocess_depth)
+            #
+            # strategy_trader.preprocess_load_cache(from_date, to_date)
 
             with strategy_trader._mutex:
                 # now can update using more recent data
@@ -181,19 +180,19 @@ def beta_preprocess(strategy, strategy_trader):
         if strategy_trader._preprocessing == 4:
             logger.debug("%s preprocess update, now is %s..." % (instrument.market_id, strategy.timestamp))
 
-            if strategy_trader._preprocess_streamer:
-                base_timestamp = 0.0
-                timestamp = strategy_trader._preprocess_streamer.from_date.timestamp() + 60*15  # next 15 minutes
-
-                while not strategy_trader._preprocess_streamer.finished():
-                    trades = strategy_trader._preprocess_streamer.next(timestamp)
-
-                    for trade in trades:
-                        strategy_trader.preprocess(trade)
-
-                    timestamp += 60*15  # next 15 minutes
-
-                strategy_trader._preprocess_streamer = None
+            # if strategy_trader._preprocess_streamer:
+            #     base_timestamp = 0.0
+            #     timestamp = strategy_trader._preprocess_streamer.from_date.timestamp() + 60*15  # next 15 minutes
+            #
+            #     while not strategy_trader._preprocess_streamer.finished():
+            #         trades = strategy_trader._preprocess_streamer.next(timestamp)
+            #
+            #         for trade in trades:
+            #             strategy_trader.preprocess(trade)
+            #
+            #         timestamp += 60*15  # next 15 minutes
+            #
+            #     strategy_trader._preprocess_streamer = None
 
             with strategy_trader._mutex:
                 # now can store in cache news and updated results

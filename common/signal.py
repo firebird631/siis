@@ -27,6 +27,8 @@ class Signal(object):
 	SIGNAL_BUY_SELL_ORDER = 105         # data is BuySellSignal
 	SIGNAL_ORDER_BOOK = 106             # data is a tuple with (market_id, buys array, sells array)
 	SIGNAL_LIQUIDATION_DATA = 107       # data is a tuple with (market_id, timestamp, direction, price, quantity)
+	SIGNAL_RANGE_BAR_DATA = 108         # data is a tuple with (market_id, size, RangerBar)
+	SIGNAL_RANGE_BAR_DATA_BULK = 109    # data is a tuple of (market_id, size, RangeBar[])
 
 	SIGNAL_WATCHER_CONNECTED = 200      # data is a tuple of (timestamp, market_id or None)
 	SIGNAL_WATCHER_DISCONNECTED = 201   # data is a tuple of (timestamp, market_id or None)

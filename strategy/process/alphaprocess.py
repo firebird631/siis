@@ -1,7 +1,7 @@
 # @date 2018-08-24
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# Strategy alpha processor.
+# Strategy alpha processor. This is the standard implementation.
 
 import time
 import traceback
@@ -26,7 +26,9 @@ traceback_logger = logging.getLogger('siis.traceback.strategy.process.alpha')
 def setup_process(strategy):
     """
     Setup this alpha processing to the strategy.
-    Setup for live and backtesting are OHLCs history, and process trade/tick data for backtesting.
+    Setup for live and backtesting.
+    Support OHLC history (planned non-temporal Bar and Volume Profile history) and process
+     and process trade/tick data for backtesting.
     There is a bootstrap processing before going to live or to receive backtest data.
     """
     strategy._setup_backtest = alpha_setup_backtest
@@ -174,8 +176,7 @@ def tickbar_based_bootstrap(strategy, strategy_trader):
 
     logger.debug("%s tickbars bootstrap begin at %s, now is %s" % (instrument.market_id, timestamp, strategy.timestamp))
 
-    # @todo need tickstreamer, and call strategy_trader.bootstrap(timestamp) at per bulk of ticks (
-    #  temporal size defined)
+    # @todo
 
     logger.debug("%s tickbars bootstrapping done" % instrument.market_id)
 
@@ -292,19 +293,30 @@ def initiate_strategy_trader(strategy, strategy_trader):
     try:
         watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
         if watcher:
+            # watcher subscriptions
             tfs = {tf['timeframe']: tf['history'] for tf in strategy.parameters.get(
                 'timeframes', {}).values() if tf['timeframe'] > 0}
 
             watcher.subscribe(instrument.market_id, tfs, None, None)
 
             # wait to DB commit
-            # @todo todo a method to look if flushed insert
+            # @todo a method to look if insert are fully flushed before, do simply a sleep...
             time.sleep(1.0)
 
             # wait for timeframes before query
             for k, timeframe in strategy.parameters.get('timeframes', {}).items():
                 if timeframe['timeframe'] > 0:
-                    instrument.want_timeframe(timeframe['timeframe'])
+                    instrument.need_timeframe(timeframe['timeframe'])
+
+            # wait for tick-bars (non-temporal bars) before query
+            # for k, tickbar in strategy.parameters.get('tickbars', {}).items():
+            #     if timeframe['tickbars'] > 0:
+            #         instrument.want_tickbar(tickbar['tickbars'])
+
+            # wait for volumes-profiles before query
+            # for k, volume_profile in strategy.parameters.get('volume-profiles', {}).items():
+            #     if volume_profile['volume-profile'] > 0:
+            #         instrument.want_volume_profile(volume_profile['volume-profile'])
 
             # query for most recent candles per timeframe from the database
             for k, timeframe in strategy.parameters.get('timeframes', {}).items():
@@ -389,12 +401,22 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
         # retrieve the related price and volume watcher
         watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
         if watcher:
-            # wait for timeframes before query
+            # wait for timeframes (temporal bars) before query
             for k, timeframe in strategy.parameters.get('timeframes', {}).items():
                 if timeframe['timeframe'] > 0:
-                    instrument.want_timeframe(timeframe['timeframe'])
+                    instrument.need_timeframe(timeframe['timeframe'])
 
-            # query for most recent candles per timeframe from the database
+            # wait for tick-bars before query
+            # for k, element in strategy.parameters.get('tickbars', {}).items():
+            #     if element['tickbar'] > 0:
+            #         instrument.need_range_bar(element['tickbar'])
+
+            # wait for volumes-profiles before query
+            # for k, volume_profile in strategy.parameters.get('volume-profiles', {}).items():
+            #     if volume_profile['volume-profile'] > 0:
+            #         instrument.want_volume_profile(volume_profile['volume-profile'])
+
+            # query for most recent OHLC per timeframe from the database
             for k, timeframe in strategy.parameters.get('timeframes', {}).items():
                 if timeframe['timeframe'] > 0:
                     l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe']+1.0)
@@ -405,7 +427,15 @@ def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument
                     watcher.historical_data(instrument.market_id, timeframe['timeframe'],
                                             from_date=l_from, to_date=l_to, n_last=n_last)
 
-            # create a feeder per instrument and fetch ticks and candles + ticks
+            # query for most recent range-bars from the database
+            # for k, element in strategy.parameters.get('tickbars', {}).items():
+            #     pass  # @todo it does not comes from watcher but from DB
+
+            # query for most recent candles per timeframe from the database @todo
+            # for k, volume_profile in strategy.parameters.get('volume-profiles', {}).items():
+            #     pass  # @todo it does not comes from watcher but from DB
+
+            # create a feeder per instrument for ticks history
             feeder = StrategyDataFeeder(strategy, instrument.market_id, [], True)
             strategy.add_feeder(feeder)
 
