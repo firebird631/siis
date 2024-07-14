@@ -817,7 +817,7 @@ class BinanceFuturesWatcher(Watcher):
 
             tick = (trade_time, price, price, price, vol, buyer_maker)
 
-            self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
+            self.service.notify(Signal.SIGNAL_STREAM_TICK_DATA, self.name, (symbol, tick))
 
             if self._store_trade:
                 Database.inst().store_market_trade((
@@ -831,7 +831,7 @@ class BinanceFuturesWatcher(Watcher):
                     candle = self.update_ohlc(symbol, tf, trade_time, price, spread, vol)
 
                 if candle is not None:
-                    self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+                    self.service.notify(Signal.SIGNAL_STREAM_CANDLE_DATA, self.name, (symbol, candle))
 
     def __on_kline_data(self, data):
         if type(data) is not dict:
@@ -867,7 +867,7 @@ class BinanceFuturesWatcher(Watcher):
             candle.set_volume(float(k['v']))
             candle.set_consolidated(k['x'])
 
-            self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+            self.service.notify(Signal.SIGNAL_STREAM_CANDLE_DATA, self.name, (symbol, candle))
 
             if self._store_ohlc and k['x']:
                 # write only consolidated candles. values are string its perfect

@@ -566,13 +566,14 @@ class Database(object):
         with self._condition:
             self._condition.notify()
 
-    def load_market_ohlc(self, service, broker_id: str, market_id: str, timeframe: float,
+    def load_market_ohlc(self, service, broker_id: str, market_id: str, analyser_name: str, timeframe: float,
                          from_datetime: Optional[datetime] = None, to_datetime: Optional[datetime] = None):
         """
         Load a set of market ohlc.
         @param service to be notified once done
         @param broker_id: str
         @param market_id: str
+        @param analyser_name: str
         @param timeframe: float
         @param from_datetime datetime
         @param to_datetime datetime
@@ -582,18 +583,20 @@ class Database(object):
             to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
 
             mode = 0 if from_ts and to_ts else 3
-            self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, mode, from_ts, to_ts))
+            self._pending_ohlc_select.append((service, broker_id, market_id, analyser_name,
+                                              timeframe, mode, from_ts, to_ts))
 
         with self._condition:
             self._condition.notify()
 
-    def load_market_ohlc_last_n(self, service, broker_id: str, market_id: str, timeframe: float,
-                                last_n: int, to_datetime: Optional[datetime] = None):
+    def load_market_ohlc_last_n(self, service, broker_id: str, market_id: str, analyser_name: str,
+                                timeframe: float, last_n: int, to_datetime: Optional[datetime] = None):
         """
         Load a set of market ohlc.
         @param service to be notified once done
         @param market_id: str
         @param broker_id: str
+        @param analyser_name: str
         @param timeframe: float
         @param last_n: int last max n OHLCs to load
         @param to_datetime
@@ -602,18 +605,20 @@ class Database(object):
             to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
 
             mode = 2 if to_ts else 1
-            self._pending_ohlc_select.append((service, broker_id, market_id, timeframe, mode, last_n, to_ts))
+            self._pending_ohlc_select.append((service, broker_id, market_id, analyser_name,
+                                              timeframe, mode, last_n, to_ts))
 
         with self._condition:
             self._condition.notify()
 
-    def load_market_range_bar(self, service, broker_id: str, market_id: str, size: int,
+    def load_market_range_bar(self, service, broker_id: str, market_id: str, analyser_name: str, size: int,
                               from_datetime: Optional[datetime] = None, to_datetime: Optional[datetime] = None):
         """
         Load a set of market non-temporal bar.
         @param service to be notified once done
         @param broker_id: str
         @param market_id: str
+        @param analyser_name: str,
         @param size: int
         @param from_datetime datetime
         @param to_datetime datetime
@@ -623,18 +628,20 @@ class Database(object):
             to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
 
             mode = 0 if from_ts and to_ts else 3
-            self._pending_range_bar_select.append((service, broker_id, market_id, size, mode, from_ts, to_ts))
+            self._pending_range_bar_select.append((service, broker_id, market_id, analyser_name,
+                                                   size, mode, from_ts, to_ts))
 
         with self._condition:
             self._condition.notify()
 
-    def load_market_range_bar_last_n(self, service, broker_id: str, market_id: str, size: int,
+    def load_market_range_bar_last_n(self, service, broker_id: str, market_id: str, analyser_name: str, size: int,
                                      last_n: int, to_datetime: Optional[datetime] = None):
         """
         Load a set of market non-temporal bar.
         @param service to be notified once done
         @param market_id: str
         @param broker_id: str
+        @param analyser_name: str
         @param size: int
         @param last_n: int last max n results to load
         @param to_datetime
@@ -643,18 +650,20 @@ class Database(object):
             to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
 
             mode = 2 if to_ts else 1
-            self._pending_range_bar_select.append((service, broker_id, market_id, size, mode, last_n, to_ts))
+            self._pending_range_bar_select.append((service, broker_id, market_id, analyser_name,
+                                                   size, mode, last_n, to_ts))
 
         with self._condition:
             self._condition.notify()
 
-    def load_market_volume_profile(self, service, broker_id: str, market_id: str, vp_type: str,
+    def load_market_volume_profile(self, service, broker_id: str, market_id: str, analyser_name: str, vp_type: str,
                                    from_datetime: Optional[datetime] = None, to_datetime: Optional[datetime] = None):
         """
         Load a set of market volume-profile.
         @param service to be notified once done
         @param broker_id: str
         @param market_id: str
+        @param analyser_name: str
         @param vp_type: str
         @param from_datetime datetime
         @param to_datetime datetime
@@ -664,18 +673,20 @@ class Database(object):
             to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
 
             mode = 0 if from_ts and to_ts else 3
-            self._pending_volume_profile_select.append((service, broker_id, market_id, vp_type, mode, from_ts, to_ts))
+            self._pending_volume_profile_select.append((service, broker_id, market_id, analyser_name,
+                                                        vp_type, mode, from_ts, to_ts))
 
         with self._condition:
             self._condition.notify()
 
-    def load_market_volume_profile_last_n(self, service, broker_id: str, market_id: str, vp_type: str,
-                                          last_n: int, to_datetime: Optional[datetime] = None):
+    def load_market_volume_profile_last_n(self, service, broker_id: str, market_id: str, analyser_name: str,
+                                          vp_type: str, last_n: int, to_datetime: Optional[datetime] = None):
         """
         Load a set of market volume-profile.
         @param service to be notified once done
         @param market_id: str
         @param broker_id: str
+        @param analyser_name: str
         @param vp_type: str
         @param last_n: int last max n results to load
         @param to_datetime
@@ -684,7 +695,8 @@ class Database(object):
             to_ts = int(to_datetime.timestamp() * 1000) if to_datetime else None
 
             mode = 2 if to_ts else 1
-            self._pending_volume_profile_select.append((service, broker_id, market_id, vp_type, mode, last_n, to_ts))
+            self._pending_volume_profile_select.append((service, broker_id, market_id, analyser_name,
+                                                        vp_type, mode, last_n, to_ts))
 
         with self._condition:
             self._condition.notify()
@@ -713,11 +725,11 @@ class Database(object):
         """Load and return the single OHLC found at given timestamp in seconds from a specific timeframe."""
         return None
 
-    def get_last_range_bar(self, broker_id: str, market_id: str, bar_type: str):
+    def get_last_range_bar(self, broker_id: str, market_id: str, size: int):
         """Load and return only the last found and most recent stored range-bar from a specific size."""
         return None
 
-    def get_last_range_bar_at(self, broker_id: str, market_id: str, bar_type: str, timestamp: float):
+    def get_last_range_bar_at(self, broker_id: str, market_id: str, size: int, timestamp: float):
         """Load and return the single range-bar found at given timestamp in seconds from a specific size."""
         return None
 
@@ -752,12 +764,12 @@ class Database(object):
         """
         return TickStreamer(self._markets_path, broker_id, market_id, from_date, to_date, buffer_size, True)
 
-    def create_quote_streamer(self, broker_id: str, market_id: str, timeframe: float,
-                              from_date: datetime, to_date: datetime, buffer_size: int = 8192):
-        """
-        Create a new quote streamer. It comes from the OHLC file storage.
-        """
-        return QuoteStreamer(self._markets_path, broker_id, market_id, timeframe, from_date, to_date, buffer_size, True)
+    # def create_quote_streamer(self, broker_id: str, market_id: str, timeframe: float,
+    #                           from_date: datetime, to_date: datetime, buffer_size: int = 8192):
+    #     """
+    #     Create a new quote streamer. It comes from the OHLC file storage.
+    #     """
+    #     return QuoteStreamer(self._markets_path, broker_id, market_id, timeframe, from_date, to_date, buffer_size, True)
 
     def create_ohlc_streamer(self, broker_id: str, market_id: str, timeframe: float,
                              from_date: datetime, to_date: datetime, buffer_size: int = 8192):

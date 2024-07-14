@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from .strategytrader import StrategyTrader
+    from .strategytraderbase import StrategyTraderBase
 
 from datetime import datetime
 
@@ -380,7 +380,7 @@ class StrategySignal(object):
         else:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
-    def dumps_notify(self, timestamp: float, strategy_trader: StrategyTrader) -> dict:
+    def dumps_notify(self, timestamp: float, strategy_trader: StrategyTraderBase) -> dict:
         """
         Dumps to dict for notify/history, same format as for StrategyTrade.
         """

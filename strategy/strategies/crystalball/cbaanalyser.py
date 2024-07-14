@@ -45,9 +45,9 @@ class CrystalBallAAnalyser(CrystalBallAnalyser):
         self.last_signal = None
 
     def process(self, timestamp: float) -> Union[StrategySignal, None]:
-        candles = self.get_candles()
+        candles = self.get_bars()
 
-        if self.tf <= self.strategy_trader.min_traded_timeframe:
+        if self.tf <= self.strategy_trader._min_traded_timeframe:
             return None
 
         if len(candles) < self.depth:

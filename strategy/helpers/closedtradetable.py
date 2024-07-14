@@ -1,4 +1,4 @@
-# @date 2018-08-24
+# @date 2018-08-24alpha
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Strategy display table formatter helpers for views or notifiers
@@ -25,7 +25,7 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
     @todo cumulative pnl might be computed using trade notional quantity and average by total notional quantity
         to make the difference between strategy having trades of different quantities. could be an option toggle 2
     """
-    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L', 'Fees', 'OP', 'SL', 'TP', 'TF',
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L', 'Fees', 'OP', 'SL', 'TP',
                'Signal date', 'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
 
     if quantities:
@@ -163,7 +163,6 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                 t['order-price'] if t['order-price'] != "0" else "-",
                 format_with_percent(_sl, sl, sl_pct),
                 format_with_percent(_tp, tp, tp_pct),
-                t['timeframe'],
                 localize_datetime(t['entry-open-time']),
                 localize_datetime(t['stats']['first-realized-entry-datetime']),
                 t['avg-entry-price'],
@@ -244,7 +243,6 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
             '--',
             '--',
             '--',
-            '--',
             '-----------',
             '----------',
             '------',
@@ -278,7 +276,6 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
 
         row = [
             "SUB",
-            '-',
             '-',
             '-',
             '-',

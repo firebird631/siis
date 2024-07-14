@@ -37,7 +37,7 @@ class ForexAlphaBAnalyser(ForexAlphaAnalyser):
         self.rsi_high = params['constants']['rsi_high']      
 
     def process(self, timestamp):
-        candles = self.get_candles()
+        candles = self.get_bars()
 
         if len(candles) < self.depth:
             # not enough samples
@@ -46,7 +46,7 @@ class ForexAlphaBAnalyser(ForexAlphaAnalyser):
         prices = self.price.compute(timestamp, candles)
         volumes = self.volume.compute(timestamp, candles)
 
-        signal = self.process1(timestamp, self.last_timestamp, candles, prices, volumes)
+        signal = self.compute(timestamp, self.last_timestamp, candles, prices, volumes)
 
         # avoid duplicates signals
         if signal and self.need_signal:
@@ -64,7 +64,7 @@ class ForexAlphaBAnalyser(ForexAlphaAnalyser):
 
         return signal
 
-    def process1(self, timestamp, last_timestamp, candles, prices, volumes):
+    def compute(self, timestamp, last_timestamp, candles, prices, volumes):
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA
@@ -259,6 +259,7 @@ class ForexAlphaBAnalyser(ForexAlphaAnalyser):
         streamer.add_member(StreamMemberSerie('end'))
 
         streamer.last_timestamp = self.last_timestamp
+
     def stream(self, streamer):
         delta = min(int((self.last_timestamp - streamer.last_timestamp) / self.tf) + 1, len(self.price.prices))
 

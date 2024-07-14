@@ -1,7 +1,7 @@
 # @date 2018-09-05
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
-# OHLC candle generator.
+# OHLC timeframe bar generator.
 
 from datetime import datetime, timedelta
 from common.utils import UTC
@@ -9,9 +9,9 @@ from common.utils import UTC
 from instrument.instrument import Candle
 
 
-class CandleGenerator(object):
+class TimeframeBarGenerator(object):
 
-    __slots__ = '_from_tf', '_to_tf', '_candle', '_last_timestamp', '_last_consumed'
+    __slots__ = '_from_tf', '_to_tf', '_current_bar', '_last_timestamp', '_last_consumed'
 
     def __init__(self, from_tf: float, to_tf: float):
         """
@@ -22,7 +22,7 @@ class CandleGenerator(object):
 
         self._from_tf = float(from_tf)
         self._to_tf = float(to_tf)
-        self._candle = None
+        self._current_bar = None
         self._last_timestamp = 0
         self._last_consumed = 0
 
@@ -31,11 +31,11 @@ class CandleGenerator(object):
         """
         If exists returns the current non-closed candle.
         """
-        return self._candle
+        return self._current_bar
 
     @current.setter
     def current(self, candle):
-        self._candle = candle
+        self._current_bar = candle
 
     @property
     def last_timestamp(self):
@@ -114,39 +114,39 @@ class CandleGenerator(object):
         ended_candle = None
 
         # if self._candle and self._candle.timestamp+self._to_tf <= base_time:
-        if self._candle and from_tick[0] >= self._candle.timestamp+self._to_tf:
+        if self._current_bar and from_tick[0] >= self._current_bar.timestamp+self._to_tf:
             # need to close the candle and to open a new one
-            self._candle.set_consolidated(True)
-            ended_candle = self._candle
+            self._current_bar.set_consolidated(True)
+            ended_candle = self._current_bar
 
-            self._candle = None
+            self._current_bar = None
 
-        if self._candle is None:
+        if self._current_bar is None:
             # open a new one
             base_time = self.basetime(from_tick[0])
 
-            self._candle = Candle(base_time, self._to_tf)
-            self._candle.set_consolidated(False)
+            self._current_bar = Candle(base_time, self._to_tf)
+            self._current_bar.set_consolidated(False)
 
             # all open, close, low high from the initial candle
-            self._candle.set(from_tick[3])
-            self._candle.set_spread(from_tick[2] - from_tick[1])
+            self._current_bar.set(from_tick[3])
+            self._current_bar.set_spread(from_tick[2] - from_tick[1])
 
         # update volumes
-        self._candle._volume += from_tick[4]
+        self._current_bar._volume += from_tick[4]
 
         # update prices
 
         # high/low
-        self._candle._high = max(self._candle._high, from_tick[3])
-        self._candle._low = min(self._candle._low, from_tick[3])
+        self._current_bar._high = max(self._current_bar._high, from_tick[3])
+        self._current_bar._low = min(self._current_bar._low, from_tick[3])
 
         # potential close
-        self._candle._close = from_tick[3]
+        self._current_bar._close = from_tick[3]
 
         # potential spread
         # @todo could be the max of
-        self._candle._spread = from_tick[2] - from_tick[1]
+        self._current_bar._spread = from_tick[2] - from_tick[1]
 
         # keep last timestamp
         self._last_timestamp = from_tick[0]
@@ -159,9 +159,9 @@ class CandleGenerator(object):
         Example of creating/updating hourly candle for 1 minute candles.
 
         Must be called each time a new candle of the lesser timeframe is appended.
-        It only create the last or update the current candle.
+        It only creates the last or update the current candle.
 
-        A non ended candle is ignored because it will false the volume.
+        A non ended candle is ignored because it will invalid the volume.
         """
         if from_candle is None:
             return None
@@ -181,35 +181,35 @@ class CandleGenerator(object):
         ended_candle = None
 
         # if self._candle and self._candle.timestamp+self._to_tf <= base_time:
-        if self._candle and from_candle.timestamp >= self._candle.timestamp+self._to_tf:
+        if self._current_bar and from_candle.timestamp >= self._current_bar.timestamp+self._to_tf:
             # need to close the candle and to open a new one
-            self._candle.set_consolidated(True)
-            ended_candle = self._candle
+            self._current_bar.set_consolidated(True)
+            ended_candle = self._current_bar
 
-            self._candle = None
+            self._current_bar = None
 
-        if self._candle is None:
+        if self._current_bar is None:
             # open a new one
             base_time = self.basetime(from_candle.timestamp)
 
-            self._candle = Candle(base_time, self._to_tf)
-            self._candle.set_consolidated(False)
+            self._current_bar = Candle(base_time, self._to_tf)
+            self._current_bar.set_consolidated(False)
 
             # all open, close, low high from the initial candle
-            self._candle.copy(from_candle)
+            self._current_bar.copy(from_candle)
 
         # update volumes
-        self._candle._volume += from_candle.volume
+        self._current_bar._volume += from_candle.volume
 
         # update prices
-        self._candle._high = max(self._candle._high, from_candle._high)
-        self._candle._low = min(self._candle._low, from_candle._low)
+        self._current_bar._high = max(self._current_bar._high, from_candle._high)
+        self._current_bar._low = min(self._current_bar._low, from_candle._low)
 
         # potential close
-        self._candle._close = from_candle._close
+        self._current_bar._close = from_candle._close
 
         # potential spread
-        self._candle._spread = from_candle._spread
+        self._current_bar._spread = from_candle._spread
 
         # keep last timestamp
         self._last_timestamp = from_candle.timestamp

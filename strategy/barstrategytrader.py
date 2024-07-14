@@ -8,22 +8,20 @@ from __future__ import annotations
 import traceback
 from typing import TYPE_CHECKING, List, Tuple, Any, Dict
 
-from .strategysignal import StrategySignal
-
 if TYPE_CHECKING:
+    from .strategy import Strategy
     from strategytradercontext import StrategyTraderContext
     from trade.strategytrade import StrategyTrade
-
-    from .strategyrangebaranalyser import StrategyRangeBarAnalyser
+    from instrument.instrument import TickType
+    # from .strategyrangebaranalyser import StrategyRangeBarAnalyser
 
 import copy
 
 from instrument.instrument import Instrument
-
 from monitor.streamable import Streamable, StreamMemberInt
 
 from .strategybaseanalyser import StrategyBaseAnalyser
-from .strategytrader import StrategyTrader
+from .strategytraderbase import StrategyTraderBase
 
 import logging
 logger = logging.getLogger('siis.strategy.barstrategytrader')
@@ -31,7 +29,7 @@ error_logger = logging.getLogger('siis.error.strategy.barstrategytrader')
 traceback_logger = logging.getLogger('siis.traceback.strategy.barstrategytrader')
 
 
-class BarStrategyTrader(StrategyTrader):
+class BarStrategyTrader(StrategyTraderBase):
     """
     Strategy trader base model using non-temporal bar (range-bar, reversal-bar, volume-bar, renko).
     @note Currently support only range-bars.
@@ -45,11 +43,9 @@ class BarStrategyTrader(StrategyTrader):
     A single configuration of tick-bar array can be generated.
     """
 
-    _tickbars_registry: Dict[str, Any]
-    tickbars: Dict[int, StrategyRangeBarAnalyser]
-    _tickbars_streamers: Dict[int, Streamable]
+    _last_ticks: List[TickType]
 
-    def __init__(self, strategy, instrument, depth=50, params: dict = None):
+    def __init__(self, strategy: Strategy, instrument: Instrument, depth=50, params: dict = None):
         """
         @param strategy Parent strategy (mandatory)
         @param instrument Related unique instance of instrument (mandatory)
@@ -65,88 +61,70 @@ class BarStrategyTrader(StrategyTrader):
 
         self.last_timestamp = 0.0
 
-        self._tickbars_registry = {}
-        self.tickbars = {}
-        self._tickbars_streamers = {}
+        self._last_ticks = []  # retains the last updated ticks
 
-    def register_tickbar(self, mode: str, class_model: Any):
-        if mode and class_model:
-            self._tickbars_registry[mode] = class_model
-
-    def setup_tickbars(self, params: dict):
+    def setup_analysers(self, params: dict):
         # reload any tickbars
         tickbars = params.get('tickbars', {})
 
-        for tickbar_id, tickbar_params in tickbars.items():
-            mode = tickbar_params.get('mode')
+        for analyser_name, analyser_params in tickbars.items():
+            mode = analyser_params.get('mode')
             if not mode:
-                logger.warning("No mode specified for tickbar analyser %s" % tickbar_id)
+                logger.warning("No mode specified for analyser %s" % analyser_name)
                 continue
 
-            clazz_model = self._tickbars_registry.get(mode)
+            clazz_model = self._analysers_registry.get(mode)
             if clazz_model is None:
-                error_logger.error("Unable to find tickbar analyser model mode %s for %s" % (mode, tickbar_id))
+                error_logger.error("Unable to find analyser model %s for %s" % (mode, analyser_name))
                 continue
 
-            tickbar_size = tickbar_params.get('tickbar')
-            if tickbar_size is None:
-                error_logger.error("Missing tickbar analyser parameter for %s" % tickbar_id)
+            bar_size = analyser_params.get('size')
+            if bar_size is None:
+                error_logger.error("Missing analyser parameter size for %s" % analyser_name)
                 continue
 
-            if type(tickbar_size) is str:
-                tickbar_size = int(tickbar_size)
+            if type(bar_size) is str:
+                bar_size = int(bar_size)
 
-            if tickbar_size is None:
-                error_logger.error("Invalid tickbar analyser parameter for %s" % tickbar_id)
+            if bar_size is None:
+                error_logger.error("Invalid analyser parameter tickbar for %s" % analyser_name)
                 continue
 
             try:
-                tickbar_inst = clazz_model(self, tickbar_params)
-                self.tickbars[tickbar_size] = tickbar_inst
+                analyser_inst = clazz_model(analyser_name, self, analyser_params)
+                self._analysers[analyser_name] = analyser_inst
             except Exception:
-                error_logger.error("Unable to instantiate tickbar analyser %s" % tickbar_id)
+                error_logger.error("Unable to instantiate analyser %s" % analyser_name)
                 traceback_logger.error(traceback.format_exc())
                 continue
 
             try:
-                tickbar_inst.loads(tickbar_params)
-                tickbar_inst.setup_indicators(tickbar_params)
+                analyser_inst.loads(analyser_params)
+                analyser_inst.setup_indicators(analyser_params)
             except Exception:
-                error_logger.error("Unable to loads tickbar analyser %s" % tickbar_id)
+                error_logger.error("Unable to loads analyser %s" % analyser_name)
                 traceback_logger.error(traceback.format_exc())
 
     def update_parameters(self, params: dict):
         # reload any timeframes before contexts
         tickbars = params.get('tickbars', {})
 
-        for tickbar_id, tickbar_params in tickbars.items():
-            tb = tickbar_params.get('tickbar')
-            if tb is None:
-                error_logger.error("Missing tickbar analyser parameter for %s" % tickbar_id)
-                continue
-
-            if type(tb) is str:
-                tb = int(tb)
-
-            if tb is None:
-                error_logger.error("Invalid tickbar analyser parameter for %s" % tickbar_id)
-                continue
-
-            tickbars = self.tickbars.get(tb)
-            if tickbars is None:
-                error_logger.error("Unable to retrieve tickbar analyser instance %s" % tickbar_id)
+        for analyser_name, analyser_params in tickbars.items():
+            analyser = self._analysers.get(analyser_name)
+            if analyser is None:
+                error_logger.error("Unable to retrieve analyser instance %s" % analyser_name)
                 continue
 
             try:
-                tickbars.loads(tickbar_params)
+                analyser.loads(analyser_params)
             except Exception:
-                error_logger.error("Unable to load tickbar analyser %s" % tickbar_id)
+                error_logger.error("Unable to load analyser %s" % analyser_name)
                 traceback_logger.error(traceback.format_exc())
 
             try:
-                tickbars.setup_indicators(tickbar_params)
+                analyser.setup_indicators(analyser_params)
             except Exception:
-                error_logger.error("Unable to setup indicators from tickbar analyser %s" % tickbar_id)
+                error_logger.error("Unable to setup indicators from analyser %s" % analyser_name)
                 traceback_logger.error(traceback.format_exc())
 
         super().update_parameters(params)
@@ -155,92 +133,59 @@ class BarStrategyTrader(StrategyTrader):
     def is_tickbars_based(self):
         return True
 
-    def setup_tickbar_gen(self):
+    @property
+    def base_timeframe(self) -> float:
+        return 0.0
+
+    def setup_generators(self):
         """
         Call it on receive instrument/market data.
         """
-        for tb, tickbar in self.tickbars.items():
-            tickbar.setup_generator(self.instrument)
+        for k, analyser in self._analysers.items():
+            analyser.setup_generator(self.instrument)
 
-    def update_tickbar(self, timestamp: float):
+    def generate_bars_from_ticks(self, timestamp: float):
         """
-        Update the current tickbar according to the last trade and timestamp or create a new tickbar.
-        @note Thread-safe method.
-        """       
-        with self._mutex:
-            # update at tick or trade
-            ticks = self.instrument.ticks()  # self.instrument.ticks_after(self.last_timestamp)
-
-            for tickbar_id, tickbar in self.tickbars.items():
-                # rest the previous last closed flag before update the current
-                tickbar._last_closed = False
-
-                generated = tickbar.range_bar_gen.generate(ticks)
-                if generated:
-                    self.instrument.add_range_bars(tickbar_id, generated, tickbar.depth)
-
-                    # last tick bar close
-                    tickbar._last_closed = True
-
-                # with the non consolidated
-                self.instrument.add_range_bar(tickbar_id, copy.copy(tickbar.range_bar_gen.current), tickbar.depth)
-
-            # keep prev and last price at processing step
-            if self.instrument.ticks():
-                self.prev_price = self.last_price
-
-                # last close price
-                self.last_price = self.instrument.ticks()[-1][3]
-
-            # no longer need them
-            self.instrument.clear_ticks()
-
-    def update_tickbar_ext(self, timestamp: float) -> List[Tuple]:
-        """
-        Similar as @see update_tickbar but in detach ticks array in place of taking the array and after cleaning it.
-        This method could be faster.
+        Compute range-bar using the last received ticks.
         @param timestamp:
         @return:
         """
         # update data at tick level
         with self._mutex:
             # update at tick or trade
-            ticks = self.instrument.detach_ticks()
+            last_ticks = self.instrument.detach_ticks()
 
-            for tickbar_id, tickbar in self.tickbars.items():
+            for k, analyser in self._analysers.items():
                 # rest the previous last closed flag before update the current
-                tickbar._last_closed = False
+                analyser._last_closed = False
 
-                generated = tickbar.range_bar_gen.generate(ticks)
+                # @todo move to RangeBarAnalyser
+                generated = analyser.bar_generator.generate(last_ticks)
                 if generated:
-                    self.instrument.add_range_bars(tickbar_id, generated, tickbar.depth)
+                    analyser.add_bars(generated, analyser.depth)
 
                     # last tick bar close
-                    tickbar._last_closed = True
+                    analyser._last_closed = True
 
                 # with the non consolidated
-                self.instrument.add_range_bar(tickbar_id, copy.copy(tickbar.range_bar_gen.current), tickbar.depth)
+                analyser.add_bar(copy.copy(analyser.bar_generator.current), analyser.depth)
 
             # keep prev and last price at processing step
-            if ticks:
+            if last_ticks:
+                # always keep previous and last tick price
                 self.prev_price = self.last_price
+                self.last_price = last_ticks[-1][3]  # last exec price
 
-                # last close price
-                self.last_price = ticks[-1][3]
+            # keep for computing some ticks based indicators
+            self._last_ticks = last_ticks
 
-            return ticks
-
-    def compute(self, timestamp: float) -> Tuple[List[StrategySignal], List[StrategySignal]]:
+    def compute(self, timestamp: float):
         """
-        Compute the signals for the different tickbars depending on the update policy.
+        Compute the indicators for the different tickbars depending on the update policy.
         """
-        # split entries from exits signals
-        entries = []
-        exits = []
-
-        for tickbar_id, tickbar in self.tickbars.items():
-            if tickbar.update_at_close:
-                if tickbar.need_update(timestamp):
+        for k, analyser in self._analysers.items():
+            if analyser.update_at_close:
+                if analyser.need_update(timestamp):
                     compute = True
                 else:
                     compute = False
@@ -248,18 +193,7 @@ class BarStrategyTrader(StrategyTrader):
                 compute = True
 
             if compute:
-                signal = tickbar.process(timestamp)
-                if signal:
-                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
-                        entries.append(signal)
-                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
-                        exits.append(signal)
-
-        # finally, sort them by timeframe ascending
-        entries.sort(key=lambda s: s.timeframe)
-        exits.sort(key=lambda s: s.timeframe)
-
-        return entries, exits
+                analyser.process(timestamp, self._last_ticks)
 
     #
     # context
@@ -358,15 +292,15 @@ class BarStrategyTrader(StrategyTrader):
 
         if mode == 0:
             # data-series values
-            for k, tickbar in self.tickbars.items():
+            for k, analyser in self._analysers.items():
                 if not result['members']:
                     # initialize from first
-                    if not tickbar.report_state_members():
+                    if not analyser.report_state_members():
                         break
 
-                    result['members'] = tickbar.report_state_members()
+                    result['members'] = analyser.report_state_members()
 
-                result['data'].append(tickbar.report_state())
+                result['data'].append(analyser.report_state())
 
         elif mode == 3:
             # context parameters

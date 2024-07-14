@@ -32,7 +32,7 @@ class CryptoAlphaCAnalyser(CryptoAlphaAnalyser):
         self.rsi_high = params['constants']['rsi_high']
 
     def process(self, timestamp: float) -> Union[StrategySignal, None]:
-        candles = self.get_candles()
+        candles = self.get_bars()
 
         if len(candles) < self.depth:
             # not enough samples

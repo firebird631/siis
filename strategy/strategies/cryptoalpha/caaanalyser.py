@@ -26,7 +26,7 @@ class CryptoAlphaAAnalyser(CryptoAlphaAnalyser):
         self.rsi_high = params['constants']['rsi_high']
 
     def process(self, timestamp):
-        candles = self.get_candles()
+        candles = self.get_bars()
 
         if len(candles) < self.depth:
             # not enough samples
@@ -35,7 +35,7 @@ class CryptoAlphaAAnalyser(CryptoAlphaAnalyser):
         prices = self.price.compute(timestamp, candles)
         volumes = self.volume.compute(timestamp, candles)
 
-        signal = self.process4(timestamp, self.last_timestamp, candles, prices, volumes)
+        signal = self.compute_alt2(timestamp, self.last_timestamp, candles, prices, volumes)
 
         # avoid duplicates signals
         if signal and self.need_signal:
@@ -53,7 +53,7 @@ class CryptoAlphaAAnalyser(CryptoAlphaAnalyser):
 
         return signal
 
-    def process1(self, timestamp, last_timestamp, candles, prices, volumes):
+    def compute(self, timestamp, last_timestamp, candles, prices, volumes):
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA
@@ -267,7 +267,7 @@ class CryptoAlphaAAnalyser(CryptoAlphaAnalyser):
 
         return signal
 
-    def process3(self, timestamp, last_timestamp, candles, prices, volumes):
+    def compute_alt(self, timestamp, last_timestamp, candles, prices, volumes):
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA
@@ -492,7 +492,7 @@ class CryptoAlphaAAnalyser(CryptoAlphaAnalyser):
 
         return signal
 
-    def process4(self, timestamp, last_timestamp, candles, prices, volumes):
+    def compute_alt2(self, timestamp, last_timestamp, candles, prices, volumes):
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA

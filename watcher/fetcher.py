@@ -12,7 +12,7 @@ from common.utils import matching_symbols_set, timeframe_to_str, UTC
 from terminal.terminal import Terminal
 
 from instrument.instrument import Candle, Instrument
-from instrument.candlegenerator import CandleGenerator
+from instrument.timeframebargenerator import TimeframeBarGenerator
 
 from database.database import Database
 
@@ -154,7 +154,7 @@ class Fetcher(object):
                     # from timeframe greater than initial
                     if tf <= cascaded:
                         # until max cascaded timeframe
-                        generators.append(CandleGenerator(from_tf, tf))
+                        generators.append(TimeframeBarGenerator(from_tf, tf))
                         from_tf = tf
 
                         # store for generation

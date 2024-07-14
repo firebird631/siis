@@ -42,7 +42,7 @@ class ForexAlphaCAnalyser(ForexAlphaAnalyser):
         self.rsi_high = params['constants']['rsi_high']
 
     def process(self, timestamp: float) -> Union[StrategySignal, None]:
-        candles = self.get_candles()
+        candles = self.get_bars()
 
         if len(candles) < self.depth:
             # not enough samples
@@ -51,7 +51,7 @@ class ForexAlphaCAnalyser(ForexAlphaAnalyser):
         prices = self.price.compute(timestamp, candles)[-self.depth:]
         volumes = self.volume.compute(timestamp, candles)[-self.depth:]
 
-        signal = self.process1(timestamp, self.last_timestamp, candles, prices, volumes)
+        signal = self.compute(timestamp, self.last_timestamp, candles, prices, volumes)
 
         # avoid duplicates signals
         if signal and self.need_signal:
@@ -69,7 +69,7 @@ class ForexAlphaCAnalyser(ForexAlphaAnalyser):
 
         return signal
 
-    def process1(self, timestamp: float, to_ts: float, candles, prices, volumes) -> Union[StrategySignal, None]:
+    def compute(self, timestamp: float, to_ts: float, candles, prices, volumes) -> Union[StrategySignal, None]:
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA

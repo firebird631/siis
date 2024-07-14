@@ -20,6 +20,7 @@ def get_strategy_trader_state(strategy, market_id: str, report_mode: int = 0):
         'market-id': market_id,
         'activity': False,
         'bootstrapping': False,
+        'training': False,
         'ready': False,
         'members': [],
         'data': [],

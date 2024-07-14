@@ -23,7 +23,7 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
     """
     Returns a table of any active trades.
     """
-    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L', 'OP', 'SL', 'TP', 'TF', 'Signal date',
+    columns = ['Symbol', '#', charmap.ARROWUPDN, 'P/L', 'OP', 'SL', 'TP', 'Signal date',
                'Entry date', 'Avg EP', 'Exit date', 'Avg XP', 'Label', 'Status']
 
     if quantities:
@@ -167,7 +167,6 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 fmt_op,
                 fmt_sl,
                 fmt_tp,
-                t['tf'],
                 datetime.fromtimestamp(t['eot']).strftime(datetime_format) if t['eot'] > 0 else '-',
                 datetime.fromtimestamp(t['freot']).strftime(datetime_format) if t['freot'] > 0 else '-',
                 t['aep'] if t['aep'] != '0' else '-',
@@ -207,7 +206,6 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             '--',
             '--',
             '--',
-            '--',
             '-----------',
             '----------',
             '------',
@@ -240,7 +238,6 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
 
         row = [
             "SUB",
-            '-',
             '-',
             '-',
             '-',

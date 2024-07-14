@@ -276,7 +276,7 @@ class Trader(Runnable):
                     self.on_update_market(*signal.data)
                 elif signal.signal_type == Signal.SIGNAL_ACCOUNT_DATA:
                     self.on_account_updated(*signal.data)
-                elif signal.signal_type == Signal.SIGNAL_TICK_DATA:
+                elif signal.signal_type == Signal.SIGNAL_STREAM_TICK_DATA:
                     self.on_trade_market(*signal.data)
 
                 elif signal.signal_type == Signal.SIGNAL_POSITION_OPENED:
@@ -614,7 +614,7 @@ class Trader(Runnable):
                 # only interested in the watcher of the same name
                 return
 
-            if signal.signal_type in (Signal.SIGNAL_MARKET_DATA, Signal.SIGNAL_TICK_DATA):
+            if signal.signal_type in (Signal.SIGNAL_MARKET_DATA, Signal.SIGNAL_STREAM_TICK_DATA):
                 if not signal.data[0] in self._markets:
                     # not interested in this instrument/symbol
                     return

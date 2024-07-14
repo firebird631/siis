@@ -36,7 +36,7 @@ class BitcoinAlphaAAnalyser(BitcoinAlphaAnalyser):
         self.rsi_high = params['constants']['rsi_high']
 
     def process(self, timestamp):
-        candles = self.get_candles()
+        candles = self.get_bars()
 
         if len(candles) < self.depth:
             # not enough samples
@@ -45,7 +45,7 @@ class BitcoinAlphaAAnalyser(BitcoinAlphaAnalyser):
         prices = self.price.compute(timestamp, candles)
         volumes = self.volume.compute(timestamp, candles)
 
-        signal = self.process4(timestamp, self.last_timestamp, candles, prices, volumes)
+        signal = self.compute_alt(timestamp, self.last_timestamp, candles, prices, volumes)
 
         # avoid duplicates signals
         if signal and self.need_signal:
@@ -63,7 +63,7 @@ class BitcoinAlphaAAnalyser(BitcoinAlphaAnalyser):
 
         return signal
 
-    def process1(self, timestamp, to_ts, candles, prices, volumes):
+    def compute(self, timestamp, to_ts, candles, prices, volumes):
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA
@@ -254,7 +254,7 @@ class BitcoinAlphaAAnalyser(BitcoinAlphaAnalyser):
 
         return signal
 
-    def process4(self, timestamp, last_timestamp, candles, prices, volumes):
+    def compute_alt(self, timestamp, last_timestamp, candles, prices, volumes):
         signal = None
 
         # volume sma, increase signal strength when volume increase over its SMA

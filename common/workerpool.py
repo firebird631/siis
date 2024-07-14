@@ -9,7 +9,7 @@ import time
 import multiprocessing
 import collections
 
-from strategy.strategytrader import StrategyTrader
+from strategy.strategytraderbase import StrategyTraderBase
 from terminal.terminal import Terminal
 
 import logging
@@ -73,7 +73,7 @@ class Worker(threading.Thread):
         count_down, job = self._pool.next_job(self)
 
         if job:
-            if len(job[1]) > 1 and isinstance(job[1][1], StrategyTrader):
+            if len(job[1]) > 1 and isinstance(job[1][1], StrategyTraderBase):
                 # every job might be like this but check anyway
                 if job[1][1].initialized != 0 or job[1][1].preprocessing != 0 or job[1][1].bootstrapping != 0:
                     # avoid every other ping

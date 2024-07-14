@@ -71,7 +71,7 @@ def beta_preprocess(strategy, strategy_trader):
 
     @deprecated no longer planned neither used
     """
-    with strategy_trader._mutex:
+    with strategy_trader.mutex:
         if strategy_trader._preprocessing >= 2:
             # in progress
             return
@@ -110,7 +110,7 @@ def beta_preprocess(strategy, strategy_trader):
             #     logger.debug("%s preprocess missing of trade data, abort %s..." % (
             #         instrument.market_id, strategy.timestamp))
             #
-            #     with strategy_trader._mutex:
+            #     with strategy_trader.mutex:
             #         strategy_trader._preprocessing = 0
             #
             #     return
@@ -157,7 +157,7 @@ def beta_preprocess(strategy, strategy_trader):
             #     # now limits are computed, reset for the next step
             #     strategy_trader._preprocess_streamer.reset()
 
-            with strategy_trader._mutex:
+            with strategy_trader.mutex:
                 strategy_trader._preprocessing = 3
 
         if strategy_trader._preprocessing == 3:
@@ -173,7 +173,7 @@ def beta_preprocess(strategy, strategy_trader):
             #
             # strategy_trader.preprocess_load_cache(from_date, to_date)
 
-            with strategy_trader._mutex:
+            with strategy_trader.mutex:
                 # now can update using more recent data
                 strategy_trader._preprocessing = 4
 
@@ -194,7 +194,7 @@ def beta_preprocess(strategy, strategy_trader):
             #
             #     strategy_trader._preprocess_streamer = None
 
-            with strategy_trader._mutex:
+            with strategy_trader.mutex:
                 # now can store in cache news and updated results
                 strategy_trader._preprocessing = 5
 
@@ -208,7 +208,7 @@ def beta_preprocess(strategy, strategy_trader):
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
 
-            with strategy_trader._mutex:
+            with strategy_trader.mutex:
                 # now preprocessing is done
                 strategy_trader._preprocessing = 0
 
@@ -224,7 +224,7 @@ def beta_bootstrap(strategy, strategy_trader):
     Process the bootstrap of the strategy trader until complete using the preloaded OHLCs.
     Any received updates are ignored until the bootstrap is completed.
     """
-    with strategy_trader._mutex:
+    with strategy_trader.mutex:
         if strategy_trader._bootstrapping == 2:
             # in progress
             return
@@ -241,7 +241,7 @@ def beta_bootstrap(strategy, strategy_trader):
         error_logger.error(repr(e))
         traceback_logger.error(traceback.format_exc())
 
-    with strategy_trader._mutex:
+    with strategy_trader.mutex:
         # bootstrapping done, can now branch to live
         strategy_trader._bootstrapping = 0
 
@@ -467,7 +467,7 @@ def initiate_strategy_trader(strategy, strategy_trader):
     """
     Do it async into the workers to avoid long blocking of the strategy thread.
     """
-    with strategy_trader._mutex:
+    with strategy_trader.mutex:
         if strategy_trader._initialized != 1:
             # only if waiting for initialize
             return
@@ -484,7 +484,7 @@ def initiate_strategy_trader(strategy, strategy_trader):
             watcher.subscribe(instrument.market_id, None, -1, None)
 
             # initialization processed, waiting for data be ready
-            with strategy_trader._mutex:
+            with strategy_trader.mutex:
                 strategy_trader._initialized = 0
 
         # wake-up
@@ -518,7 +518,7 @@ def beta_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.
 
     # initialized state
     for k, strategy_trader in strategy._strategy_traders.items():
-        with strategy_trader._mutex:
+        with strategy_trader.mutex:
             strategy_trader._initialized = 0
 
 
@@ -535,9 +535,14 @@ def beta_setup_live(strategy):
     # load the strategy-traders and traders for this strategy/account
     trader = strategy.trader()
 
-    for market_id, instrument in strategy._instruments.items():
-        # wake-up all for initialization
-        strategy.send_initialize_strategy_trader(market_id)
+    with strategy.mutex:
+        strategy_traders = strategy.strategy_traders.values()
+
+    # query for history and initialize feeders
+    for strategy_trader in strategy_traders:
+        if strategy_trader.instrument:
+            # wake-up all for initialization
+            strategy.send_initialize_strategy_trader(strategy_trader.instrument.market_id)
 
     if strategy.service.load_on_startup:
         strategy.load()

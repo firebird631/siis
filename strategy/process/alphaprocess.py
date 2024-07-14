@@ -43,13 +43,13 @@ def alpha_bootstrap(strategy, strategy_trader):
     Process the bootstrap of the strategy trader until complete using the preloaded OHLCs.
     Any received updates are ignored until the bootstrap is completed.
     """
-    with strategy_trader._mutex:
-        if strategy_trader._bootstrapping != 1:
+    with strategy_trader.mutex:
+        if strategy_trader.bootstrapping != strategy_trader.STATE_WAITING:
             # only if waiting for bootstrapping
             return
 
         # bootstrapping in progress, suspend live until complete
-        strategy_trader._bootstrapping = 2
+        strategy_trader.set_bootstrapping(strategy_trader.STATE_PROGRESSING)
 
     try:
         if strategy_trader.is_timeframes_based:
@@ -60,9 +60,9 @@ def alpha_bootstrap(strategy, strategy_trader):
         error_logger.error(repr(e))
         traceback_logger.error(traceback.format_exc())
 
-    with strategy_trader._mutex:
+    with strategy_trader.mutex:
         # bootstrapping done, can now branch to live
-        strategy_trader._bootstrapping = 0
+        strategy_trader.set_bootstrapping(strategy_trader.STATE_NORMAL)
 
 
 def timeframe_based_bootstrap(strategy, strategy_trader):
@@ -71,44 +71,41 @@ def timeframe_based_bootstrap(strategy, strategy_trader):
 
     # compute the beginning timestamp
     timestamp = strategy.timestamp
-
     instrument = strategy_trader.instrument
 
-    for tf, sub in strategy_trader.timeframes.items():
-        candles = instrument.candles(tf)
-        initial_candles[tf] = candles
+    for analyser in strategy_trader.analysers():
+        candles = analyser.get_bars()
+        initial_candles[analyser.name] = candles
 
         # reset, distribute one at time
-        instrument._candles[tf] = []
+        analyser.clear_bars()
 
         if candles:
             # get the nearest next candle
-            timestamp = min(timestamp, candles[0].timestamp + sub.depth*sub.timeframe)
+            timestamp = min(timestamp, candles[0].timestamp + analyser.depth*analyser.timeframe)
 
-    logger.debug("%s timeframes bootstrap begin at %s, now is %s" % (instrument.market_id, timestamp, strategy.timestamp))
+    logger.debug("%s timeframes bootstrap begin at %s, now is %s" % (
+        instrument.market_id, timestamp, strategy.timestamp))
 
     # initials candles
     lower_timeframe = 0
 
-    for tf, sub in strategy_trader.timeframes.items():
-        candles = initial_candles[tf]
+    for analyser in strategy_trader.analysers():
+        candles = initial_candles[analyser.name]
 
         # feed with the initials candles
         while candles and timestamp >= candles[0].timestamp:
             candle = candles.pop(0)
 
-            instrument._candles[tf].append(candle)
+            analyser.add_bar(candle, analyser.history)
 
             # and last is closed
-            sub._last_closed = True
-
-            # keep safe size
-            if(len(instrument._candles[tf])) > sub.depth:
-                instrument._candles[tf].pop(0)
+            analyser._last_closed = True
 
             # prev and last price according to the lower timeframe close
-            if not lower_timeframe or tf < lower_timeframe:
-                lower_timeframe = tf
+            if not lower_timeframe or analyser.timeframe < lower_timeframe:
+                lower_timeframe = analyser.timeframe
+
                 strategy_trader.prev_price = strategy_trader.last_price
                 strategy_trader.last_price = candle.close  # last mid close
 
@@ -122,34 +119,31 @@ def timeframe_based_bootstrap(strategy, strategy_trader):
         lower_timeframe = 0
 
         # increment by the lower available timeframe
-        for tf, sub in strategy_trader.timeframes.items():
-            if initial_candles[tf]:
+        for analyser in strategy_trader.analysers():
+            candles = initial_candles[analyser.name]
+            if candles:
                 if not base_timestamp:
                     # initiate with the first
-                    base_timestamp = initial_candles[tf][0].timestamp
+                    base_timestamp = candles[0].timestamp
 
-                elif initial_candles[tf][0].timestamp < base_timestamp:
+                elif candles[0].timestamp < base_timestamp:
                     # found a lower
-                    base_timestamp = initial_candles[tf][0].timestamp
+                    base_timestamp = candles[0].timestamp
 
-        for tf, sub in strategy_trader.timeframes.items():
-            candles = initial_candles[tf]
-
-            # feed with the next candle
+        # feed with the next candle
+        for analyser in strategy_trader.analysers():
+            candles = initial_candles[analyser.name]
             if candles and base_timestamp >= candles[0].timestamp:
                 candle = candles.pop(0)
 
-                instrument._candles[tf].append(candle)
+                analyser.add_bar(candle, analyser.history)
 
                 # and last is closed
-                sub._last_closed = True
+                analyser._last_closed = True
 
-                # keep safe size
-                if(len(instrument._candles[tf])) > sub.depth:
-                    instrument._candles[tf].pop(0)
+                if not lower_timeframe or analyser.timeframe < lower_timeframe:
+                    lower_timeframe = analyser.timeframe
 
-                if not lower_timeframe or tf < lower_timeframe:
-                    lower_timeframe = tf
                     strategy_trader.prev_price = strategy_trader.last_price
                     strategy_trader.last_price = candle.close  # last mid close
 
@@ -191,28 +185,29 @@ def alpha_update_strategy(strategy, strategy_trader, timestamp: float):
     @note Non thread-safe method.
     """
     if strategy_trader:
-        if strategy_trader._initialized == 1:
+        if strategy_trader.initialized == strategy_trader.STATE_WAITING:
             initiate_strategy_trader(strategy, strategy_trader)
 
-        if strategy_trader._checked == 1:
+        if strategy_trader.checked == strategy_trader.STATE_WAITING:
             # need to check existing trade orders, trade history and positions
             strategy_trader.check_trades(strategy.timestamp)
 
-        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():
-            # process only if instrument has data
+        if (strategy_trader.initialized != strategy_trader.STATE_NORMAL or
+                strategy_trader.checked != strategy_trader.STATE_NORMAL or
+                not strategy_trader.ready()):
+            # process only if data are received and trades checked
             return
 
-        if strategy_trader._processing:
+        if strategy_trader.processing:
             # process only if previous job was completed
             return
 
         try:
-            strategy_trader._processing = True
+            strategy_trader.set_processing(True)
 
-            if strategy_trader._bootstrapping == 1:
+            if strategy_trader.bootstrapping == strategy_trader.STATE_WAITING:
                 # first : bootstrap using preloaded data history
                 alpha_bootstrap(strategy, strategy_trader)
-
             else:
                 # then : until process instrument update
                 strategy_trader.update_time_deviation(timestamp)
@@ -225,10 +220,9 @@ def alpha_update_strategy(strategy, strategy_trader, timestamp: float):
         except Exception as e:
             error_logger.error(repr(e))
             traceback_logger.error(traceback.format_exc())
-
         finally:
             # process complete
-            strategy_trader._processing = False
+            strategy_trader.set_processing(False)
 
 
 def alpha_async_update_strategy(strategy, strategy_trader, timestamp: float):
@@ -241,28 +235,29 @@ def alpha_async_update_strategy(strategy, strategy_trader, timestamp: float):
     @note Thread-safe method.
     """
     if strategy_trader:
-        if strategy_trader._initialized == 1:
+        if strategy_trader.initialized == strategy_trader.STATE_WAITING:
             initiate_strategy_trader(strategy, strategy_trader)
 
-        if strategy_trader._checked == 1:
+        if strategy_trader.checked == strategy_trader.STATE_WAITING:
             # need to check existing trade orders, trade history and positions
             strategy_trader.check_trades(strategy.timestamp)
 
-        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():
+        if (strategy_trader.initialized != strategy_trader.STATE_NORMAL or
+                strategy_trader.checked != strategy_trader.STATE_NORMAL or
+                not strategy_trader.instrument.ready()):
             # process only if instrument has data
             return
 
-        if strategy_trader._processing:
+        if strategy_trader.processing:
             # process only if previous job was completed
             return
 
         try:
-            strategy_trader._processing = True
+            strategy_trader.set_processing(True)
 
-            if strategy_trader._bootstrapping == 1:
+            if strategy_trader.bootstrapping == strategy_trader.STATE_WAITING:
                 # first : bootstrap using preloaded data history
                 alpha_bootstrap(strategy, strategy_trader)
-
             else:
                 # then : until process instrument update
                 strategy_trader.process(timestamp)
@@ -270,71 +265,63 @@ def alpha_async_update_strategy(strategy, strategy_trader, timestamp: float):
         except Exception as e:
             error_logger.error(repr(e))
             traceback_logger.error(traceback.format_exc())
-
         finally:
             # process complete
-            strategy_trader._processing = False
+            strategy_trader.set_processing(False)
 
 
 def initiate_strategy_trader(strategy, strategy_trader):
     """
     Do it async into the workers to avoid long blocking of the strategy thread.
     """
-    with strategy_trader._mutex:
-        if strategy_trader._initialized != 1:
+    if not strategy or not strategy_trader:
+        return
+
+    with strategy_trader.mutex:
+        if strategy_trader.initialized != strategy_trader.STATE_WAITING:
             # only if waiting for initialize
             return
 
-        strategy_trader._initialized = 2
+        if not strategy_trader.instrument:
+            return
+
+        strategy_trader.set_initialized(strategy_trader.STATE_PROGRESSING)
 
     now = datetime.now()
 
-    instrument = strategy_trader.instrument
     try:
-        watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+        # retrieve the related price and volume watcher
+        watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
         if watcher:
-            # watcher subscriptions
-            tfs = {tf['timeframe']: tf['history'] for tf in strategy.parameters.get(
-                'timeframes', {}).values() if tf['timeframe'] > 0}
+            timeframes = {}
 
-            watcher.subscribe(instrument.market_id, tfs, None, None)
+            # subscribes for market data and prefetch recent history
+            for analyser in strategy_trader.analysers():
+                if not analyser:
+                    continue
 
-            # wait to DB commit
-            # @todo a method to look if insert are fully flushed before, do simply a sleep...
-            time.sleep(1.0)
+                if analyser.timeframe > 0.0:
+                    timeframes[analyser.timeframe] = analyser.history
 
-            # wait for timeframes before query
-            for k, timeframe in strategy.parameters.get('timeframes', {}).items():
-                if timeframe['timeframe'] > 0:
-                    instrument.need_timeframe(timeframe['timeframe'])
+            watcher.subscribe(strategy_trader.instrument.market_id, timeframes, None, None)
 
-            # wait for tick-bars (non-temporal bars) before query
-            # for k, tickbar in strategy.parameters.get('tickbars', {}).items():
-            #     if timeframe['tickbars'] > 0:
-            #         instrument.want_tickbar(tickbar['tickbars'])
+        # wait to DB commit @todo a method to look if insert are fully flushed before.
+        time.sleep(1.0)
 
-            # wait for volumes-profiles before query
-            # for k, volume_profile in strategy.parameters.get('volume-profiles', {}).items():
-            #     if volume_profile['volume-profile'] > 0:
-            #         instrument.want_volume_profile(volume_profile['volume-profile'])
+        # query for most recent candles per timeframe from the database
+        for analyser in strategy_trader.analysers():
+            if not analyser:
+                continue
 
-            # query for most recent candles per timeframe from the database
-            for k, timeframe in strategy.parameters.get('timeframes', {}).items():
-                if timeframe['timeframe'] > 0:
-                    l_from = now - timedelta(seconds=timeframe['history']*timeframe['timeframe'])
-                    l_to = None  # now
+            if analyser.timeframe > 0:
+                analyser.query_historical_data(to_date=None)
 
-                    l_from, l_to, n_last = adjust_date_and_last_n(instrument, timeframe, l_from, l_to)
-
-                    watcher.historical_data(instrument.market_id, timeframe['timeframe'],
-                                            from_date=l_from, to_date=l_to, n_last=n_last)
-
-            # initialization processed, waiting for data be ready
-            with strategy_trader._mutex:
-                strategy_trader._initialized = 0
+        # initialization processed, waiting for data be ready
+        with strategy_trader.mutex:
+            strategy_trader.set_initialized(strategy_trader.STATE_NORMAL)
 
         # wake-up
-        strategy.send_update_strategy_trader(instrument.market_id)
+        strategy.send_update_strategy_trader(strategy_trader.instrument.market_id)
 
     except Exception as e:
         logger.error(repr(e))
@@ -346,6 +333,7 @@ def initiate_strategy_trader(strategy, strategy_trader):
 #
 
 
+# deprecated
 def adjust_date_and_last_n(instrument, timeframe, from_date, to_date):
     # crypto are h24, d7, nothing to do
     if instrument.market_type == instrument.TYPE_CRYPTO:
@@ -363,91 +351,43 @@ def adjust_date_and_last_n(instrument, timeframe, from_date, to_date):
     return None, to_date, n_last
 
 
-# def adjust_date_and_last_n(instrument, timeframe, from_date, to_date):
-#     # crypto are h24, d7, nothing to do
-#     if instrument.market_type == instrument.TYPE_CRYPTO:
-#         return from_date, to_date, None
-#
-#     # there is multiples case, weekend off and nationals days off
-#     # and the case of stocks markets closed during the local night
-#     # but also some 15 min of twice on indices ...
-#
-#     # so many complexes cases then we try to get the max of last n OHLCs
-#     # depth = max(timeframe['history'], timeframe['depth'])
-#     n_last = None
-#
-#     # but this does not count the regionals holidays
-#     day_generator = (from_date + timedelta(x + 1) for x in range((to_date - from_date).days))
-#     days_off = sum(1 for day in [from_date] + list(day_generator) if day.weekday() >= 5)
-#
-#     from_date -= timedelta(days=days_off)
-#
-#     if instrument.contract_type == instrument.CONTRACT_SPOT or instrument.market_type == instrument.TYPE_STOCK:
-#         days_on = sum(1 for day in [from_date] + list(day_generator) if day.weekday() < 5)
-#         from_date -= timedelta(seconds=days_on * (24-8)*60*60)
-#
-#     # need to add night for stock markets
-#     if instrument.contract_type == instrument.CONTRACT_SPOT or instrument.market_type == instrument.TYPE_STOCK:
-#         pass  # @todo above night data
-#
-#     return from_date, to_date, n_last
-
-
-def alpha_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.TF_TICK):
+def alpha_setup_backtest(strategy, from_date: datetime, to_date: datetime, base_timeframe=Instrument.TF_TICK):
     """
     Simple load history of OHLCs, initialize all strategy traders here (sync).
     """
-    for market_id, instrument in strategy._instruments.items():
+    with strategy.mutex:
+        strategy_traders = strategy.strategy_traders.values()
+
+    # query for history and initialize feeders
+    for strategy_trader in strategy_traders:
+        if not strategy_trader.instrument:
+            continue
+
         # retrieve the related price and volume watcher
-        watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
-        if watcher:
-            # wait for timeframes (temporal bars) before query
-            for k, timeframe in strategy.parameters.get('timeframes', {}).items():
-                if timeframe['timeframe'] > 0:
-                    instrument.need_timeframe(timeframe['timeframe'])
+        watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+        if not watcher:
+            continue
 
-            # wait for tick-bars before query
-            # for k, element in strategy.parameters.get('tickbars', {}).items():
-            #     if element['tickbar'] > 0:
-            #         instrument.need_range_bar(element['tickbar'])
+        # subscribes for market data and query history
+        for analyser in strategy_trader.analysers():
+            if not analyser:
+                continue
 
-            # wait for volumes-profiles before query
-            # for k, volume_profile in strategy.parameters.get('volume-profiles', {}).items():
-            #     if volume_profile['volume-profile'] > 0:
-            #         instrument.want_volume_profile(volume_profile['volume-profile'])
-
-            # query for most recent OHLC per timeframe from the database
-            for k, timeframe in strategy.parameters.get('timeframes', {}).items():
-                if timeframe['timeframe'] > 0:
-                    l_from = from_date - timedelta(seconds=timeframe['history']*timeframe['timeframe']+1.0)
-                    l_to = from_date - timedelta(seconds=1)
-
-                    l_from, l_to, n_last = adjust_date_and_last_n(instrument, timeframe, l_from, l_to)
-
-                    watcher.historical_data(instrument.market_id, timeframe['timeframe'],
-                                            from_date=l_from, to_date=l_to, n_last=n_last)
-
-            # query for most recent range-bars from the database
-            # for k, element in strategy.parameters.get('tickbars', {}).items():
-            #     pass  # @todo it does not comes from watcher but from DB
-
-            # query for most recent candles per timeframe from the database @todo
-            # for k, volume_profile in strategy.parameters.get('volume-profiles', {}).items():
-            #     pass  # @todo it does not comes from watcher but from DB
-
-            # create a feeder per instrument for ticks history
-            feeder = StrategyDataFeeder(strategy, instrument.market_id, [], True)
-            strategy.add_feeder(feeder)
+            analyser.query_historical_data(from_date)
 
             # fetch market info from the DB
-            Database.inst().load_market_info(strategy.service, watcher.name, instrument.market_id)
+            Database.inst().load_market_info(strategy.service, watcher.name, strategy_trader.instrument.market_id)
 
-            feeder.initialize(watcher.name, from_date, to_date)
+        # create a feeder per instrument for ticks history
+        feeder = StrategyDataFeeder(strategy, strategy_trader.instrument.market_id, [], True)
+        strategy.add_feeder(feeder)
 
-    # initialized state
-    for k, strategy_trader in strategy._strategy_traders.items():
-        with strategy_trader._mutex:
-            strategy_trader._initialized = 0
+        feeder.initialize(watcher.name, from_date, to_date)
+
+    # complete initialization state
+    for strategy_trader in strategy_traders:
+        with strategy_trader.mutex:
+            strategy_trader.set_initialized(strategy_trader.STATE_NORMAL)
 
 
 #
@@ -463,9 +403,14 @@ def alpha_setup_live(strategy):
     # load the strategy-traders and traders for this strategy/account
     trader = strategy.trader()
 
-    for market_id, instrument in strategy._instruments.items():
-        # wake-up all for initialization
-        strategy.send_initialize_strategy_trader(market_id)
+    with strategy.mutex:
+        strategy_traders = strategy.strategy_traders.values()
+
+    # query for history and initialize feeders
+    for strategy_trader in strategy_traders:
+        if strategy_trader.instrument:
+            # wake-up all for initialization
+            strategy.send_initialize_strategy_trader(strategy_trader.instrument.market_id)
 
     if strategy.service.load_on_startup:
         strategy.load()

@@ -11,7 +11,7 @@ from importlib import import_module
 from common.signal import Signal
 
 from instrument.instrument import Instrument, Candle
-from instrument.rangebar import RangeBar
+from instrument.bar import RangeBar
 
 from trader.market import Market
 from trader.asset import Asset
@@ -898,33 +898,33 @@ class MySql(Database):
                     cursor = self._db.cursor()
                     reverse = False
 
-                    if mk[4] == 0:
+                    if mk[5] == 0:
                         # from to
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[5], mk[6]))
-                    elif mk[4] == 1:
+                                            mk[1], mk[2], mk[4], mk[6], mk[7]))
+                    elif mk[5] == 1:
                         # last n
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp DESC LIMIT %s""" % (
-                                            mk[1], mk[2], mk[3], mk[5]))
+                                            mk[1], mk[2], mk[4], mk[6]))
                         reverse = True
-                    elif mk[4] == 2:
+                    elif mk[5] == 2:
                         # last n to date
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp <= %i ORDER BY timestamp DESC LIMIT %i""" % (
-                                            mk[1], mk[2], mk[3], mk[6], mk[5]))
+                                            mk[1], mk[2], mk[4], mk[7], mk[6]))
                         reverse = True
-                    elif mk[4] == 3:
+                    elif mk[5] == 3:
                         # from to now
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[5]))
+                                            mk[1], mk[2], mk[4], mk[6]))
                     else:
                         # all @warning should be removed, unused and dangerous
                         cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
                                         WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3]))
+                                            mk[1], mk[2], mk[4]))
 
                     rows = cursor.fetchall()
 
@@ -932,14 +932,14 @@ class MySql(Database):
 
                     for row in rows:
                         timestamp = float(row[0]) * 0.001  # to float second timestamp
-                        ohlc = Candle(timestamp, mk[3])
+                        ohlc = Candle(timestamp, mk[4])
 
                         ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
                         ohlc.set_spread(float(row[5]))
                         ohlc.set_volume(float(row[6]))
 
-                        if ohlc.timestamp >= Instrument.basetime(mk[3], time.time()):
+                        if ohlc.timestamp >= Instrument.basetime(mk[4], time.time()):
                             ohlc.set_consolidated(False)  # current
 
                         if reverse:
@@ -950,7 +950,7 @@ class MySql(Database):
                     cursor = None
 
                     # notify
-                    mk[0].notify(Signal.SIGNAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
+                    mk[0].notify(Signal.SIGNAL_HISTORICAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
             except Exception as e:
                 self.on_error(e)
 
@@ -1008,33 +1008,33 @@ class MySql(Database):
                     cursor = self._db.cursor()
                     reverse = False
 
-                    if mk[4] == 0:
+                    if mk[5] == 0:
                         # from to
                         cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
                                         WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp >= %i AND timestamp <= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[5], mk[6]))
-                    elif mk[4] == 1:
+                                            mk[1], mk[2], mk[4], mk[6], mk[7]))
+                    elif mk[5] == 1:
                         # last n
                         cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
                                         WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp DESC LIMIT %s""" % (
-                                            mk[1], mk[2], mk[3], mk[5]))
+                                            mk[1], mk[2], mk[4], mk[6]))
                         reverse = True
-                    elif mk[4] == 2:
+                    elif mk[5] == 2:
                         # last n to date
                         cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
                                         WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp <= %i ORDER BY timestamp DESC LIMIT %i""" % (
-                                            mk[1], mk[2], mk[3], mk[6], mk[5]))
+                                            mk[1], mk[2], mk[4], mk[7], mk[6]))
                         reverse = True
-                    elif mk[4] == 3:
+                    elif mk[5] == 3:
                         # from to now
                         cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
                                         WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp >= %i ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3], mk[5]))
+                                            mk[1], mk[2], mk[4], mk[6]))
                     else:
                         # all @warning should be removed, unused and dangerous
                         cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
                                         WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp ASC""" % (
-                                            mk[1], mk[2], mk[3]))
+                                            mk[1], mk[2], mk[4]))
 
                     rows = cursor.fetchall()
 
@@ -1049,7 +1049,7 @@ class MySql(Database):
 
                         bar.set_volume(float(row[6]))
 
-                        if bar.height < mk[3]:
+                        if bar.height < mk[4]:
                             bar.set_consolidated(False)  # current
 
                         if reverse:
@@ -1060,7 +1060,7 @@ class MySql(Database):
                     cursor = None
 
                     # notify
-                    mk[0].notify(Signal.SIGNAL_RANGE_BAR_DATA_BULK, mk[1], (mk[2], mk[3], bars))
+                    mk[0].notify(Signal.SIGNAL_HISTORICAL_BAR_DATA_BULK, mk[1], (mk[2], mk[3], bars))
             except Exception as e:
                 self.on_error(e)
 

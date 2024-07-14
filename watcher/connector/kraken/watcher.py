@@ -967,7 +967,7 @@ class KrakenWatcher(Watcher):
                 tick = (trade_time, price, price, price, vol, bid_ask)
 
                 # store for generation of OHLCs
-                self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
+                self.service.notify(Signal.SIGNAL_STREAM_TICK_DATA, self.name, (market_id, tick))
 
                 if self._store_trade:
                     Database.inst().store_market_trade((self.name, market_id, int(trade_time*1000.0),
@@ -979,7 +979,7 @@ class KrakenWatcher(Watcher):
                         candle = self.update_ohlc(market_id, tf, trade_time, price, spread, vol)
 
                     if candle is not None:
-                        self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
+                        self.service.notify(Signal.SIGNAL_STREAM_CANDLE_DATA, self.name, (market_id, candle))
 
         elif isinstance(data, dict):
             event = data.get('event')

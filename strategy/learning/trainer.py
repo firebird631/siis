@@ -20,7 +20,7 @@ from terminal.terminal import Terminal
 
 if TYPE_CHECKING:
     from strategy.strategy import Strategy
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
     from ..service import StrategyService
 
 import copy
@@ -58,7 +58,7 @@ class Trainer(object):
 
     processing = {}   # current market-id in process market-id/thread
 
-    def __init__(self, strategy_trader: StrategyTrader, params):
+    def __init__(self, strategy_trader: StrategyTraderBase, params):
         """
         @param strategy_trader: Strategy trader instance
         """
@@ -91,6 +91,7 @@ class Trainer(object):
         self._fitness = trainer_params.get('fitness', 'default')
 
         self._next_update = 0.0
+        self._working = False      # work in progress
 
         self._mode = Trainer.MODE_NONE
 
@@ -145,6 +146,10 @@ class Trainer(object):
     def original_strategy_trader_params(self) -> dict:
         return self._strategy_trader_params
 
+    @property
+    def working(self) -> bool:
+        return self._working
+
     def update(self, timestamp: float) -> bool:
         # init counter or does an initial training
         if self._next_update <= 0:
@@ -178,6 +183,8 @@ class Trainer(object):
 
             if not result:
                 return False
+
+            self._working = True
 
         return True
 
@@ -311,6 +318,9 @@ class Trainer(object):
                 logger.info("Strategy trader %s was in pause, now enable it !" % strategy_trader.instrument.market_id)
                 strategy_trader.set_activity(True)
 
+        # training state
+        self._working = False
+
         if self._strategy_service.backtesting:
             self._strategy_service.play_backtesting()
 
@@ -340,7 +350,7 @@ class Trainer(object):
     #
 
     @staticmethod
-    def create_trainer(strategy_trader: StrategyTrader, params: dict) -> Union[Trainer, None]:
+    def create_trainer(strategy_trader: StrategyTraderBase, params: dict) -> Union[Trainer, None]:
         try:
             trainer = Trainer(strategy_trader, params)
 
@@ -363,7 +373,7 @@ class Trainer(object):
     #
 
     @staticmethod
-    def caller(identity: str, profile: str, learning_path: str, strategy_trader: StrategyTrader, profile_config: dict):
+    def caller(identity: str, profile: str, learning_path: str, strategy_trader: StrategyTraderBase, profile_config: dict):
         """
         Must be called by a command manually or automatically according to some parameters like deviation from
         performance or a minimal duration.

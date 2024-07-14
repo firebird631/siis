@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
     from instrument.instrument import Instrument
 
 from datetime import datetime
@@ -163,7 +163,7 @@ class Region(object):
 
     def init(self, parameters: dict):
         """
-        Override this method to setup region parameters from the parameters dict.
+        Override this method to set up region parameters from the parameters dict.
         """
         pass
 
@@ -239,7 +239,7 @@ class Region(object):
         self._timeframe = data.get('timeframe', 0.0)   # timeframe_from_str(data.get('timeframe', 't'))
         self._expiry = data.get('expiry', 0.0)    # datetime.strptime(data.get('expiry', '1970-01-01T00:00:00Z'), '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=UTC()).timestamp()
 
-    def dumps_notify(self, timestamp: float, region_result: dict, strategy_trader: StrategyTrader) -> dict:
+    def dumps_notify(self, timestamp: float, region_result: dict, strategy_trader: StrategyTraderBase) -> dict:
         """
         Dumps to dict for notify/history.
         """

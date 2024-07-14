@@ -604,7 +604,7 @@ class IGWatcher(Watcher):
                 tick = (float(utm) * 0.001, float(bid), float(ask), float(price), float(ltv or "0"), 0)
                 spread = tick[2] - tick[1]
 
-                self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
+                self.service.notify(Signal.SIGNAL_STREAM_TICK_DATA, self.name, (market_id, tick))
 
                 for tf in Watcher.STORED_TIMEFRAMES:
                     # generate candle per each tf
@@ -612,7 +612,7 @@ class IGWatcher(Watcher):
                         candle = self.update_ohlc(market_id, tf, tick[0], tick[3], spread, tick[4])
 
                     if candle is not None:
-                        self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
+                        self.service.notify(Signal.SIGNAL_STREAM_CANDLE_DATA, self.name, (market_id, candle))
 
                 if self._store_trade:
                     # no side information so 0

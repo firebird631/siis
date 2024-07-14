@@ -19,16 +19,16 @@ class Signal(object):
 	SIGNAL_STRATEGY_INITIALIZE = 70     # data is market_id
 	SIGNAL_STRATEGY_UPDATE = 71         # data is market_id
 
-	SIGNAL_CANDLE_DATA = 100            # data is a pair with (market_id, Candle)
-	SIGNAL_TICK_DATA = 101              # data is a pair with (market_id, Tick)
-	SIGNAL_CANDLE_DATA_BULK = 102       # data is a tuple of (market_id, tf, Candle[])
-	SIGNAL_TICK_DATA_BULK = 103         # data is a tuple of (market_id, tf, Tick[])
+	SIGNAL_STREAM_CANDLE_DATA = 100     # data is a pair with (market_id, Candle)
+	SIGNAL_STREAM_TICK_DATA = 101       # data is a pair with (market_id, Tick)
+	SIGNAL_HISTORICAL_CANDLE_DATA_BULK = 102  # data is a tuple of (market_id, analyser_name, Candle[])
+	# SIGNAL_TICK_DATA_BULK = 103       # data is a tuple of (market_id, analyser_name, Tick[])
 	SIGNAL_SOCIAL_ORDER = 104           # data is a tuple with (str market id, dict position details)
 	SIGNAL_BUY_SELL_ORDER = 105         # data is BuySellSignal
 	SIGNAL_ORDER_BOOK = 106             # data is a tuple with (market_id, buys array, sells array)
 	SIGNAL_LIQUIDATION_DATA = 107       # data is a tuple with (market_id, timestamp, direction, price, quantity)
-	SIGNAL_RANGE_BAR_DATA = 108         # data is a tuple with (market_id, size, RangerBar)
-	SIGNAL_RANGE_BAR_DATA_BULK = 109    # data is a tuple of (market_id, size, RangeBar[])
+	SIGNAL_HISTORICAL_BAR_DATA = 108    # data is a tuple with (market_id, analyser_name, RangerBar)
+	SIGNAL_HISTORICAL_BAR_DATA_BULK = 109   # data is a tuple of (market_id, analyser_name, RangeBar[])
 
 	SIGNAL_WATCHER_CONNECTED = 200      # data is a tuple of (timestamp, market_id or None)
 	SIGNAL_WATCHER_DISCONNECTED = 201   # data is a tuple of (timestamp, market_id or None)

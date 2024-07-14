@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
 
 import traceback
 
@@ -96,7 +96,7 @@ class TradeOp(object):
     def can_delete(self) -> bool:
         return self._count == 0
 
-    def test_and_operate(self, trade: StrategyTrade, strategy_trader: StrategyTrader, trader: Trader) -> bool:
+    def test_and_operate(self, trade: StrategyTrade, strategy_trader: StrategyTraderBase, trader: Trader) -> bool:
         """
         Each time the market price change perform to this test. If the test pass then
         it is executed and removed from the list or kept if its a persistent operation.
@@ -142,7 +142,7 @@ class TradeOp(object):
         """
         return True
 
-    def operate(self, trade: StrategyTrade, strategy_trader: StrategyTrader, trader: Trader) -> bool:
+    def operate(self, trade: StrategyTrade, strategy_trader: StrategyTraderBase, trader: Trader) -> bool:
         """
         Override this method to implement the test and the effect of the operation.
         @return True when the operation is realized one time.
@@ -237,7 +237,7 @@ class TradeOpStepStopLoss(TradeOp):
 
         return True
 
-    def operate(self, trade: StrategyTrade, strategy_trader: StrategyTrader, trader: Trader) -> bool:
+    def operate(self, trade: StrategyTrade, strategy_trader: StrategyTraderBase, trader: Trader) -> bool:
         if trade.direction > 0:
             # long
             if strategy_trader.instrument.close_exec_price(trade.direction) >= self._trigger:

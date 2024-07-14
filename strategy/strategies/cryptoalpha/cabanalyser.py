@@ -38,7 +38,7 @@ class CryptoAlphaBAnalyser(CryptoAlphaAnalyser):
         self.rsi_high = params['constants']['rsi_high']
 
     def process(self, timestamp):
-        candles = self.get_candles()
+        candles = self.get_bars()
 
         if len(candles) < self.depth:
             # not enough samples

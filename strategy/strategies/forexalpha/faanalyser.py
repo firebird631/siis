@@ -33,4 +33,17 @@ class ForexAlphaAnalyser(StrategyTimeframeAnalyser):
 
         self.score = Score(2, self.depth)
 
+        self._signal_at_close = params.get('signal-at-close', False)
+        self.last_signal = None
+
         self.setup_indicators(params)
+
+    @property
+    def signal_at_close(self) -> bool:
+        return self._signal_at_close
+
+    def need_signal(self, timestamp: float) -> bool:
+        if self._signal_at_close:
+            return self._last_closed
+
+        return True

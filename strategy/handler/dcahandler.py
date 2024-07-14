@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Tuple, Union, Dict, List
 
 if TYPE_CHECKING:
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
     from strategy.trade.strategytrade import StrategyTrade
 
 from strategy.trade.strategyassettrade import StrategyAssetTrade
@@ -54,7 +54,7 @@ class DCAHandler(Handler):
 
     _num_take_profits: int
     _percentiles: Optional[Tuple[int]]
-    _markets: Dict[StrategyTrader, DCAMarketData]
+    _markets: Dict[StrategyTraderBase, DCAMarketData]
 
     def __init__(self, context_id: str, num_take_profits: int, percentiles: Optional[Tuple[int]]):
         super().__init__(context_id)
@@ -72,7 +72,7 @@ class DCAHandler(Handler):
     def percentiles(self) -> Union[Tuple[int], None]:
         return self._percentiles
 
-    def install(self, strategy_trader: StrategyTrader):
+    def install(self, strategy_trader: StrategyTraderBase):
         if strategy_trader:
             # already installed
             with self._mutex:
@@ -99,7 +99,7 @@ class DCAHandler(Handler):
                 if strategy_trader not in self._need_update:
                     self._need_update.add(strategy_trader)
 
-    def uninstall(self, strategy_trader: StrategyTrader):
+    def uninstall(self, strategy_trader: StrategyTraderBase):
         if strategy_trader and self._context_id:
             # not installed
             with self._mutex:
@@ -117,18 +117,18 @@ class DCAHandler(Handler):
                 if strategy_trader in self._markets:
                     del self._markets[strategy_trader]
 
-    def on_trade_opened(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+    def on_trade_opened(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade):
         if trade is not None:
             pass
 
-    def on_trade_updated(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+    def on_trade_updated(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade):
         if trade is not None:
             # realized quantity could have increased
             with self._mutex:
                 if strategy_trader not in self._need_update:
                     self._need_update.add(strategy_trader)
 
-    def on_trade_exited(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+    def on_trade_exited(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade):
         if trade is not None:
             # remove an exit trade it
             with self._mutex:
@@ -138,7 +138,7 @@ class DCAHandler(Handler):
                     if trade.id in market_data.exit_trades_ids:
                         market_data.exit_trades_ids.remove(trade.id)
 
-    def process(self, strategy_trader: StrategyTrader):
+    def process(self, strategy_trader: StrategyTraderBase):
         with self._mutex:
             if strategy_trader in self._need_update:
                 self._need_update.remove(strategy_trader)
@@ -172,7 +172,7 @@ class DCAHandler(Handler):
             # update handler
             self._markets[strategy_trader] = market_data
 
-    def dumps(self, strategy_trader: StrategyTrader) -> Dict[str, Union[str, int, float]]:
+    def dumps(self, strategy_trader: StrategyTraderBase) -> Dict[str, Union[str, int, float]]:
         results = super().dumps(strategy_trader)
 
         results.update({
@@ -182,7 +182,7 @@ class DCAHandler(Handler):
 
         return results
 
-    def _merge_trades(self, strategy_trader: StrategyTrader, market_data: DCAMarketData,
+    def _merge_trades(self, strategy_trader: StrategyTraderBase, market_data: DCAMarketData,
                       entry_trades: List[StrategyTrade], exits_trades: List[StrategyTrade]):
 
         entry_qty = 0.0

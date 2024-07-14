@@ -8,10 +8,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple, Union
 
 if TYPE_CHECKING:
-    from instrument.instrument import Candle
-    from monitor.streamable import Streamable
+    from datetime import datetime
 
-    from .strategysignal import StrategySignal
+    from strategy.strategytraderbase import StrategyTraderBase
+    from instrument.instrument import Candle, TickType
+    from monitor.streamable import Streamable
 
 
 class StrategyBaseAnalyser(object):
@@ -21,8 +22,28 @@ class StrategyBaseAnalyser(object):
     It is computed at each tick or bar from the strategy trader process.
 
     @see StrategyTimeframeAnalyser for temporal timeframe (1m, 1h...)
-    @see StrategyBarAnalyser for non-temporal bar (range, tick, renko...)
+    @see StrategyRangeBarAnalyser for range-bar.
+    @see StrategyReversalBarAnalyser for reversal-bar.
+    @see StrategyTickBarAnalyser for tick-bar.
+    @see StrategyVolumeBarAnalyser for volume-bar.
     """
+
+    _name: str
+    _strategy_trade: StrategyTraderBase
+
+    _waiting_initial_data: bool
+
+    depth: int
+    history: int
+
+    def __init__(self, name: str,strategy_trader: StrategyTraderBase):
+        self._name = name
+        self._strategy_trader = strategy_trader
+
+        self._waiting_initial_data = False
+
+        self.depth = 0
+        self.history = 0
 
     def loads(self, params: dict):
         """
@@ -37,11 +58,39 @@ class StrategyBaseAnalyser(object):
         """
         pass
 
-    def init_candle_generator(self):
+    def init_generator(self):
         """
-        Set up the ohlc generator for this sub, using the configured timeframe and the current opened ohlc.
+        Set up the bar generator for this analyser depending on the type and configuration.
         This method is called once the initial ohlc are fetched from the strategy setup process.
         """
+        pass
+
+    def setup_generator(self, instrument):
+        pass
+
+    def query_historical_data(self, to_date: datetime):
+        """
+        Query historical data from database.
+        Use history size and auto compute the necessary best range.
+        """
+        pass
+
+    def add_bar(self, bar, max_size: int = -1):
+        """Add a single bar"""
+        pass
+
+    def add_bars(self, bars: List, max_size: int = -1):
+        """Add a list of bars"""
+        pass
+
+    def get_bars_after(self, after_timestamp: float) -> List:
+        """
+        Returns bars having timestamp >= after_ts in seconds.
+        """
+        return []
+
+    def clear_bars(self):
+        """Clear bars"""
         pass
 
     def need_update(self, timestamp: float) -> bool:
@@ -51,18 +100,11 @@ class StrategyBaseAnalyser(object):
         """
         return True
 
-    def need_signal(self, timestamp: float) -> bool:
+    def process(self, timestamp: float, last_ticks: Union[List[TickType], None] = None):
         """
-        Return True if the signal can be generated and returned at this processing.
-        If signal at close then wait for the last candle close, else always returns true.
+        Process the computation of indicators and tools here. And eventual intermediates states (crossing...)
         """
-        return True
-
-    def process(self, timestamp: float) -> Union[StrategySignal, None]:
-        """
-        Process the computation here.
-        """
-        return None
+        pass
 
     def complete(self, candles: List[Candle], timestamp: float):
         """
@@ -79,36 +121,61 @@ class StrategyBaseAnalyser(object):
         """
         pass
 
+    def need_initial_data(self):
+        """This analyser wait to receive initial data set of bars."""
+        self._waiting_initial_data = True
+
+    @property
+    def is_need_initial_data(self) -> bool:
+        """Return True if an initial data set of bars is waited."""
+        return self._waiting_initial_data
+
+    def ack_initial_data(self):
+        """Acknowledge the reception of initial data set of bars."""
+        self._waiting_initial_data = False
+
     #
     # properties
     #
 
     @property
+    def name(self) -> str:
+        """Unique name per strategy as defined into the configuration."""
+        return self._name
+
+    @classmethod
+    def type_name(cls) -> str:
+        """Internal type name (mode)."""
+        return ""
+
+    @property
+    def strategy_trade(self) -> StrategyTraderBase:
+        """Owner strategy trader."""
+        return self._strategy_trader
+
+    @property
     def timeframe(self) -> float:
-        """
-        Timeframe of this strategy-trader in second.
-        """
+        """Timeframe of this strategy-trader in second or 0 for non-temporal bar."""
         return 0.0
 
     @property
-    def range_bar_size(self) -> int:
-        """
-        Tickbar size.
-        """
+    def bar_size(self) -> int:
+        """Non temporal-bar size."""
         return 0
 
     @property
+    def bar_generator(self):
+        """Bar generator."""
+        return None
+
+    @property
     def samples_depth_size(self) -> int:
-        """
-        Number of Ohlc to have at least to process the computation.
-        """
+        """Number of Ohlc to have at least to process the computation."""
         return 0
 
     @property
     def samples_history_size(self) -> int:
-        """
-        Number of Ohlc used for initialization on kept in memory.
-        """
+        """Number of Ohlc used for initialization on kept in memory."""
         return 0
 
     @property
@@ -116,12 +183,12 @@ class StrategyBaseAnalyser(object):
         return False
 
     @property
-    def signal_at_close(self) -> bool:
+    def last_closed(self) -> bool:
         return False
 
     @property
-    def last_closed(self) -> bool:
-        return False
+    def instrument(self):
+        return self._strategy_trader.instrument
 
     #
     # data streaming (@deprecated way) and monitoring

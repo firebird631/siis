@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
     from strategy.trade.strategytrade import StrategyTrade
 
 from .handler import Handler
@@ -53,7 +53,7 @@ class ReinvestGainHandler(Handler):
     def trade_quantity(self) -> float:
         return self._trade_quantity
 
-    def install(self, strategy_trader: StrategyTrader):
+    def install(self, strategy_trader: StrategyTraderBase):
         if strategy_trader and self._context_id:
             # already installed
             with self._mutex:
@@ -94,7 +94,7 @@ class ReinvestGainHandler(Handler):
                 self._used_quantity += strategy_trader.instrument.adjust_quote(used_quantity)
                 self._num_trades += num_trades
 
-    def uninstall(self, strategy_trader: StrategyTrader):
+    def uninstall(self, strategy_trader: StrategyTraderBase):
         if strategy_trader and self._context_id:
             # not installed
             with self._mutex:
@@ -141,7 +141,7 @@ class ReinvestGainHandler(Handler):
 
             context.modify_trade_quantity_type(strategy_trader.instrument, 'normal')
 
-    def on_trade_opened(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+    def on_trade_opened(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade):
         if trade is not None and trade.context is not None and trade.context.name == self._context_id:
             trade_price = trade.order_price if trade.order_price > 0 else trade.entry_price
             trade_quantity = trade.order_quantity
@@ -152,7 +152,7 @@ class ReinvestGainHandler(Handler):
                 self._used_quantity += strategy_trader.instrument.adjust_quote(entry_quantity)
                 self._num_trades += 1
 
-    def on_trade_exited(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+    def on_trade_exited(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade):
         if trade is not None and trade.context is not None and trade.context.name == self._context_id:
             entry_quantity = trade.exec_entry_qty * trade.entry_price
             exit_quantity = trade.exec_exit_qty * trade.exit_price
@@ -189,7 +189,7 @@ class ReinvestGainHandler(Handler):
                     # update any strategy trader
                     self._need_update = set(self._installed_strategy_traders)
 
-    def process(self, strategy_trader: StrategyTrader):
+    def process(self, strategy_trader: StrategyTraderBase):
         with self._mutex:
             if strategy_trader in self._need_update:
                 self._need_update.remove(strategy_trader)
@@ -204,7 +204,7 @@ class ReinvestGainHandler(Handler):
             # reopen pending orders
             self._resize_open_trades(strategy_trader, context, self._trade_quantity)
 
-    def _resize_open_trades(self, strategy_trader: StrategyTrader, context, new_trade_quantity: float):
+    def _resize_open_trades(self, strategy_trader: StrategyTraderBase, context, new_trade_quantity: float):
         trader = strategy_trader.strategy.trader()
 
         with strategy_trader.trade_mutex:
@@ -237,7 +237,7 @@ class ReinvestGainHandler(Handler):
                         except Exception as e:
                             error_logger.error(repr(e))
 
-    def dumps(self, strategy_trader: StrategyTrader):
+    def dumps(self, strategy_trader: StrategyTraderBase):
         results = super().dumps(strategy_trader)
 
         results.update({

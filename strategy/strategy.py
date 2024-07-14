@@ -11,8 +11,6 @@ from datetime import datetime
 
 from typing import TYPE_CHECKING, Optional, Union, List, Dict, Type, Tuple, Callable
 
-from docutils.utils.math.latex2mathml import over
-
 from .helpers.statistic import compute_strategy_statistics
 
 if TYPE_CHECKING:
@@ -20,7 +18,7 @@ if TYPE_CHECKING:
     from trader.service import TraderService
     from trader.trader import Trader
 
-    from .strategytrader import StrategyTrader
+    from .strategytraderbase import StrategyTraderBase
     from .service import StrategyService
     from .indicator.indicator import Indicator
     from .strategydatafeeder import StrategyDataFeeder
@@ -131,8 +129,8 @@ class Strategy(Runnable):
     _setup_backtest: Union[Callable[[Strategy, datetime, datetime, float], None], None]
     _setup_live: Union[Callable[[Strategy], None], None]
 
-    _update_strategy: Union[Callable[[Strategy, StrategyTrader], None], None, float]
-    _async_update_strategy: Union[Callable[[Strategy, StrategyTrader], None], None, float]
+    _update_strategy: Union[Callable[[Strategy, StrategyTraderBase], None], None, float]
+    _async_update_strategy: Union[Callable[[Strategy, StrategyTraderBase], None], None, float]
 
     _preset: bool
     _prefetched: bool
@@ -145,7 +143,7 @@ class Strategy(Runnable):
 
     _instruments: Dict[str, Instrument]
     _feeders: Dict[str, StrategyDataFeeder]
-    _strategy_traders: Dict[str, StrategyTrader]
+    _strategy_traders: Dict[str, StrategyTraderBase]
 
     _last_done_ts: float
     _timestamp: float
@@ -160,7 +158,7 @@ class Strategy(Runnable):
                  strategy_service: StrategyService,
                  watcher_service: WatcherService,
                  trader_service: TraderService,
-                 strategy_trader_clazz: Type[StrategyTrader],
+                 strategy_trader_clazz: Type[StrategyTraderBase],
                  options: dict,
                  default_parameters: Optional[dict] = None,
                  user_parameters: Optional[dict] = None,
@@ -277,10 +275,10 @@ class Strategy(Runnable):
             return self._parameters
 
     @property
-    def strategy_traders(self) -> Dict[str, StrategyTrader]:
+    def strategy_traders(self) -> Dict[str, StrategyTraderBase]:
         return self._strategy_traders
 
-    def strategy_trader(self, market_id: str) -> Union[StrategyTrader, None]:
+    def strategy_trader(self, market_id: str) -> Union[StrategyTraderBase, None]:
         """Retrieve a strategy trader according to its unique market-id."""
         return self._strategy_traders.get(market_id)
 
@@ -577,6 +575,9 @@ class Strategy(Runnable):
                         # and create the strategy-trader analyser per instrument
                         strategy_trader = self.create_trader(instrument)
                         if strategy_trader:
+                            # instrument only accept candle from strategy trader base timeframe
+                            instrument.set_base_timeframe(strategy_trader.base_timeframe)
+
                             with self._mutex:
                                 self._strategy_traders[instrument.market_id] = strategy_trader
 
@@ -1056,95 +1057,95 @@ class Strategy(Runnable):
                         do_update.add(strategy_trader)
 
             elif signal.source == Signal.SOURCE_WATCHER:
-                if signal.signal_type == Signal.SIGNAL_TICK_DATA:
+                if signal.signal_type == Signal.SIGNAL_STREAM_TICK_DATA:
                     # interest in tick data
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         # add the new tick to the instrument in live mode
                         with strategy_trader.mutex:
-                            if strategy_trader.instrument.ready():
-                                strategy_trader.instrument.add_tick(signal.data[1])
+                            strategy_trader.instrument.add_tick(signal.data[1])
+                            do_update.add(strategy_trader)
 
-                                do_update.add(strategy_trader)
-
-                elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
+                elif signal.signal_type == Signal.SIGNAL_STREAM_CANDLE_DATA:
                     # interest in candle data
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         # add the new candle to the instrument in live mode
                         with strategy_trader.mutex:
-                            if strategy_trader.instrument.ready():
-                                strategy_trader.instrument.add_candle(signal.data[1])
+                            strategy_trader.instrument.add_candle(signal.data[1])
+                            do_update.add(strategy_trader)
 
-                                do_update.add(strategy_trader)
+                # elif signal.signal_type == Signal.SIGNAL_BAR_DATA:
+                #     # interest in range-bar data
+                #     strategy_trader = self._strategy_traders.get(signal.data[0])
+                #     if strategy_trader:
+                #         # add the new range-bar to the instrument in live mode
+                #         with strategy_trader.mutex:
+                #             analyser = strategy_trader.find_analyser(signal.data[1])
+                #             if analyser:
+                #                 analyser.add_bar(signal.data[2])
+                #                 do_update.add(strategy_trader)
 
-                elif signal.signal_type == Signal.SIGNAL_RANGE_BAR_DATA:
-                    # interest in range-bar data
-                    strategy_trader = self._strategy_traders.get(signal.data[0])
-                    if strategy_trader:
-                        # add the new range-bar to the instrument in live mode
-                        with strategy_trader.mutex:
-                            if strategy_trader.instrument.ready():
-                                strategy_trader.instrument.add_range_bar(signal.data[1], signal.data[2])
+                # elif signal.signal_type == Signal.SIGNAL_TICK_DATA_BULK:
+                #     # incoming bulk of history ticks
+                #     strategy_trader = self._strategy_traders.get(signal.data[0])
+                #     if strategy_trader:
+                #         with strategy_trader.mutex:
+                #             initial = strategy_trader.instrument.is_need_timeframe(0)
+                #
+                #         # insert the bulk of ticks into the instrument
+                #         if signal.data[1]:
+                #             with strategy_trader.mutex:
+                #                 # can accumulate before ready status
+                #                 strategy_trader.instrument.add_ticks(signal.data[1])
+                #
+                #                 if initial:
+                #                     # ticks acquired
+                #                     strategy_trader.instrument.ack_timeframe(0)
+                #
+                #                 do_update.add(strategy_trader)
+                #         else:
+                #             with strategy_trader.mutex:
+                #                 if initial:
+                #                     # empty ticks acquired
+                #                     strategy_trader.instrument.ack_timeframe(0)
+                #
+                #                 do_update.add(strategy_trader)
 
-                                do_update.add(strategy_trader)
-
-                if signal.signal_type == Signal.SIGNAL_TICK_DATA_BULK:
-                    # incoming bulk of history ticks
-                    strategy_trader = self._strategy_traders.get(signal.data[0])
-                    if strategy_trader:
-                        with strategy_trader.mutex:
-                            initial = strategy_trader.instrument.is_need_timeframe(0)
-
-                        # insert the bulk of ticks into the instrument
-                        if signal.data[1]:
-                            with strategy_trader.mutex:
-                                # can accumulate before ready status
-                                strategy_trader.instrument.add_ticks(signal.data[1])
-
-                                if initial:
-                                    # ticks acquired
-                                    strategy_trader.instrument.ack_timeframe(0)
-
-                                do_update.add(strategy_trader)
-                        else:
-                            with strategy_trader.mutex:
-                                if initial:
-                                    # empty ticks acquired
-                                    strategy_trader.instrument.ack_timeframe(0)
-
-                                do_update.add(strategy_trader)
-
-                elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA_BULK:
+                elif signal.signal_type == Signal.SIGNAL_HISTORICAL_CANDLE_DATA_BULK:
                     # incoming bulk of history candles
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         with strategy_trader.mutex:
-                            initial = strategy_trader.instrument.is_need_timeframe(signal.data[1])
+                            analyser = strategy_trader.find_analyser(signal.data[1])
+                            if analyser:
+                                initial = analyser.is_need_initial_data
 
                         # insert the bulk of candles into the instrument
                         if signal.data[2]:
                             # in live mode directly add candles to instrument
                             with strategy_trader.mutex:
-                                strategy_trader.instrument.add_candles(signal.data[2])
+                                analyser.add_bars(signal.data[2])
 
                             # initials candles loaded
                             if initial:
                                 instrument = strategy_trader.instrument
 
                                 logger.debug("Retrieved %s OHLCs for %s in %s" % (
-                                    len(signal.data[2]), instrument.market_id, timeframe_to_str(signal.data[1])))
+                                    len(signal.data[2]), instrument.market_id, signal.data[1]))
+
+                                # logger.debug(signal.data[2][-2])
+                                # logger.debug(signal.data[2][-1])
 
                                 # append the current OHLC from the watcher on live mode
                                 with strategy_trader.mutex:
                                     if not self.service.backtesting:
-                                        instrument.add_candle(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
-                                                              .current_ohlc(instrument.market_id, signal.data[1]))
+                                        analyser.add_bar(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).
+                                                         current_ohlc(instrument.market_id, signal.data[1]))
 
-                                    # timeframe acquired
-                                    instrument.ack_timeframe(signal.data[1])
+                                    analyser.ack_initial_data()
 
-                                strategy_trader.on_received_initial_candles(signal.data[1])
+                                strategy_trader.on_received_initial_bars(signal.data[1])
 
                             do_update.add(strategy_trader)
                         else:
@@ -1153,43 +1154,43 @@ class Strategy(Runnable):
                                 instrument = strategy_trader.instrument
 
                                 logger.debug("Retrieved no OHLCs for %s in %s" % (
-                                    instrument.market_id, timeframe_to_str(signal.data[1])))
+                                    instrument.market_id, signal.data[1]))
 
                                 with strategy_trader.mutex:
-                                    # timeframe acquired
-                                    instrument.ack_timeframe(signal.data[1])
+                                    analyser.ack_initial_data()
 
                                 # necessary call for strategy complete initialization
-                                strategy_trader.on_received_initial_candles(signal.data[1])
+                                strategy_trader.on_received_initial_bars(signal.data[1])
 
                             do_update.add(strategy_trader)
 
-                elif signal.signal_type == Signal.SIGNAL_RANGE_BAR_DATA_BULK:
-                    # incoming bulk of history bars
+                elif signal.signal_type == Signal.SIGNAL_HISTORICAL_BAR_DATA_BULK:
+                    # incoming bulk of history non-temporal bars
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
                         with strategy_trader.mutex:
-                            initial = strategy_trader.instrument.is_need_range_bar(signal.data[1])
+                            analyser = strategy_trader.find_analyser(signal.data[1])
+                            if analyser:
+                                initial = analyser.is_need_initial_data
 
                         # insert the bulk of bars into the instrument
                         if signal.data[2]:
                             # in live mode directly add range-bars to instrument
                             with strategy_trader.mutex:
-                                strategy_trader.instrument.add_range_bars(signal.data[1], signal.data[2])
+                                analyser.add_bars(signal.data[2])
 
                             # initials range-bars loaded
                             if initial:
                                 instrument = strategy_trader.instrument
 
-                                logger.debug("Retrieved %s range-bars for %s in %s" % (
+                                logger.debug("Retrieved %s bars for %s in %s" % (
                                     len(signal.data[2]), instrument.market_id, signal.data[1]))
 
-                                # append the current bar from the watcher on live mode
+                                # bar type acquired
                                 with strategy_trader.mutex:
-                                    # bar type acquired
-                                    instrument.ack_range_bar(signal.data[1])
+                                    analyser.ack_initial_data()
 
-                                strategy_trader.on_received_initial_range_bars(signal.data[1])
+                                strategy_trader.on_received_initial_bars(signal.data[1])
 
                             do_update.add(strategy_trader)
                         else:
@@ -1197,15 +1198,15 @@ class Strategy(Runnable):
                             if initial:
                                 instrument = strategy_trader.instrument
 
-                                logger.debug("Retrieved no range-bars for %s in %s" % (
+                                logger.debug("Retrieved no bars for %s in %s" % (
                                     instrument.market_id, signal.data[1]))
 
                                 with strategy_trader.mutex:
                                     # range-bar acquired
-                                    instrument.ack_range_bar(signal.data[1])
+                                    analyser.ack_initial_data()
 
                                 # necessary call for strategy complete initialization
-                                strategy_trader.on_received_initial_range_bars(signal.data[1])
+                                strategy_trader.on_received_initial_bars(signal.data[1])
 
                             do_update.add(strategy_trader)
 
@@ -1360,7 +1361,7 @@ class Strategy(Runnable):
         with self._mutex:
             self._next_backtest_update = (timestamp, total_ts)
 
-    def backtest_update_instrument(self, trader: Trader, strategy_trader: StrategyTrader, timestamp: float):
+    def backtest_update_instrument(self, trader: Trader, strategy_trader: StrategyTraderBase, timestamp: float):
         # retrieve the feeder by market_id
         instrument = strategy_trader.instrument
 
@@ -1438,9 +1439,9 @@ class Strategy(Runnable):
                         prefetched = False
                         break
 
-                # and instruments wanted data
+                # and all needed data
                 for k, strategy_trader in self._strategy_traders.items():
-                    if not strategy_trader.instrument.ready():
+                    if not strategy_trader.ready():
                         prefetched = False
                         break
 
@@ -1528,7 +1529,7 @@ class Strategy(Runnable):
                 return
 
             # filter by instrument for tick data
-            if signal.signal_type == Signal.SIGNAL_TICK_DATA:
+            if signal.signal_type == Signal.SIGNAL_STREAM_TICK_DATA:
                 if Instrument.TF_TICK != self.base_timeframe:
                     # must be equal to the base timeframe only
                     return
@@ -1537,7 +1538,7 @@ class Strategy(Runnable):
                     # non interested in this instrument/symbol
                     return
 
-            elif signal.signal_type == Signal.SIGNAL_CANDLE_DATA:
+            elif signal.signal_type == Signal.SIGNAL_STREAM_CANDLE_DATA:
                 if signal.data[1].timeframe != self.base_timeframe:
                     # must be of equal to the base timeframe only
                     return
@@ -1920,7 +1921,6 @@ class Strategy(Runnable):
 
         parameters.setdefault('reversal', True)
         parameters.setdefault('hedging', False)
-        parameters.setdefault('dual', False)
         parameters.setdefault('activity', True)
         parameters.setdefault('affinity', 5)
         parameters.setdefault('trade-type', 0)
@@ -1932,11 +1932,8 @@ class Strategy(Runnable):
         parameters.setdefault('trade-type', "asset")
         parameters.setdefault('reporting', "none")
 
-        parameters.setdefault('min-traded-timeframe', 't')
-        parameters.setdefault('max-traded-timeframe', '1M')
-
         parameters.setdefault('price-epsilon-factor', 0.0)
-        parameters.setdefault('price-epsilon-timeframe', 't')
+        parameters.setdefault('price-epsilon-analyser', "")
 
         # parse timeframes based values
         for k, param in parameters.items():
@@ -1989,11 +1986,9 @@ class Strategy(Runnable):
             tickbar.setdefault('history', 0)
             tickbar.setdefault('tick-scale', 1.0)
 
-            tickbar.setdefault('tickbar', None)
+            tickbar.setdefault('size', 0)
 
             tickbar.setdefault('update-at-close', False)
             tickbar.setdefault('signal-at-close', False)
-
-            tickbar['tickbar'] = int(tickbar['tickbar']) if tickbar['tickbar'] else 0
 
         return parameters

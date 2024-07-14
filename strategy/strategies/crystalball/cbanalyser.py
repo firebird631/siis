@@ -15,3 +15,16 @@ class CrystalBallAnalyser(StrategyTimeframeAnalyser):
         super().__init__(strategy_trader, params['timeframe'], params['depth'], params['history'], params)
 
         self.setup_indicators(params)
+
+        self._signal_at_close = params.get('signal-at-close', False)
+        self.last_signal = None
+
+    @property
+    def signal_at_close(self) -> bool:
+        return self._signal_at_close
+
+    def need_signal(self, timestamp: float) -> bool:
+        if self._signal_at_close:
+            return self._last_closed
+
+        return True

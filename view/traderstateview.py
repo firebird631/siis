@@ -54,6 +54,7 @@ class TraderStateView(TableView):
         self._reported_activity = False
         self._reported_bootstrapping = False
         self._reported_ready = False
+        self._reported_training = False
         self._reported_affinity = 5
 
         # listen to its service
@@ -233,6 +234,7 @@ class TraderStateView(TableView):
         self._reported_bootstrapping = strategy_trader_state.get('bootstrapping', False)
         self._reported_ready = strategy_trader_state.get('ready', False)
         self._reported_affinity = strategy_trader_state.get('affinity', 5)
+        self._reported_training = strategy_trader_state.get('training', False)
         self._num_report_modes = strategy_trader_state.get('num-modes', 1)
 
         if offset is None:
@@ -307,20 +309,9 @@ class TraderStateView(TableView):
         strategy = self._strategy_service.strategy()
         if strategy:
             if self._market_id:
-                num = 0
-
-                market_id = ""
-                report_mode = 0
-
-                reported_activity = False
-                reported_bootstrapping = False
-                reported_ready = False
-                reported_affinity = False
-
                 try:
                     columns, table, total_size = self.trader_state_table(strategy, *self.table_format())
                     self.table(columns, table, total_size)
-                    num = total_size[1]
                 except Exception as e:
                     error_logger.error(str(traceback.format_exc()))
                     error_logger.error(str(e))
@@ -333,6 +324,7 @@ class TraderStateView(TableView):
 
                     reported_activity = self._reported_activity
                     reported_bootstrapping = self._reported_bootstrapping
+                    reported_training = self._reported_training
                     reported_ready = self._reported_ready
                     reported_affinity = self._reported_affinity
 
@@ -353,6 +345,9 @@ class TraderStateView(TableView):
 
                 if reported_bootstrapping:
                     display_opts.append("Bootstrapping")
+
+                if reported_training:
+                    display_opts.append("Training")
 
                 display_opts.append("Affinity=%s" % reported_affinity)
                 display_opts.append("Refresh=%ss" % self._upd_freq)

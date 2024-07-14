@@ -5,26 +5,29 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Union
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, List, Tuple, Union, Optional
+
+from watcher.watcher import Watcher
 
 if TYPE_CHECKING:
     from monitor.streamable import Streamable
 
-    from .barstrategytrader import BarStrategyTrader
-    from .strategysignal import StrategySignal
+    from .strategytraderbase import StrategyTraderBase
     from .indicator.price.price import PriceIndicator
     from .indicator.volume.volume import VolumeIndicator
 
-    from instrument.instrument import Instrument
-    from instrument.rangebar import RangeBase
+    from instrument.instrument import Instrument, TickType
+    from instrument.bar import BarBase, RangeBar
 
 from instrument.rangebargenerator import RangeBarGenerator
 
 from .strategybaseanalyser import StrategyBaseAnalyser
 
 import logging
-
 logger = logging.getLogger('siis.strategy.strategyrangebaranalyser')
+error_logger = logging.getLogger('siis.error.strategy.strategyrangebaranalyser')
+traceback_logger = logging.getLogger('siis.traceback.strategy.strategyrangebaranalyser')
 
 
 class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
@@ -32,21 +35,14 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
     StrategyRangeBarAnalyser data-series per non-temporal range-bar analyser base class.
     """
 
-    strategy_trader: BarStrategyTrader
-
     rb: int
-    depth: int
-    history: int
 
     last_timestamp: float
 
     _update_at_close: bool
-    _signal_at_close: bool
 
-    range_bar_gen: Union[RangeBarGenerator, None]
+    _range_bar_generator: Union[RangeBarGenerator, None]
     _last_closed: bool
-
-    last_signal: Union[StrategySignal, None]
 
     price: Union[PriceIndicator, None]
     volume: Union[VolumeIndicator, None]
@@ -56,9 +52,12 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
     prev_open_price: Union[float, None]  # previous open price
     prev_close_price: Union[float, None]  # previous close price
 
-    def __init__(self, strategy_trader: BarStrategyTrader, range_bar_size: int,
+    _range_bars: List[RangeBar]
+
+    def __init__(self, name: str, strategy_trader: StrategyTraderBase, range_bar_size: int,
                  depth: int, history: int, params: dict = None):
-        self.strategy_trader = strategy_trader  # parent strategy-trader object
+
+        super().__init__(name, strategy_trader)
 
         params = params or {}
 
@@ -69,12 +68,9 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
         self.last_timestamp = 0.0
 
         self._update_at_close = params.get('update-at-close', False)
-        self._signal_at_close = params.get('signal-at-close', False)
 
-        self.range_bar_gen = RangeBarGenerator(range_bar_size, params.get('tick-scale', 1.0))
+        self._range_bar_generator = RangeBarGenerator(range_bar_size, params.get('tick-scale', 1.0))
         self._last_closed = False  # last generated bar closed
-
-        self.last_signal = None
 
         self.price = None  # price indicator
         self.volume = None  # volume indicator
@@ -83,6 +79,8 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
         self.close_price = None  # last OHLC close
         self.prev_open_price = None  # previous OHLC open
         self.prev_close_price = None  # previous OHLC close
+
+        self._range_bars = []
 
     def loads(self, params: dict):
         """
@@ -97,8 +95,9 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
         if 'update-at-close' in params and params['update-at-close'] != self._update_at_close:
             self._update_at_close = params['update-at-close']
 
-        if 'signal-at-close' in params and params['signal-at-close'] != self._signal_at_close:
-            self._signal_at_close = params['signal-at-close']
+    @property
+    def bar_generator(self):
+        return self._range_bar_generator
 
     def setup_indicators(self, params: dict):
         """
@@ -113,10 +112,10 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
 
         for ind, param in params['indicators'].items():
             if param is not None:
-                if self.strategy_trader.strategy.indicator(param[0]):
+                if self._strategy_trader.strategy.indicator(param[0]):
                     # instantiate and setup indicator
-                    indicator = self.strategy_trader.strategy.indicator(param[0])(0.0, *param[1:])
-                    indicator.setup(self.strategy_trader.instrument)
+                    indicator = self._strategy_trader.strategy.indicator(param[0])(0.0, *param[1:])
+                    indicator.setup(self._strategy_trader.instrument)
 
                     # @todo warning if not enough depth/history
 
@@ -128,8 +127,24 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
                 setattr(self, ind, None)
 
     def setup_generator(self, instrument: Instrument):
-        if self.range_bar_gen:
-            self.range_bar_gen.setup(instrument)
+        if self._range_bar_generator:
+            self._range_bar_generator.setup(instrument)
+
+    def query_historical_data(self, to_date: datetime):
+        if self.bar_size > 0:
+            self.need_initial_data()
+
+            # non-temporal bar then cannot determine the beginning date
+            begin_date = None
+            end_date = to_date - timedelta(seconds=1) if to_date else None
+
+            adj_from_date, adj_to_date, n_last = self.instrument.adjust_date_and_last_n(
+                self.history, self.depth, begin_date, end_date)
+
+            watcher = self.instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+            if watcher:
+                watcher.query_historical_range_bars(self.instrument.market_id, self.name, self.timeframe,
+                                                    to_date=adj_to_date, n_last=n_last)
 
     def need_update(self, timestamp: float) -> bool:
         """
@@ -141,23 +156,13 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
 
         return True
 
-    def need_signal(self, timestamp: float) -> bool:
-        """
-        Return True if the signal can be generated and returned at this processing.
-        If signal at close then wait for the last bar close, else always returns true.
-        """
-        if self._signal_at_close:
-            return self._last_closed
-
-        return True
-
-    def process(self, timestamp: float) -> Union[StrategySignal, None]:
+    def process(self, timestamp: float, last_ticks: Union[List[TickType], None] = None):
         """
         Process the computation here.
         """
-        return None
+        pass
 
-    def complete(self, range_bars: List[RangeBase], timestamp: float):
+    def complete(self, range_bars: List[BarBase], timestamp: float):
         """
         Must be called at the end of the process method.
         """
@@ -193,14 +198,93 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
             self.prev_open_price = None
             self.prev_close_price = None
 
-    def get_range_bars(self) -> List[RangeBase]:
+    def get_bars(self) -> List[BarBase]:
         """
         Get the range-bar list to process.
         """
-        dataset = self.strategy_trader.instrument.range_bars(self.rb)
-        range_bars = dataset[-self.depth:] if dataset else []
+        return self._range_bars[-self.depth:] if self._range_bars else []
 
-        return range_bars
+    def add_bars(self, range_bars_list: List[RangeBar], max_bars: int = -1):
+        """
+        Append an array of new range-bars.
+        @param range_bars_list
+        @param max_bars Pop range-bars until num range_bars > max_range_bars.
+        """
+        if not range_bars_list:
+            return
+
+        # array of tickbar
+        if len(self._range_bars) > 0:
+            for range_bar in range_bars_list:
+                # for each tickbar only add it if more recent or replace a non consolidated
+                if range_bar.timestamp > self._range_bars[-1].timestamp:
+                    if not self._range_bars[-1].ended:
+                        # remove the last range-bar if was not consolidated
+                        # self._range_bars.pop(-1)
+                        self._range_bars[-1].set_consolidated(True)
+                        self._range_bars.append(range_bar)
+                    else:
+                        self._range_bars.append(range_bar)
+
+                elif range_bar.timestamp == self._range_bars[-1].timestamp and not self._range_bars[-1].ended:
+                    # replace the last range-bar if was not consolidated
+                    self._range_bars[-1] = range_bar
+        else:
+            # initiate array, simply copy reference
+            self._range_bars = range_bars_list
+
+        # keep safe size
+        if max_bars > 1 and self._range_bars:
+            while(len(self._range_bars)) > max_bars:
+                self._range_bars.pop(0)
+
+    def add_bar(self, range_bar: RangeBar, max_bars: int = -1):
+        """
+        Append a new range-bar.
+        @param range_bar
+        @param max_bars Pop tickbars until num range_bars > max_range_bars.
+        """
+        if not range_bar:
+            return
+
+        # single tickbar
+        if len(self._range_bars) > 0:
+            # ignore the tickbar if older than the latest
+            if range_bar.timestamp > self._range_bars[-1].timestamp:
+                if not self._range_bars[-1].ended:
+                    # replace the last tickbar if was not consolidated
+                    # self._range_bars[-1] = range_bar
+                    self._range_bars[-1].set_consolidated(True)
+                    self._range_bars.append(range_bar)
+                else:
+                    self._range_bars.append(range_bar)
+
+            elif range_bar.timestamp == self._range_bars[-1].timestamp and not self._range_bars[-1].ended:
+                # replace the last tickbar if was not consolidated
+                self._range_bars[-1] = range_bar
+        else:
+            self._range_bars.append(range_bar)
+
+        # keep safe size
+        if max_bars > 1 and self._range_bars:
+            while(len(self._range_bars)) > max_bars:
+                self._range_bars.pop(0)
+            # if self.rb == 16:
+            #     logger.debug("%s %s" % (self._range_bars[-2], self._range_bars[-1]))
+
+    def range_bar(self) -> Optional[RangeBar]:
+        """Return as possible the last range-bar."""
+        if self._range_bars:
+            return self._range_bars[-1]
+
+        return None
+
+    def range_bars(self) -> List[RangeBar]:
+        """Returns range-bars list."""
+        return self._range_bars
+
+    def clear_bars(self):
+        self._range_bars.clear()
 
     #
     # properties
@@ -214,9 +298,9 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
         return 0.0
 
     @property
-    def range_bar_size(self) -> float:
+    def bar_size(self) -> int:
         """
-        Tickbar size.
+        Range-bar size.
         """
         return self.rb
 
@@ -237,10 +321,6 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
     @property
     def update_at_close(self) -> bool:
         return self._update_at_close
-
-    @property
-    def signal_at_close(self) -> bool:
-        return self._signal_at_close
 
     @property
     def last_closed(self) -> bool:

@@ -110,10 +110,10 @@ class StrategyDataFeeder(object):
             #   updated.append(0)
 
             # speedup version, direct fill the instrument array
-            if self._tick_streamer.next_to(timestamp, self._instrument._ticks):
+            if self._tick_streamer.next_to(timestamp, self._instrument.ticks()):
                 updated.append(0)
 
-                last_tick = self._instrument._ticks[-1]
+                last_tick = self._instrument.ticks()[-1]
 
                 # defines the last market price (prefer at tick if we have candles and ticks)
                 self.instrument.last_update_time = last_tick[0]

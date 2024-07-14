@@ -743,7 +743,7 @@ class BitMexWatcher(Watcher):
                     tick = (trade_time, price, price, price, volume, bid_ask)
 
                     # and notify
-                    self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (market_id, tick))
+                    self.service.notify(Signal.SIGNAL_STREAM_TICK_DATA, self.name, (market_id, tick))
 
                     if self._store_trade:
                         # store trade
@@ -755,7 +755,7 @@ class BitMexWatcher(Watcher):
                         with self._mutex:
                             candle = self.update_ohlc(market_id, tf, trade_time, price, spread, volume)
                             if candle is not None:
-                                self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, candle))
+                                self.service.notify(Signal.SIGNAL_STREAM_CANDLE_DATA, self.name, (market_id, candle))
 
             elif (data[1] == 'instrument' or data[1] == 'quote') and (data[0] == 'insert' or data[0] == 'update'):
                 for market_id in data[2]:

@@ -52,13 +52,17 @@ class CryptoAlphaStrategyTrader(TimeframeStrategyTrader):
         # same direction if 0 or increase at max N times
         self._trade_delay = params['trade-delay']
 
-        self.sltp_timeframe = self.timeframe_from_param(params.setdefault('sltp-timeframe', '1h'))
-        self.ref_timeframe = self.timeframe_from_param(params.setdefault('ref-timeframe', '1d'))
+        self.sltp_timeframe = self.parse_timeframe(params.setdefault('sltp-timeframe', '1h'))
+        self.ref_timeframe = self.parse_timeframe(params.setdefault('ref-timeframe', '1d'))
 
-        self.register_timeframe('A', CryptoAlphaAAnalyser)
-        self.register_timeframe('B', CryptoAlphaBAnalyser)
-        self.register_timeframe('C', CryptoAlphaCAnalyser)
-        self.setup_timeframes(params)
+        self._min_traded_timeframe = self.parse_timeframe(params.get('min-traded-timeframe', "t"))
+        self._max_traded_timeframe = self.parse_timeframe(params.get('max-traded-timeframe', "1M"))
+
+        self.register_analyser('A', CryptoAlphaAAnalyser)
+        self.register_analyser('B', CryptoAlphaBAnalyser)
+        self.register_analyser('C', CryptoAlphaCAnalyser)
+
+        self.setup_analysers(params)
 
         self._last_filter_cache = (0, False, False)
 
@@ -90,9 +94,37 @@ class CryptoAlphaStrategyTrader(TimeframeStrategyTrader):
         self._last_filter_cache = (timestamp, True, True)
         return True, True
 
+    def compute(self, timestamp: float):
+        # split entries from exits signals
+        entries = []
+        exits = []
+
+        for tf, sub in self.timeframes.items():
+            if sub.update_at_close:
+                if sub.need_update(timestamp):
+                    compute = True
+                else:
+                    compute = False
+            else:
+                compute = True
+
+            if compute:
+                signal = sub.process(timestamp)
+                if signal:
+                    if signal.signal == signal.SIGNAL_ENTRY:
+                        entries.append(signal)
+                    elif signal.signal == signal.SIGNAL_EXIT:
+                        exits.append(signal)
+
+        # finally, sort them by timeframe ascending
+        entries.sort(key=lambda s: s.timeframe)
+        exits.sort(key=lambda s: s.timeframe)
+
+        return entries, exits
+
     def process(self, timestamp):
         # update data at tick level
-        self.gen_candles_from_ticks(timestamp)
+        self.generate_bars_from_ticks(timestamp)
 
         accept, compute = self.filter_market(timestamp)
         if not accept:
@@ -125,7 +157,7 @@ class CryptoAlphaStrategyTrader(TimeframeStrategyTrader):
         # filters entry signal, according to some correlation, parent timeframe signal or trend or trade regions
         for entry in entries:          
             # only allowed range of signal for entry
-            if not (self.min_traded_timeframe <= entry.timeframe <= self.max_traded_timeframe):
+            if not (self._min_traded_timeframe <= entry.timeframe <= self._max_traded_timeframe):
                 continue
 
             # trade region

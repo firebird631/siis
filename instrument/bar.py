@@ -1,19 +1,19 @@
 # @date 2023-09-27
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2023 Dream Overflow
-# Instrument range bar models.
+# Instrument non-temporal bar models.
 
 import logging
 
 from common.utils import timestamp_to_str
 
-logger = logging.getLogger('siis.instrument.rangebar')
+logger = logging.getLogger('siis.instrument.bar')
 
 
-class RangeBase(object):
+class BarBase(object):
     """
-    Non-temporal bar model for an instrument.
-    Support range-bar, reversal-bar, volume-bar, renko.
+    Non-temporal bar base model.
+    Support range-bar, reversal-bar, tick-bar, volume-bar, renko...
     """
 
     __slots__ = ('_timestamp', '_duration', '_open', '_close', '_low', '_high', '_volume', '_ended')
@@ -117,5 +117,17 @@ class RangeBase(object):
         ) + (" ENDED" if self._ended else "")
 
 
-class RangeBar(RangeBase):
+class RangeBar(BarBase):
+    pass
+
+
+class ReversalBar(BarBase):
+    pass
+
+
+class TickBar(BarBase):
+    pass
+
+
+class VolumeBar(BarBase):
     pass

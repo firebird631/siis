@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
 
 from datetime import datetime
 
@@ -132,10 +132,10 @@ class Alert(object):
     # processing
     #
 
-    def test_alert(self, timestamp: float, bid: float, ask: float, timeframes: dict):
+    def test_alert(self, timestamp: float, bid: float, ask: float):
         """
         Each time the market price change perform to this test. If the test pass then
-        it is executed and removed from the list or kept if its a persistent alert (until its expiry).
+        it is executed and removed from the list or kept if it is a persistent alert (until its expiry).
 
         @return True if the signal pass the test.
         """
@@ -143,16 +143,11 @@ class Alert(object):
             # alert expired
             return None
 
-        if self._timeframe > 0 and self._timeframe not in timeframes:
-            # missing timeframe
-            return None
-
         if self._countdown == 0:
             # countdown reached 0 previously
             return None
 
-        result = self.test(timestamp, bid, ask, timeframes)
-
+        result = self.test(timestamp, bid, ask)
         if result and self._countdown > 0:
             # dec countdown
             self._countdown -= 1
@@ -165,7 +160,7 @@ class Alert(object):
 
     def init(self, parameters: dict):
         """
-        Override this method to setup alert parameters from the parameters dict.
+        Override this method to set up alert parameters from the parameters dict.
         """
         pass
 
@@ -176,9 +171,9 @@ class Alert(object):
         """
         return True
 
-    def test(self, timestamp: float, bid: float, ask: float, timeframes: dict) -> Union[dict, None]:
+    def test(self, timestamp: float, bid: float, ask: float) -> Union[dict, None]:
         """
-        Perform the test of the alert on the last price and timeframes data.
+        Perform the test of the alert on the last price.
 
         @return A valid dict with trigger condition if trigger, else None
         """
@@ -186,7 +181,7 @@ class Alert(object):
 
     def can_delete(self, timestamp: float, bid: float, ask: float) -> bool:
         """
-        By default perform a test on expiration time, but more deletion cases can be added,
+        By default, perform a test on expiration time, but more deletion cases can be added,
         like a cancellation price trigger.
 
         @param timestamp float Current timestamp
@@ -255,7 +250,7 @@ class Alert(object):
         else:
             return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
-    def dumps_notify(self, timestamp: float, alert_result: dict, strategy_trader: StrategyTrader) -> dict:
+    def dumps_notify(self, timestamp: float, alert_result: dict, strategy_trader: StrategyTraderBase) -> dict:
         """
         Dumps to dict for notify/history.
         """

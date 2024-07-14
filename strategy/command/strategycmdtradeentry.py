@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from strategy.strategy import Strategy
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
 
 from trader.order import Order
 from instrument.instrument import Instrument
@@ -25,7 +25,7 @@ logger = logging.getLogger('siis.strategy.cmd.tradeentry')
 error_logger = logging.getLogger('siis.error.strategy.cmd.tradeentry')
 
 
-def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTrader, data: dict) -> dict:
+def cmd_trade_entry(strategy: Strategy, strategy_trader: StrategyTraderBase, data: dict) -> dict:
     """
     Create a new trade according data on given strategy_trader.
     """

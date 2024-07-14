@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional, Tuple
 if TYPE_CHECKING:
     from trader.trader import Trader
     from instrument.instrument import Instrument
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
 
 from common.signal import Signal
 from trader.order import Order
@@ -1206,7 +1206,7 @@ class StrategyAssetTrade(StrategyTrade):
 
         return data
 
-    def loads(self, data: dict, strategy_trader: StrategyTrader) -> bool:
+    def loads(self, data: dict, strategy_trader: StrategyTraderBase) -> bool:
         if not super().loads(data, strategy_trader):
             return False
 
@@ -1383,7 +1383,7 @@ class StrategyAssetTrade(StrategyTrade):
                 self._stats['unrealized-profit-loss'] = instrument.adjust_quote(
                     upnl + rpnl - self._stats['entry-fees'] - self._stats['exit-fees'])
 
-    def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
+    def info_report(self, strategy_trader: StrategyTraderBase) -> Tuple[str]:
         data = list(super().info_report(strategy_trader))
 
         entry_fees = "%g" % self._stats['entry-fees']

@@ -27,7 +27,7 @@ from common.signal import Signal
 from database.database import Database
 
 from instrument.instrument import Instrument, Candle
-from instrument.candlegenerator import CandleGenerator
+from instrument.timeframebargenerator import TimeframeBarGenerator
 
 from monitor.streamable import Streamable, StreamMemberInt
 
@@ -407,11 +407,19 @@ q
         """
         pass
 
-    def historical_data(self, market_id: str, timeframe: float, from_date: Optional[datetime] = None,
-                        to_date: Optional[datetime] = None, n_last: Optional[int] = None):
+    def price_history(self, market_id: str, timestamp: float) -> Union[float, None]:
         """
-        Async fetch the historical candle data for a unit of time and certain a period of date.
+        Retrieve the historical price for a specific market id.
+        """
+        return None
+
+    def query_historical_timeframe_bars(self, market_id: str, recipient: str, timeframe: float,
+                                        from_date: Optional[datetime] = None, to_date: Optional[datetime] = None,
+                                        n_last: Optional[int] = None):
+        """
+        Async fetch the historical candle data for a unit of time and a period of date.
         @param market_id Specific name of the market
+        @param recipient: str Could be the name of the analyser or empty
         @param timeframe Non-zero time unit in second
         @param from_date date object
         @param to_date date object
@@ -422,16 +430,36 @@ q
 
         if n_last:
             # n last or n last till date (to_date)
-            Database.inst().load_market_ohlc_last_n(self.service, self.name, market_id, timeframe, n_last, to_date)
+            Database.inst().load_market_ohlc_last_n(self.service, self.name, market_id, recipient,
+                                                    timeframe, n_last, to_date)
         else:
             # from date to date or from date to last (now)
-            Database.inst().load_market_ohlc(self.service, self.name, market_id, timeframe, from_date, to_date)       
+            Database.inst().load_market_ohlc(self.service, self.name, market_id, recipient,
+                                             timeframe, from_date, to_date)
 
-    def price_history(self, market_id: str, timestamp: float) -> Union[float, None]:
+    def query_historical_range_bars(self, market_id: str, recipient: str, bar_size: int,
+                                    from_date: Optional[datetime] = None, to_date: Optional[datetime] = None,
+                                    n_last: Optional[int] = None):
         """
-        Retrieve the historical price for a specific market id.
+        Async fetch the historical range-bar data for a size and period of date.
+        @param market_id Specific name of the market
+        @param recipient: str Could be the name of the analyser or empty
+        @param bar_size Non-zero bar size
+        @param from_date date object
+        @param to_date date object
+        @param n_last Last n data
         """
-        return None
+        if bar_size <= 0:
+            return
+
+        if n_last:
+            # n last or n last till date (to_date)
+            Database.inst().load_market_range_bar_last_n(self.service, self.name, market_id, recipient,
+                                                         bar_size, n_last, to_date)
+        else:
+            # from date to date or from date to last (now)
+            Database.inst().load_market_range_bar(self.service, self.name, market_id, recipient,
+                                                  bar_size, from_date, to_date)
 
     #
     # utils
@@ -555,7 +583,7 @@ q
                     if last_ohlc_by_timeframe:
                         ohlc = self.close_ohlc(market_id, last_ohlc_by_timeframe, tf, now)
                         if ohlc:
-                            self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (market_id, ohlc))
+                            self.service.notify(Signal.SIGNAL_STREAM_CANDLE_DATA, self.name, (market_id, ohlc))
 
     def fetch_and_generate(self, market_id: str, timeframe: float, n_last: int = 1, cascaded: Optional[float] = None):
         """
@@ -624,7 +652,7 @@ q
                     # from timeframe greater than initial
                     if tf <= cascaded:
                         # until max cascaded timeframe
-                        generators.append(CandleGenerator(from_tf, tf))
+                        generators.append(TimeframeBarGenerator(from_tf, tf))
                         from_tf = tf
 
                         # store for generation

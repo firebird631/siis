@@ -14,7 +14,7 @@ from terminal.terminal import Terminal
 from database.database import Database
 
 from instrument.instrument import Instrument, Candle
-from instrument.candlegenerator import CandleGenerator
+from instrument.timeframebargenerator import TimeframeBarGenerator
 
 import logging
 logger = logging.getLogger('siis.tools.rebuilder')
@@ -268,7 +268,7 @@ def do_rebuilder(options):
                     # from timeframe greater than initial
                     if tf <= cascaded:
                         # until max cascaded timeframe
-                        generator = CandleGenerator(from_tf, tf)
+                        generator = TimeframeBarGenerator(from_tf, tf)
                         generators.append(generator)
                         from_tf = tf
 
@@ -292,7 +292,7 @@ def do_rebuilder(options):
                     timeframe_to_str(target), timeframe_to_str(timeframe)))
                 sys.exit(-1)
 
-            generator = CandleGenerator(timeframe, target)
+            generator = TimeframeBarGenerator(timeframe, target)
             generators.append(generator)
 
             # load OHLC at the base timestamp (if exists)

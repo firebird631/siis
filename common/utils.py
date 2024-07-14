@@ -186,7 +186,7 @@ def format_quantity(quantity: float, precision: int) -> str:
 
 def format_datetime(timestamp: float) -> str:
     """
-    Format as human readable in UTC.
+    Format as human-readable in UTC.
     """
     return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S UTC')
     # same as utcfromtimestamp but contains the tzinfo

@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING, List, Union, Optional, Tuple, Dict
 
 if TYPE_CHECKING:
     from watcher.watcher import Watcher
-    from .rangebar import RangeBar
+    from .bar import RangeBar
 
 import math
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from common.utils import UTC, timeframe_to_str, truncate, decimal_place
+from common.utils import UTC, timeframe_to_str, truncate, decimal_place, format_datetime
 
 import logging
 logger = logging.getLogger('siis.instrument.instrument')
@@ -134,14 +134,14 @@ class Candle(object):
     def __repr__(self) -> str:
         return "%s %s %s/%s/%s/%s" % (
             timeframe_to_str(self._timeframe),
-            self._timestamp,
+            format_datetime(self._timestamp),
             self._open,
             self._high,
             self._low,
             self._close)
 
 
-class BuySellSignal(object):
+class BuySell(object):
 
     ORDER_ENTRY = 0
     ORDER_EXIT = 1
@@ -154,7 +154,7 @@ class BuySellSignal(object):
         self._timestamp = timestamp
         self._timeframe = timeframe
         self._strategy = None
-        self._order_type = BuySellSignal.ORDER_ENTRY
+        self._order_type = BuySell.ORDER_ENTRY
         self._direction = None
         self._exec_price = 0.0
         self._params = {}
@@ -334,11 +334,15 @@ class Instrument(object):
                 '_market_bid', '_market_ask', '_last_update_time', \
                 '_vol24h_base', '_vol24h_quote', '_fees', \
                 '_size_limits', '_price_limits', '_notional_limits', '_settlement_precision', \
-                '_ticks', '_range_bars', '_candles', '_buy_sells', \
-                '_needed_timeframes', '_needed_range_bars', \
+                '_ticks', '_candles', '_buy_sells', '_base_timeframe', \
                 '_base', '_quote', '_settlement', '_trade', '_orders', \
                 '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', '_lot_size', '_contract_size',  \
                 '_timezone', '_session_offset', '_trading_sessions'
+
+    _ticks: List[TickType]
+    _candles: List[Candle]
+    _buy_sells: List[BuySell]
+    _base_timeframe: float
 
     _watchers: Dict[int, Watcher]
     _trading_sessions: List[TradingSession]
@@ -383,10 +387,10 @@ class Instrument(object):
         self._notional_limits = (0.0, 0.0, 0.0, 0)
         self._settlement_precision = 8
 
-        self._ticks = []      # list of tuple(timestamp, bid, ask, last, volume, direction)
-        self._candles = {}    # list per timeframe
-        self._buy_sells = {}  # list per timeframe
-        self._range_bars = {}   # list of TickBar per size
+        self._ticks = []      # list of TickType
+        self._candles = []    # list of Candle
+        self._buy_sells = []  # list of BuySell signals
+        self._base_timeframe = 0.0
 
         self._one_pip_means = 1.0
         self._value_per_pip = 1.0
@@ -399,9 +403,6 @@ class Instrument(object):
 
         # allowed trading session (empty mean anytime) else must be explicit. each session is a TradingSession model.
         self._trading_sessions = []
-
-        self._needed_timeframes = []  # list of needed timeframe before be ready (it is only for initialization)
-        self._needed_range_bars = []  # list of needed range-bar before be ready (it is only for initialization)
 
     def add_watcher(self, watcher_type: int, watcher: Watcher):
         if watcher:
@@ -776,53 +777,54 @@ class Instrument(object):
         self._contract_size = contract_size
 
     #
-    # ticks or candles
+    # candles, ticks, buy-sell
     #
 
-    def check_temporal_coherency(self, tf: float) -> List[Tuple[str, float, int, int, float, float]]:
+    def check_temporal_coherency(self) -> List[Tuple[str, float, int, int, float, float]]:
         """
         Check temporal coherency of the candles and return the list of incoherence.
+        @deprecated Not used anywhere.
         """
         issues = []
 
-        for tf, candles in self._candles.items():
-            candles = self._candles.get(tf)
-            number = len(candles)
-            if candles:
-                for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
-                    if candles[i].timestamp - candles[i-1].timestamp != tf:
-                        logger.error("Timestamp inconsistency from %s and %s candles at %s delta=(%s)" % (
-                            i, i-1, candles[i-1].timestamp, candles[i].timestamp - candles[i-1].timestamp))
+        if self._candles:
+            number = len(self._candles)
+            for i in range(len(self._candles)-1, max(-1, len(self._candles)-number-1), -1):
+                if self._candles[i].timeframe != self._candles[i-1].timeframe:
+                    logger.error("Timeframe inconsistency from %s and %s candles at %s" % (
+                        i, i - 1, self._candles[i - 1].timestamp))
 
-                        issues.append(('ohlc', tf, i, i-1, candles[i-1].timestamp,
-                                       candles[i].timestamp - candles[i-1].timestamp))
+                    issues.append(('ohlc', self._candles[i - 1].timeframe, i, i - 1, self._candles[i - 1].timestamp,
+                                   self._candles[i].timestamp - self._candles[i - 1].timestamp))
 
-        for tf, buy_sells in self._buy_sells.items():
-            if buy_sells:
-                number = len(buy_sells)
-                for i in range(len(buy_sells)-1, max(-1, len(buy_sells)-number-1), -1):
-                    if buy_sells[i].timestamp - buy_sells[i-1].timestamp != tf:
-                        logger.error("Timestamp inconsistency from %s and %s buy/sell signals at %s delta=(%s)" % (
-                            i, i-1, buy_sells[i-1].timestamp, buy_sells[i].timestamp - buy_sells[i-1].timestamp))
+                if self._candles[i].timestamp - self._candles[i-1].timestamp != self._candles[i-1].timeframe:
+                    logger.error("Timestamp inconsistency from %s and %s candles at %s delta=(%s)" % (
+                        i, i-1, self._candles[i-1].timestamp, self._candles[i].timestamp - self._candles[i-1].timestamp))
 
-                        issues.append(('buysell', tf, i, i-1, buy_sells[i-1].timestamp,
-                                       buy_sells[i].timestamp - buy_sells[i-1].timestamp))
+                    issues.append(('ohlc', self._candles[i-1].timeframe, i, i-1, self._candles[i-1].timestamp,
+                                   self._candles[i].timestamp - self._candles[i-1].timestamp))
 
-        ticks = self._ticks
-        if ticks:
-            number = len(ticks)
-            for i in range(len(ticks)-1, max(-1, len(ticks)-number-1), -1):
-                if ticks[i][0] - ticks[i-1][0] != tf:                    
-                    logger.error("Timestamp inconsistency from %s and %s ticks at %s delta=(%s)" % (
-                        i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
+        if self._ticks:
+            number = len(self._ticks)
+            for i in range(len(self._ticks)-1, max(-1, len(self._ticks)-number-1), -1):
+                if self._ticks[i][0] <= self._ticks[i-1][0]:
+                    logger.error("Timestamp inconsistency from %s and %s ticks at %s" % (
+                        i, i-1, self._ticks[i-1][0]))
 
-                    issues.append(('tick', 0, i, i-1, ticks[i-1][0], ticks[i][0] - ticks[i-1][0]))
+                    issues.append(('tick', 0, i, i-1, self._ticks[i-1][0], self._ticks[i][0]))
         
         return issues
 
     #
     # candles OHLC
     #
+
+    def set_base_timeframe(self, timeframe: float):
+        self._base_timeframe = timeframe
+
+    @property
+    def base_timeframe(self):
+        return self._base_timeframe
 
     def add_candles(self, candles_list: List[Candle], max_candles: int = -1):
         """
@@ -833,38 +835,30 @@ class Instrument(object):
         if not candles_list:
             return
 
-        # array of candles
-        tf = candles_list[0]._timeframe
+        if candles_list[0].timeframe != self._base_timeframe:
+            return
 
-        if self._candles.get(tf):
-            candles = self._candles[tf]
+        if len(self._candles) > 0:
+            for c in candles_list:
+                # for each candle only add it if more recent or replace a non consolidated
+                if c.timestamp > self._candles[-1].timestamp:
+                    if not self._candles[-1].ended:
+                        # remove the last candle if was not consolidated
+                        # self._candles.pop(-1)
+                        self._candles[-1].set_consolidated(True)
 
-            if len(candles) > 0:
-                for c in candles_list:
-                    # for each candle only add it if more recent or replace a non consolidated
-                    if c.timestamp > candles[-1].timestamp:
-                        if not candles[-1].ended:
-                            # remove the last candle if was not consolidated
-                            # candles.pop(-1)
-                            candles[-1].set_consolidated(True)
+                    self._candles.append(c)
 
-                        candles.append(c)
-
-                    elif c.timestamp == candles[-1].timestamp and not candles[-1].ended:
-                        # replace the last candle if was not consolidated
-                        candles[-1] = c
-            else:
-                # initiate array
-                candles.extend(candles_list)
+                elif c.timestamp == self._candles[-1].timestamp and not self._candles[-1].ended:
+                    # replace the last candle if was not consolidated
+                    self._candles[-1] = c
         else:
-            self._candles[tf] = candles_list
+            self._candles = candles_list
 
         # keep safe size
-        if max_candles > 1:
-            candles = self._candles[tf]
-            if candles:
-                while(len(candles)) > max_candles:
-                    candles.pop(0)
+        if max_candles > 1 and self._candles:
+            while(len(self._candles)) > max_candles:
+                self._candles.pop(0)
 
     def add_candle(self, candle: Candle, max_candles: int = -1):
         """
@@ -875,164 +869,47 @@ class Instrument(object):
         if not candle:
             return
 
-        # single candle
-        if self._candles.get(candle._timeframe):
-            candles = self._candles[candle._timeframe]
-
-            if len(candles) > 0:
-                # ignore the candle if older than the latest
-                if candle.timestamp > candles[-1].timestamp:
-                    if not candles[-1].ended:
-                        # replace the last candle if was not consolidated
-                        # candles[-1] = candle
-                        candles[-1].set_consolidated(True)
-                        candles.append(candle)
-                    else:
-                        candles.append(candle)
-
-                elif candle.timestamp == candles[-1].timestamp and not candles[-1].ended:
-                    # replace the last candle if was not consolidated
-                    candles[-1] = candle
-            else:
-                candles.append(candle)
-        else:
-            self._candles[candle._timeframe] = [candle]
-
-        # keep safe size
-        if max_candles > 1:
-            candles = self._candles[candle._timeframe]
-            if candles:
-                while(len(candles)) > max_candles:
-                    candles.pop(0)
-
-    def last_candles(self, tf: float, number: int) -> List[Candle]:
-        """
-        Return as possible last n candles with a fixed step of time unit.
-        """
-        results = [Candle(0, tf)] * number
-
-        candles = self._candles.get(tf)
-        if candles:
-            j = number - 1
-            for i in range(len(candles)-1, max(-1, len(candles)-number-1), -1):
-                results[j] = candles[i]
-                j -= 1
-
-        return results
-
-    def candle(self, tf: float) -> Union[Candle, None]:
-        """
-        Return as possible the last candle.
-        """
-        candles = self._candles.get(tf)
-        if candles:
-            return candles[-1]
-
-        return None
-
-    def candles(self, tf: float) -> Union[List[Candle], None]:
-        """
-        Returns candles list for a specific timeframe.
-        @param tf Timeframe
-        """
-        return self._candles.get(tf)
-
-    def reduce_candles(self, timeframe: float, max_candles: int):
-        """
-        Reduce the number of candle to max_candles.
-        """
-        if not max_candles or not timeframe:
+        if candle.timeframe != self._base_timeframe:
             return
 
-        if self._candles.get(timeframe):
-            candles = self._candles[timeframe][-max_candles:]
-
-    def last_ended_timestamp(self, tf: float) -> float:
-        """
-        Returns the timestamp of the last consolidated candle for a specific time unit.
-        """
-        candles = self._candles.get(tf)
-        if candles:
-            if candles[-1].ended:
-                return candles[-1].timestamp
-            elif not candles[-1].ended and len(candles) > 1:
-                return candles[-2].timestamp
-
-        return 0.0
-
-    def candles_from(self, tf: float, from_ts: float) -> List[Candle]:
-        """
-        Returns candle having timestamp >= from_ts in seconds.
-        @param tf Timeframe
-        @param from_ts In second timestamp from when to get candles
-
-        @note this is not really a good idea to fill the gap and to have this extra cost of processing because :
-            for market closing weekend or night we don't, but on another side candles must be adjacent to have
-            further calculations corrects
-        """
-        results = []
-
-        candles = self._candles.get(tf)
-        if candles:
-            # process for most recent to the past
-            for c in reversed(candles):
-                if c.timestamp >= from_ts:
-                    # is there a gap between the prev and current candles, introduce missing ones
-                    if len(results) and (results[0].timestamp - c.timestamp > tf):
-                        ts = results[0].timestamp - tf
-
-                        while ts > c.timestamp:
-                            filler = Candle(ts, tf)
-
-                            # same as previous
-                            filler.copy(results[-1])
-
-                            # empty volume
-                            filler._volume = 0
-
-                            results.insert(0, filler)
-                            ts -= tf
-
-                    results.insert(0, c)
+        # single candle
+        if len(self._candles) > 0:
+            # ignore the candle if older than the latest
+            if candle.timestamp > self._candles[-1].timestamp:
+                if not self._candles[-1].ended:
+                    # replace the last candle if was not consolidated
+                    # candles[-1] = candle
+                    self._candles[-1].set_consolidated(True)
+                    self._candles.append(candle)
                 else:
-                    break
+                    self._candles.append(candle)
 
-        return results
+            elif candle.timestamp == self._candles[-1].timestamp and not self._candles[-1].ended:
+                # replace the last candle if was not consolidated
+                self._candles[-1] = candle
+        else:
+            self._candles = [candle]
 
-    def candles_after(self, tf: float, after_ts: float) -> List[Candle]:
+        # keep safe size
+        if max_candles > 1 and self._candles:
+            while(len(self._candles)) > max_candles:
+                self._candles.pop(0)
+
+    def candles(self) -> List[Candle]:
+        """Returns candles list."""
+        return self._candles
+
+    def detach_candles(self) -> List[Candle]:
         """
-        Returns candle having timestamp >= after_ts in seconds.
-        @param tf Timeframe
-        @param after_ts In second timestamp after when to get candles
+        Detach the array of candles and set up a new empty for the instrument.
         """
-        results = []
+        candles = self._candles
+        self._candles = []
+        return candles
 
-        candles = self._candles.get(tf)
-        if candles:
-            # process for most recent to the past
-            for c in reversed(candles):
-                if c.timestamp > after_ts:
-                    # is there a gap between the prev and current candles, introduce missing ones
-                    if len(results) and (results[0].timestamp - c.timestamp > tf):
-                        ts = results[0].timestamp - tf
-
-                        while ts > c.timestamp:
-                            filler = Candle(ts, tf)
-
-                            # same as previous
-                            filler.copy(results[-1])
-
-                            # empty volume
-                            filler._volume = 0
-
-                            results.insert(0, filler)
-                            ts -= tf
-
-                    results.insert(0, c)
-                else:
-                    break
-
-        return results
+    def clear_candles(self):
+        """Clear any candles previous received candles."""
+        self._candles.clear()
 
     #
     # ticks
@@ -1080,180 +957,9 @@ class Instrument(object):
         self._ticks = []
         return ticks
 
-    def ticks_after(self, after_ts: float) -> List[TickType]:
-        """
-        Returns ticks having timestamp > from_ts in seconds.
-        """
-        results = []
-
-        ticks = self._ticks
-        if ticks:
-            # process for more recent to the past
-            for t in reversed(ticks):
-                if t[0] > after_ts:
-                    results.insert(0, t)
-                else:
-                    break
-
-        return results
-
     #
-    # range-bar
+    # helpers
     #
-    
-    def add_range_bars(self, size: int, range_bars_list: List[RangeBar], max_range_bars: int = -1):
-        """
-        Append an array of new range-bars.
-        @param size: Size of the range-bar
-        @param range_bars_list
-        @param max_range_bars Pop range-bars until num range_bars > max_range_bars.
-        """
-        if not range_bars_list:
-            return
-
-        if self._range_bars.get(size):
-            range_bars = self._range_bars[size]
-
-            # array of tickbar
-            if len(range_bars) > 0:
-                for range_bar in range_bars_list:
-                    # for each tickbar only add it if more recent or replace a non consolidated
-                    if range_bar.timestamp > range_bars[-1].timestamp:
-                        if not range_bars[-1].ended:
-                            # remove the last range-bar if was not consolidated
-                            range_bars.pop(-1)
-                            # tickbars[-1]._ended = True
-
-                        range_bars.append(range_bar)
-
-                    elif range_bar.timestamp == range_bars[-1].timestamp and not range_bars[-1].ended:
-                        # replace the last range-bar if was not consolidated
-                        range_bars[-1] = range_bar
-            else:
-                # initiate array
-                self._range_bars[size] = range_bars_list
-        else:
-            # initiate array
-            self._range_bars[size] = range_bars_list
-
-        # keep safe size
-        if max_range_bars > 1:
-            range_bars = self._range_bars[size]
-            if range_bars:
-                while(len(range_bars)) > max_range_bars:
-                    range_bars.pop(0)
-
-    def add_range_bar(self, size: int, range_bar: RangeBar, max_range_bars: int = -1):
-        """
-        Append a new range-bar.
-        @param size: Size of the range-bar
-        @param range_bar
-        @param max_range_bars Pop tickbars until num range_bars > max_range_bars.
-        """
-        if not range_bar:
-            return
-
-        if self._range_bars.get(size):
-            range_bars = self._range_bars[size]
-
-            # single tickbar
-            if len(range_bars) > 0:
-                # ignore the tickbar if older than the latest
-                if range_bar.timestamp > range_bars[-1].timestamp:
-                    if not range_bars[-1].ended:
-                        # replace the last tickbar if was not consolidated
-                        range_bars[-1] = range_bar
-                    else:
-                        range_bars.append(range_bar)
-
-                elif range_bar.timestamp == range_bars[-1].timestamp and not range_bars[-1].ended:
-                    # replace the last tickbar if was not consolidated
-                    range_bars[-1] = range_bar
-            else:
-                range_bars.append(range_bar)
-        else:
-            self._range_bars[size] = [range_bar]
-
-        # keep safe size
-        if max_range_bars > 1:
-            range_bars = self._range_bars[size]
-            if range_bars:
-                while(len(range_bars)) > max_range_bars:
-                    range_bars.pop(0)
-
-            # if size == 4:
-            #     logger.debug("%s %s" % (range_bars[-2], range_bars[-1]))
-
-    def range_bar(self, size: int) -> Optional[RangeBar]:
-        """
-        Return as possible the last range-bar.
-        """
-        range_bars = self._range_bars.get(size, [])
-
-        if range_bars:
-            return range_bars[-1]
-
-        return None
-
-    def range_bars(self, size: int) -> List[RangeBar]:
-        """
-        Returns range-bars list.
-        """
-        return self._range_bars.get(size)
-
-    #
-    # sync
-    #
-
-    def ready(self) -> bool:
-        """
-        Return true when ready to process.
-        """
-        return not self._needed_timeframes and not self._needed_range_bars
-
-    def need_timeframe(self, timeframe: float):
-        """
-        Add a required candles for a specific timeframe.
-        """
-        self._needed_timeframes.append(timeframe)
-
-    def need_range_bar(self, size: float):
-        """
-        Add a required candles for a specific range-bar size.
-        """
-        self._needed_range_bars.append(size)
-
-    def is_need_timeframe(self, timeframe: float) -> bool:
-        """
-        Check if a timeframe is needed.
-        """
-        return timeframe in self._needed_timeframes
-
-    def is_need_range_bar(self, size: int) -> bool:
-        """
-        Check if a certain size of range-bar is needed.
-        """
-        return size in self._needed_range_bars
-
-    def ack_timeframe(self, timeframe: float) -> bool:
-        """
-        Clear wanted timeframe status and returns true if it was wanted.
-        """
-        if timeframe in self._needed_timeframes:
-            self._needed_timeframes.remove(timeframe)
-            return True
-
-        return False
-
-    def ack_range_bar(self, size: int) -> bool:
-        """
-        Clear wanted range-bar status and returns true if it was wanted.
-        """
-        if size in self._needed_range_bars:
-            self._needed_range_bars.remove(size)
-            return True
-
-        return False
 
     def open_exec_price(self, direction: int, maker: bool = False) -> float:
         """
@@ -1627,3 +1333,41 @@ class Instrument(object):
             results.append(TradingSession(days_of_week[parts[0]], fd, td))
 
         return results
+
+    def adjust_date_and_last_n(self, history: int, depth: int, from_date: datetime, to_date: datetime):
+        # crypto are h24, d7, nothing to do
+        if self.market_type == Instrument.TYPE_CRYPTO:
+            if from_date and to_date:
+                # from date till date
+                return from_date, to_date, None
+            if not from_date and to_date:
+                # n last till date
+                return None, to_date, max(history, depth)
+            elif from_date and not to_date:
+                # from date till now
+                return from_date, None, None
+            else:
+                # n last till now
+                return None, None, max(history, depth)
+
+        # @todo there is multiples case, weekend off and nationals days off
+        #  and the case of stocks markets closed during the local night but also temporary evening off time
+        #  so many complexes cases then we try to get the max of last n OHLCs
+        #  here simple direct solution but not correct in case of leaks of data
+
+        #     # this does not count the regionals holidays
+        #     day_generator = (from_date + timedelta(x + 1) for x in range((to_date - from_date).days))
+        #     days_off = sum(1 for day in [from_date] + list(day_generator) if day.weekday() >= 5)
+
+        #     from_date -= timedelta(days=days_off)
+
+        #     if self.contract_type == Instrument.CONTRACT_SPOT or self.market_type == Instrument.TYPE_STOCK:
+        #         days_on = sum(1 for day in [from_date] + list(day_generator) if day.weekday() < 5)
+        #         from_date -= timedelta(seconds=days_on * (24-8)*60*60)
+
+        #     # need to add night for stock markets
+        #     if self.contract_type == Instrument.CONTRACT_SPOT or self.market_type == Instrument.TYPE_STOCK:
+        #         pass  # @todo above night data
+
+        # either n last till date, or n last till now
+        return None, to_date, max(history, depth)

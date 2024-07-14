@@ -15,7 +15,7 @@ from watcher.watcher import Watcher
 from trader.position import Position
 from common.signal import Signal
 
-from instrument.instrument import BuySellSignal
+from instrument.instrument import BuySell
 
 import logging
 logger = logging.getLogger("siis.connector.tradingview")
@@ -199,14 +199,14 @@ class TradingViewWatcher(Watcher):
 
 			# send a buy sell signal
 			# @todo is it can be something else ?
-			bs = BuySellSignal(timestamp, timeframe)
+			bs = BuySell(timestamp, timeframe)
 
 			if stype == 'entry':
-				order_type = BuySellSignal.ORDER_ENTRY
+				order_type = BuySell.ORDER_ENTRY
 			elif stype == 'exit':
-				order_type = BuySellSignal.ORDER_EXIT
+				order_type = BuySell.ORDER_EXIT
 			else:
-				order_type = BuySellSignal.ORDER_ENTRY
+				order_type = BuySell.ORDER_ENTRY
 
 			bs.set_data(strategy, order_type, dir_type, price, timeframe)
 			bs.params = options

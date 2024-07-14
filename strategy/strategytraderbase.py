@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from .region.region import Region
     from .handler.handler import Handler
     from trader.trader import Trader
-    from instrument.instrument import TickType
+    from instrument.instrument import TickType, Candle
     from monitor.streamable import Streamable
 
 import pathlib
@@ -58,7 +58,7 @@ error_logger = logging.getLogger('siis.error.strategy.trader')
 traceback_logger = logging.getLogger('siis.traceback.strategy.trader')
 
 
-class StrategyTrader(object):
+class StrategyTraderBase(object):
     """
     A strategy can manage multiple instrument. Strategy trader is on of the managed instruments.
     """
@@ -78,6 +78,17 @@ class StrategyTrader(object):
         'verbose': REPORTING_VERBOSE,
     }
 
+    STATE_NORMAL = 0
+    STATE_WAITING = 1
+    STATE_PROGRESSING = 2
+
+    PREPROCESSING_STATE_NORMAL = 0
+    PREPROCESSING_STATE_WAITING = 1
+    PREPROCESSING_STATE_BEGIN = 2
+    PREPROCESSING_STATE_LOAD = 3
+    PREPROCESSING_STATE_UPDATE = 4
+    PREPROCESSING_STATE_COMPLETE = 5
+
     strategy: Strategy
     instrument: Instrument
 
@@ -88,11 +99,8 @@ class StrategyTrader(object):
     _min_vol24h: float
     _hedging: bool
     _reversal: bool
-    _dual: bool
     _trade_short: bool
     _allow_short: bool
-    _min_traded_timeframe: float
-    _max_traded_timeframe: float
 
     _initialized: int
     _check: int
@@ -123,7 +131,11 @@ class StrategyTrader(object):
     _alert_streamer: Union[Streamable, None]
     _region_streamer: Union[Streamable, None]
 
-    _trade_contexts: dict[str, StrategyTraderContext]
+    _trade_contexts: Dict[str, StrategyTraderContext]
+
+    _analysers_registry: Dict[str, Any]
+    _analysers: Dict[str, StrategyBaseAnalyser]
+    _analysers_streamers: Dict[int, Streamable]
 
     _reporting: int
     _report_filename: Union[str, None]
@@ -151,31 +163,27 @@ class StrategyTrader(object):
         self._region_allow = params.get('region-allow', True)
         self._hedging = params.get('hedging', False)
         self._reversal = params.get('reversal', True)
-        self._dual = params.get('dual', False)
 
         self._activity = params.get('activity', True)  # auto trading
         self._affinity = params.get('affinity', 5)     # based on a linear scale [0..100]
 
         self._allow_short = params.get('allow-short', True)
 
-        self._min_traded_timeframe = params.get('min-traded-timeframe', Instrument.TF_TICK)
-        self._max_traded_timeframe = params.get('max-traded-timeframe', Instrument.TF_MONTH)
-
         #
         # states
         #
 
-        self._initialized = 1       # initiate data before running, 1 waited, 2 in progress, 0 normal
-        self._checked = 1           # check trades/orders/positions, 1 waited, 2 in progress, 0 normal
+        self._initialized = StrategyTraderBase.STATE_WAITING  # initiate data before running
+        self._checked = StrategyTraderBase.STATE_WAITING      # check trades/orders/positions
 
         self._limits = Limits()     # price and timestamp ranges
 
-        self._preprocessing = 1     # 1 waited, 2 to 4 in progress, 0 normal
+        self._preprocessing = StrategyTraderBase.PREPROCESSING_STATE_WAITING  # 2 to 5 in progress
         self._preprocess_depth = 0  # in second, need of preprocessed data depth of history
         self._preprocess_streamer = None       # current tick or quote streamer
         self._preprocess_from_timestamp = 0.0  # preprocessed date from this timestamp to limit last timestamp
 
-        self._bootstrapping = 1      # 1 waited, 2 in progress, 0 normal, done from loaded OHLCs history
+        self._bootstrapping = StrategyTraderBase.STATE_WAITING
 
         self._processing = False   # True during processing
         self._trade_short = False  # short are supported by market/strategy
@@ -204,7 +212,7 @@ class StrategyTrader(object):
         self._default_trader_context_class = None
         self._trade_contexts = {}  # contexts registry
 
-        self._reporting = StrategyTrader.REPORTING_NONE
+        self._reporting = StrategyTraderBase.REPORTING_NONE
         self._report_filename = None
 
         self._stats = {
@@ -239,6 +247,11 @@ class StrategyTrader(object):
 
         # keep a copy of the initial parameters
         self._initials_parameters = copy.deepcopy(params)
+
+        # analyser specifics
+        self._analysers_registry = {}
+        self._analysers = {}
+        self._analysers_streamers = {}
 
     def update_parameters(self, params: dict):
         """
@@ -383,8 +396,40 @@ class StrategyTrader(object):
         return None
 
     #
+    # analysers
+    #
+
+    def register_analyser(self, type_name: str, class_model: Any):
+        """Declare an analyser model class with its unique type name"""
+        if type_name and class_model:
+            self._analysers_registry[type_name] = class_model
+
+    def has_analyser(self, name: str) -> bool:
+        """Does contain an analyser for name"""
+        return name in self._analysers
+
+    def find_analyser(self, name: str) -> Optional[StrategyBaseAnalyser]:
+        """Retrieve an instance of analyser according its name"""
+        return self._analysers.get(name, None)
+
+    def cleanup_analyser(self, timestamp):
+        for k, analyser in self._analysers.items():
+            analyser.cleanup(timestamp)
+
+    def analysers(self):
+        return self._analysers.values()
+
+    #
     # properties
     #
+
+    def ready(self):
+        """Return True if any analyser are ready and the instrument too"""
+        for k, analyser in self._analysers.items():
+            if analyser.need_initial_data():
+                return False
+
+        return True
 
     @property
     def is_timeframes_based(self):
@@ -395,11 +440,14 @@ class StrategyTrader(object):
         return False
 
     @property
+    def base_timeframe(self) -> float:
+        return 0.0
+
+    @property
     def mutex(self):
         return self._mutex
 
-    def check_option(self,
-                     option: Union[str, None],
+    def check_option(self, option: Union[str, None],
                      value: Union[int, float, str, None]) -> Union[str, None]:
         """
         Check for a local option. Validate the option name and value format.
@@ -535,8 +583,7 @@ class StrategyTrader(object):
 
         return None
 
-    def set_option(self,
-                   option: Union[str, None],
+    def set_option(self, option: Union[str, None],
                    value: Union[int, float, str, None]) -> bool:
         """
         Set for a local option. Validate the option name and value format and apply it.
@@ -829,24 +876,12 @@ class StrategyTrader(object):
         return self._min_vol24h
 
     @property
-    def min_traded_timeframe(self) -> float:
-        return self._min_traded_timeframe
-
-    @property
-    def max_traded_timeframe(self) -> float:
-        return self._max_traded_timeframe
-
-    @property
     def hedging(self) -> bool:
         return self._hedging
 
     @property
     def reversal(self) -> bool:
         return self._reversal
-
-    @property
-    def dual(self) -> bool:
-        return self._dual
 
     @property
     def allow_short(self) -> bool:
@@ -865,21 +900,33 @@ class StrategyTrader(object):
         Needed on a reconnection to reset some states.
         """
         with self._mutex:
-            self._initialized = 1
-            self._checked = 1
-            self._preprocessing = 1
-            self._bootstrapping = 1
+            self._initialized = StrategyTraderBase.STATE_WAITING
+            self._checked = StrategyTraderBase.STATE_WAITING
+            self._preprocessing = StrategyTraderBase.STATE_WAITING
+            self._bootstrapping = StrategyTraderBase.STATE_WAITING
 
     def recheck(self):
         """
         Query for recheck any trades of the trader.
         """
         with self._mutex:
-            self._checked = 1
+            self._checked = StrategyTraderBase.STATE_WAITING
 
     @property
     def initialized(self) -> int:
         return self._initialized
+
+    def set_initialized(self, state: int):
+        """Set state to : 0, 1 or 2."""
+        self._initialized = state
+
+    @property
+    def checked(self) -> int:
+        return self._checked
+
+    def set_checked(self, state: int):
+        """Set state to : 0, 1 or 2."""
+        self._checked = state
 
     @property
     def trainer(self) -> Union[Trainer, None]:
@@ -906,6 +953,9 @@ class StrategyTrader(object):
     def preprocessing(self) -> int:
         return self._preprocessing
 
+    def set_preprocessing(self, state: int):
+        self._preprocessing = state
+
     def preprocess_load_cache(self, from_date: datetime, to_date: datetime):
         """
         Override this method to load the cached data before performing preprocess.
@@ -931,6 +981,16 @@ class StrategyTrader(object):
     @property
     def bootstrapping(self) -> int:
         return self._bootstrapping
+
+    def set_bootstrapping(self, state: int):
+        self._bootstrapping = state
+
+    @property
+    def processing(self) -> bool:
+        return self._processing
+
+    def set_processing(self, state: bool):
+        self._processing = state
 
     def prepare(self):
         """
@@ -972,12 +1032,12 @@ class StrategyTrader(object):
         Recheck actives or pending trades. Useful after a reconnection.
         """
         with self._mutex:
-            if self._checked != 1:
+            if self._checked != StrategyTraderBase.STATE_WAITING:
                 # only if waiting to check trades
                 return
 
             # process
-            self._checked = 2
+            self._checked = StrategyTraderBase.STATE_PROGRESSING
 
         trader = self.strategy.trader()
 
@@ -1004,7 +1064,7 @@ class StrategyTrader(object):
 
         with self._mutex:
             # done
-            self._checked = 0
+            self._checked = StrategyTraderBase.STATE_NORMAL
 
     def terminate(self):
         """
@@ -1727,7 +1787,7 @@ class StrategyTrader(object):
             else:
                 self._stats['roe'].append(record)
 
-            if self._reporting == StrategyTrader.REPORTING_VERBOSE:
+            if self._reporting == StrategyTraderBase.REPORTING_VERBOSE:
                 try:
                     self.report(trade, False)
                 except Exception as e:
@@ -1758,15 +1818,9 @@ class StrategyTrader(object):
         """
         pass
 
-    def on_received_initial_candles(self, timeframe: float):
+    def on_received_initial_bars(self, analyser: str):
         """
-        Slot called once the initial bulk of candles are received for each timeframe.
-        """
-        pass
-
-    def on_received_initial_range_bars(self, size: int):
-        """
-        Slot called once the initial bulk of range-bars are received for each timeframe.
+        Slot called once the initial bulk of candles are received for each analyser.
         """
         pass
 
@@ -2065,13 +2119,12 @@ class StrategyTrader(object):
         # replace the alerts list
         self._alerts = alerts
 
-    def check_alerts(self, timestamp, bid, ask, timeframes):
+    def check_alerts(self, timestamp, bid, ask):
         """
         Compare timeframes indicators values to defined alerts if some are defined.
         @param timestamp Current timestamp.
         @param bid float Last instrument bid price
         @param ask float Last instrument ask price
-        @param timeframes list of TimeframeBasedSub to check with any alerts.
 
         @note Thread-safe method.
         @note If the alert is triggered, it still keeps alive until the next check_alerts call,
@@ -2088,7 +2141,7 @@ class StrategyTrader(object):
                     if alert.can_delete(timestamp, bid, ask):
                         mutated |= True
                     else:
-                        result = alert.test_alert(timestamp, bid, ask, timeframes)
+                        result = alert.test_alert(timestamp, bid, ask)
                         if result:
                             # alert triggered, dump message could be done with alert dump_notify and result data
                             results.append((alert, result))
@@ -2316,11 +2369,12 @@ class StrategyTrader(object):
             'market-id': self.instrument.market_id,
             'activity': self._activity,
             'affinity': self._affinity,
-            'initialized': self._initialized == 0,
-            'checked': self._checked == 0,
-            'ready': self._initialized == 0 and self._checked == 0 and self.instrument.ready(),
-            'bootstrapping': self._bootstrapping > 1,
-            'preprocessing': self._preprocessing > 1,
+            'initialized': self._initialized == StrategyTraderBase.STATE_NORMAL,
+            'checked': self._checked == StrategyTraderBase.STATE_NORMAL,
+            'ready': self._initialized == StrategyTraderBase.STATE_NORMAL and self._checked == StrategyTraderBase.STATE_NORMAL and self.ready(),
+            'bootstrapping': self._bootstrapping > StrategyTraderBase.STATE_WAITING,
+            'preprocessing': self._preprocessing > StrategyTraderBase.PREPROCESSING_STATE_WAITING,
+            'training': self._trainer.working if self._trainer else False,
             'members': [],
             'data': [],
             'num-modes': 5
@@ -2354,7 +2408,6 @@ class StrategyTrader(object):
 
             result['data'].append(("Hedging", "Yes" if self.hedging else "No"))
             result['data'].append(("Reversal", "Yes" if self.reversal else "No"))
-            result['data'].append(("Dual", "Yes" if self.dual else "No"))
             result['data'].append(("Allow-Short", "Yes" if self.allow_short else "No"))
             result['data'].append(("Trade-Short", "Yes" if self.trade_short else "No"))
             result['data'].append(("Region-Allow", "Yes" if self.region_allow else "No"))
@@ -2413,8 +2466,8 @@ class StrategyTrader(object):
                             if ex.timeframe:
                                 content.append("tf=%s" % timeframe_to_str(ex.timeframe))
 
-                            if ex.tickbar:
-                                content.append("bar=%i" % ex.tickbar)
+                            if ex.num_bars:
+                                content.append("bar=%i" % ex.num_bars)
 
                             if ex.depth != 0 and hasattr(ex, 'orientation_to_str'):
                                 content.append("orientation=%s" % ex.orientation_to_str())
@@ -2877,7 +2930,7 @@ class StrategyTrader(object):
     def process_alerts(self, timestamp):
         # check for alert triggers
         if self.alerts:
-            alerts = self.check_alerts(timestamp, self.instrument.market_bid, self.instrument.market_ask, {})
+            alerts = self.check_alerts(timestamp, self.instrument.market_bid, self.instrument.market_ask)
 
             if alerts:
                 for alert, result in alerts:

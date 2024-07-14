@@ -9,20 +9,19 @@ import traceback
 from typing import TYPE_CHECKING, Tuple, List, Dict, Union, Any
 
 if TYPE_CHECKING:
+    from instrument.instrument import TickType, Candle
     from .strategy import Strategy
     from .strategybaseanalyser import StrategyBaseAnalyser
-    from instrument.instrument import Instrument
     from strategytimeframeanalyser import StrategyTimeframeAnalyser
     from strategytradercontext import StrategyTraderContext
     from trade.strategytrade import StrategyTrade
 
 import copy
 
-from .strategytrader import StrategyTrader
-from .strategysignal import StrategySignal
-
 from instrument.instrument import Instrument
-from common.utils import timeframe_from_str, timeframe_to_str
+from .strategytraderbase import StrategyTraderBase
+
+from common.utils import timeframe_from_str
 
 from monitor.streamable import Streamable, StreamMemberInt
 
@@ -32,7 +31,7 @@ error_logger = logging.getLogger('siis.error.strategy.timeframestrategytrader')
 traceback_logger = logging.getLogger('siis.traceback.strategy.timeframestrategytrader')
 
 
-class TimeframeStrategyTrader(StrategyTrader):
+class TimeframeStrategyTrader(StrategyTraderBase):
     """
     Strategy trader base model using temporal bar (1m, 30m, 1d....).
     Sub timeframe object must be based on TimeframeBasedSub.
@@ -43,66 +42,64 @@ class TimeframeStrategyTrader(StrategyTrader):
     @see Strategy.base_timeframe
     """
 
-    _timeframes_registry: Dict[str, Any]
-    timeframes: Dict[float, StrategyTimeframeAnalyser]
-    _timeframe_streamers: Dict[float, Streamable]
+    timeframes: Dict[float, StrategyTimeframeAnalyser]  # @deprecated
+    _timeframe_streamers: Dict[float, Streamable]  # @deprecated
+
+    _last_ticks: List[TickType]
+    _last_candles: List[Candle]
 
     def __init__(self, strategy: Strategy, instrument: Instrument, base_timeframe: float = Instrument.TF_TICK,
                  params: dict = None):
         """
         @param strategy Parent strategy (mandatory)
         @param instrument Related unique instance of instrument (mandatory)
-        @param base_timeframe Base time-frame signal accepted. Only this timeframe of incoming data serves as
-            compute signal. Default is at tick level, needing a lot of CPU usage but most reactive.
+        @param base_timeframe Base time-frame or tick data as input for processing.
         """
         super().__init__(strategy, instrument, params)
 
         self._base_timeframe = base_timeframe
 
-        self._timeframes_registry = {}  # registry of timeframes models (mode:cls)
         self._timeframe_streamers = {}  # data streamers per timeframe
-
         self.timeframes = {}  # analyser per timeframe
 
         self.prev_price = 0.0
         self.last_price = 0.0
 
-    def register_timeframe(self, mode: str, class_model: Any):
-        if mode and class_model:
-            self._timeframes_registry[mode] = class_model
+        self._last_ticks = []
+        self._last_candles = []
 
-    def setup_timeframes(self, params: dict):
+    def setup_analysers(self, params: dict):
         # reload any timeframes
         timeframes = params.get('timeframes', {})
 
         for tf_name, tf_param in timeframes.items():
             mode = tf_param.get('mode')
             if not mode:
-                logger.warning("No mode specified for timeframe analyser %s" % tf_name)
+                logger.warning("No mode specified for analyser %s" % tf_name)
                 continue
 
-            clazz_model = self._timeframes_registry.get(mode)
+            clazz_model = self._analysers_registry.get(mode)
             if clazz_model is None:
-                error_logger.error("Unable to find timeframe analyser model mode %s for %s" % (mode, tf_name))
+                error_logger.error("Unable to find analyser model mode %s for %s" % (mode, tf_name))
                 continue
 
             tf = tf_param.get('timeframe')
             if tf is None:
-                error_logger.error("Missing timeframe analyser parameter for %s" % tf_name)
+                error_logger.error("Missing analyser parameter for %s" % tf_name)
                 continue
 
             if type(tf) is str:
                 tf = timeframe_from_str(tf)
 
             if tf is None:
-                error_logger.error("Invalid timeframe analyser parameter for %s" % tf_name)
+                error_logger.error("Invalid analyser parameter for %s" % tf_name)
                 continue
 
             try:
-                tf_inst = clazz_model(self, tf_param)
-                self.timeframes[tf] = tf_inst
+                tf_inst = clazz_model(tf_name, self, tf_param)
+                self._analysers[tf_name] = tf_inst
             except Exception:
-                error_logger.error("Unable to instantiate timeframe analyser %s" % tf_name)
+                error_logger.error("Unable to instantiate analyser %s" % tf_name)
                 traceback_logger.error(traceback.format_exc())
                 continue
 
@@ -110,7 +107,7 @@ class TimeframeStrategyTrader(StrategyTrader):
                 tf_inst.loads(tf_param)
                 tf_inst.setup_indicators(tf_param)
             except Exception:
-                error_logger.error("Unable to loads timeframe analyser %s" % tf_name)
+                error_logger.error("Unable to loads analyser %s" % tf_name)
                 traceback_logger.error(traceback.format_exc())
 
     def update_parameters(self, params: dict):
@@ -118,33 +115,21 @@ class TimeframeStrategyTrader(StrategyTrader):
         timeframes = params.get('timeframes', {})
 
         for tf_name, tf_param in timeframes.items():
-            tf = tf_param.get('timeframe')
-            if tf is None:
-                error_logger.error("Missing timeframe analyser parameter for %s" % tf_name)
-                continue
-
-            if type(tf) is str:
-                tf = timeframe_from_str(tf)
-
-            if tf is None:
-                error_logger.error("Invalid timeframe analyser parameter for %s" % tf_name)
-                continue
-
-            timeframe = self.timeframes.get(tf)
-            if timeframe is None:
-                error_logger.error("Unable to retrieve timeframe analyser instance %s" % tf_name)
+            analyser = self._analysers.get(tf_name)
+            if analyser is None:
+                error_logger.error("Unable to retrieve analyser instance %s" % tf_name)
                 continue
 
             try:
-                timeframe.loads(tf_param)
+                analyser.loads(tf_param)
             except Exception:
-                error_logger.error("Unable to load timeframe analyser %s" % tf_name)
+                error_logger.error("Unable to load analyser %s" % tf_name)
                 traceback_logger.error(traceback.format_exc())
 
             try:
-                timeframe.setup_indicators(tf_param)
+                analyser.setup_indicators(tf_param)
             except Exception:
-                error_logger.error("Unable to setup indicators from timeframe analyser %s" % tf_name)
+                error_logger.error("Unable to setup indicators from analyser %s" % tf_name)
                 traceback_logger.error(traceback.format_exc())
 
         super().update_parameters(params)
@@ -164,85 +149,81 @@ class TimeframeStrategyTrader(StrategyTrader):
         """
         return self.strategy.parameters.get('timeframes', {})
 
-    def on_received_initial_candles(self, timeframe: float):
+    def on_received_initial_bars(self, analyser_name: str):
         """
-        Slot called once the initial bulk of candles are received for each timeframe.
+        Slot called once the initial bulk of candles are received for each analyser.
         """
-        sub = self.timeframes.get(timeframe)
-        if sub:
-            sub.init_candle_generator()
+        analyser = self._analysers.get(analyser_name)
+        if analyser:
+            analyser.init_generator()
 
-    def gen_candles_from_ticks(self, timestamp: float):
+    def generate_bars_from_ticks(self, timestamp: float):
         """
         Generate the news candles from ticks.
         @note Thread-safe method.
         """
         with self._mutex:
+            last_ticks = self.instrument.detach_ticks()
+
             # at tick, we update any timeframes because we want the non consolidated candle
-            ticks = self.instrument.ticks()  # self.instrument.ticks_after(sub.candles_gen.last_timestamp)
-
-            for tf, sub in self.timeframes.items():
+            for k, analyser in self._analysers.items():
                 # rest the previous last closed flag before update the current
-                sub._last_closed = False
+                analyser._last_closed = False
 
-                generated = sub.candles_gen.generate_from_ticks(ticks)
+                generated = analyser.bar_generator.generate_from_ticks(last_ticks)
                 if generated:
-                    self.instrument.add_candles(generated, sub.depth)
+                    analyser.add_bars(generated, analyser.depth)
 
                     # last OHLC close
-                    sub._last_closed = True
+                    analyser._last_closed = True
 
                 # with the non consolidated
-                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)
+                analyser.add_bar(copy.copy(analyser.bar_generator.current), analyser.depth)
 
             # keep prev and last price at processing step
-            if self.instrument.ticks():
+            if last_ticks:
                 self.prev_price = self.last_price
+                self.last_price = last_ticks[-1][3]  # last or mid (last_ticks[-1][1] + last_ticks[-1][2]) * 0.5
 
-                # last tick mid
-                self.last_price = (self.instrument.ticks()[-1][1] + self.instrument.ticks()[-1][2]) * 0.5
+        self._last_ticks = last_ticks
 
-            # no longer need them
-            self.instrument.clear_ticks()
-
-    def gen_candles_from_candles(self, timestamp: float):
+    def generate_bars_from_candles(self, timestamp: float):
         """
         Generate the news candles from the same base of candle.
         @note Thread-safe method.
         """
         with self._mutex:
+            last_candles = self.instrument.detach_candles()
+
             # at tick, we update any timeframes because we want the non consolidated candle
-            for tf, sub in self.timeframes.items():
+            for k, analyser in self._analysers.items():
                 # update at candle timeframe
-                candles = self.instrument.candles_after(self._base_timeframe, sub.candles_gen.last_timestamp)
+                analyser._last_closed = False
 
-                sub._last_closed = False
-
-                generated = sub.candles_gen.generate_from_candles(candles)
+                generated = analyser.bar_generator.generate_from_candles(last_candles)
                 if generated:
-                    self.instrument.add_candles(generated, sub.depth)
+                    analyser.add_bars(generated, analyser.depth)
 
                     # last OHLC close
-                    sub._last_closed = True
+                    analyser._last_closed = True
 
-                self.instrument.add_candle(copy.copy(sub.candles_gen.current), sub.depth)  # with the non consolidated
+                # with the non consolidated
+                analyser.add_bars(copy.copy(analyser.bar_generator.current), analyser.depth)
 
             # keep prev and last price at processing step
-            if self.instrument.candles(self._base_timeframe):
+            if last_candles:
                 self.prev_price = self.last_price
-                self.last_price = self.instrument.candles(self._base_timeframe)[-1].close  # last mid close
+                self.last_price = last_candles[-1].close  # last mid close
 
-    def compute(self, timestamp: float) -> Tuple[List[StrategySignal], List[StrategySignal]]:
-        """
-        Compute the signals for the different timeframes depending on the update policy.
-        """
-        # split entries from exits signals
-        entries = []
-        exits = []
+        self._last_candles = last_candles
 
-        for tf, sub in self.timeframes.items():
-            if sub.update_at_close:
-                if sub.need_update(timestamp):
+    def compute(self, timestamp: float):
+        """
+        Compute the per analyser data. Compute at bar close or at each trade.
+        """
+        for k, analyser in self._analysers.items():
+            if analyser.update_at_close:
+                if analyser.need_update(timestamp):
                     compute = True
                 else:
                     compute = False
@@ -250,18 +231,7 @@ class TimeframeStrategyTrader(StrategyTrader):
                 compute = True
 
             if compute:
-                signal = sub.process(timestamp)
-                if signal:
-                    if signal.signal == StrategySignal.SIGNAL_ENTRY:
-                        entries.append(signal)
-                    elif signal.signal == StrategySignal.SIGNAL_EXIT:
-                        exits.append(signal)
-
-        # finally, sort them by timeframe ascending
-        entries.sort(key=lambda s: s.timeframe)
-        exits.sort(key=lambda s: s.timeframe)
-
-        return entries, exits
+                analyser.process(timestamp)
 
     #
     # context
@@ -293,9 +263,10 @@ class TimeframeStrategyTrader(StrategyTrader):
         super().stream()
 
         with self._mutex:
-            for k, timeframe in self.timeframes.items():
-                if timeframe.tf in self._timeframe_streamers:
-                    timeframe.stream(self._timeframe_streamers[timeframe.tf])
+            for k, analyser in self._analysers.items():
+                # @todo
+                if analyser.timeframe in self._timeframe_streamers:
+                    analyser.stream(self._timeframe_streamers[analyser.timeframe])
 
     def create_chart_streamer(self, timeframe: StrategyBaseAnalyser) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
@@ -339,6 +310,7 @@ class TimeframeStrategyTrader(StrategyTrader):
         @param 
         """
         with self._mutex:
+            # @todo
             timeframe = self.timeframes.get(tf)
             if timeframe is None:
                 return False
@@ -360,6 +332,7 @@ class TimeframeStrategyTrader(StrategyTrader):
         Delete a specific streamer when no more subscribers.
         """
         with self._mutex:
+            # @todo
             timeframe = self.timeframes.get(tf)
             if timeframe is None:
                 return False
@@ -382,12 +355,12 @@ class TimeframeStrategyTrader(StrategyTrader):
         result = super().report_state(mode)
 
         if mode == 0:
-            for k, timeframe in self.timeframes.items():
+            for k, analyser in self._analysers.items():
                 if not result['members']:
                     # initialize from first
-                    result['members'] = timeframe.report_state_members()
+                    result['members'] = analyser.report_state_members()
 
-                result['data'].append(timeframe.report_state())
+                result['data'].append(analyser.report_state())
 
         elif mode == 3:
             for k, ctx in self._trade_contexts.items():
@@ -410,27 +383,11 @@ class TimeframeStrategyTrader(StrategyTrader):
         return result
 
     #
-    # alerts
-    #
-
-    def process_alerts(self, timestamp):
-        """
-        Override because timeframe are available in that implementation.
-        """
-        # check for alert triggers
-        if self.alerts:
-            alerts = self.check_alerts(timestamp, self.instrument.market_bid, self.instrument.market_ask,
-                                       self.timeframes)
-
-            if alerts:
-                for alert, result in alerts:
-                    self.notify_alert(timestamp, alert, result)
-
-    #
     # helpers
     #
 
-    def timeframe_from_param(self, param: Union[str, float, int]) -> float:
+    @staticmethod
+    def parse_timeframe(param: Union[str, float, int]) -> float:
         if isinstance(param, str):
             return timeframe_from_str(param)
         elif isinstance(param, float):

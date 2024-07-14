@@ -54,13 +54,12 @@ class PriceCrossAlert(Alert):
                 self._price_src in (PriceCrossAlert.PRICE_SRC_BID, PriceCrossAlert.PRICE_SRC_ASK,
                                     PriceCrossAlert.PRICE_SRC_MID))
 
-    def test(self, timestamp, bid, ask, timeframes):
+    def test(self, timestamp, bid, ask):
         trigger = 0
 
         if self._price_src == PriceCrossAlert.PRICE_SRC_BID:
             ref_price = bid
         elif self._price_src == PriceCrossAlert.PRICE_SRC_ASK:
-            result = ask >= self._price and self._last_price < self._price
             ref_price = ask
         else:
             ref_price = mid = (bid + ask) * 0.5
@@ -84,7 +83,7 @@ class PriceCrossAlert(Alert):
             return None
 
         if self._timeframe > 0:
-            # check if occurs many time during the same timeframe
+            # check if occurs many times during the same timeframe
             prev_bt = Instrument.basetime(self._timeframe, self._last_trigger_timestamp)
             cur_bt = Instrument.basetime(self._timeframe, timestamp)
 

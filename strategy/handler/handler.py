@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union, Dict, List, Set, Optional
 
 if TYPE_CHECKING:
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
     from strategy.trade.strategytrade import StrategyTrade
 
 import threading
@@ -28,8 +28,8 @@ class Handler(object):
 
     _context_id: str
     _mutex: threading.RLock
-    _installed_strategy_traders: List[StrategyTrader]
-    _need_update: Set[StrategyTrader]
+    _installed_strategy_traders: List[StrategyTraderBase]
+    _need_update: Set[StrategyTraderBase]
 
     def __init__(self, context_id: str):
         self._context_id = context_id
@@ -50,19 +50,19 @@ class Handler(object):
     # slots
     #
 
-    def on_trade_opened(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+    def on_trade_opened(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade):
         """
         Called when a trade is added.
         """
         pass
 
-    def on_trade_updated(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+    def on_trade_updated(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade):
         """
         Called when a trade is updated (execution, modification).
         """
         pass
 
-    def on_trade_exited(self, strategy_trader: StrategyTrader, trade: StrategyTrade):
+    def on_trade_exited(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade):
         """
         Called when a trade is remove (closed or canceled).
         """
@@ -72,10 +72,10 @@ class Handler(object):
     # setup
     #
 
-    def install(self, strategy_trader: StrategyTrader):
+    def install(self, strategy_trader: StrategyTraderBase):
         pass
 
-    def uninstall(self, strategy_trader: StrategyTrader):
+    def uninstall(self, strategy_trader: StrategyTraderBase):
         pass
 
     @property
@@ -86,7 +86,7 @@ class Handler(object):
     # process
     #
 
-    def process(self, strategy_trader: StrategyTrader):
+    def process(self, strategy_trader: StrategyTraderBase):
         pass
 
     def is_related(self, trade: StrategyTrade):
@@ -96,7 +96,7 @@ class Handler(object):
     # report
     #
 
-    def dumps(self, strategy_trader: StrategyTrader) -> Dict[str, Union[str, int, float]]:
+    def dumps(self, strategy_trader: StrategyTraderBase) -> Dict[str, Union[str, int, float]]:
         return {
             'name': self.name(),
             'context': self._context_id

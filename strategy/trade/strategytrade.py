@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from trader.trader import Trader
     from instrument.instrument import Instrument
     from strategy.tradeop.tradeop import TradeOp
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
 
 from datetime import datetime
 
@@ -939,7 +939,7 @@ class StrategyTrade(object):
             'extra': self._extra,
         }
 
-    def loads(self, data: dict, strategy_trader: StrategyTrader) -> bool:
+    def loads(self, data: dict, strategy_trader: StrategyTraderBase) -> bool:
         """
         Override this method to make a loads for the persistence model.
         @return True if success.
@@ -1047,18 +1047,23 @@ class StrategyTrade(object):
         if self.is_active():
             last_price = instrument.close_exec_price(self.direction)
 
+            # initialized at entry
+            if not self._stats['best-price'] or not self._stats['worst-price']:
+                self._stats['best-price'] = self._stats['worst-price'] = self.entry_price
+                self._stats['best-timestamp'] = self._stats['worst-timestamp'] = self._stats['first-realized-entry-timestamp']
+
             if last_price > 0.0:
                 if self.dir > 0:
                     if last_price > self._stats['best-price']:
                         self._stats['best-price'] = last_price
                         self._stats['best-timestamp'] = timestamp
 
-                    if last_price < self._stats['worst-price'] or not self._stats['worst-price']:
+                    if last_price < self._stats['worst-price']:
                         self._stats['worst-price'] = last_price
                         self._stats['worst-timestamp'] = timestamp
 
                 elif self.dir < 0:
-                    if last_price < self._stats['best-price'] or not self._stats['best-price']:
+                    if last_price < self._stats['best-price']:
                         self._stats['best-price'] = last_price
                         self._stats['best-timestamp'] = timestamp
 
@@ -1298,7 +1303,7 @@ class StrategyTrade(object):
     # dumps for notify/history
     #
 
-    def dumps_notify_entry(self, timestamp: float, strategy_trader: StrategyTrader) -> dict:
+    def dumps_notify_entry(self, timestamp: float, strategy_trader: StrategyTraderBase) -> dict:
         """
         Dumps to dict for stream/notify/history.
         @note Data are humanized.
@@ -1338,7 +1343,7 @@ class StrategyTrade(object):
             }
         }
 
-    def dumps_notify_exit(self, timestamp: float, strategy_trader: StrategyTrader) -> dict:
+    def dumps_notify_exit(self, timestamp: float, strategy_trader: StrategyTraderBase) -> dict:
         """
         Dumps to dict for stream/notify/history.
         @note Data are humanized.
@@ -1397,7 +1402,7 @@ class StrategyTrade(object):
             }
         }
 
-    def dumps_notify_update(self, timestamp: float, strategy_trader: StrategyTrader) -> dict:
+    def dumps_notify_update(self, timestamp: float, strategy_trader: StrategyTraderBase) -> dict:
         """
         Dumps to dict for stream/notify/history.
         @note Data are humanized.
@@ -1456,7 +1461,7 @@ class StrategyTrade(object):
             }
         }
 
-    def info_report(self, strategy_trader: StrategyTrader) -> Tuple[str]:
+    def info_report(self, strategy_trader: StrategyTraderBase) -> Tuple[str]:
         """
         @todo leverage for phrase command
         """

@@ -21,7 +21,7 @@ class RangeRegion(Region):
     high Absolute high price (high > low)
     trigger Absolute price if reached the region is deleted
 
-    Trigger depends of the direction :
+    Trigger depends on the direction :
         - in long if the price goes below trigger then delete the region
         - in short if the price goes above trigger then delete the region
         - if no trigger is defined there is no such deletion

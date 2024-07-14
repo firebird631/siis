@@ -848,7 +848,7 @@ class FTXWatcher(Watcher):
 
             tick = (trade_time, price, price, price, vol, buyer_maker)
 
-            self.service.notify(Signal.SIGNAL_TICK_DATA, self.name, (symbol, tick))
+            self.service.notify(Signal.SIGNAL_STREAM_TICK_DATA, self.name, (symbol, tick))
 
             if self._store_trade:
                 p = str(price)
@@ -864,7 +864,7 @@ class FTXWatcher(Watcher):
                     candle = self.update_ohlc(symbol, tf, trade_time, price, spread, vol)
 
                 if candle is not None:
-                    self.service.notify(Signal.SIGNAL_CANDLE_DATA, self.name, (symbol, candle))
+                    self.service.notify(Signal.SIGNAL_STREAM_CANDLE_DATA, self.name, (symbol, candle))
 
     def __on_book_ticker_data(self, message):
         if type(message) is not dict:

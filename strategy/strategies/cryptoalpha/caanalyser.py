@@ -33,3 +33,16 @@ class CryptoAlphaAnalyser(StrategyTimeframeAnalyser):
         self.can_short = False
 
         self.trend = 0
+
+        self._signal_at_close = params.get('signal-at-close', False)
+        self.last_signal = None
+
+    @property
+    def signal_at_close(self) -> bool:
+        return self._signal_at_close
+
+    def need_signal(self, timestamp: float) -> bool:
+        if self._signal_at_close:
+            return self._last_closed
+
+        return True

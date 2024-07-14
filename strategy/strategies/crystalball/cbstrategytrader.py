@@ -23,8 +23,9 @@ class CrystalBallStrategyTrader(TimeframeStrategyTrader):
     def __init__(self, strategy, instrument, params):
         super().__init__(strategy, instrument, Instrument.TF_TICK, params)
 
-        self.register_timeframe('A', CrystalBallAAnalyser)
-        self.setup_timeframes(params)
+        self.register_analyser('A', CrystalBallAAnalyser)
+
+        self.setup_analysers(params)
 
         self._last_filter_cache = (0, False, False)
 
@@ -48,9 +49,37 @@ class CrystalBallStrategyTrader(TimeframeStrategyTrader):
         self._last_filter_cache = (timestamp, True, True)
         return True, True
 
+    def compute(self, timestamp: float):
+        # split entries from exits signals
+        entries = []
+        exits = []
+
+        for tf, sub in self.timeframes.items():
+            if sub.update_at_close:
+                if sub.need_update(timestamp):
+                    compute = True
+                else:
+                    compute = False
+            else:
+                compute = True
+
+            if compute:
+                signal = sub.process(timestamp)
+                if signal:
+                    if signal.signal == signal.SIGNAL_ENTRY:
+                        entries.append(signal)
+                    elif signal.signal == signal.SIGNAL_EXIT:
+                        exits.append(signal)
+
+        # finally, sort them by timeframe ascending
+        entries.sort(key=lambda s: s.timeframe)
+        exits.sort(key=lambda s: s.timeframe)
+
+        return entries, exits
+
     def process(self, timestamp):
         # update data at tick level
-        self.gen_candles_from_ticks(timestamp)
+        self.generate_bars_from_ticks(timestamp)
 
         accept, compute = self.filter_market(timestamp)
         if not accept:

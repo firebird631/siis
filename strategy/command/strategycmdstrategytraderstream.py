@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from strategy.strategy import Strategy
-    from strategy.strategytrader import StrategyTrader
+    from strategy.strategytraderbase import StrategyTraderBase
 
 from common.utils import timeframe_from_str
 
 
-def cmd_strategy_trader_stream(strategy: Strategy, strategy_trader: StrategyTrader, data: dict):
+def cmd_strategy_trader_stream(strategy: Strategy, strategy_trader: StrategyTraderBase, data: dict):
     """
     Stream subscribe/unsubscribe to a market.
     """

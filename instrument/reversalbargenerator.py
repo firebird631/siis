@@ -1,7 +1,7 @@
 # @date 2023-09-27
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2023 Dream Overflow
-# Range bar generators.
+# Reversal bar generator.
 
 from typing import TYPE_CHECKING, Optional
 
@@ -9,25 +9,33 @@ if TYPE_CHECKING:
     pass
 
 from instrument.instrument import TickType
-from instrument.bar import RangeBar
-from instrument.bargeneratorbase import BarGeneratorBase
+from instrument.bar import ReversalBar
+from instrument.rangebargenerator import BarGeneratorBase
 
 import logging
-logger = logging.getLogger('siis.instrument.rangebargenerator')
+logger = logging.getLogger('siis.instrument.reversalbargenerator')
 
 
-class RangeBarGenerator(BarGeneratorBase):
+class ReversalBarGenerator(BarGeneratorBase):
     """
-    Specialization for common range bar.
+    Specialization for reversal bar.
     """
 
-    def __init__(self, size: int, tick_scale: float = 1.0):
+    __slots__ = '_reversal', '_reversing'
+
+    _reversal: int
+    _reversing: int
+
+    def __init__(self, size: int, reversal: int, tick_scale=1.0):
         """
         @param size Generated tick bar tick number.
         """
         super().__init__(size, tick_scale)
 
-    def _new_range_bar(self, tick: TickType) -> RangeBar:
+        self._reversal = reversal
+        self._reversing = 0
+
+    def _new_range_bar(self, tick: TickType) -> ReversalBar:
         # complete the current tick-bar
         if self._current is not None:
             self._current._ended = True
@@ -36,11 +44,14 @@ class RangeBarGenerator(BarGeneratorBase):
         last_tickbar = self._current
 
         # create a new tick-bar
-        self._current = RangeBar(tick[0], tick[3])
+        self._current = ReversalBar(tick[0], tick[3])
+
+        # reset reversing state
+        self._reversing = 0
 
         return last_tickbar
 
-    def update(self, tick: TickType) -> Optional[RangeBar]:
+    def update(self, tick: TickType) -> Optional[ReversalBar]:
         if tick[0] < self._last_timestamp:
             return None
 
@@ -49,16 +60,27 @@ class RangeBarGenerator(BarGeneratorBase):
         if self._current is None:
             last_tickbar = self._new_range_bar(tick)
 
-        # is the price extend the size of the range-bar outside its allowed range
+        # close at reversal size
+        if self._reversing > 0:
+            size = int((tick[3] - self._current._low) / self._tick_size)
+            if size > self._reversal:
+                last_tickbar = self._new_range_bar(tick)
+
+        elif self._reversing < 0:
+            size = int((self._current._high - tick[3]) / self._tick_size)
+            if size > self._reversal:
+                last_tickbar = self._new_range_bar(tick)
+
+        # lookup for reversal size
         if tick[3] > self._current._high:
             size = int((tick[3] - self._current._low) / self._tick_size)
-            if size > self._size:
-                last_tickbar = self._new_range_bar(tick)
+            if size >= self._size:
+                self._reversing = -1
 
         elif tick[3] < self._current._low:
             size = int((self._current._high - tick[3]) / self._tick_size)
             if size > self._size:
-                last_tickbar = self._new_range_bar(tick)
+                self._reversing = 1
 
         # update the current bar
 

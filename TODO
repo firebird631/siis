@@ -150,7 +150,7 @@ Sum order :
     de consolidation, mais dans le cas de rangebar/tickbar cela est potentiellement moins cohérent. comment tester
     que la bar est cloture sans avoir besoin de la tickbar dataserie
 
-- Ajouter statistiques par strategy trader et/ou trader account :
+- Ajouter statistiques par strategy trader et/ou trader account si possible :
     - Average Entry, Exit and Total Efficiency -> afficher sur aggtradeview
 
 - Ajouter le plot bar CLI
@@ -199,6 +199,12 @@ Sum order :
     - Dans l'absolu oui mais le bootstrap pose un problème car il devient encore plus complexe
     - Est ce qu'on a vraiment besoin de stratégie mélan plusieurs types de bar ?
 
+- On retire de instrument les données de type bar :
+    - Le strategy trader devient aussi generique et peut gérer des timeframe, range bar ou autre
+        - Le fichier est déjà important... arranger cela
+    - Les map timeframes et timeframes_streamers sont a merger
+
+
 #########
 # Bonus #
 #########
@@ -207,8 +213,6 @@ Sum order :
 
 - tool trainer :: run doit override les parameters markets specifics si presents
 
-- Dans la state view ajouter un flag pour dire qu'un training est en cours
-
 - Ne pas utiliser l'api-key/auth en paper-mode a finir pour binance et binancefutures
 - Ne pas utiliser l'api-key/auth en paper-mode a finir pour bitmex
 
@@ -216,9 +220,6 @@ Sum order :
 
 - Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, ainsi avoir le trigger coté bot,
     et ne pas bloquer les fonds coté broker
-
-- A chaque fois que un espace (separateur de parametre) est inséré, lors d'une commande, proposer l'entrée suivante
-    de HELP de la commande, en fonction de l'index
 
 - tool withdraw (ou command) simple avec pin code (2AF) paire et addresse
     - peut utiliser un alias d'adresse ou l'adresse enregistré par défaut (wallets.json)
@@ -233,6 +234,9 @@ Sum order :
 
 - ajouter renko bar (voir https://tradewithpython.com/constructing-renko-charts-using-python exemple avec ATR)
 - ajouter unirenko bar
+- ajouter tick bar
+- ajouter volume bar
+- finir le footprint
 
 - update to latest IG API
 
@@ -249,7 +253,6 @@ Server
 - propagation de la dite info au stratégie
 - stockage dans les fichiers trades avec en ASCII 1 ask 0 bid et en binaire un octet 1 ask 0 bid
 - creation d'un tick bar avec nombre de tick par barre
-- creation d'un tick bar reversal avec nombre de tick avant reversal
 - mesure des hedge zone sur tick bar
 - mesure des balance bid ask par tick
 - mesure des balance bid ask par tick bar
@@ -263,11 +266,9 @@ Server
 Web Client
 ----------
 
-- tracer tick bar et reversal sur client web
-- tracer bougie sur client web
-- tracer volume bar sur client web
-- tracer volume delta sur client web
-
+- tracer timeframe bar, tick bar, range bar et reversal bar
+- tracer volume bar
+- tracer volume delta
 
 - modify_take_profit / modify_stop_loss ammélioration :
     1) handler sur le strategytrader
@@ -285,3 +286,4 @@ Web Client
 - polygon.io (99$ à 399$ / mois) => selon 1m ou tick, REST ou WS
 - rapidapi-yahoo-finance pour récupérer stock, indices, forex quotes, mappinng à un autre broker (ig.com...) pour le prefetch
 - rapidapi-morningstar pour récupérer les actions et indices intraday, D, W, M, mappinng à un autre broker (ig.com...) pour le prefetch
+- RAPI(TM)

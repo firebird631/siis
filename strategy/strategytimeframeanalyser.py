@@ -5,20 +5,22 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Tuple, Union
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, List, Union, Optional
+
+from watcher.watcher import Watcher
+from .strategytraderbase import StrategyTraderBase
 
 if TYPE_CHECKING:
-    from instrument.instrument import Candle
+    from instrument.instrument import Candle, TickType
     from monitor.streamable import Streamable
 
-    from .timeframestrategytrader import TimeframeStrategyTrader
-    from .strategysignal import StrategySignal
     from .indicator.price.price import PriceIndicator
     from .indicator.volume.volume import VolumeIndicator
 
 from .strategybaseanalyser import StrategyBaseAnalyser
 
-from instrument.candlegenerator import CandleGenerator
+from instrument.timeframebargenerator import TimeframeBarGenerator
 from common.utils import timeframe_to_str
 
 import logging
@@ -30,8 +32,6 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
     StrategyTimeframeAnalyser Timeframe data-series analyser base class.
     """
 
-    strategy_trader: TimeframeStrategyTrader
-
     tf: float
     depth: int
     history: int
@@ -39,13 +39,10 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
     last_timestamp: float
 
     _update_at_close: bool
-    _signal_at_close: bool
 
-    candles_gen: CandleGenerator
+    _timeframe_bar_generator: TimeframeBarGenerator
     _last_closed: bool
     
-    last_signal: Union[StrategySignal, None]
-
     price: Union[PriceIndicator, None]
     volume: Union[VolumeIndicator, None]
 
@@ -54,9 +51,12 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
     prev_open_price: Union[float, None]     # previous open price
     prev_close_price: Union[float, None]    # previous close price
 
-    def __init__(self, strategy_trader: TimeframeStrategyTrader, timeframe: float,
+    _timeframe_bars: List[Candle]
+
+    def __init__(self, type_name: str, strategy_trader: StrategyTraderBase, timeframe: float,
                  depth: int, history: int, params: dict = None):
-        self.strategy_trader = strategy_trader  # parent strategy-trader object
+
+        super().__init__(type_name, strategy_trader)
 
         params = params or {}
 
@@ -67,12 +67,9 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
         self.last_timestamp = 0.0
 
         self._update_at_close = params.get('update-at-close', False)
-        self._signal_at_close = params.get('signal-at-close', False)
 
-        self.candles_gen = CandleGenerator(self.strategy_trader.base_timeframe, self.tf)
+        self._timeframe_bar_generator = TimeframeBarGenerator(self._strategy_trader.base_timeframe, self.tf)
         self._last_closed = False  # last generated candle closed
-
-        self.last_signal = None
 
         self.price = None   # price indicator
         self.volume = None  # volume indicator
@@ -81,6 +78,8 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
         self.close_price = None       # last OHLC close
         self.prev_open_price = None   # previous OHLC open
         self.prev_close_price = None  # previous OHLC close
+
+        self._timeframe_bars = []
 
     def loads(self, params: dict):
         """
@@ -95,8 +94,9 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
         if 'update-at-close' in params and params['update-at-close'] != self._update_at_close:
             self._update_at_close = params['update-at-close']
 
-        if 'signal-at-close' in params and params['signal-at-close'] != self._signal_at_close:
-            self._signal_at_close = params['signal-at-close']
+    @property
+    def bar_generator(self):
+        return self._timeframe_bar_generator
 
     def setup_indicators(self, params: dict):
         """
@@ -111,10 +111,10 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
 
         for ind, param in params['indicators'].items():
             if param is not None:
-                if self.strategy_trader.strategy.indicator(param[0]):
+                if self._strategy_trader.strategy.indicator(param[0]):
                     # instantiate and setup indicator
-                    indicator = self.strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:])
-                    indicator.setup(self.strategy_trader.instrument)
+                    indicator = self._strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:])
+                    indicator.setup(self._strategy_trader.instrument)
 
                     # @todo warning if not enough depth/history
 
@@ -126,16 +126,32 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
                 # logger.info("No indicator for %s on timeframe %s" % (ind, timeframe_to_str(self.tf)))
                 setattr(self, ind, None)
 
-    def init_candle_generator(self):
+    def init_generator(self):
         """
-        Set up the ohlc generator for this sub, using the configured timeframe and the current opened ohlc.
+        Set up the bar generator, using the configured timeframe and the current opened ohlc.
         This method is called once the initial ohlc are fetched from the strategy setup process.
         """
-        if self.candles_gen and not self.candles_gen.current:
-            last_candle = self.strategy_trader.instrument.candle(self.tf)
+        if self._timeframe_bar_generator and not self._timeframe_bar_generator.current:
+            last_candle = self._timeframe_bars[-1] if self._timeframe_bars else None
             if last_candle and not last_candle.ended:
                 # the last candle is not ended, we have to continue it
-                self.candles_gen.current = last_candle
+                self._timeframe_bar_generator.current = last_candle
+
+    def query_historical_data(self, to_date: Optional[datetime]):
+        if self.timeframe > 0.0:
+            self.need_initial_data()
+
+            # determine from date using timeframe and history size
+            begin_date = to_date - timedelta(seconds=self.history * self.timeframe + 1.0) if to_date else None
+            end_date = to_date - timedelta(seconds=1) if to_date else None
+
+            adj_from_date, adj_to_date, n_last = self.instrument.adjust_date_and_last_n(
+                self.history, self.depth, begin_date, end_date)
+
+            watcher = self.instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+            if watcher:
+                watcher.query_historical_timeframe_bars(self.instrument.market_id, self.name, self.timeframe,
+                                                        from_date=adj_from_date, to_date=adj_to_date, n_last=n_last)
 
     def need_update(self, timestamp: float) -> bool:
         """
@@ -147,21 +163,11 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
 
         return True
 
-    def need_signal(self, timestamp: float) -> bool:
-        """
-        Return True if the signal can be generated and returned at this processing.
-        If signal at close then wait for the last candle close, else always returns true.
-        """
-        if self._signal_at_close:
-            return self._last_closed
-
-        return True
-
-    def process(self, timestamp: float) -> Union[StrategySignal, None]:
+    def process(self, timestamp: float, last_ticks: Union[List[TickType], None] = None):
         """
         Process the computation here.
         """
-        return None
+        pass
 
     def complete(self, candles: List[Candle], timestamp: float):
         """
@@ -199,14 +205,114 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
             self.prev_open_price = None
             self.prev_close_price = None
 
-    def get_candles(self) -> List[Candle]:
+    def get_bars(self) -> List[Candle]:
         """
-        Get the candles list to process.
+        Get the timeframes bars list to process.
         """
-        dataset = self.strategy_trader.instrument.candles(self.tf)
-        candles = dataset[-self.depth:] if dataset else []
+        return self._timeframe_bars[-self.depth:] if self._timeframe_bars else []
 
-        return candles
+    def get_bars_after(self, after_timestamp: float) -> List:
+        """
+        Returns bars having timestamp >= after_ts in seconds.
+        """
+        results = []
+
+        if self._timeframe_bars:
+            # process for most recent to the past
+            for c in reversed(self._timeframe_bars):
+                if c.timestamp > after_timestamp:
+                    # is there a gap between the prev and current candles, introduce missing ones
+                    if len(results) and (results[0].timestamp - c.timestamp > self.timeframe):
+                        ts = results[0].timestamp - self.timeframe
+
+                        while ts > c.timestamp:
+                            filler = Candle(ts, self.timeframe)
+
+                            # same as previous
+                            filler.copy(results[-1])
+
+                            # empty volume
+                            filler._volume = 0
+
+                            results.insert(0, filler)
+                            ts -= self.timeframe
+
+                    results.insert(0, c)
+                else:
+                    break
+
+        return results
+
+    def add_bars(self, timeframe_bars_list: List[Candle], max_bars: int = -1):
+        """
+        Append an array of new timeframe-bars/candles.
+        @param timeframe_bars_list
+        @param max_bars Pop timeframe-bars until num timeframe_bars > max_bars.
+        """
+        if not timeframe_bars_list:
+            return
+
+        # array of tickbar
+        if len(self._timeframe_bars) > 0:
+            for timeframe_bar in timeframe_bars_list:
+                # for each bar only add it if more recent or replace a non consolidated
+                if timeframe_bar.timestamp > self._timeframe_bars[-1].timestamp:
+                    if not self._timeframe_bars[-1].ended:
+                        # remove the last candle if was not consolidated
+                        # self._timeframe_bars.pop(-1)
+                        self._timeframe_bars[-1].set_consolidated(True)
+                        self._timeframe_bars.append(timeframe_bar)
+                    else:
+                        self._timeframe_bars.append(timeframe_bar)
+
+                elif timeframe_bar.timestamp == self._timeframe_bars[-1].timestamp and not self._timeframe_bars[-1].ended:
+                    # replace the last range-bar if was not consolidated
+                    self._timeframe_bars[-1] = timeframe_bar
+        else:
+            # initiate array, simply copy reference
+            self._timeframe_bars = timeframe_bars_list
+
+        # keep safe size
+        if max_bars > 1 and self._timeframe_bars:
+            while(len(self._timeframe_bars)) > max_bars:
+                self._timeframe_bars.pop(0)
+
+    def add_bar(self, timeframe_bar: Candle, max_bars: int = -1):
+        """
+        Append a new timeframe-bar.
+        @param timeframe_bar
+        @param max_bars Pop tickbars until num range_bars > max_range_bars.
+        """
+        if not timeframe_bar:
+            return
+
+        # single tickbar
+        if len(self._timeframe_bars) > 0:
+            # ignore the bar if older than the latest
+            if timeframe_bar.timestamp > self._timeframe_bars[-1].timestamp:
+                if not self._timeframe_bars[-1].ended:
+                    # replace the last bar if was not consolidated
+                    # self._timeframe_bars[-1] = timeframe_bar
+                    self._timeframe_bars[-1].set_consolidated(True)
+                    self._timeframe_bars.append(timeframe_bar)
+                else:
+                    self._timeframe_bars.append(timeframe_bar)
+
+            elif timeframe_bar.timestamp == self._timeframe_bars[-1].timestamp and not self._timeframe_bars[-1].ended:
+                # replace the last bar if was not consolidated
+                self._timeframe_bars[-1] = timeframe_bar
+        else:
+            self._timeframe_bars.append(timeframe_bar)
+
+        # keep safe size
+        if max_bars > 1 and self._timeframe_bars:
+            while(len(self._timeframe_bars)) > max_bars:
+                self._timeframe_bars.pop(0)
+            # if self.timeframe == "2m":
+            #     logger.debug("%s %s" % (self._timeframe_bars[-2], self._timeframe_bars[-1]))
+
+    def clear_bars(self):
+        self._timeframe_bars.clear()
 
     #
     # properties
@@ -214,32 +320,19 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
 
     @property
     def timeframe(self) -> float:
-        """
-        Timeframe of this strategy-trader in second.
-        """
         return self.tf
 
     @property
     def samples_depth_size(self) -> int:
-        """
-        Number of Ohlc to have at least to process the computation.
-        """
         return self.depth
 
     @property
     def samples_history_size(self) -> int:
-        """
-        Number of Ohlc used for initialization on kept in memory.
-        """
         return self.history
 
     @property
     def update_at_close(self) -> bool:
         return self._update_at_close
-
-    @property
-    def signal_at_close(self) -> bool:
-        return self._signal_at_close
 
     @property
     def last_closed(self) -> bool:
