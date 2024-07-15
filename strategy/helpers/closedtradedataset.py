@@ -14,10 +14,10 @@ def get_closed_trades(strategy):
     """
     results = []
 
-    with strategy._mutex:
+    with strategy.mutex:
         try:
             for k, strategy_trader in strategy._strategy_traders.items():
-                with strategy_trader._mutex:
+                with strategy_trader.mutex:
                     results += strategy_trader._stats['success']
                     results += strategy_trader._stats['failed']
                     results += strategy_trader._stats['roe']

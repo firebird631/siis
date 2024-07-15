@@ -18,7 +18,7 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
     Returns a table of any aggregated active and closes trades.
     """
     columns = ('Symbol', 'P/L', 'Total', 'RPNL', 'Open', 'Best', 'Worst', 'Success', 'Failed', 'ROE',
-               'Closed', 'max MFE', 'min MAE', 'SL Win/Loss', 'TP Win/Loss')
+               'Closed', 'Cum. MFE', 'Cum. MAE', 'SL Win/Loss', 'TP Win/Loss')
     total_size = (len(columns), 0)
     data = []
 

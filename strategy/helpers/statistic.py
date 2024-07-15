@@ -4,6 +4,7 @@
 # Strategy helper to compute some statistics like max time to recover.
 
 from datetime import datetime
+from typing import List
 
 from common.utils import UTC
 from instrument.instrument import Instrument
@@ -24,11 +25,63 @@ def parse_datetime(dt_str: str) -> float:
     return datetime.strptime(dt_str, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).timestamp()
 
 
+class Sampler(object):
+    name: str = ""
+    samples: List[float] = []
+    max_value: float = 0.0
+    min_value: float = 0.0
+    cumulated: float = 0.0
+
+    def __init__(self, name):
+        self.name = name
+
+    def add_sample(self, value):
+        self.samples.append(value)
+        self.cumulated += value
+
+        if len(self.samples):
+            self.min_value = min(self.min_value, value)
+            self.max_value = max(self.max_value, value)
+        else:
+            self.min_value = self.max_value = value
+
+    @property
+    def count(self):
+        return len(self.samples)
+
+    def std_dev(self):
+        return np.std(np.array(self.samples), ddof=len(self.samples))
+
+    def average(self):
+        return np.average(np.array(self.samples))
+
+    def fmt_value(self, value):
+        return value
+
+    def dumps(self, to_dict):
+        to_dict[self.name] = {
+            'min': self.fmt_value(self.min_value),
+            'max': self.fmt_value(self.max_value),
+            'cum': self.fmt_value(self.cumulated),
+            'avg': self.fmt_value(self.average()),
+            'std-dev': self.fmt_value(self.std_dev())
+        }
+
+
+class PercentSampler(Sampler):
+
+    def __init__(self, name):
+        super().__init__(name)
+
+    def fmt_value(self, value):
+        return "%.2f%%" % (value * 100.0)
+
+
 class StrategyStatistics:
     """
     Contains results of compute_strategy_time_statistics.
     """
-    class BaseUnit:
+    class NominalStats:
         max_time_to_recover: float = 0.0
 
         estimate_profit_per_month: float = 0.0
@@ -42,6 +95,11 @@ class StrategyStatistics:
         sharpe_ratio: float = 1.0
         sortino_ratio: float = 1.0
         ulcer_index: float = 0.0
+
+        samplers: List[Sampler] = []
+
+        def add_sampler(self, sampler):
+            self.samplers.append(sampler)
 
         def fmt_value(self, value):
             return value
@@ -58,7 +116,16 @@ class StrategyStatistics:
             to_dict['sortino-ratio'] = self.sortino_ratio
             to_dict['ulcer-index'] = self.ulcer_index
 
-    class PercentUnit(BaseUnit):
+            for sampler in self.samplers:
+                sampler.dumps(to_dict)
+
+    class PercentStats(NominalStats):
+
+        samplers: List[PercentSampler] = []
+
+        def add_sampler(self, sampler):
+            self.samplers.append(sampler)
+
         def fmt_value(self, value):
             return "%.2f%%" % (value * 100.0)
 
@@ -68,8 +135,8 @@ class StrategyStatistics:
     num_traded_days: int = 0
     avg_trades_per_day: float = 0.0  # excluding weekend
 
-    currency: BaseUnit = BaseUnit()
-    percent: PercentUnit = PercentUnit()
+    currency: NominalStats = NominalStats()
+    percent: PercentStats = PercentStats()
 
     def dumps(self, to_dict):
         to_dict["longest-flat-period"] = self.longest_flat_period
@@ -124,7 +191,15 @@ def compute_strategy_statistics(strategy):
     num_trades_win = 0
     num_trades_loss = 0
 
-    with strategy._mutex:
+    mfe_sampler = PercentSampler("mfe-pct")
+    mae_sampler = PercentSampler("mae-pct")
+    etd_sampler = PercentSampler("etd-pct")
+
+    eef_sampler = PercentSampler("entry-efficiency")
+    xef_sampler = PercentSampler("exit-efficiency")
+    tef_sampler = PercentSampler("total-efficiency")
+
+    with strategy.mutex:
         closed_trades = get_closed_trades(strategy)
         num_trades = len(closed_trades)
 
@@ -149,6 +224,13 @@ def compute_strategy_statistics(strategy):
         closed_trades.sort(key=lambda x: str(x['stats']['last-realized-exit-datetime']))
 
         for t in closed_trades:
+            direction = 1 if t['direction'] == "long" else -1
+            fees = t['stats']['fees-pct'] * 0.01
+            entry_price = float(t['avg-entry-price'])
+            exit_price = float(t['avg-exit-price'])
+            best_price = float(t['stats']['best-price'])
+            worst_price = float(t['stats']['worst-price'])
+
             cum_pnl_pct += t['profit-loss-pct']
             cum_pnl += t['profit-loss']
 
@@ -208,10 +290,20 @@ def compute_strategy_statistics(strategy):
             profit_per_month_pct[-1] += t['profit-loss-pct']
             profit_per_month[-1] += t['profit-loss']
 
-            # draw-downs square samples for Ulcer ratio
+            # draw-downs square samples for Ulcer ratio (relative or absolute percentage)
             # draw_downs_sqr_pct.append(((1.0 + cum_pnl_pct) / (1.0 + max_pnl_pct) - 1.0) ** 2)
             draw_downs_sqr_pct.append((cum_pnl_pct - max_pnl_pct) ** 2)
             draw_downs_sqr.append((cum_pnl - max_pnl) ** 2)
+
+            # MFE, MAE, ETD (gross value, no trade fees)
+            mfe_sampler.add_sample(direction * (best_price - entry_price) / entry_price)
+            mae_sampler.add_sample(direction * (entry_price - worst_price) / entry_price)
+            etd_sampler.add_sample(direction * (best_price - exit_price) / exit_price)
+
+            # efficiency
+            eef_sampler.add_sample((best_price - entry_price) / (best_price - worst_price))
+            xef_sampler.add_sample((exit_price - worst_price) / (best_price - worst_price))
+            tef_sampler.add_sample((exit_price - entry_price) / (best_price - worst_price))
 
             # keep the previous trade details
             prev_trade = t
@@ -292,5 +384,15 @@ def compute_strategy_statistics(strategy):
         # Ulcer index
         results.percent.ulcer_index = np.sqrt(np.mean(np.array(draw_downs_sqr_pct)))
         results.currency.ulcer_index = np.sqrt(np.mean(np.array(draw_downs_sqr)))
+
+    # MFE, MAE, ETD
+    results.percent.add_sampler(mfe_sampler)
+    results.percent.add_sampler(mae_sampler)
+    results.percent.add_sampler(etd_sampler)
+
+    # efficiency
+    results.percent.add_sampler(eef_sampler)
+    results.percent.add_sampler(xef_sampler)
+    results.percent.add_sampler(tef_sampler)
 
     return results

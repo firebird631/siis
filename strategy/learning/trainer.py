@@ -687,6 +687,9 @@ class TrainerCommander(object):
     BEST_STDDEV_MFE = 9    # one have the higher average MFE and the more constant MFE
     BEST_STDDEV_MAE = 10   # one have the lower average MAE and the more constant MAE
     BEST_STDDEV_ETD = 11   # one have the lower average ETD and the more constant ETD
+    HIGHER_AVG_EEF = 12    # one have the higher average entry efficiency
+    HIGHER_AVG_XEF = 13    # one have the higher average exit efficiency
+    HIGHER_AVG_TEF = 14    # one have the higher average total (entry and exit) efficiency
 
     SELECTION = {
         'best-performance': BEST_PERF,
@@ -817,10 +820,25 @@ class TrainerCommander(object):
         except ValueError:
             min_perf = 0.0
 
+        try:
+            min_profit = float(self._learning_parameters.get('trainer', {}).get('min-profit', "0.00"))
+        except ValueError:
+            min_profit = 0.0
+
         max_perf = min_perf
+        max_profit = min_profit
         max_sf_rate = 0.0
         min_loss_series = 9999
         best_take_profit_rate = 0.0
+        max_avg_mfe_rate = 0.0
+        min_avg_mae_rate = 1.0
+        min_avg_etd_rate = 1.0
+        max_avg_eef_rate = 0.0
+        max_avg_xef_rate = 0.0
+        max_avg_tef_rate = 0.0
+        max_sharpe_ratio = 0.0
+        min_sortino_ratio = 1.0
+        max_ulcer_index = 0.0
 
         # simple method, the best overall performance
         for result in results:
@@ -875,16 +893,28 @@ class TrainerCommander(object):
                     best_result = result
 
             elif method == TrainerCommander.HIGHER_AVG_MFE:
-                # one having the higher average MFE factor @todo
-                pass
+                # only keep the best average MFE rate
+                avg_mfe_rate = result.get('avg-mfe', 0.0)
+
+                if avg_mfe_rate > max_avg_mfe_rate:
+                    max_avg_mfe_rate = avg_mfe_rate
+                    best_result = result
 
             elif method == TrainerCommander.LOWER_AVG_MAE:
-                # one having the lower average MAE factor @todo
-                pass
+                # one having the lower average MAE rate
+                avg_mae_rate = result.get('avg-mae', 0.0)
+
+                if avg_mae_rate < min_avg_mae_rate:
+                    min_avg_mae_rate = avg_mae_rate
+                    best_result = result
 
             elif method == TrainerCommander.LOWER_AVG_ETD:
-                # one having the lower average ETD factor @todo
-                pass
+                # one having the lower average ETD rate
+                avg_etd_rate = result.get('avg-etf', 0.0)
+
+                if avg_etd_rate < min_avg_etd_rate:
+                    min_avg_etd_rate = avg_etd_rate
+                    best_result = result
 
             elif method == TrainerCommander.BEST_STDDEV_MFE:
                 # one have the higher average MFE and the more constant MFE @todo
@@ -897,5 +927,29 @@ class TrainerCommander(object):
             elif method == TrainerCommander.BEST_STDDEV_ETD:
                 # one have the lower average ETD and the more constant ETD @todo
                 pass
+
+            elif method == TrainerCommander.HIGHER_AVG_EEF:
+                # only keep the best average entry efficiency rate
+                avg_eef_rate = result.get('avg-entry-efficiency', 0.0)
+
+                if avg_eef_rate > max_avg_eef_rate:
+                    max_avg_eef_rate = avg_eef_rate
+                    best_result = result
+
+            elif method == TrainerCommander.HIGHER_AVG_XEF:
+                # only keep the best average exit efficiency rate
+                avg_xef_rate = result.get('avg-exit-efficiency', 0.0)
+
+                if avg_xef_rate > max_avg_xef_rate:
+                    max_avg_xef_rate = avg_xef_rate
+                    best_result = result
+
+            elif method == TrainerCommander.HIGHER_AVG_TEF:
+                # only keep the best average total (entry and exit) efficiency rate
+                avg_tef_rate = result.get('avg-total-efficiency', 0.0)
+
+                if avg_tef_rate > max_avg_tef_rate:
+                    max_avg_tef_rate = avg_tef_rate
+                    best_result = result
 
         return best_result
