@@ -150,16 +150,8 @@ Sum order :
     de consolidation, mais dans le cas de rangebar/tickbar cela est potentiellement moins cohérent. comment tester
     que la bar est cloture sans avoir besoin de la tickbar dataserie
 
-- Ajouter statistiques par strategy trader et/ou trader account si possible :
+- Ajouter statistiques par strategy trader et/ou trader account si possible pour afficher en live :
     - Average Entry, Exit and Total Efficiency -> afficher sur aggtradeview
-
-- En résumé de strategy stats
-    'avg-mfe'
-    'avg-mae'
-    'avg-etf'
-    'avg-entry-efficiency'
-    'avg-exit-efficiency'
-    'avg-total-efficiency'
 
 - Ajouter le plot bar CLI
 

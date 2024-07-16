@@ -36,13 +36,19 @@ traceback_logger = logging.getLogger('siis.traceback.strategy.learning.trainer')
 class Trainer(object):
     """
     Contains the class builder for the commander.
+
     It is also responsible to start the sub-process of the commander by using the trainer tool.
     A learning file is created before starting the trainer tool to communicate parameters and get back the results.
 
     Then the strategy trader can be restart using the new optimized parameters by overloading the profile parameters
     using the newly determined ones.
 
-    @todo Executor might be join at close or killed
+    Trainer model must be simply specialized for the two following class members :
+        - NAME: Unique name of the trainer method (@see DummyTrainer)
+        - COMMANDER: Reference to the specialized class of TrainerCommander (@see DummyTrainerCommander)
+
+    It is necessary to provide them so then the trainer tool could retrieve and import the module correctly.
+
     @todo A fetcher mode doing a simple HTTP GET in place of starting process, in the case trainers are done apart
     """
 
@@ -111,7 +117,7 @@ class Trainer(object):
         except ValueError:
             pass
 
-        # initial stats values for comparisons/triggers
+        # initial stats values for comparisons/triggers (not used)
         self._last_perf = strategy_trader.get_stat('perf')
         self._last_worst = strategy_trader.get_stat('worst')
         self._last_best = strategy_trader.get_stat('best')
@@ -247,6 +253,11 @@ class Trainer(object):
         return self.adjust_date_and_last_n(from_dt, now_dt)
 
     def complete(self, learning_result):
+        """
+        Complete the computation of the learning processing, finalize the results and apply them.
+        Finally, play the strategy for both modes and the backtesting process only for backtest mode.
+        @param learning_result: dict
+        """
         strategy_trader = self._strategy_trader
         strategy = strategy_trader.strategy
 
@@ -274,8 +285,6 @@ class Trainer(object):
                                                         learning_result.get('max-draw-down-rate', "0.00%")))
             logger.info("-- total-trades = %s" % learning_result.get('total-trades', 0))
 
-            # @todo could display some others
-
             logger.info("-- best = %s" % learning_result.get('best', "0.00%"))
             logger.info("-- worst = %s" % learning_result.get('worst', "0.00%"))
 
@@ -294,6 +303,8 @@ class Trainer(object):
 
             logger.info("-- open-trades = %s" % learning_result.get('open-trades', 0))
             logger.info("-- active-trades = %s" % learning_result.get('active-trades', 0))
+
+            # @todo could display some others (Sharpe Ratio, Sortino Ratio, Ulcer Index, avg MFE MAE ETD, efficiency...)
 
             logger.info("Trainer apply new parameters to %s." % strategy_trader.instrument.market_id)
 
@@ -621,12 +632,34 @@ class Trainer(object):
 
 
 class TrainerCaller(object):
+    """
+    The trainer caller must be specialized per each computed individu.
+    It manages internal individu generation states and take the result back through the call of the set_result method.
+    """
 
     def set_result(self, results):
         pass
 
 
 class TrainerJob(threading.Thread):
+    """
+    A job start a distinct process to compute and communicate using a learning file (training_HASHID.json).
+
+    Each job is started in its unique thread and uses a Popen process to manage the distinct process :
+        - either an instance of Python SiiS in backtesting mode,
+        - either an instance of C++ Siis Revolution in backtesting mode.
+
+    The callback must be defined manage the process, the communication file, filtering the results and adjusts the
+    fitness score.
+
+    The signature of the callback is :
+        callback(learning_parameters: dict, profile_name: str, caller: Union[TrainerJob, None]) -> Any
+
+    The caller parameters is self TrainerJob.
+    The return type is any object containing the results.
+
+    One TrainerCaller per individu (analyse + results) and must override the set_result method.
+    """
 
     def __init__(self, commander: TrainerCommander,
                  caller: TrainerCaller, callback: callable,
@@ -644,6 +677,8 @@ class TrainerJob(threading.Thread):
         self._completed = False
 
         self._process = None
+        self._learning_path = None
+        self._learning_filename = None
 
     @property
     def process(self):
@@ -667,13 +702,27 @@ class TrainerJob(threading.Thread):
             self._process.kill()
             self._process = None
 
+        # make sure the "trainer_*.json" file is removed
+        if self._learning_filename:
+            utils.delete_learning(self._learning_path, self._learning_filename)
+            self._learning_filename = None
+
     def term_process(self):
         if self._process:
             self._process.terminate()
             self._process = None
 
+    def on_start(self, process, learning_path, learning_filename):
+        self._process = process
+        self._learning_path = learning_path
+        self._learning_filename = learning_filename
+
 
 class TrainerCommander(object):
+    """
+    The trainer commander is the main entry of the trainer and must be specialized (@see DummyTrainerCommander)
+    The name of the specialized class must be defined into a specialization of the Trainer class (@see Trainer)
+    """
 
     BEST_PERF = 0          # select best from the best performance in percentage.
     BEST_PROFIT = 1        # select best from the best profit in currency.
@@ -725,10 +774,12 @@ class TrainerCommander(object):
         self._executed_jobs = 0
 
     def set_parallel(self, num: int):
+        """Number of parallel jobs (default 1). You should not set more than numbers of CPUs/cores"""
         self._parallel = num if num > 0 else 1
 
     @property
     def parallel(self) -> int:
+        """Number of parallels jobs."""
         return self._parallel
 
     def estimate_duration(self, avg_job_time: float) -> float:
@@ -930,7 +981,9 @@ class TrainerCommander(object):
 
             elif method == TrainerCommander.HIGHER_AVG_EEF:
                 # only keep the best average entry efficiency rate
-                avg_eef_rate = result.get('avg-entry-efficiency', 0.0)
+                percent = result.get('percent', {})
+                eef = percent.get('entry-efficiency', {})
+                avg_eef_rate = percent.get('avg', 0.0)
 
                 if avg_eef_rate > max_avg_eef_rate:
                     max_avg_eef_rate = avg_eef_rate
@@ -938,7 +991,8 @@ class TrainerCommander(object):
 
             elif method == TrainerCommander.HIGHER_AVG_XEF:
                 # only keep the best average exit efficiency rate
-                avg_xef_rate = result.get('avg-exit-efficiency', 0.0)
+                percent = result.get('percent', {})
+                avg_xef_rate = percent.get('avg-exit-efficiency', 0.0)
 
                 if avg_xef_rate > max_avg_xef_rate:
                     max_avg_xef_rate = avg_xef_rate
@@ -946,7 +1000,8 @@ class TrainerCommander(object):
 
             elif method == TrainerCommander.HIGHER_AVG_TEF:
                 # only keep the best average total (entry and exit) efficiency rate
-                avg_tef_rate = result.get('avg-total-efficiency', 0.0)
+                percent = result.get('percent', {})
+                avg_tef_rate = percent.get('avg-total-efficiency', 0.0)
 
                 if avg_tef_rate > max_avg_tef_rate:
                     max_avg_tef_rate = avg_tef_rate

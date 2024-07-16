@@ -25,12 +25,16 @@ def parse_datetime(dt_str: str) -> float:
     return datetime.strptime(dt_str, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=UTC()).timestamp()
 
 
-class Sampler(object):
+class BaseSampler(object):
     name: str = ""
+
     samples: List[float] = []
     max_value: float = 0.0
     min_value: float = 0.0
     cumulated: float = 0.0
+
+    avg: float = 0.0      # valid after finalize
+    std_dev: float = 0.0  # valid after finalize
 
     def __init__(self, name):
         self.name = name
@@ -49,11 +53,11 @@ class Sampler(object):
     def count(self):
         return len(self.samples)
 
-    def std_dev(self):
-        return np.std(np.array(self.samples), ddof=len(self.samples))
+    def finalize(self):
+        self.avg = np.average(np.array(self.samples)) if len(self.samples) > 0 else 0.0
+        self.std_dev = np.std(np.array(self.samples), ddof=len(self.samples)-1) if len(self.samples) > 1 else 0.0
 
-    def average(self):
-        return np.average(np.array(self.samples))
+        return self
 
     def fmt_value(self, value):
         return value
@@ -63,12 +67,12 @@ class Sampler(object):
             'min': self.fmt_value(self.min_value),
             'max': self.fmt_value(self.max_value),
             'cum': self.fmt_value(self.cumulated),
-            'avg': self.fmt_value(self.average()),
-            'std-dev': self.fmt_value(self.std_dev())
+            'avg': self.fmt_value(self.avg),
+            'std-dev': self.fmt_value(self.std_dev)
         }
 
 
-class PercentSampler(Sampler):
+class PercentSampler(BaseSampler):
 
     def __init__(self, name):
         super().__init__(name)
@@ -81,7 +85,7 @@ class StrategyStatistics:
     """
     Contains results of compute_strategy_time_statistics.
     """
-    class NominalStats:
+    class BaseStats:
         max_time_to_recover: float = 0.0
 
         estimate_profit_per_month: float = 0.0
@@ -96,7 +100,7 @@ class StrategyStatistics:
         sortino_ratio: float = 1.0
         ulcer_index: float = 0.0
 
-        samplers: List[Sampler] = []
+        samplers: List[BaseSampler] = []
 
         def add_sampler(self, sampler):
             self.samplers.append(sampler)
@@ -119,7 +123,7 @@ class StrategyStatistics:
             for sampler in self.samplers:
                 sampler.dumps(to_dict)
 
-    class PercentStats(NominalStats):
+    class PercentStats(BaseStats):
 
         samplers: List[PercentSampler] = []
 
@@ -135,7 +139,7 @@ class StrategyStatistics:
     num_traded_days: int = 0
     avg_trades_per_day: float = 0.0  # excluding weekend
 
-    currency: NominalStats = NominalStats()
+    currency: BaseStats = BaseStats()
     percent: PercentStats = PercentStats()
 
     def dumps(self, to_dict):
@@ -174,7 +178,7 @@ def compute_strategy_statistics(strategy):
 
     longest_flat_period = 0.0  # in seconds
 
-    avg_time_in_market_samples = []
+    time_in_market_samples = []
 
     profit_per_month_pct = [0.0]
     profit_per_month = [0.0]
@@ -187,13 +191,17 @@ def compute_strategy_statistics(strategy):
     first_trade_ts = 0.0
     last_trade_ts = 0.0
 
-    num_trades_even = 0
-    num_trades_win = 0
-    num_trades_loss = 0
+    any_trade_pnl = BaseSampler("trade-pnl")
+    any_trade_pnl_pct = PercentSampler("trade-pnl")
 
-    mfe_sampler = PercentSampler("mfe-pct")
-    mae_sampler = PercentSampler("mae-pct")
-    etd_sampler = PercentSampler("etd-pct")
+    winning_trade_pnl = BaseSampler("winning-trade-pnl")
+    winning_trade_pnl_pct = PercentSampler("winning-trade-pnl")
+    loosing_trade_pnl = BaseSampler("loosing-trade-pnl")
+    loosing_trade_pnl_pct = PercentSampler("loosing-trade-pnl")
+
+    mfe_sampler = PercentSampler("mfe")
+    mae_sampler = PercentSampler("mae")
+    etd_sampler = PercentSampler("etd")
 
     eef_sampler = PercentSampler("entry-efficiency")
     xef_sampler = PercentSampler("exit-efficiency")
@@ -207,14 +215,10 @@ def compute_strategy_statistics(strategy):
             return StrategyStatistics()
 
         cum_pnl_pct = 0.0
-        cum_winning_pnl_pct = 0.0
-        cum_loosing_pnl_pct = 0.0  # as positive value
         max_pnl_pct = 0.0
         max_pnl_pct_ts = 0.0
 
         cum_pnl = 0.0
-        cum_winning_pnl = 0.0
-        cum_loosing_pnl = 0.0  # as positive value
         max_pnl = 0.0
         max_pnl_ts = 0.0
 
@@ -224,26 +228,32 @@ def compute_strategy_statistics(strategy):
         closed_trades.sort(key=lambda x: str(x['stats']['last-realized-exit-datetime']))
 
         for t in closed_trades:
+            # parse trade info
             direction = 1 if t['direction'] == "long" else -1
-            fees = t['stats']['fees-pct'] * 0.01
+            # fees = t['stats']['fees-pct'] * 0.01
             entry_price = float(t['avg-entry-price'])
             exit_price = float(t['avg-exit-price'])
             best_price = float(t['stats']['best-price'])
             worst_price = float(t['stats']['worst-price'])
 
-            cum_pnl_pct += t['profit-loss-pct']
-            cum_pnl += t['profit-loss']
-
             trade_fre_ts = parse_datetime(t['stats']['first-realized-entry-datetime'])
             trade_lrx_ts = parse_datetime(t['stats']['last-realized-exit-datetime'])
 
-            # max time to recover percentile
+            # cumulative PNL
+            any_trade_pnl_pct.add_sample(t['profit-loss-pct'])
+            any_trade_pnl.add_sample(t['profit-loss'])
+
+            # but this cumulative is used for max time to recover
+            cum_pnl_pct += t['profit-loss-pct']
+            cum_pnl += t['profit-loss']
+
+            # max time to recover (by percentage)
             if cum_pnl_pct >= max_pnl_pct:
                 max_pnl_pct = cum_pnl_pct
                 max_time_to_recover_pct = max(max_time_to_recover_pct, trade_lrx_ts - max_pnl_pct_ts)
                 max_pnl_pct_ts = trade_lrx_ts
 
-            # max time to recover currency
+            # max time to recover (by currency)
             if cum_pnl >= max_pnl:
                 max_pnl = cum_pnl
                 max_time_to_recover = max(max_time_to_recover, trade_lrx_ts - max_pnl_ts)
@@ -265,7 +275,7 @@ def compute_strategy_statistics(strategy):
                     profit_per_month += [0.0] * elapsed_months
 
             # average time in market
-            avg_time_in_market_samples.append(trade_lrx_ts - trade_fre_ts)
+            time_in_market_samples.append(trade_lrx_ts - trade_fre_ts)
 
             # for avg num trades per day
             if first_trade_ts == 0.0:
@@ -273,18 +283,16 @@ def compute_strategy_statistics(strategy):
 
             last_trade_ts = trade_fre_ts
 
-            if round(t['profit-loss-pct'] * 10) == 0.0:
-                num_trades_even += 1
-            elif t['profit-loss-pct'] > 0:
-                num_trades_win += 1
-                cum_winning_pnl_pct += t['profit-loss-pct']
-                cum_winning_pnl += t['profit-loss']
+            # winning, loosing trade profit/loss
+            if t['profit-loss-pct'] > 0:
+                winning_trade_pnl_pct.add_sample(t['profit-loss-pct'])
             elif t['profit-loss-pct'] < 0:
-                num_trades_loss += 1
-                cum_loosing_pnl_pct += -t['profit-loss-pct']
-                cum_loosing_pnl += -t['profit-loss']
-            else:
-                num_trades_even += 1
+                loosing_trade_pnl_pct.add_sample(t['profit-loss-pct'])
+
+            if t['profit-loss'] > 0:
+                winning_trade_pnl.add_sample(t['profit-loss'])
+            elif t['profit-loss'] < 0:
+                loosing_trade_pnl.add_sample(t['profit-loss'])
 
             # cumulative per month
             profit_per_month_pct[-1] += t['profit-loss-pct']
@@ -312,10 +320,10 @@ def compute_strategy_statistics(strategy):
     prev_sample_month = 0
 
     for n in range(0, len(trader.account.stats_samples)):
-        if prev_sample_month == 0:
-            prev_sample_month = Instrument.basetime(trader.account.stats_samples[n].timestamp, Instrument.TF_MONTH)
-
         sample_bt = Instrument.basetime(trader.account.stats_samples[n].timestamp, Instrument.TF_MONTH)
+
+        if prev_sample_month == 0:
+            prev_sample_month = sample_bt
 
         elapsed_months = int((sample_bt - prev_sample_month) / Instrument.TF_MONTH)
         if elapsed_months > 0:
@@ -334,7 +342,7 @@ def compute_strategy_statistics(strategy):
 
     results.longest_flat_period = longest_flat_period
 
-    results.avg_time_in_market = np.average(np.array(avg_time_in_market_samples))
+    results.avg_time_in_market = np.average(np.array(time_in_market_samples))
 
     first_day_ts = Instrument.basetime(first_trade_ts, Instrument.TF_DAY)
     last_day_ts = Instrument.basetime(last_trade_ts, Instrument.TF_DAY)
@@ -350,21 +358,6 @@ def compute_strategy_statistics(strategy):
     results.percent.estimate_profit_per_month = cum_pnl_pct * (30.5 / results.num_traded_days)
     results.currency.estimate_profit_per_month = cum_pnl * (30.5 / results.num_traded_days)
 
-    # average trade
-    results.percent.avg_trade = cum_pnl_pct / num_trades
-    results.currency.avg_trade = cum_pnl / num_trades
-
-    results.percent.avg_winning_trade = cum_winning_pnl_pct / num_trades_win if num_trades_win > 0 else 0.0
-    results.currency.avg_winning_trade = cum_winning_pnl / num_trades_win if num_trades_win > 0 else 0.0
-    results.percent.avg_loosing_trade = cum_loosing_pnl_pct / num_trades_loss if num_trades_loss > 0 else 0.0
-    results.currency.avg_loosing_trade = cum_loosing_pnl / num_trades_loss if num_trades_loss > 0 else 0.0
-
-    results.percent.avg_win_loss_rate = results.percent.avg_winning_trade / results.percent.avg_loosing_trade if (
-        results.percent.avg_loosing_trade) else 1.0
-
-    results.currency.avg_win_loss_rate = results.currency.avg_winning_trade / results.currency.avg_loosing_trade if (
-        results.currency.avg_loosing_trade) else 1.0
-
     # Sharpe Ratio
     if len(profit_per_month_pct) > 1:
         dof = len(profit_per_month_pct) - 1
@@ -377,22 +370,37 @@ def compute_strategy_statistics(strategy):
 
         # Sortino ratio (Student t distribution)
         results.percent.sortino_ratio = ((results.percent.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                         np.std(np.array(draw_down_per_month_pct), dof))
+                                         np.std(np.array(draw_down_per_month_pct), ddof=dof))
         results.currency.sortino_ratio = ((results.currency.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                          np.std(np.array(draw_down_per_month), dof))
+                                          np.std(np.array(draw_down_per_month), ddof=dof))
 
         # Ulcer index
         results.percent.ulcer_index = np.sqrt(np.mean(np.array(draw_downs_sqr_pct)))
         results.currency.ulcer_index = np.sqrt(np.mean(np.array(draw_downs_sqr)))
 
+    # Total PNL, Winning PNL, Loosing PNL
+    results.percent.add_sampler(any_trade_pnl_pct.finalize())
+    results.currency.add_sampler(any_trade_pnl.finalize())
+    results.percent.add_sampler(winning_trade_pnl_pct.finalize())
+    results.currency.add_sampler(winning_trade_pnl.finalize())
+    results.percent.add_sampler(loosing_trade_pnl_pct.finalize())
+    results.currency.add_sampler(loosing_trade_pnl.finalize())
+
+    # Win/Loss Rate (after finalize)
+    results.percent.avg_win_loss_rate = winning_trade_pnl_pct.avg / winning_trade_pnl_pct.avg if (
+            winning_trade_pnl_pct.avg != 0) else 1.0
+
+    results.currency.avg_win_loss_rate = winning_trade_pnl.avg / winning_trade_pnl.avg if (
+            winning_trade_pnl.avg != 0) else 1.0
+
     # MFE, MAE, ETD
-    results.percent.add_sampler(mfe_sampler)
-    results.percent.add_sampler(mae_sampler)
-    results.percent.add_sampler(etd_sampler)
+    results.percent.add_sampler(mfe_sampler.finalize())
+    results.percent.add_sampler(mae_sampler.finalize())
+    results.percent.add_sampler(etd_sampler.finalize())
 
     # efficiency
-    results.percent.add_sampler(eef_sampler)
-    results.percent.add_sampler(xef_sampler)
-    results.percent.add_sampler(tef_sampler)
+    results.percent.add_sampler(eef_sampler.finalize())
+    results.percent.add_sampler(xef_sampler.finalize())
+    results.percent.add_sampler(tef_sampler.finalize())
 
     return results

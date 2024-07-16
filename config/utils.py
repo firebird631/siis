@@ -241,7 +241,8 @@ def delete_learning(options, attr_name):
     learning_path = options['learning-path'] if (type(options) is dict and 'learning-path' in options) else options
 
     user_file = pathlib.Path(learning_path, attr_name + '.json')
-    os.remove(str(user_file))
+    if user_file.exists():
+        os.remove(str(user_file))
 
 
 def merge_learning_config(parameters, learning_config):

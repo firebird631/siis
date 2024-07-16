@@ -372,7 +372,8 @@ class TrainerTool(Tool):
 
                 if caller:
                     # assign related process
-                    caller.process = process
+                    caller.on_start(process, options['learning-path'], learning_filename)
+                    # caller.process = process
 
                 while 1:
                     code = process.poll()
@@ -450,6 +451,7 @@ class TrainerTool(Tool):
 
                         perf = float(trainer_result.get('performance', "0.00%").rstrip('%'))
 
+                        # fitness adjustment according to the selection method
                         if self._selection == TrainerCommander.BEST_WINRATE:
                             # fitness is global performance multiply by best win-rate
                             succeed = trainer_result.get('succeed-trades', 0)
@@ -519,8 +521,6 @@ class TrainerTool(Tool):
                                                         best_result.get('max-draw-down-rate', "0.00%")))
             logger.info("-- total-trades = %s" % best_result.get('total-trades', 0))
 
-            # @todo could display some others
-
             logger.info("-- best = %s" % best_result.get('best', "0.00%"))
             logger.info("-- worst = %s" % best_result.get('worst', "0.00%"))
 
@@ -539,6 +539,8 @@ class TrainerTool(Tool):
 
             logger.info("-- open-trades = %s" % best_result.get('open-trades', 0))
             logger.info("-- active-trades = %s" % best_result.get('active-trades', 0))
+
+            # @todo could display some others (Sharpe Ratio, Sortino Ratio, Ulcer Index, avg MFE MAE ETD, efficiency...)
 
             # display news values
             logger.info("Selected parameters :")
