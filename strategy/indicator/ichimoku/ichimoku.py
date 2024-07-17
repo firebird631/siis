@@ -17,8 +17,8 @@ class IchimokuIndicator(Indicator):
 
     Take care using results than :
         - Senkou span A and senkou span B are shift in future by kijun sen length (26)
-        - Chikou span is shift in past by kiju sen length (26)
-        - Tenkan sen and kiju sen are aligned to initial data
+        - Chikou span is shift in past by kijun sen length (26)
+        - Tenkan sen and kijun sen are aligned to initial data
     """
 
     __slots__ = '_tenkan_sen_l', '_kijun_sen_l', '_senkou_span_b_l', '_tenkans' ,'_kijuns', \
@@ -172,7 +172,7 @@ class IchimokuIndicator(Indicator):
         self._tenkans = ta_MIDPRICE(high, low, self._tenkan_sen_l)
 
         #
-        # kijun-sen - base line (window of 9)
+        # kijun-sen - base-line (window of 9)
         #
 
         # IchimokuIndicator.rolling_max(high, self._kijun_sen_l, self._krmax_h)
