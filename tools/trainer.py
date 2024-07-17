@@ -1,4 +1,4 @@
-# @date 2023-04-114
+# @date 2023-04-11
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2023 Dream Overflow
 # Machine Learning / Trainer tools
@@ -21,6 +21,7 @@ from importlib import import_module
 from common.utils import UTC, period_from_str
 from config import utils
 from strategy.learning.trainer import TrainerJob, TrainerCommander
+from strategy.learning.trainerfitness import trainer_fitness
 from strategy.strategy import Strategy
 from tools.tool import Tool
 
@@ -449,50 +450,8 @@ class TrainerTool(Tool):
                             learning_filename, trainer_result.get('performance', "0.00%")))
                         # print(trainer_result.get('strategy').get('parameters'))
 
-                        perf = float(trainer_result.get('performance', "0.00%").rstrip('%'))
-
-                        # fitness adjustment according to the selection method
-                        if self._selection == TrainerCommander.BEST_WINRATE:
-                            # fitness is global performance multiply by best win-rate
-                            succeed = trainer_result.get('succeed-trades', 0)
-                            total_trades = trainer_result.get('total-trades', 0)
-                            sf_rate = succeed / total_trades if total_trades > 0 else 0.0
-
-                            if sf_rate < 0.45:
-                                # poor win rate, penalty
-                                fitness = 9999
-                            else:
-                                fitness = -(perf * ((0.55 + sf_rate) ** 2))
-                        elif self._selection == TrainerCommander.BEST_WORST:
-                            # fitness is global performance multiply by inverted rate of number contiguous loss
-                            # @todo
-                            fitness = -perf
-                        elif self._selection == TrainerCommander.LOWER_CONT_LOSS:
-                            # fitness is global performance multiply by inverted rate of number contiguous loss
-                            # @todo
-                            fitness = -perf
-                        elif self._selection == TrainerCommander.TAKE_PROFIT_RATIO:
-                            # fitness is global performance multiply by rate of number in winning take profit
-                            tp_gain = trainer_result.get('take-profit-in-gain', 0)
-                            total_trades = trainer_result.get('total-trades', 0)
-                            tp_win_rate = tp_gain / total_trades if total_trades > 0 else 0
-
-                            if tp_win_rate < 0.45:
-                                fitness = 9999
-                            else:
-                                fitness = -(perf * ((0.55 + tp_win_rate) ** 2))
-
-                        # @todo
-                        # HIGHER_AVG_MFE = 6  # one having the higher average MFE factor
-                        # LOWER_AVG_MAE = 7  # one having the lower average MAE factor
-                        # LOWER_AVG_ETD = 8  # one having the lower average ETD factor
-                        # BEST_STDDEV_MFE = 9  # one have the higher average MFE and the more constant MFE
-                        # BEST_STDDEV_MAE = 10  # one have the lower average MAE and the more constant MAE
-                        # BEST_STDDEV_ETD = 11  # one have the lower average ETD and the more constant ETD
-
-                        else:
-                            # default : best performance
-                            fitness = -perf
+                        # according to the selection methode adjusts the fitness
+                        fitness = trainer_fitness(trainer_result, self._selection)
                     else:
                         Terminal.inst().info("-- %s trainer failed" % learning_filename)
                 else:

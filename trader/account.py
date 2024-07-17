@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
+from instrument.instrument import Instrument
+
 if TYPE_CHECKING:
     from .trader import Trader
 
@@ -53,7 +55,7 @@ class Account(object):
     TYPE_MARGIN = 2
     TYPE_SPREADBET = 4
 
-    DEFAULT_STATS_SAMPLING_TIMEFRAME = 60*60*24  # 1 day
+    DEFAULT_STATS_SAMPLING_TIMEFRAME = Instrument.TF_DAY
 
     _parent: Trader
 
@@ -378,26 +380,42 @@ class Account(object):
         self._max_draw_down = max(self._max_draw_down, self._draw_down)
 
     def update_stats(self, timestamp: float):
-        if not self._last_stats_update:
+        # update each day
+        current_bt = Instrument.basetime(timestamp, self._stats_sampling_timeframe)
+
+        if not self._stats_samples:
             # initial sample
-            self._last_stats_update = timestamp
             self._stats_samples.append(AccountStatSample(
-                self._last_stats_update,
+                current_bt,
                 self._balance,
                 self._profit_loss,
                 self._draw_down_rate,
                 self._draw_down))
 
-            return
+        if self._last_stats_update > 0.0:
+            prev_bt = Instrument.basetime(self._last_stats_update, self._stats_sampling_timeframe)
+            elapsed_days = int((current_bt - prev_bt) / self._stats_sampling_timeframe)
 
-        if timestamp - self._last_stats_update >= self._stats_sampling_timeframe:
-            self._last_stats_update = self._last_stats_update + self._stats_sampling_timeframe
-            self._stats_samples.append(AccountStatSample(
-                self._last_stats_update,
-                self._balance,
-                self._profit_loss,
-                self._draw_down_rate,
-                self._draw_down))
+            if elapsed_days > 0:
+                prev_sample = self._stats_samples[-1]
+
+                for d in range(0, elapsed_days):
+                    self._stats_samples.append(AccountStatSample(
+                        prev_bt + d * self._stats_sampling_timeframe,
+                        prev_sample.balance,
+                        prev_sample.profit_loss,
+                        prev_sample.draw_down_rate,
+                        prev_sample.draw_down))
+
+        # update current sample
+        curr_sample = self._stats_samples[-1]
+
+        curr_sample.balance = self._balance
+        curr_sample.profit_loss = self._profit_loss
+        curr_sample.draw_down_rate = self._draw_down_rate
+        curr_sample.draw_down = self._draw_down
+
+        self._last_stats_update = timestamp
 
     #
     # persistence

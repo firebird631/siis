@@ -1873,7 +1873,7 @@ class Strategy(Runnable):
         new_content['max-draw-down-rate'] = "%.2f%%" % (trader.account.max_draw_down_rate * 100.0)
         new_content['max-draw-down'] = trader.account.format_price(trader.account.max_draw_down)
         new_content['final-equity'] = trader.account.format_price(trader.account.balance)
-        new_content['stats-samples'] = [x.dumps() for x in trader.account.stats_samples]
+        new_content['account-daily-samples'] = [x.dumps() for x in trader.account.stats_samples]
 
         new_content['performance'] = "%.2f%%" % (perf_sum * 100.0)
         new_content['profit-loss'] = trader.account.format_price(pl_sum)

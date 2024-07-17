@@ -15,11 +15,10 @@ from typing import TYPE_CHECKING, Union
 
 from common.utils import timeframe_from_str, period_from_str
 from config import utils
-from instrument.instrument import Instrument
 from terminal.terminal import Terminal
+from .trainerselect import trainer_selection
 
 if TYPE_CHECKING:
-    from strategy.strategy import Strategy
     from strategy.strategytraderbase import StrategyTraderBase
     from ..service import StrategyService
 
@@ -724,28 +723,27 @@ class TrainerCommander(object):
     The name of the specialized class must be defined into a specialization of the Trainer class (@see Trainer)
     """
 
-    BEST_PERF = 0          # select best from the best performance in percentage.
-    BEST_PROFIT = 1        # select best from the best profit in currency.
-    BEST_WINRATE = 2       # from the best win-rate (win number / loss number)
-    BEST_WORST = 3         # best from the best worst performance (meaning limiting the worst loss)
-    LOWER_CONT_LOSS = 4    # one having the lesser contiguous losses
-    TAKE_PROFIT_RATIO = 5  # one having the best ratio of trade exit at take profit versus other exits
-    HIGHER_AVG_MFE = 6     # one having the higher average MFE factor
-    LOWER_AVG_MAE = 7      # one having the lower average MAE factor
-    LOWER_AVG_ETD = 8      # one having the lower average ETD factor
-    BEST_STDDEV_MFE = 9    # one have the higher average MFE and the more constant MFE
-    BEST_STDDEV_MAE = 10   # one have the lower average MAE and the more constant MAE
-    BEST_STDDEV_ETD = 11   # one have the lower average ETD and the more constant ETD
-    HIGHER_AVG_EEF = 12    # one have the higher average entry efficiency
-    HIGHER_AVG_XEF = 13    # one have the higher average exit efficiency
-    HIGHER_AVG_TEF = 14    # one have the higher average total (entry and exit) efficiency
+    BEST_PERF = 0            # best performance in percentage.
+    BEST_PROFIT = 1          # best profit in currency.
+    BEST_WINRATE = 2         # best win-rate (win number of trade / loss number of trade)
+    LOWER_CONT_LOSS = 3      # lesser contiguous losses
+    TAKE_PROFIT_RATIO = 4    # best ratio of trade exit at take profit versus other exits
+    HIGHER_AVG_MFE = 5       # higher average MFE factor
+    LOWER_AVG_MAE = 6        # lower average MAE factor
+    LOWER_AVG_ETD = 7        # lower average ETD factor
+    BEST_STDDEV_MFE = 8      # lower MFE std-dev crossed with higher avg MFE
+    BEST_STDDEV_MAE = 9      # lower MAE std-dev crossed with higher avg MAE
+    BEST_STDDEV_ETD = 10     # lower ETD std-dev crossed with higher avg ETD
+    HIGHER_AVG_EEF = 11      # higher average entry efficiency
+    HIGHER_AVG_XEF = 12      # higher average exit efficiency
+    HIGHER_AVG_TEF = 13      # higher average total (entry and exit) efficiency
+    BEST_WIN_LOSS_RATE = 14  # higher winning/loosing rate
 
     SELECTION = {
         'best-performance': BEST_PERF,
         'best-profit': BEST_PROFIT,
         'best-perf': BEST_PERF,
         'best-winrate': BEST_WINRATE,
-        'best-worst': BEST_WORST,
         'lower-cont-loss': LOWER_CONT_LOSS,
         'take-profit-ratio': TAKE_PROFIT_RATIO,
         'higher-avg-mfe': HIGHER_AVG_MFE,
@@ -754,6 +752,10 @@ class TrainerCommander(object):
         'best-stddev-mfe': BEST_STDDEV_MFE,
         'best-stddev-mae': BEST_STDDEV_MAE,
         'best-stddev-etd': BEST_STDDEV_ETD,
+        'higher-avg-entry-efficiency': HIGHER_AVG_EEF,
+        'higher-avg-exit-efficiency': HIGHER_AVG_XEF,
+        'higher-avg-total-efficiency': HIGHER_AVG_TEF,
+        'best-win-loss-rate': BEST_WIN_LOSS_RATE
     }
 
     _profile_parameters: dict
@@ -861,150 +863,5 @@ class TrainerCommander(object):
         """
         Simple implementation to select the best candidate from the evaluated ones.
         @return: A single candidate or None.
-        @todo Multi criterion based selection
         """
-        best_result = None
-        results = self.results
-
-        try:
-            min_perf = float(self._learning_parameters.get('trainer', {}).get('min-performance', "0.00%").rstrip('%'))
-        except ValueError:
-            min_perf = 0.0
-
-        try:
-            min_profit = float(self._learning_parameters.get('trainer', {}).get('min-profit', "0.00"))
-        except ValueError:
-            min_profit = 0.0
-
-        max_perf = min_perf
-        max_profit = min_profit
-        max_sf_rate = 0.0
-        min_loss_series = 9999
-        best_take_profit_rate = 0.0
-        max_avg_mfe_rate = 0.0
-        min_avg_mae_rate = 1.0
-        min_avg_etd_rate = 1.0
-        max_avg_eef_rate = 0.0
-        max_avg_xef_rate = 0.0
-        max_avg_tef_rate = 0.0
-        max_sharpe_ratio = 0.0
-        min_sortino_ratio = 1.0
-        max_ulcer_index = 0.0
-
-        # simple method, the best overall performance
-        for result in results:
-            if not result:
-                continue
-
-            try:
-                performance = float(result.get('performance', "0.00%").rstrip('%'))
-            except ValueError:
-                continue
-
-            # always need minimal performance
-            if performance < min_perf:
-                continue
-
-            if method == TrainerCommander.BEST_PERF:
-                # only keep the best performance
-                if performance > max_perf:
-                    max_perf = performance
-                    best_result = result
-
-            elif method == TrainerCommander.BEST_PROFIT:
-                # select best from the best profit in currency. @todo
-                pass
-
-            elif method == TrainerCommander.LOWER_CONT_LOSS:
-                # only keep the less max contiguous losses
-                loss_series = result.get('max-loss-series', 0)
-
-                if loss_series < min_loss_series:
-                    min_loss_series = loss_series
-                    best_result = result
-
-            elif method == TrainerCommander.BEST_WINRATE:
-                # only keep the best win-rate
-                succeed = result.get('succeed-trades', 0)
-                total_trades = result.get('total-trades', 0)
-                sf_rate = succeed / total_trades if total_trades > 0 else 0.0
-
-                if sf_rate > max_sf_rate:
-                    max_sf_rate = sf_rate
-                    best_result = result
-
-            elif method == TrainerCommander.TAKE_PROFIT_RATIO:
-                # only keep the best number of trade at take-profit
-                tp_gain = result.get('take-profit-in-gain', 0)
-                total_trades = result.get('total-trades', 0)
-                take_profit_rate = tp_gain / total_trades if total_trades > 0 else 0.0
-
-                if take_profit_rate > best_take_profit_rate:
-                    best_take_profit_rate = take_profit_rate
-                    best_result = result
-
-            elif method == TrainerCommander.HIGHER_AVG_MFE:
-                # only keep the best average MFE rate
-                avg_mfe_rate = result.get('avg-mfe', 0.0)
-
-                if avg_mfe_rate > max_avg_mfe_rate:
-                    max_avg_mfe_rate = avg_mfe_rate
-                    best_result = result
-
-            elif method == TrainerCommander.LOWER_AVG_MAE:
-                # one having the lower average MAE rate
-                avg_mae_rate = result.get('avg-mae', 0.0)
-
-                if avg_mae_rate < min_avg_mae_rate:
-                    min_avg_mae_rate = avg_mae_rate
-                    best_result = result
-
-            elif method == TrainerCommander.LOWER_AVG_ETD:
-                # one having the lower average ETD rate
-                avg_etd_rate = result.get('avg-etf', 0.0)
-
-                if avg_etd_rate < min_avg_etd_rate:
-                    min_avg_etd_rate = avg_etd_rate
-                    best_result = result
-
-            elif method == TrainerCommander.BEST_STDDEV_MFE:
-                # one have the higher average MFE and the more constant MFE @todo
-                pass
-
-            elif method == TrainerCommander.BEST_STDDEV_MAE:
-                # one have the lower average MAE and the more constant MAE @todo
-                pass
-
-            elif method == TrainerCommander.BEST_STDDEV_ETD:
-                # one have the lower average ETD and the more constant ETD @todo
-                pass
-
-            elif method == TrainerCommander.HIGHER_AVG_EEF:
-                # only keep the best average entry efficiency rate
-                percent = result.get('percent', {})
-                eef = percent.get('entry-efficiency', {})
-                avg_eef_rate = percent.get('avg', 0.0)
-
-                if avg_eef_rate > max_avg_eef_rate:
-                    max_avg_eef_rate = avg_eef_rate
-                    best_result = result
-
-            elif method == TrainerCommander.HIGHER_AVG_XEF:
-                # only keep the best average exit efficiency rate
-                percent = result.get('percent', {})
-                avg_xef_rate = percent.get('avg-exit-efficiency', 0.0)
-
-                if avg_xef_rate > max_avg_xef_rate:
-                    max_avg_xef_rate = avg_xef_rate
-                    best_result = result
-
-            elif method == TrainerCommander.HIGHER_AVG_TEF:
-                # only keep the best average total (entry and exit) efficiency rate
-                percent = result.get('percent', {})
-                avg_tef_rate = percent.get('avg-total-efficiency', 0.0)
-
-                if avg_tef_rate > max_avg_tef_rate:
-                    max_avg_tef_rate = avg_tef_rate
-                    best_result = result
-
-        return best_result
+        return trainer_selection(self.results, self._learning_parameters, method)

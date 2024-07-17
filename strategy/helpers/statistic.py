@@ -90,10 +90,6 @@ class StrategyStatistics:
 
         estimate_profit_per_month: float = 0.0
 
-        avg_trade: float = 0.0
-
-        avg_winning_trade: float = 0.0
-        avg_loosing_trade: float = 0.0
         avg_win_loss_rate: float = 0.0  # avg_winning_trade / avg_loosing_trade
 
         sharpe_ratio: float = 1.0
@@ -111,9 +107,6 @@ class StrategyStatistics:
         def dumps(self, to_dict):
             to_dict["max-time-to-recover"] = self.fmt_value(self.max_time_to_recover)
             to_dict['estimate-profit-per-month'] = self.fmt_value(self.estimate_profit_per_month)
-            to_dict['avg-trade'] = self.fmt_value(self.avg_trade)
-            to_dict['avg-winning-trade'] = self.fmt_value(self.avg_winning_trade)
-            to_dict['avg-loosing-trade'] = self.fmt_value(self.avg_loosing_trade)
             to_dict['avg-win-loss-rate'] = self.fmt_value(self.avg_win_loss_rate)
 
             to_dict['sharpe-ratio'] = self.sharpe_ratio
