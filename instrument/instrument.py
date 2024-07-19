@@ -206,7 +206,7 @@ class TradingSession:
     Times are related to the configured instrument timezone.
     """
 
-    day_of_week: int = 0
+    day_of_week: int = 1   # ISO monday 1..7
     from_time: float = 0.0
     to_time: float = 0.0
 
@@ -1279,29 +1279,45 @@ class Instrument(object):
         if len(parts) != 2:
             return None
 
+        sign = 1
+
+        if parts[0].startswith('-'):
+            parts[0] = parts[0][1:]
+            sign = -1
+        elif parts[0].startswith('+'):
+            parts[0] = parts[0][1:]
+            sign = 1
+
         try:
             hours = int(parts[0])
             minutes = int(parts[1])
         except ValueError:
             return None
 
-        return hours * 3600.0 + minutes * 60.0
+        if hours < 0 or hours > 23:
+            return None
+
+        if minutes < 0 or minutes > 59:
+            return None
+
+        return sign * (hours * 3600.0 + minutes * 60.0)
 
     def sessions_from_str(self, moment: str) -> Union[List[TradingSession], None]:
         # mon tue wed thu fri sat sun
         if not moment or type(moment) is not str:
             return None
 
+        # ISO Monday 1..7
         days_of_week = {
             "any": -2,
             "dow": -1,
-            "mon": 0,
-            "tue": 1,
-            "wed": 2,
-            "thu": 3,
-            "fri": 4,
-            "sat": 5,
-            "sun": 6
+            "mon": 1,
+            "tue": 2,
+            "wed": 3,
+            "thu": 4,
+            "fri": 5,
+            "sat": 6,
+            "sun": 7
         }
 
         parts = moment.split('/')
@@ -1322,11 +1338,11 @@ class Instrument(object):
 
         if parts[0] == "any":
             # any days
-            for d in range(0, 7):
+            for d in range(1, 8):
                 results.append(TradingSession(d, fd, td))
         elif parts[0] == "dow":
             # any days of week
-            for d in range(0, 5):
+            for d in range(1, 6):
                 results.append(TradingSession(d, fd, td))
         else:
             # day is defined

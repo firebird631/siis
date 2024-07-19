@@ -2772,12 +2772,16 @@ class StrategyTraderBase(object):
             # compute daily offset in seconds
             today = datetime.utcfromtimestamp(timestamp).replace(tzinfo=UTC()) + timedelta(
                 hours=self.instrument.timezone)
-            day_of_week = today.isoweekday()
+
             today_time = today.hour * 3600 + today.minute * 60 + today.second
+
+            # monday 1..7
+            day_of_week = today.isoweekday()
 
             allow = False
 
             for trading_session in self.instrument.trading_sessions:
+                # monday is 0
                 if trading_session.day_of_week == day_of_week:
                     if trading_session.from_time <= today_time <= trading_session.to_time:
                         allow = True
