@@ -381,7 +381,7 @@ def beta_update_strategy(strategy, strategy_trader, timestamp: float):
             # need to check existing trade orders, trade history and positions
             strategy_trader.check_trades(strategy.timestamp)
 
-        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():
+        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.ready():
             # process only if instrument has data
             return
 
@@ -431,7 +431,7 @@ def beta_async_update_strategy(strategy, strategy_trader, timestamp: float):
             # need to check existing trade orders, trade history and positions
             strategy_trader.check_trades(strategy.timestamp)
 
-        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.instrument.ready():
+        if strategy_trader._initialized != 0 or strategy_trader._checked != 0 or not strategy_trader.ready():
             # process only if instrument has data
             return
 

@@ -244,8 +244,8 @@ def alpha_async_update_strategy(strategy, strategy_trader, timestamp: float):
 
         if (strategy_trader.initialized != strategy_trader.STATE_NORMAL or
                 strategy_trader.checked != strategy_trader.STATE_NORMAL or
-                not strategy_trader.instrument.ready()):
-            # process only if instrument has data
+                not strategy_trader.ready()):
+            # process only if strategy received any data
             return
 
         if strategy_trader.processing:
