@@ -249,8 +249,8 @@ def application(argv):
                     # fetch, binarize, optimize the data history for this market
                     options['market'] = arg.split('=')[1]
                 elif arg.startswith('--spec='):
-                    # fetcher data history option
-                    options['option'] = arg.split('=')[1]
+                    # fetcher or cleaner data history option
+                    options['spec'] = arg.split('=')[1]
                 elif arg.startswith('--delay='):
                     # fetcher data history fetching delay between two calls
                     options['delay'] = float(arg.split('=')[1])

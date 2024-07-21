@@ -1011,7 +1011,8 @@ class Database(object):
     # Extra
     #
 
-    def cleanup_ohlc(self, broker_id: str, market_id: Optional[str] = None, timeframes=None,
+    def cleanup_ohlc(self, broker_id: str, market_id: Optional[str] = None,
+                     timeframe: Optional[float] = None,
                      from_date: Optional[datetime] = None, to_date: Optional[datetime] = None):
         """
         Cleanup any OHLC for a specific broker_id.
@@ -1019,4 +1020,9 @@ class Database(object):
         If timeframes is specified only delete this timeframes else any
         @note This is a synchronous method.
         """
+        pass
+
+    def cleanup_range_bar(self, broker_id: str, market_id: Optional[str] = None,
+                          bar_size: Optional[int] = None,
+                          from_date: Optional[datetime] = None, to_date: Optional[datetime] = None):
         pass

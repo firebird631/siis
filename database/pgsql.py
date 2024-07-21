@@ -5,8 +5,10 @@
 
 import json
 import time
+from datetime import datetime
 
 from importlib import import_module
+from typing import Optional
 
 from common.signal import Signal
 
@@ -1411,19 +1413,48 @@ class PgSql(Database):
     # Extra
     #
 
-    def cleanup_ohlc(self, broker_id, market_id=None, timeframes=None, from_date=None, to_date=None):
+    def cleanup_ohlc(self, broker_id: str, market_id: Optional[str] = None,
+                     timeframe: Optional[float] = None,
+                     from_date: Optional[datetime] = None, to_date: Optional[datetime] = None):
         if not broker_id:
             return
 
-        # @todo timeframes, from_date, to_date
-    
-        if not market_id:
-            cursor = self._db.cursor()
-            cursor.execute("DELETE FROM ohlc WHERE broker_id = '%s'" % (broker_id,))
-            self._db.commit()
-            cursor = None
-        else:
-            cursor = self._db.cursor()
-            cursor.execute("DELETE FROM ohlc WHERE broker_id = '%s' AND market_id = '%s'" % (broker_id, market_id))
-            self._db.commit()
-            cursor = None
+        base_query = "DELETE FROM ohlc WHERE broker_id = '%s'" % (broker_id,)
+        # base_query = "SELECT COUNT (*) FROM ohlc WHERE broker_id = '%s'" % (broker_id,)
+
+        if market_id:
+            base_query += " AND market_id = '%s'" % market_id
+        if timeframe:
+            base_query += " AND timeframe = %i" % timeframe
+        if from_date:
+            base_query += " AND timestamp >= %i" % int(from_date.timestamp() * 1000)
+        if to_date:
+            base_query += " AND timestamp <= %i" % int(to_date.timestamp() * 1000)
+
+        cursor = self._db.cursor()
+        cursor.execute(base_query)
+        self._db.commit()
+        cursor = None
+
+    def cleanup_range_bar(self, broker_id: str, market_id: Optional[str] = None,
+                          bar_size: Optional[int] = None,
+                          from_date: Optional[datetime] = None, to_date: Optional[datetime] = None):
+        if not broker_id:
+            return
+
+        base_query = "DELETE FROM range_bar WHERE broker_id = '%s'" % (broker_id,)
+        # base_query = "SELECT COUNT(*) FROM range_bar WHERE broker_id = '%s'" % (broker_id,)
+
+        if market_id:
+            base_query += " AND market_id = '%s'" % market_id
+        if bar_size:
+            base_query += " AND size = %i" % bar_size
+        if from_date:
+            base_query += " AND timestamp >= %i" % int(from_date.timestamp() * 1000)
+        if to_date:
+            base_query += " AND timestamp <= %i" % int(to_date.timestamp() * 1000)
+
+        cursor = self._db.cursor()
+        cursor.execute(base_query)
+        self._db.commit()
+        cursor = None
