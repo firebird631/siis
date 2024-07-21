@@ -178,7 +178,7 @@ class ForexAlphaStrategyTrader(TimeframeStrategyTrader):
         for entry in entries:
             # > ENTRY.C1
             # only allowed range of signal for entry
-            if not (self._min_traded_timeframe <= entry.timeframe <= self._max_traded_timeframe):
+            if not self._min_traded_timeframe <= entry.timeframe <= self._max_traded_timeframe:
                 continue
             # < ENTRY.C1
 

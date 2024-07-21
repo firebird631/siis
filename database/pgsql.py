@@ -1162,6 +1162,7 @@ class PgSql(Database):
 
         if self._pending_range_bar_insert and (self._pending_range_bar_select or (len(self._pending_range_bar_insert) >= 500) or (
                 time.time() - self._last_range_bar_flush >= 60)):
+
             # some select could need of the last insert, or more than 500 pending insert, or last insert
             # was 60 seconds past or more
             with self._mutex:

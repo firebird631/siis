@@ -123,6 +123,9 @@ Sum order :
 # Urgent #
 ##########
 
+- le trainer doit tenir compte du type de marché (D7 ou D5/7) et ajuster la date de départ sinon il va lui manquer
+  par exemple 2 jours voir il n'aura aucun jour à traiter quand il commence le lundi
+
 - transaction/rollback sur strategy trader save (on save tout ou rien sinon c'est inconsistant)
 
 - def update_exit_qty(order_exec): fixer le avg exit price car peut être sur plusieurs ordre de sortie

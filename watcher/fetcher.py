@@ -216,7 +216,7 @@ class Fetcher(object):
                         t, market_id,
                         datetime.fromtimestamp(float(data[0]) * 0.001, tz=UTC()).strftime('%Y-%m-%dT%H:%M:%S.%f')))
 
-                # calm down the storage of tick, if parsing is faster
+                # calm down the storage of tick, if fetching is faster
                 while Database.inst().num_pending_ticks_storage() > Fetcher.MAX_PENDING_TICK:
                     time.sleep(Fetcher.TICK_STORAGE_DELAY)  # wait a little before continue
 

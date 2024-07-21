@@ -264,8 +264,17 @@ class Database(object):
             # wait until all insertions
             self.lock()
 
-            while self._pending_ohlc_insert or self._pending_asset_insert or self._pending_market_info_insert:
-                self._last_ohlc_flush = 0  # force flush remaining non stored ohlc
+            while (self._pending_ohlc_insert or
+                   self._pending_range_bar_insert or
+                   self._pending_volume_profile_insert or
+                   self._pending_asset_insert or
+                   self._pending_market_info_insert):
+
+                # force to flush the remaining
+                self._last_ohlc_flush = 0
+                self._last_range_bar_flush = 0
+                self._last_vp_flush = 0
+
                 self.unlock()
 
                 with self._condition:
@@ -361,6 +370,14 @@ class Database(object):
         """
         with self._mutex:
             n = len(self._pending_tick_insert)
+            return n
+
+    def num_pending_bars_storage(self) -> int:
+        """
+        Return current pending OHLC, range-bar and others list size, for storage.
+        """
+        with self._mutex:
+            n = len(self._pending_ohlc_insert) + len(self._pending_range_bar_insert)
             return n
 
     # def store_market_quote(self, data: Tuple[str, str, int, int, str, str, str, str, str, str]):

@@ -7,8 +7,12 @@ import sys
 import time
 
 from datetime import datetime, timedelta
+from typing import List, Optional
 
 from common.utils import UTC, TIMEFRAME_FROM_STR_MAP, timeframe_to_str, format_datetime
+from instrument.bar import BarBase
+from instrument.bargeneratorbase import BarGeneratorBase
+from instrument.rangebargenerator import RangeBarGenerator
 
 from terminal.terminal import Terminal
 from database.database import Database
@@ -25,8 +29,8 @@ error_logger = logging.getLogger('siis.error.tools.rebuilder')
 # GENERATED_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
 GENERATED_TF = [60, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
 
-TICK_STORAGE_DELAY = 0.05  # 50ms
-MAX_PENDING_TICK = 10000
+BAR_STORAGE_DELAY = 0.05  # 50ms
+MAX_PENDING_BARS = 10000
 
 
 # class Rebuilder(Tool):
@@ -109,6 +113,13 @@ def store_ohlc(broker_name, market_id, timeframe, ohlc):
         str(ohlc.volume)))
 
 
+def store_range_bar(broker_name, market_id, bar_size, bar):
+    Database.inst().store_market_range_bar((
+        broker_name, market_id, int(bar.timestamp * 1000.0), int(bar.duration * 1000.0), int(bar_size),
+        str(bar.open), str(bar.high), str(bar.low), str(bar.close),
+        str(bar.volume)))
+
+
 def do_rebuilder(options):
     Terminal.inst().info("Starting SIIS rebuilder using %s identity..." % options['identity'])
     Terminal.inst().flush()
@@ -120,32 +131,20 @@ def do_rebuilder(options):
     # want speedup the database inserts
     Database.inst().enable_fetch_mode()
 
-    timeframe = -1
-    cascaded = None
+    src_timeframe = -1
 
     if not options.get('timeframe'):
-        timeframe = 60  # default to 1min
+        src_timeframe = 60  # default to 1min
     else:
         if options['timeframe'] in TIMEFRAME_FROM_STR_MAP:
-            timeframe = TIMEFRAME_FROM_STR_MAP[options['timeframe']]
+            src_timeframe = TIMEFRAME_FROM_STR_MAP[options['timeframe']]
         else:
             try:
-                timeframe = int(options['timeframe'])
-            except:
+                src_timeframe = int(options['timeframe'])
+            except ValueError:
                 pass
 
-    if not options.get('cascaded'):
-        cascaded = None
-    else:
-        if options['cascaded'] in TIMEFRAME_FROM_STR_MAP:
-            cascaded = TIMEFRAME_FROM_STR_MAP[options['cascaded']]
-        else:
-            try:
-                cascaded = int(options['cascaded'])
-            except:
-                pass
-
-    if timeframe < 0:
+    if src_timeframe < 0:
         error_logger.error("Invalid timeframe")
         sys.exit(-1)
 
@@ -170,15 +169,15 @@ def do_rebuilder(options):
     if not to_date:
         today = datetime.now().astimezone(UTC())
 
-        if timeframe == Instrument.TF_MONTH:
+        if src_timeframe == Instrument.TF_MONTH:
             to_date = today + timedelta(days=30)
         else:
-            to_date = today + timedelta(seconds=timeframe)
+            to_date = today + timedelta(seconds=src_timeframe)
 
         to_date = to_date.replace(microsecond=0)
 
-    if timeframe > 0 and timeframe not in GENERATED_TF:
-        error_logger.error("Timeframe %s is not allowed !" % timeframe_to_str(timeframe))
+    if src_timeframe > 0 and src_timeframe not in GENERATED_TF:
+        error_logger.error("Timeframe %s is not allowed !" % timeframe_to_str(src_timeframe))
         sys.exit(-1)
 
     if '!' in options['market'] or '*' in options['market']:
@@ -188,23 +187,137 @@ def do_rebuilder(options):
 
     markets = options['market'].replace(' ', '').split(',')
 
+    #
+    # optional options
+    #
+
+    try:
+        tick_scale = float(options.get('tick-scale', 1.0))
+    except ValueError:
+        error_logger.error("Tick-scale must be a decimal number !")
+        sys.exit(-1)
+
+    #
+    # parse target and cascaded parameters
+    #
+
+    if not options.get('cascaded'):
+        cascaded_bar = None
+        cascaded_type = None
+    else:
+        cascaded_bar = None
+        cascaded_type = None
+
+        if options['cascaded'] in TIMEFRAME_FROM_STR_MAP:
+            cascaded_bar = TIMEFRAME_FROM_STR_MAP[options['cascaded']]
+            cascaded_type = "timeframe"
+        elif options['cascaded'].endswith('rb'):
+            try:
+                cascaded_bar = int(options['cascaded'][0:-2])
+                cascaded_type = "range-bar"
+            except ValueError:
+                pass
+        elif options['cascaded'].endswith('rvb'):
+            try:
+                cascaded_bar = int(options['cascaded'][0:-3])
+                cascaded_type = "reversal-bar"
+            except ValueError:
+                pass
+        elif options['cascaded'].endswith('tb'):
+            try:
+                cascaded_bar = int(options['cascaded'][0:-2])
+                cascaded_type = "tick-bar"
+            except ValueError:
+                pass
+        elif options['cascaded'].endswith('vb'):
+            try:
+                cascaded_bar = int(options['cascaded'][0:-2])
+                cascaded_type = "volume-bar"
+            except ValueError:
+                pass
+
+        if not cascaded_type:
+            error_logger.error("Cascaded %s is not allowed !" % options.get('cascaded'))
+            sys.exit(-1)
+
+    if not options.get('target'):
+        target_bar = None
+        target_type = None
+    else:
+        # target timeframe or bar
+        target_bar = None
+        target_type = None
+        
+        if options['target'] in TIMEFRAME_FROM_STR_MAP:
+            target_bar = TIMEFRAME_FROM_STR_MAP.get(options['target'])
+            target_type = "timeframe"
+        elif options['target'].endswith('rb'):
+            try:
+                target_bar = int(options['target'][0:-2])
+                target_type = "range-bar"
+            except ValueError:
+                pass
+        elif options['target'].endswith('rvb'):
+            try:
+                target_bar = int(options['target'][0:-3])
+                target_type = "reversal-bar"
+            except ValueError:
+                pass
+        elif options['target'].endswith('tb'):
+            try:
+                target_bar = int(options['target'][0:-2])
+                target_type = "tick-bar"
+            except ValueError:
+                pass
+        elif options['target'].endswith('vb'):
+            try:
+                target_bar = int(options['target'][0:-2])
+                target_type = "volume-bar"
+            except ValueError:
+                pass
+
+        if not target_type:
+            error_logger.error("Target %s is not allowed !" % options.get('target'))
+            sys.exit(-1)
+
+    if src_timeframe > 0 and ((cascaded_bar and cascaded_type != "timeframe") or
+                              (target_bar and target_type != "timeframe")):
+        error_logger.error(
+            "Incompatibility with source timeframe (OHLC bar) and target %s !" % (cascaded_type or target_type))
+        sys.exit(-1)
+
+    if cascaded_bar and cascaded_type != "timeframe":
+        error_logger.error("Cascaded mode is only compatible with timeframe bars !")
+        sys.exit(-1)
+
+    #
+    # processing for each market, one at time
+    #
+
     for market in markets:
         # need a from datetime and timestamp else compute from last value of the greatest target
         if do_update:
-            if options.get('target'):
-                # target timeframe
-                test_timeframe = TIMEFRAME_FROM_STR_MAP.get(options.get('target'))
-            else:
+            if cascaded_bar:
                 # higher timeframe
-                test_timeframe = cascaded
+                test_bar = cascaded_bar
+                test_bar_type = cascaded_type
+            else:
+                test_bar = target_bar
+                test_bar_type = target_type
 
-            last_ohlc = Database.inst().get_last_ohlc(broker_id, market, test_timeframe)
+            if test_bar_type == "timeframe":
+                last_ohlc = Database.inst().get_last_ohlc(broker_id, market, test_bar)
+            elif test_bar_type == "range-bar":
+                last_ohlc = Database.inst().get_last_range_bar(broker_id, market, test_bar)
+            else:
+                last_ohlc = None
+
             if last_ohlc:
                 from_date = datetime.utcfromtimestamp(last_ohlc.timestamp).replace(tzinfo=UTC())
                 # Terminal.inst().debug(last_ohlc.volume)
 
         if not from_date:
-            error_logger.error("Unable to find timestamp of the previous OHLC for %s !" % market)
+            error_logger.error("Unable to find a previous bar for %s !" % market)
             continue
 
         Terminal.inst().info("Rebuild for %s from %s..." % (market, from_date.strftime("%Y-%m-%dT%H:%M:%SZ")))
@@ -223,20 +336,21 @@ def do_rebuilder(options):
         tts = 0.0
         prev_tts = 0.0
 
-        generators = []
-        from_tf = timeframe
+        timeframe_generators: List[TimeframeBarGenerator] = []   # one or multiple timeframe generators
+        bar_generator: Optional[BarGeneratorBase] = None  # or a single non-temporal generator (BarBaseGenerator)
+        from_tf = src_timeframe
 
         last_ticks = []
-        last_ohlcs = {}
+        last_bars = {}
 
         # need a source data streamer, either ticks or OHLCs
-        if timeframe == Instrument.TF_TICK:
+        if src_timeframe == Instrument.TF_TICK:
             ohlc_streamer = None
             tick_streamer = Database.inst().create_tick_streamer(broker_id, market,
                                                                  from_date=from_date, to_date=to_date)
         else:
             tick_streamer = None
-            ohlc_streamer = Database.inst().create_ohlc_streamer(broker_id, market, timeframe,
+            ohlc_streamer = Database.inst().create_ohlc_streamer(broker_id, market, src_timeframe,
                                                                  from_date=from_date, to_date=to_date)
 
         def load_ohlc(_timestamp: float, _timeframe: float) -> Candle:
@@ -244,12 +358,16 @@ def do_rebuilder(options):
             return Database.inst().get_last_ohlc_at(broker_id, market, _timeframe,
                                                     Instrument.basetime(_timeframe, _timestamp))
 
-        def finalize_generators():
+        def store_bar(bar_type: str, last_bar: BarBase):
+            if bar_type == "range-bar":
+                store_range_bar(broker_id, market, bar_generator.size, last_bar)
+
+        def finalize_timeframe_generators():
             # need to complete with the current OHLC and store them
-            for _generator in generators:
+            for _generator in timeframe_generators:
                 if _generator.from_tf > 0:
                     # retrieve the 'from' generator and update from its current candle
-                    for gen in generators:
+                    for gen in timeframe_generators:
                         if gen.to_tf == _generator.from_tf:
                             _candles = _generator.generate_from_candles([gen.current], False)
                             if _candles:
@@ -261,15 +379,21 @@ def do_rebuilder(options):
                     # and store current candle
                     store_ohlc(broker_id, market, _generator.to_tf, _generator.current)
 
+        def finalize_bar_generator():
+            # need to complete with the current OHLC and store them
+            if bar_generator:
+                if bar_generator.current:
+                    store_bar(target_type, bar_generator.current)
+
         # cascaded generation of candles
-        if cascaded:
+        if cascaded_bar:
             for tf in GENERATED_TF:
-                if tf > timeframe:
+                if tf > src_timeframe:
                     # from timeframe greater than initial
-                    if tf <= cascaded:
+                    if tf <= cascaded_bar:
                         # until max cascaded timeframe
                         generator = TimeframeBarGenerator(from_tf, tf)
-                        generators.append(generator)
+                        timeframe_generators.append(generator)
                         from_tf = tf
 
                         # load OHLC at the base timestamp (if exists)
@@ -280,33 +404,43 @@ def do_rebuilder(options):
                         # Terminal.inst().debug(generator.current)
 
                         # store for generation
-                        last_ohlcs[tf] = []
+                        last_bars[tf] = []
                 else:
                     from_tf = tf
 
-        if options.get('target'):
-            target = TIMEFRAME_FROM_STR_MAP.get(options.get('target'))
+        if target_bar:
+            if target_type == "timeframe":
+                if src_timeframe > 0 and target_bar % src_timeframe != 0:
+                    logger.error("Timeframe %s is not a multiple of %s !" % (
+                        timeframe_to_str(target_bar), timeframe_to_str(src_timeframe)))
+                    sys.exit(-1)
 
-            if timeframe > 0 and target % timeframe != 0:
-                logger.error("Timeframe %s is not a multiple of %s !" % (
-                    timeframe_to_str(target), timeframe_to_str(timeframe)))
-                sys.exit(-1)
+                generator = TimeframeBarGenerator(src_timeframe, target_bar)
+                timeframe_generators.append(generator)
 
-            generator = TimeframeBarGenerator(timeframe, target)
-            generators.append(generator)
+                # load OHLC at the base timestamp (if exists) or rebuild for its base timestamp (more simple case)
+                # @see line 297 for reason of comment
+                # generator.current = load_ohlc(timestamp, target)
+                # Terminal.inst().debug(generator.current)
 
-            # load OHLC at the base timestamp (if exists)
-            # @see row 276 for reason of comment
-            # generator.current = load_ohlc(timestamp, target)
-            # Terminal.inst().debug(generator.current)
+                # store for generating
+                last_bars[target_bar] = []
 
-            # store for generation
-            last_ohlcs[target] = []
+            elif target_type == "range-bar":
+                # single range-bar at time
+                bar_generator = RangeBarGenerator(target_bar, tick_scale)
 
-        if timeframe > 0:
-            last_ohlcs[timeframe] = []
+                # store for generating
+                last_bars[target_bar] = []
 
-        if timeframe == 0:
+        if src_timeframe > 0:
+            last_bars[src_timeframe] = []
+
+        #
+        # generate from a source of ticks/trades
+        #
+
+        if src_timeframe == 0:
             while not tick_streamer.finished():
                 ticks = tick_streamer.next(timestamp + Instrument.TF_1M)
 
@@ -318,33 +452,44 @@ def do_rebuilder(options):
                     if data[0] > to_timestamp:
                         break
 
-                    if generators:
+                    if timeframe_generators or bar_generator:
                         last_ticks.append(data)
 
-                # generate higher candles
-                for generator in generators:
-                    if generator.from_tf == 0:
-                        candles = generator.generate_from_ticks(last_ticks)
+                if bar_generator:
+                    # generate non-temporal bar series
+                    new_bars = bar_generator.generate(last_ticks)
+                    if new_bars:
+                        for new_bar in new_bars:
+                            store_bar(target_type, new_bar)
 
-                        if candles:
-                            for c in candles:
-                                store_ohlc(broker_id, market, generator.to_tf, c)
+                        # not necessary to keep in memory the new bar
 
-                            last_ohlcs[generator.to_tf] += candles
+                    # remove consumed ticks
+                    last_ticks = []
 
-                        # remove consumed ticks
-                        last_ticks = []
-                    else:
-                        candles = generator.generate_from_candles(last_ohlcs[generator.from_tf])
+                elif timeframe_generators:
+                    # generate higher candles
+                    for generator in timeframe_generators:
+                        if generator.from_tf == 0:
+                            new_bars = generator.generate_from_ticks(last_ticks)
+                            if new_bars:
+                                for bar in new_bars:
+                                    store_ohlc(broker_id, market, generator.to_tf, bar)
 
-                        if candles:
-                            for c in candles:
-                                store_ohlc(broker_id, market, generator.to_tf, c)
+                                last_bars[generator.to_tf] += new_bars
 
-                            last_ohlcs[generator.to_tf] += candles
+                            # remove consumed ticks
+                            last_ticks = []
+                        else:
+                            new_bars = generator.generate_from_candles(last_bars[generator.from_tf])
+                            if new_bars:
+                                for bar in new_bars:
+                                    store_ohlc(broker_id, market, generator.to_tf, bar)
 
-                        # remove consumed candles
-                        last_ohlcs[generator.from_tf] = []
+                                last_bars[generator.to_tf] += new_bars
+
+                            # remove consumed candles
+                            last_bars[generator.from_tf] = []
 
                 if timestamp - prev_update >= progression_incr:
                     progression += 1
@@ -361,30 +506,39 @@ def do_rebuilder(options):
 
                 timestamp += Instrument.TF_1M  # by step of 1m
 
-                # calm down the storage of tick, if parsing is faster
-                while Database.inst().num_pending_ticks_storage() > TICK_STORAGE_DELAY:
-                    time.sleep(TICK_STORAGE_DELAY)  # wait a little before continue
+                # calm down the storage of OHLCs/bars, if generation is faster
+                while Database.inst().num_pending_bars_storage() > MAX_PENDING_BARS:
+                    time.sleep(BAR_STORAGE_DELAY)
 
-            finalize_generators()
+            # complete the lasts non-ended bars
+            if bar_generator:
+                finalize_bar_generator()
+            elif timeframe_generators:
+                finalize_timeframe_generators()
 
             if progression < 100:
                 Terminal.inst().info("100%% on %s, %s ticks/trades for last %s minutes, current total of %s..." % (
                     format_datetime(timestamp), count, iterate, total_count))
 
-        elif timeframe > 0:
+        #
+        # generate from a source of timeframe bars
+        # this mode only works with a target/cascaded of timeframes only
+        #
+
+        elif src_timeframe > 0:
             while not ohlc_streamer.finished():
-                ohlcs = ohlc_streamer.next(timestamp + timeframe * 100)  # per 100
+                new_bars = ohlc_streamer.next(timestamp + src_timeframe * 100)  # per 100
 
                 iterate += 1
-                count += len(ohlcs)
-                total_count += len(ohlcs)
+                count += len(new_bars)
+                total_count += len(new_bars)
 
-                for data in ohlcs:
+                for data in new_bars:
                     if data.timestamp > to_timestamp:
                         break
 
-                    if generators:
-                        last_ohlcs[timeframe].append(data)
+                    if timeframe_generators:
+                        last_bars[src_timeframe].append(data)
 
                     tts = data.timestamp
 
@@ -395,16 +549,16 @@ def do_rebuilder(options):
                     timestamp = tts
 
                 # generate higher candles
-                for generator in generators:
-                    candles = generator.generate_from_candles(last_ohlcs[generator.from_tf])
-                    if candles:
-                        for c in candles:
-                            store_ohlc(options['broker'], market, generator.to_tf, c)
+                for generator in timeframe_generators:
+                    new_bars = generator.generate_from_candles(last_bars[generator.from_tf])
+                    if new_bars:
+                        for bar in new_bars:
+                            store_ohlc(options['broker'], market, generator.to_tf, bar)
 
-                        last_ohlcs[generator.to_tf].extend(candles)
+                        last_bars[generator.to_tf].extend(new_bars)
 
                     # remove consumed candles
-                    last_ohlcs[generator.from_tf] = []
+                    last_bars[generator.from_tf] = []
 
                 if timestamp - prev_update >= progression_incr:
                     progression += 1
@@ -420,15 +574,24 @@ def do_rebuilder(options):
                     # last timestamp is over to_date, stop here
                     break
 
-                if len(ohlcs) == 0:
+                if len(new_bars) == 0:
                     # no date for this frame, jump to next one
-                    timestamp += timeframe * 100
+                    timestamp += src_timeframe * 100
 
-            finalize_generators()
+                # calm down the storage of OHLCs, if generation is faster
+                while Database.inst().num_pending_bars_storage() > MAX_PENDING_BARS:
+                    time.sleep(BAR_STORAGE_DELAY)
+
+            # complete the lasts non-ended bars
+            finalize_timeframe_generators()
 
             if progression < 100:
                 Terminal.inst().info("100%% on %s,  %s OHLCs for last bulk of %s OHLCs, current total of %s..." % (
                     format_datetime(timestamp), count, iterate*100, total_count))
+
+    #
+    # termination
+    #
 
     Terminal.inst().info("Flushing database...")
     Terminal.inst().flush() 

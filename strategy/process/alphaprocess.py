@@ -332,25 +332,6 @@ def initiate_strategy_trader(strategy, strategy_trader):
 # backtesting setup
 #
 
-
-# deprecated
-def adjust_date_and_last_n(instrument, timeframe, from_date, to_date):
-    # crypto are h24, d7, nothing to do
-    if instrument.market_type == instrument.TYPE_CRYPTO:
-        return from_date, to_date, None
-
-    # there is multiples case, weekend off and nationals days off
-    # and the case of stocks markets closed during the local night
-    # but also some 15 min of twice on indices ...
-
-    # so many complexes cases then we try to get the max of last n OHLCs
-    # here simple direct solution but not correct in case of leaks of data
-    depth = max(timeframe['history'], timeframe['depth'])
-    n_last = depth
-
-    return None, to_date, n_last
-
-
 def alpha_setup_backtest(strategy, from_date: datetime, to_date: datetime, base_timeframe=Instrument.TF_TICK):
     """
     Simple load history of OHLCs, initialize all strategy traders here (sync).

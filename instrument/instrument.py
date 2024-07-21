@@ -1351,12 +1351,12 @@ class Instrument(object):
         return results
 
     def adjust_date_and_last_n(self, history: int, depth: int, from_date: datetime, to_date: datetime):
-        # crypto are h24, d7, nothing to do
+        # crypto are h24, d7
         if self.market_type == Instrument.TYPE_CRYPTO:
             if from_date and to_date:
                 # from date till date
                 return from_date, to_date, None
-            if not from_date and to_date:
+            elif not from_date and to_date:
                 # n last till date
                 return None, to_date, max(history, depth)
             elif from_date and not to_date:
@@ -1365,25 +1365,27 @@ class Instrument(object):
             else:
                 # n last till now
                 return None, None, max(history, depth)
+        else:
+            # other cases
 
-        # @todo there is multiples case, weekend off and nationals days off
-        #  and the case of stocks markets closed during the local night but also temporary evening off time
-        #  so many complexes cases then we try to get the max of last n OHLCs
-        #  here simple direct solution but not correct in case of leaks of data
+            # @todo there is multiples case, weekend off and nationals days off
+            #  and the case of stocks markets closed during the local night but also temporary evening off time
+            #  so many complexes cases then we try to get the max of last n OHLCs
+            #  here simple direct solution but not correct in case of leaks of data
 
-        #     # this does not count the regionals holidays
-        #     day_generator = (from_date + timedelta(x + 1) for x in range((to_date - from_date).days))
-        #     days_off = sum(1 for day in [from_date] + list(day_generator) if day.weekday() >= 5)
+            #     # this does not count the regionals holidays
+            #     day_generator = (from_date + timedelta(x + 1) for x in range((to_date - from_date).days))
+            #     days_off = sum(1 for day in [from_date] + list(day_generator) if day.weekday() >= 5)
 
-        #     from_date -= timedelta(days=days_off)
+            #     from_date -= timedelta(days=days_off)
 
-        #     if self.contract_type == Instrument.CONTRACT_SPOT or self.market_type == Instrument.TYPE_STOCK:
-        #         days_on = sum(1 for day in [from_date] + list(day_generator) if day.weekday() < 5)
-        #         from_date -= timedelta(seconds=days_on * (24-8)*60*60)
+            #     if self.contract_type == Instrument.CONTRACT_SPOT or self.market_type == Instrument.TYPE_STOCK:
+            #         days_on = sum(1 for day in [from_date] + list(day_generator) if day.weekday() < 5)
+            #         from_date -= timedelta(seconds=days_on * (24-8)*60*60)
 
-        #     # need to add night for stock markets
-        #     if self.contract_type == Instrument.CONTRACT_SPOT or self.market_type == Instrument.TYPE_STOCK:
-        #         pass  # @todo above night data
+            #     # need to add night for stock markets
+            #     if self.contract_type == Instrument.CONTRACT_SPOT or self.market_type == Instrument.TYPE_STOCK:
+            #         pass  # @todo above night data
 
-        # either n last till date, or n last till now
-        return None, to_date, max(history, depth)
+            # either n last till date, or n last till now
+            return None, to_date, max(history, depth)
