@@ -95,6 +95,7 @@ class StrategyPositionTrade(StrategyTrade):
         self.hedging = hedging
 
         self._stats['entry-order-type'] = order.order_type
+        self._stats['profit-loss-currency'] = instrument.settlement or instrument.quote
 
         if trader.create_order(order, instrument) > 0:
             # keep the related position identifier if available (maybe be even if pending)

@@ -19,6 +19,7 @@ error_logger = logging.getLogger('siis.error.tools.cleaner')
 class Cleaner(Tool):
     """
     Clean the database for a specific data set.
+    @todo market info, liquidation, user data...
     """ 
 
     @classmethod
@@ -134,16 +135,6 @@ class Cleaner(Tool):
 
     def forced_interrupt(self, options):
         return True
-
-    #
-    # clean bars methods
-    #
-
-    def clean_ohlc_bars(self, broker_id: str, market_id: str, timeframe: float, from_ts: float, to_ts: float):
-        pass
-
-    def clean_range_bars(self, broker_id: str, market_id: str, bar_size: int, from_ts: float, to_ts: float):
-        pass
 
 
 tool = Cleaner

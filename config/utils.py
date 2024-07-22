@@ -259,7 +259,11 @@ def merge_learning_config(parameters, learning_config):
                     _value = _value[int(key_or_index)]
             return True, _value
 
-        except TypeError:
+        except TypeError as e:
+            error_logger.error("merge_learning_config: extract %s from %s" % (str(e), '.'.join(keys_or_indexes)))
+            return False, None
+        except KeyError as e:
+            error_logger.error("merge_learning_config: extract %s from %s" % (str(e), '.'.join(keys_or_indexes)))
             return False, None
 
     def set_to_dictionary(dictionary, l_new_value, keys_or_indexes):
@@ -280,8 +284,12 @@ def merge_learning_config(parameters, learning_config):
                 elif type(_value) in (list, tuple):
                     _value = _value[int(key_or_index)]
 
-        except TypeError:
-            pass
+        except TypeError as e:
+            error_logger.error("merge_learning_config: set %s at %s" % (str(e), '.'.join(keys_or_indexes)))
+            return False, None
+        except KeyError as e:
+            error_logger.error("merge_learning_config: set %s at %s" % (str(e), '.'.join(keys_or_indexes)))
+            return False, None
 
     for path, new_value in strategy_params.items():
         if path.startswith('_'):

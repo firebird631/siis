@@ -13,7 +13,7 @@ error_logger = logging.getLogger('siis.tools.error.trainerfitness')
 traceback_logger = logging.getLogger('siis.tools.traceback.trainerfitness')
 
 
-def get_stats(parent: dict, path: str, default=None):
+def get_stats(parent: dict, path: str, default=None, min_value=None, max_value=None):
     root = parent
 
     tokens = path.split('.')
@@ -26,13 +26,22 @@ def get_stats(parent: dict, path: str, default=None):
     if type(root) is str:
         try:
             if root.endswith('%'):
-                return float(root[:-1]) * 0.01
+                v = float(root[:-1]) * 0.01
             else:
-                return float(root)
+                v = float(root)
         except ValueError:
             return default
+    else:
+        v = root
 
-    return root
+    if min_value is not None and max_value is not None:
+        v = min(max_value, max(min_value, v))
+    elif min_value is not None:
+        v = max(min_value, v)
+    if max_value is not None:
+        v = min(max_value, v)
+
+    return v
 
 
 def trainer_fitness(candidate: dict, selection: int):
@@ -133,21 +142,22 @@ def trainer_fitness(candidate: dict, selection: int):
 
     elif selection == TrainerCommander.HIGHER_AVG_EEF:
         # fitness performance x higher average entry efficiency
-        avg_eef_rate = get_stats(candidate, "percent.entry-efficiency.avg")
+        avg_eef_rate = get_stats(candidate, "percent.entry-efficiency.avg", min_value=-1.0, max_value=1.0)
 
+        # @todo issue perf negative avec rate positive => fitness negatif
         if avg_eef_rate is not None:
             fitness = -perf * avg_eef_rate
 
     elif selection == TrainerCommander.HIGHER_AVG_XEF:
         # fitness performance x higher average exit efficiency
-        avg_xef_rate = get_stats(candidate, "percent.exit-efficiency.avg")
+        avg_xef_rate = get_stats(candidate, "percent.exit-efficiency.avg", min_value=-1.0, max_value=1.0)
 
         if avg_xef_rate is not None:
             fitness = -perf * avg_xef_rate
 
     elif selection == TrainerCommander.HIGHER_AVG_TEF:
         # fitness performance x higher average total (entry and exit) efficiency
-        avg_tef_rate = get_stats(candidate, "percent.total-efficiency.avg")
+        avg_tef_rate = get_stats(candidate, "percent.total-efficiency.avg", min_value=-1.0, max_value=1.0)
 
         if avg_tef_rate is not None:
             fitness = -perf * avg_tef_rate

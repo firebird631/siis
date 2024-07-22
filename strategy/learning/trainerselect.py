@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Union, List
 
 import logging
@@ -13,7 +14,7 @@ error_logger = logging.getLogger('siis.error.strategy.learning.trainerselect')
 traceback_logger = logging.getLogger('siis.traceback.strategy.learning.trainerselect')
 
 
-def get_stats(parent: dict, path: str, default=None):
+def get_stats(parent: dict, path: str, default=None, min_value=None, max_value=None):
     root = parent
 
     tokens = path.split('.')
@@ -26,13 +27,22 @@ def get_stats(parent: dict, path: str, default=None):
     if type(root) is str:
         try:
             if root.endswith('%'):
-                return float(root[:-1]) * 0.01
+                v = float(root[:-1]) * 0.01
             else:
-                return float(root)
+                v = float(root)
         except ValueError:
             return default
+    else:
+        v = root
 
-    return root
+    if min_value is not None and max_value is not None:
+        v = min(max_value, max(min_value, v))
+    elif min_value is not None:
+        v = max(min_value, v)
+    if max_value is not None:
+        v = min(max_value, v)
+
+    return v
 
 
 def trainer_selection(results: List, learning_parameters: dict, method: int):
@@ -179,7 +189,7 @@ def trainer_selection(results: List, learning_parameters: dict, method: int):
 
         elif method == TrainerCommander.HIGHER_AVG_EEF:
             # only keep the best average entry efficiency rate
-            avg_eef_rate = get_stats(candidate, "percent.entry-efficiency.avg")
+            avg_eef_rate = get_stats(candidate, "percent.entry-efficiency.avg", min_value=-1.0, max_value=1.0)
 
             if avg_eef_rate is not None:
                 if avg_eef_rate > max_avg_eef_rate:
@@ -188,7 +198,7 @@ def trainer_selection(results: List, learning_parameters: dict, method: int):
 
         elif method == TrainerCommander.HIGHER_AVG_XEF:
             # only keep the best average exit efficiency rate
-            avg_xef_rate = get_stats(candidate, "percent.exit-efficiency.avg")
+            avg_xef_rate = get_stats(candidate, "percent.exit-efficiency.avg", min_value=-1.0, max_value=1.0)
 
             if avg_xef_rate is not None:
                 if avg_xef_rate > max_avg_xef_rate:
@@ -197,7 +207,7 @@ def trainer_selection(results: List, learning_parameters: dict, method: int):
 
         elif method == TrainerCommander.HIGHER_AVG_TEF:
             # only keep the best average total (entry and exit) efficiency rate
-            avg_tef_rate = get_stats(candidate, "percent.total-efficiency.avg")
+            avg_tef_rate = get_stats(candidate, "percent.total-efficiency.avg", min_value=-1.0, max_value=1.0)
 
             if avg_tef_rate is not None:
                 if avg_tef_rate > max_avg_tef_rate:

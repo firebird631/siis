@@ -1396,9 +1396,10 @@ class StrategyTrade(object):
                 'margin-fees': self._stats['margin-fees'],
                 'fees-pct': round((self.total_fees_rate() * 100.0), 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
+                'notional-value': strategy_trader.instrument.format_settlement(self._stats['notional-value']),
                 'close-exec-price': strategy_trader.instrument.format_price(
                     strategy_trader.instrument.close_exec_price(self.dir)),
-                'notional-value': strategy_trader.instrument.format_settlement(self._stats['notional-value'])
+                'one-pip-means': strategy_trader.instrument.one_pip_means,
             }
         }
 
@@ -1455,9 +1456,10 @@ class StrategyTrade(object):
                 'margin-fees': self._stats['margin-fees'],
                 'fees-pct': round((self.total_fees_rate() * 100.0), 2),
                 'exit-reason': StrategyTrade.reason_to_str(self._stats['exit-reason']),
+                'notional-value': strategy_trader.instrument.format_settlement(self._stats['notional-value']),
                 'close-exec-price': strategy_trader.instrument.format_price(
                     strategy_trader.instrument.close_exec_price(self.dir)),
-                'notional-value': strategy_trader.instrument.format_settlement(self._stats['notional-value'])
+                'one-pip-means': strategy_trader.instrument.one_pip_means,
             }
         }
 

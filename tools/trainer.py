@@ -446,12 +446,12 @@ class TrainerTool(Tool):
 
                         self._max_process_time = max(duration, self._max_process_time)
 
-                        Terminal.inst().info("-- %s trainer success with %s" % (
-                            learning_filename, trainer_result.get('performance', "0.00%")))
-                        # print(trainer_result.get('strategy').get('parameters'))
-
                         # according to the selection methode adjusts the fitness
                         fitness = trainer_fitness(trainer_result, self._selection)
+
+                        Terminal.inst().info("-- %s trainer success perf=%s fitness=%f" % (
+                            learning_filename, trainer_result.get('performance', "0.00%"), fitness))
+                        # print(trainer_result.get('strategy').get('parameters'))
                     else:
                         Terminal.inst().info("-- %s trainer failed" % learning_filename)
                 else:

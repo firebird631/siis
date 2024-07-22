@@ -52,31 +52,35 @@ def get_all_active_trades(strategy):
         label: trade label
         upnl: trade unrealized profit loss
         pnlcur: trade profit loss currency
-        fees: total fees rate (entry+exit)
-        leop : last exec open price
+        fees: total fees rate (entry+exit+funding+commissions)
+        loep : last exec open price
+        lcep : last exec close price
         stop-loss-dist-pips: distance in pip from stop and entry price,
         take-profit-dist-pips: distance in pip from take-profit and entry price,
         entry-dist-pips: distance in pips from entry and last price
         order-dist-pips: distance in pips from order price and last price
         mae-dist-pips: distance in pips from entry price and worst price
         mfe-dist-pips: distance in pips from entry price and best price
+        etd-dist-pips: distance in pips from MFE and last price
     """
     results = []
 
-    with strategy._mutex:
+    with strategy.mutex:
         try:
-            for k, strategy_trader in strategy._strategy_traders.items():
-                with strategy_trader._mutex:
+            for k, strategy_trader in strategy.strategy_traders.items():
+                with strategy_trader.mutex:
                     for trade in strategy_trader.trades:
                         pip_means = strategy_trader.instrument.one_pip_means
 
                         profit_loss_rate = trade.estimate_profit_loss_rate(strategy_trader.instrument)
 
                         if trade.entry_price or trade.order_price:
-                            sl_dist_pips = (trade.direction * (trade.stop_loss - (trade.entry_price or trade.order_price))) / pip_means
-                            tp_dist_pips = (trade.direction * (trade.take_profit - (trade.entry_price or trade.order_price))) / pip_means
+                            sl_dist_pips = (trade.direction * (trade.stop_loss - (
+                                    trade.entry_price or trade.order_price))) / pip_means
+                            tp_dist_pips = (trade.direction * (trade.take_profit - (
+                                    trade.entry_price or trade.order_price))) / pip_means
 
-                            entry_dist_pips = (trade.direction * (strategy_trader.instrument.close_exec_price(
+                            entry_dist_pips = (trade.direction * (strategy_trader.instrument.open_exec_price(
                                 trade.direction) - trade.entry_price)) / pip_means if trade.entry_price else 0.0
                             order_dist_pips = (trade.direction * (strategy_trader.instrument.open_exec_price(
                                 trade.direction) - trade.order_price)) / pip_means if trade.order_price else 0.0
@@ -87,11 +91,15 @@ def get_all_active_trades(strategy):
                             order_dist_pips = 0.0
 
                         if trade.entry_price:
-                            mae_dist_pips = trade.direction * (trade.entry_price - trade.worst_price()) / pip_means
                             mfe_dist_pips = trade.direction * (trade.best_price() - trade.entry_price) / pip_means
+                            mae_dist_pips = trade.direction * (trade.worst_price() - trade.entry_price) / pip_means
                         else:
                             mae_dist_pips = 0.0
                             mfe_dist_pips = 0.0
+
+                        etd = trade.direction * (
+                                strategy_trader.instrument.close_exec_price(trade.direction) - trade.best_price())
+                        etd_dist_pips = min(0.0, etd) / pip_means
 
                         results.append({
                             'mid': strategy_trader.instrument.market_id,
@@ -118,12 +126,14 @@ def get_all_active_trades(strategy):
                             'w': strategy_trader.instrument.format_price(trade.worst_price()),
                             'bt': trade.best_price_timestamp(),
                             'wt': trade.worst_price_timestamp(),
+                            'etd': strategy_trader.instrument.format_price(etd),
                             'label': trade.label,
                             'pl': profit_loss_rate,
                             'upnl': strategy_trader.instrument.format_settlement(trade.unrealized_profit_loss),
                             'pnlcur': trade.profit_loss_currency,
                             'fees': trade.entry_fees_rate() + trade.margin_fees_rate() + trade.estimate_exit_fees_rate(strategy_trader.instrument),
-                            'leop': strategy_trader.instrument.format_price(strategy_trader.instrument.open_exec_price(trade.direction)),
+                            'loep': strategy_trader.instrument.format_price(strategy_trader.instrument.open_exec_price(trade.direction)),
+                            'lcep': strategy_trader.instrument.format_price(strategy_trader.instrument.close_exec_price(trade.direction)),
                             'qs': strategy_trader.instrument.format_quote(trade.invested_quantity),
                             'stop-loss-dist-pips': fmt_pips(sl_dist_pips),
                             'take-profit-dist-pips': fmt_pips(tp_dist_pips),
@@ -131,6 +141,7 @@ def get_all_active_trades(strategy):
                             'order-dist-pips': fmt_pips(order_dist_pips),
                             'mae-dist-pips': fmt_pips(mae_dist_pips),
                             'mfe-dist-pips': fmt_pips(mfe_dist_pips),
+                            'etd-dist-pips': fmt_pips(etd_dist_pips)
                         })
         except Exception as e:
             error_logger.error(repr(e))

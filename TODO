@@ -28,7 +28,7 @@ Sum order :
             - quote free + volume executé en quote
             - asset update signal
 
-- option --object=profile-for-account:\<account-id\> pour supprimer les data de strategy
+- option --spec=profile-for-account:\<account-id\> pour supprimer les data de strategy
 
 - dans le cadre du reduce :
     base trader : OK (tester)
@@ -53,21 +53,19 @@ Sum order :
 # WIP #
 #######
 
-- Trainer : gérer les tickbars comme les timeframes
-- Ajouter une option pour caller un spread sur certain tick streamer quand le bid/ask n'est pas présent (cas bitmex par exemple)
-
-- Gestion reco WS apres perte temporaire cas binance (voir comme kraken)
+- Ajouter une option pour creer un spread sur certain tick streamer quand le bid/ask n'est pas présent (cas bitmex par exemple)
 
 - Dans la vue aggtrade ajouter un avg entry price et total qty par market
 
 - kraken watcher et trader :
+    - bug de reco perte d'information WS parfois (trade execution, order update...)
+        - revoir que si besoin ownTrade pour signal ORDER_TRADED peut être aiderait
     - fetch des positions pour margin
     - fetch des trades history et calcule des prix d'entré moyen par asset mais c'est lourd
     - parfois certains messages sont pas garantie dans le WS donc on rate une sortie ou une entrée
        - les check automatique sont pertinent mais faut éviter de saturer l'API si beaucoup de trade distinct.
        - peut etre qu'il faut considérer que kraken c'est plutôt de l'invest que du trading et donc ajuster les stratégies
     - comment savoir si trade maker ou taker ?
-    - revoir que si besoin ownTrade pour signal ORDER_TRADED
 
 - WebTrader
     - HTTP :
@@ -102,8 +100,9 @@ Sum order :
 ########
 
 - certains ordres avec binance ne sont pas retire du trader (oblige de reconnect pour purger la liste)
+- les ordres d'entrées market restent avec IG (avec le compte démo)
 
-- WebTrader : on ne peu pas faire des reduce de quantity < à 1
+- WebTrader : on ne peu pas faire des reduce de quantity < à 1 (avec TradePosition)
 - WebTrader : Si on passe en pip au lieu de % ça n'affiche pas tjs bien la valeur selon le marché pour les modify SL / TP
 
 - Supprimer le client chart une fois la version web réalisée, donc ce bug ne devrait plus être
@@ -123,12 +122,9 @@ Sum order :
 # Urgent #
 ##########
 
-- le trainer doit tenir compte du type de marché (D7 ou D5/7) et ajuster la date de départ sinon il va lui manquer
-  par exemple 2 jours voir il n'aura aucun jour à traiter quand il commence le lundi
-
 - transaction/rollback sur strategy trader save (on save tout ou rien sinon c'est inconsistant)
 
-- def update_exit_qty(order_exec): fixer le avg exit price car peut être sur plusieurs ordre de sortie
+- def update_exit_qty(order_exec): fixer le avg exit price car peut être sur plusieurs ordres de sortie
 
 - certains outils fonctionnent en multi-market list --market=A,B,C...' d'autres ne supporte qu'un seul market (check options)
 
