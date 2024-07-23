@@ -1196,6 +1196,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
         Overload it to update the targets of a trade.
         @param strategy_trader:
         @param trade:
+        @note Do the work if trade.is_active() and when it is not.
         """
         pass
 

@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, List
+
+from instrument.instrument import TickType
 
 if TYPE_CHECKING:
     from strategy.strategysignal import StrategySignal
@@ -26,7 +28,7 @@ class BitcoinAlphaCAnalyser(BitcoinAlphaAnalyser):
     Bitcoin Alpha strategy, sub-strategy C.
     """
 
-    def __init__(self, strategy_trader, params):
+    def __init__(self, name: str, strategy_trader, params: dict):
         # default indicators
         self.rsi = None
         self.stochrsi = None
@@ -34,7 +36,7 @@ class BitcoinAlphaCAnalyser(BitcoinAlphaAnalyser):
         self.ema = None
         self.atr = None
 
-        super().__init__(strategy_trader, params)
+        super().__init__(name, strategy_trader, params)
 
         if 'scores' in params:
             # for older method
@@ -49,12 +51,12 @@ class BitcoinAlphaCAnalyser(BitcoinAlphaAnalyser):
         self.rsi_low = params['constants']['rsi_low']
         self.rsi_high = params['constants']['rsi_high']
 
-    def process(self, timestamp) -> Union[StrategySignal, None]:
+    def process(self, timestamp: float, last_ticks: Union[List[TickType], None] = None):
         candles = self.get_bars()
 
         if len(candles) < self.depth:
             # not enough samples
-            return None
+            return
 
         prices = self.price.compute(timestamp, candles)
         volumes = self.volume.compute(timestamp, candles)
@@ -165,9 +167,9 @@ class BitcoinAlphaCAnalyser(BitcoinAlphaAnalyser):
         streamer.last_timestamp = self.last_timestamp
 
     def stream(self, streamer):
-        delta = min(int((self.last_timestamp - streamer.last_timestamp) / self.tf) + 1, len(self.price.prices))
+        delta = self.retrieve_bar_index(streamer)
 
-        for i in range(-delta, 0, 1):
+        for i in range(delta, 0, 1):
             ts = self.price.timestamp[i]
 
             streamer.member('begin').update(ts)

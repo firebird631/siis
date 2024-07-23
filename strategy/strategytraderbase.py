@@ -135,7 +135,7 @@ class StrategyTraderBase(object):
 
     _analysers_registry: Dict[str, Any]
     _analysers: Dict[str, StrategyBaseAnalyser]
-    _analysers_streamers: Dict[int, Streamable]
+    _analysers_streamers: Dict[str, Streamable]
 
     _reporting: int
     _report_filename: Union[str, None]
@@ -2323,14 +2323,14 @@ class StrategyTraderBase(object):
         """
         return None
 
-    def subscribe_stream(self, timeframe: float) -> bool:
+    def subscribe_stream(self, name: str) -> bool:
         """
         Use or create a specific streamer.
         Must be overridden.
         """
         return False
 
-    def unsubscribe_stream(self, timeframe: float) -> bool:
+    def unsubscribe_stream(self, name: str) -> bool:
         """
         Delete a specific streamer when no more subscribers.
         Must be overridden.

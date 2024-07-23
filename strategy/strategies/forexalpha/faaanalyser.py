@@ -2,6 +2,7 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Forex Alpha strategy, sub-strategy A.
+from typing import Union, List
 
 import numpy as np
 
@@ -10,7 +11,7 @@ from strategy.strategysignal import StrategySignal
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
     StreamMemberOhlcSerie
 
-from instrument.instrument import Instrument
+from instrument.instrument import Instrument, TickType
 
 from terminal.terminal import Terminal
 
@@ -25,8 +26,8 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
     Forex Alpha strategy, sub-strategy A.
     """
 
-    def __init__(self, strategy_trader, params):
-        super().__init__(strategy_trader, params)
+    def __init__(self, name: str, strategy_trader, params: dict):
+        super().__init__(name, strategy_trader, params)
 
         if 'scores' in params:
             # for older method
@@ -41,7 +42,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
         self.rsi_low = params['constants']['rsi_low']
         self.rsi_high = params['constants']['rsi_high']
 
-    def process(self, timestamp):
+    def process(self, timestamp: float, last_ticks: Union[List[TickType], None] = None):
         candles = self.get_bars()
 
         if len(candles) < self.depth:
@@ -65,6 +66,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                 # retains the last valid signal only if valid
                 self.last_signal = signal
 
+        # finalize
         self.complete(candles, timestamp)
 
         return signal
@@ -232,7 +234,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                         signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
                         signal.dir = 1
                         signal.p = self.price.close[-1]
-                        # Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
+                        # Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.instrument.symbol, signal.p, self.tf), view='default')
 
                 #
                 # setup completed
@@ -244,7 +246,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                         signal.signal = StrategySignal.SIGNAL_EXIT
                         signal.dir = 1
                         signal.p = self.price.close[-1]
-                        # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                        # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
                 #
                 # setup aborted
@@ -257,7 +259,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                         signal.signal = StrategySignal.SIGNAL_EXIT
                         signal.dir = 1
                         signal.p = self.price.close[-1]
-                        #Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, td.c, 'p' if signal.p else ''), view='default')
+                        #Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.instrument.symbol, self.tf, td.c, 'p' if signal.p else ''), view='default')
 
                 #
                 # CD entry
@@ -276,7 +278,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                         signal.dir = 1
                         signal.p = self.price.last
                         signal.sl = self.tomdemark.c.tdst
-                        Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
+                        Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.instrument.symbol, self.tf, signal.sl,), view='default')
 
                 #
                 # CD13 setup
@@ -527,7 +529,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                         signal.signal = StrategySignal.SIGNAL_EXIT  # CANCEL
                         signal.dir = 1
                         signal.p = self.price.close[-1]
-                        Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
+                        Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.instrument.symbol, signal.p, self.tf), view='default')
 
                 #
                 # setup completed
@@ -540,7 +542,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                         signal.signal = StrategySignal.SIGNAL_EXIT
                         signal.dir = 1
                         signal.p = self.price.close[-1]
-                        Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                        Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
                 #
                 # setup aborted
@@ -554,7 +556,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                         signal.signal = StrategySignal.SIGNAL_EXIT
                         signal.dir = 1
                         signal.p = self.price.close[-1]
-                        Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                        Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
                 #
                 # CD entry
@@ -569,7 +571,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                         signal.dir = 1
                         signal.p = self.price.close[-1]
                         signal.sl = self.tomdemark.c.tdst
-                        Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.strategy_trader.instrument.symbol, self.tf, signal.sl,), view='default')
+                        Terminal.inst().info("Entry long %s %s cd13, sl:%s" % (self.instrument.symbol, self.tf, signal.sl,), view='default')
 
                 #
                 # CD13 setup
@@ -771,7 +773,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                     signal.dir = 1
                     signal.p = self.price.close[-1]
 
-                    # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    # Terminal.inst().info("Exit long %s %s c8p-c9 (%s%s)" % (self.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
                 # buy-setup
                 elif self.tomdemark.c.c >= 8 and self.tomdemark.c.d > 0 and level1_signal > 0:
@@ -780,7 +782,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                     signal.dir = -1
                     signal.p = self.price.close[-1]
                     
-                    # Terminal.inst().info("Exit short %s %s c8p-c9 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    # Terminal.inst().info("Exit short %s %s c8p-c9 (%s%s)" % (self.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
                 #
                 # setup aborted (@todo how to in this long/short case)
@@ -792,7 +794,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                     signal.dir = 1
                     signal.p = self.price.close[-1]
 
-                    # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
                 elif ((self.tomdemark.c.c >= 4 and self.tomdemark.c.c <= 7) and self.tomdemark.c.d > 0) and level1_signal > 0:
                     signal = StrategySignal(self.tf, timestamp)
@@ -800,7 +802,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                     signal.dir = -1
                     signal.p = self.price.close[-1]
 
-                    # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.strategy_trader.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
+                    # Terminal.inst().info("Abort long %s %s c3-c7 (%s%s)" % (self.instrument.symbol, self.tf, self.tomdemark.c.c, 'p' if signal.p else ''), view='default')
 
                 # #
                 # # invalidation 2 of opposite setup
@@ -812,7 +814,7 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
                 #     signal.dir = 1
                 #     signal.p = self.price.close[-1]
 
-                #     Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.strategy_trader.instrument.symbol, signal.p, self.tf), view='default')
+                #     Terminal.inst().info("Canceled long entry %s c2-c3, p:%s tf:%s" % (self.instrument.symbol, signal.p, self.tf), view='default')
 
         if signal and signal.signal == StrategySignal.SIGNAL_ENTRY:
             # if level1_signal > 0 and len(self.pivotpoint.supports[1]):
@@ -1064,9 +1066,9 @@ class ForexAlphaAAnalyser(ForexAlphaAnalyser):
         streamer.last_timestamp = self.last_timestamp
 
     def stream(self, streamer):
-        delta = min(int((self.last_timestamp - streamer.last_timestamp) / self.tf) + 1, len(self.price.prices))
+        delta = self.retrieve_bar_index(streamer)
 
-        for i in range(-delta, 0, 1):
+        for i in range(delta, 0, 1):
             ts = self.price.timestamp[i]
 
             streamer.member('begin').update(ts)

@@ -94,7 +94,8 @@ class IGWatcher(Watcher):
     def connect(self):
         super().connect()
 
-        with self._mutex:
+        # with self._mutex:
+        if self._mutex.acquire(True, 5.0):
             try:
                 self._ready = False
                 self._connecting = True
@@ -193,6 +194,8 @@ class IGWatcher(Watcher):
 
                 self._ready = False
                 self._connecting = False
+            finally:
+                self._mutex.release()
 
         if self._connector and self._connector.connected and self._ready:
             self.service.notify(Signal.SIGNAL_WATCHER_CONNECTED, self.name, (time.time(), None))
@@ -206,11 +209,16 @@ class IGWatcher(Watcher):
         return self._ready and self._connector is not None and self._connector.connected
 
     def disconnect(self):
+        """
+        Disconnect stream and connector.
+        Try during 5 seconds in case of race condition.
+        """
         super().disconnect()
 
         logger.debug("%s disconnecting..." % self.name)
 
-        with self._mutex:
+        # with self._mutex:
+        if self._mutex.acquire(True, 5.0):
             try:
                 if self._lightstreamer:
                     # if self._lightstreamer.connected:
@@ -238,19 +246,29 @@ class IGWatcher(Watcher):
             except Exception as e:
                 error_logger.error(repr(e))
                 traceback_logger.error(traceback.format_exc())
+            finally:
+                self._mutex.release()
 
     def pre_update(self):
+        # try auto-reconnect
         if not self._connecting and not self._ready:
             reconnect = False
 
-            with self._mutex:
-                if (self._connector is None or not self._connector.connected or
-                        self._lightstreamer is None or not self._lightstreamer.connected):
-                    # cleanup
-                    self._ready = False
-                    self._connector = None
+            # with self._mutex:
+            if self._mutex.acquire(True, 5.0):
+                try:
+                    if (self._connector is None or not self._connector.connected or
+                            self._lightstreamer is None or not self._lightstreamer.connected):
+                        # cleanup
+                        self._ready = False
+                        self._connector = None
 
-                    reconnect = True
+                        reconnect = True
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
+                finally:
+                    self._mutex.release()
 
             if reconnect:
                 time.sleep(2)
@@ -270,8 +288,15 @@ class IGWatcher(Watcher):
         # ohlc close/open
         #
 
-        with self._mutex:
-            self.update_from_tick()
+        # with self._mutex:
+        if self._mutex.acquire(True, 5.0):
+            try:
+                self.update_from_tick()
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+            finally:
+                self._mutex.release()
 
         #
         # market info update (each 4h)
@@ -361,34 +386,46 @@ class IGWatcher(Watcher):
                 logger.info("%s prefetch for %s" % (self.name, market_id))
                 self.prefetch(market_id, ohlc_depths, tick_depth, order_book_depth)
 
-            with self._mutex:
-                self.insert_watched_instrument(market_id, [0])
+            # with self._mutex:
+            if self._mutex.acquire(True, 5.0):
+                try:
+                    self.insert_watched_instrument(market_id, [0])
+                    # to know when market close but could be an hourly REST API call, but it consumes one subscriber...
+                    self.subscribe_market(market_id)
+                    # and tick data
+                    self.subscribe_tick(market_id)
 
-                # to know when market close but could be an hourly REST API call, but it consumes one subscriber...
-                self.subscribe_market(market_id)
-
-                # tick data
-                self.subscribe_tick(market_id)
-
-            return True
+                    return True
+                except Exception as e:
+                    error_logger.error(repr(e))
+                    traceback_logger.error(traceback.format_exc())
+                finally:
+                    self._mutex.release()
 
         return False
 
     def unsubscribe(self, market_id, timeframe):
-        with self._mutex:
-            if market_id in self._watched_instruments:
-                self._watched_instruments.remove(market_id)
+        # with self._mutex:
+        if self._mutex.acquire(True, 5.0):
+            try:
+                if market_id in self._watched_instruments:
+                    self._watched_instruments.remove(market_id)
 
-            if market_id in self._subscribed_markets:
-                sub = self._subscribed_markets[market_id]
-                self.unsubscribe_ws(sub)
-                del self._subscribed_markets[market_id]
+                if market_id in self._subscribed_markets:
+                    sub = self._subscribed_markets[market_id]
+                    self.unsubscribe_ws(sub)
+                    del self._subscribed_markets[market_id]
 
-                sub = self._subscribed_ticks[market_id]
-                self.unsubscribe_ws(sub)
-                del self._subscribed_ticks[market_id]
+                    sub = self._subscribed_ticks[market_id]
+                    self.unsubscribe_ws(sub)
+                    del self._subscribed_ticks[market_id]
 
-                return True
+                    return True
+            except Exception as e:
+                error_logger.error(repr(e))
+                traceback_logger.error(traceback.format_exc())
+            finally:
+                self._mutex.release()
 
         return False
 
@@ -397,6 +434,11 @@ class IGWatcher(Watcher):
     #
 
     def subscribe_account(self, account_id):
+        """
+        Subscribe to use account data.
+        @param account_id:
+        @note Not thread safe.
+        """
         fields = ["PNL", "AVAILABLE_TO_DEAL", "MARGIN", "FUNDS", "AVAILABLE_CASH"]
 
         subscription = Subscription(
@@ -409,6 +451,11 @@ class IGWatcher(Watcher):
         subscription.addlistener(self, IGWatcher.on_account_update)
 
     def subscribe_trades(self, account_id):
+        """
+        Subscribe to user trade data.
+        @param account_id:
+        @note Not thread safe.
+        """
         fields = ["CONFIRMS", "OPU", "WOU"]
 
         subscription = Subscription(
@@ -423,6 +470,7 @@ class IGWatcher(Watcher):
     def subscribe_tick(self, instrument):
         """
         Subscribe to an instrument tick updates.
+        @note Not thread safe.
         """
         fields = ["BID", "OFR", "LTP", "LTV", "TTV", "UTM"]
 
@@ -440,6 +488,7 @@ class IGWatcher(Watcher):
     # def subscribe_ohlc(self, instrument, timeframe):
     #     """
     #     Subscribe to an instrument. Timeframe must be greater than 0.
+    #     @note Not thread safe.
     #     """
     #     fields = [
     #         "BID_OPEN", "OFR_OPEN",
@@ -473,6 +522,7 @@ class IGWatcher(Watcher):
     def subscribe_market(self, instrument):
         """
         Subscribe to an instrument.
+        @note Not thread safe.
         """
         fields = ["MARKET_STATE", "UPDATE_TIME", "BID", "OFFER"]
 
@@ -490,6 +540,7 @@ class IGWatcher(Watcher):
     def subscribe_ws(self, subscription):
         """
         Registering the Subscription
+        @note Not thread safe.
         """
         sub_key = self._lightstreamer.subscribe(subscription)
         self._subscriptions.append(sub_key)
@@ -719,102 +770,121 @@ class IGWatcher(Watcher):
                 # active waiting order (open/updated/deleted)
                 #
 
-                # IG API documented but never receive WOU ... IG API issue ?
-                # if values.get('WOU'):
-                #     data = json.loads(values.get('WOU'))
-                #     exec_logger.info("ig.com WOU %s" % str(data))
-                #
-                #     order_id = data['dealId']
-                #     ref_order_id = data['dealReference']
-                #
-                #     epic = data['epic']
-                #     event_time = parse_datetime(data['timestamp'])
-                #
-                #     if data.get('direction', '') == 'BUY':
-                #         direction = Order.LONG
-                #     elif data.get('direction', '') == 'SELL':
-                #         direction = Order.SHORT
-                #     else:
-                #         direction = 0
-                #
-                #     if data.get('dealStatus', "") == 'REJECTED':
-                #         pass
-                #     elif data.get('dealStatus', "") == 'ACCEPTED':
-                #         quantity = float(data.get('size')) if data.get('size') is not None else 0.0
-                #         level = float(data['level']) if data.get('level') is not None else None
-                #         stop_distance = float(data['stopDistance']) if data.get('stopDistance') is not None else None
-                #         limit_distance = float(data['limitDistance']) if data.get('limitDistance') is not None else None
-                #         guaranteed_stop = data.get('guaranteedStop', False)
-                #         currency = data.get('currency', "")
-                #
-                #         if data.get('orderType'):
-                #             if data['orderType'] == "LIMIT":
-                #                 order_type = Order.ORDER_LIMIT
-                #             elif data['orderType'] == "STOP":
-                #                 order_type = Order.ORDER_STOP
-                #             else:
-                #                 order_type = Order.ORDER_MARKET
-                #         else:
-                #             order_type = Order.ORDER_MARKET
-                #
-                #         if data.get('timeInForce'):
-                #             if data['timeInForce'] == "GOOD_TILL_CANCELLED":
-                #                 time_in_force = Order.TIME_IN_FORCE_GTC
-                #             elif data['timeInForce'] == "GOOD_TILL_DATE":
-                #                 time_in_force = Order.TIME_IN_FORCE_GTD
-                #                 # data['goodTillDate']   @todo till date
-                #             else:
-                #                 time_in_force = Order.TIME_IN_FORCE_GTC
-                #         else:
-                #             time_in_force = Order.TIME_IN_FORCE_GTC
-                #
-                #         status = data.get('status', "")
-                #
-                #         if status == "OPEN":
-                #             order_data = {
-                #                 'id': order_id,
-                #                 'type': order_type,
-                #                 'time-in-force': time_in_force,
-                #                 'price': level if order_type == Order.ORDER_LIMIT else None,
-                #                 'stop-price': level if order_type == Order.ORDER_STOP else None,
-                #                 'stop-loss': stop_distance,
-                #                 'take-profit': limit_distance
-                #             }
-                #
-                #             self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (
-                #                 epic, order_data, ref_order_id))
-                #
-                #         elif status == "UPDATED":
-                #             # signal of updated order
-                #             order_data = {
-                #                 'id': order_id,
-                #                 'type': order_type,
-                #                 'time-in-force': time_in_force,
-                #                 'price': level if order_type == Order.ORDER_LIMIT else None,
-                #                 'stop-price': level if order_type == Order.ORDER_STOP else None,
-                #                 'stop-loss': stop_distance,
-                #                 'take-profit': limit_distance
-                #             }
-                #
-                #             self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (
-                #                 epic, order_data, ref_order_id))
-                #
-                #         elif status == "DELETED":
-                #             # signal of deleted order
-                #             self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (
-                #                 epic, order_id, ref_order_id))
+                if values.get('WOU'):
+                    data = json.loads(values.get('WOU'))
+                    exec_logger.info("ig.com WOU %s" % str(data))
+
+                    order_id = data['dealId']
+                    ref_order_id = data['dealReference']
+
+                    epic = data['epic']
+                    event_time = parse_datetime(data['timestamp'])
+
+                    if data.get('direction', '') == 'BUY':
+                        direction = Order.LONG
+                    elif data.get('direction', '') == 'SELL':
+                        direction = Order.SHORT
+                    else:
+                        direction = 0
+
+                    if data.get('dealStatus', "") == 'REJECTED':
+                        # not processed because immediate effect
+                        pass
+
+                    elif data.get('dealStatus', "") == 'ACCEPTED':
+                        quantity = float(data.get('size')) if data.get('size') is not None else 0.0
+                        level = float(data['level']) if data.get('level') is not None else None
+                        stop_distance = float(data['stopDistance']) if data.get('stopDistance') is not None else None
+                        limit_distance = float(data['limitDistance']) if data.get('limitDistance') is not None else None
+                        # guaranteed_stop = data.get('guaranteedStop', False)
+                        currency = data.get('currency', "")
+
+                        # why stop/limit distance and not level, compute from level
+                        stop_level = level - stop_distance * direction if stop_distance and level else None
+                        limit_level = level + limit_distance * direction if limit_distance and level else None
+
+                        # order type
+                        order_type = Order.ORDER_MARKET
+
+                        if data.get('orderType'):
+                            if data['orderType'] == "LIMIT":
+                                order_type = Order.ORDER_LIMIT
+                            elif data['orderType'] == "STOP":
+                                order_type = Order.ORDER_STOP
+
+                        # time in force
+                        time_in_force = Order.TIME_IN_FORCE_GTC
+
+                        if data.get('timeInForce'):
+                            if data['timeInForce'] == "GOOD_TILL_CANCELLED":
+                                time_in_force = Order.TIME_IN_FORCE_GTC
+                            elif data['timeInForce'] == "GOOD_TILL_DATE":
+                                time_in_force = Order.TIME_IN_FORCE_GTD
+                                good_till_date = data.get('goodTillDate')
+                            elif data['timeInForce'] == "FILL_OR_KILL":
+                                time_in_force = Order.TIME_IN_FORCE_FOK
+                            elif data['timeInForce'] == "IMMEDIATE_OR_CANCEL":
+                                time_in_force = Order.TIME_IN_FORCE_IOC
+
+                        status = data.get('status', "")
+
+                        if status == "OPEN":
+                            # preferred here because more details (stop/limit, TIF, type)
+                            order_data = {
+                                'id': order_id,
+                                'symbol': epic,
+                                'timestamp': event_time,
+                                'direction': direction,
+                                'type': order_type,
+                                'quantity': quantity,
+                                'stop-loss': stop_level,
+                                'take-profit': limit_level,
+                                'info': 'open',
+                                'time-in-force': time_in_force,
+                                'profit-currency': currency,
+                                'price': level if order_type == Order.ORDER_LIMIT else None,
+                                'stop-price': level if order_type == Order.ORDER_STOP else None,
+                            }
+
+                            self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (
+                                epic, order_data, ref_order_id))
+
+                        # elif status == "UPDATED":
+                        #     # signal of updated order => done at CONFIRM
+                        #     order_data = {
+                        #         'id': order_id,
+                        #         'symbol': epic,
+                        #         'timestamp': event_time,
+                        #         'direction': direction,
+                        #         'type': order_type,
+                        #         'quantity': quantity,
+                        #         'stop-loss': stop_level,
+                        #         'take-profit': limit_level,
+                        #         'info': 'open',
+                        #         'time-in-force': time_in_force,
+                        #         'profit-currency': currency,
+                        #         'price': level if order_type == Order.ORDER_LIMIT else None,
+                        #         'stop-price': level if order_type == Order.ORDER_STOP else None,
+                        #     }
+                        #
+                        #     self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (
+                        #         epic, order_data, ref_order_id))
+
+                        # elif status == "DELETED":
+                        #     # signal of deleted order => done at CONFIRM
+                        #     self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (
+                        #         epic, order_id, ref_order_id))
 
                 #
                 # order confirms (accepted/rejected)
                 #
 
-                # CONFIRMS never give order-type and time-in-force, and they come always after an OPU seems useless too
                 if values.get('CONFIRMS'):
                     data = json.loads(values.get('CONFIRMS'))
                     exec_logger.info("ig.com CONFIRMS %s" % str(data))
 
                     epic = data.get('epic')
-                    expiry = data.get('expiry', '-')
+                    # expiry = data.get('expiry', '-')
 
                     if data.get('dealStatus', "") == "REJECTED":
                         ref_order_id = data['dealReference']
@@ -847,8 +917,7 @@ class IGWatcher(Watcher):
                         limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
                         profit_loss = float(data['profit']) if data.get('profit') is not None else None
                         profit_currency = data.get('profitCurrency', "")
-
-                        # 'guaranteedStop', 'limitDistance' 'stopDistance' 'trailingStop'
+                        # 'guaranteedStop', 'limitDistance' 'stopDistance' 'trailingStop' but not necessary
 
                         # affected positions, normally should not be necessary except if user create a manual
                         # trade that could reduce an existing position
@@ -869,17 +938,17 @@ class IGWatcher(Watcher):
                         status = data.get('status', "")
 
                         if status == "OPEN":
-                            # open (and eventually traded) done at OPU OPEN
+                            # open (and eventually traded) not needed, the trader add at create_order validation
+                            # and WOU now working
                             pass
-
-                            # order = {
+                            # order_data = {
                             #     'id': order_id,
                             #     'symbol': epic,
                             #     'timestamp': event_time,
                             #     'direction': direction,
-                            #     'quantity': None,  # no have
+                            #     'quantity': quantity,
                             #     'filled': None,  # no have
-                            #     'cumulative-filled': quantity,
+                            #     'cumulative-filled': None,  # no have
                             #     'exec-price': level,
                             #     'avg-price': None,
                             #     'stop-loss': stop_level,
@@ -887,15 +956,16 @@ class IGWatcher(Watcher):
                             #     'profit-loss': profit_loss,
                             #     'profit-currency': profit_currency,
                             #     'info': 'open',
-                            #     'type': Order.ORDER_MARKET
+                            #     'type': Order.ORDER_MARKET,  # or stop or limit...
+                            #     # 'time-in-force': time_in_force  no have
                             # }
-                            #
-                            # self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order, ref_order_id))
-                            # # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
+
+                            # self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (epic, order_data, ref_order_id))
+                            # # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order_data, ref_order_id))
 
                         elif status == "AMENDED":
                             # can be a modification of the size, limit or stop
-                            order = {
+                            order_data = {
                                 'id': order_id,
                                 'symbol': epic,
                                 'timestamp': event_time,
@@ -912,12 +982,12 @@ class IGWatcher(Watcher):
                                 'info': 'amended'
                             }
 
-                            # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
-                            self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (epic, order, ref_order_id))
+                            # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order_data, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_UPDATED, self.name, (epic, order_data, ref_order_id))
 
                         elif status == "CLOSED":
                             # traded and completed
-                            order = {
+                            order_data = {
                                 'id': order_id,
                                 'symbol': epic,
                                 'timestamp': event_time,
@@ -933,16 +1003,16 @@ class IGWatcher(Watcher):
                                 'type': Order.ORDER_MARKET
                             }
 
-                            # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
+                            # self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order_data, ref_order_id))
                             self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ""))
 
                         elif status == "DELETED":
-                            # deleted why for, we never receive them
+                            # deleted why for, we never receive them, from CONFIRM or WOU it is similar at few us
                             self.service.notify(Signal.SIGNAL_ORDER_DELETED, self.name, (epic, order_id, ""))
 
                         elif status == "PARTIALLY_CLOSED":
                             # traded and partially completed
-                            order = {
+                            order_data = {
                                 'id': order_id,
                                 'symbol': epic,
                                 'timestamp': event_time,
@@ -957,7 +1027,7 @@ class IGWatcher(Watcher):
                                 'info': 'partially-closed'
                             }
 
-                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order, ref_order_id))
+                            self.service.notify(Signal.SIGNAL_ORDER_TRADED, self.name, (epic, order_data, ref_order_id))
 
                 #
                 # active position (open/updated/deleted)
@@ -968,11 +1038,12 @@ class IGWatcher(Watcher):
                     exec_logger.info("ig.com OPU %s" % str(data))
 
                     position_id = data['dealId']
-                    order_id = data['dealId']
+                    # order_id = data['dealId']
                     ref_order_id = data['dealReference']
 
                     epic = data.get('epic')
-                    # "expiry": "-"
+                    # expiry = data.get('expiry', '-')
+
                     event_time = parse_datetime(data['timestamp'])
 
                     if data.get('direction', '') == 'BUY':
@@ -992,13 +1063,13 @@ class IGWatcher(Watcher):
                         limit_level = float(data['limitLevel']) if data.get('limitLevel') is not None else None
                         profit_loss = float(data['profit']) if data.get('profit') is not None else None
                         profit_currency = data.get('profitCurrency', "")
-                        # @todo trailingStep, trailingStopDistance, guaranteedStop
+                        # trailingStep, trailingStopDistance, guaranteedStop but not necessary
 
                         status = data.get('status', "")
 
                         if status == "OPEN":
                             order_type = Order.ORDER_MARKET
-                            time_in_force = Order.TIME_IN_FORCE_GTC
+                            # time_in_force = Order.TIME_IN_FORCE_GTC
 
                             if data.get('orderType'):
                                 if data['orderType'] == "LIMIT":
@@ -1006,16 +1077,16 @@ class IGWatcher(Watcher):
                                 elif data['orderType'] == "STOP":
                                     order_type = Order.ORDER_STOP
 
-                            if data.get('timeInForce'):
-                                if data['timeInForce'] == "GOOD_TILL_CANCELLED":
-                                    time_in_force = Order.TIME_IN_FORCE_GTC
-                                elif data['timeInForce'] == "GOOD_TILL_DATE":
-                                    time_in_force = Order.TIME_IN_FORCE_GTD
-                                    good_till_date = data.get('goodTillDate')
-                                elif data['timeInForce'] == "FILL_OR_KILL":
-                                    time_in_force = Order.TIME_IN_FORCE_FOK
-                                elif data['timeInForce'] == "IMMEDIATE_OR_CANCEL":
-                                    time_in_force = Order.TIME_IN_FORCE_IOC
+                            # if data.get('timeInForce'):
+                            #     if data['timeInForce'] == "GOOD_TILL_CANCELLED":
+                            #         time_in_force = Order.TIME_IN_FORCE_GTC
+                            #     elif data['timeInForce'] == "GOOD_TILL_DATE":
+                            #         time_in_force = Order.TIME_IN_FORCE_GTD
+                            #         good_till_date = data.get('goodTillDate')
+                            #     elif data['timeInForce'] == "FILL_OR_KILL":
+                            #         time_in_force = Order.TIME_IN_FORCE_FOK
+                            #     elif data['timeInForce'] == "IMMEDIATE_OR_CANCEL":
+                            #         time_in_force = Order.TIME_IN_FORCE_IOC
 
                             if order_type == Order.ORDER_MARKET:
                                 filled = None
@@ -1032,29 +1103,30 @@ class IGWatcher(Watcher):
                                 fully_filled = False
                                 avg_entry_price = None
 
-                            # order open here because we have order type and time-in-force here and WOU does not work
-                            order_data = {
-                                'id': order_id,
-                                'symbol': epic,
-                                'timestamp': event_time,
-                                'direction': direction,
-                                'type': order_type,
-                                'quantity': quantity,
-                                'filled': filled,
-                                'cumulative-filled': cumulative_filled,
-                                'fully-filled': fully_filled,
-                                'exec-price': exec_price,
-                                'avg-price': avg_price,
-                                'stop-loss': stop_level,
-                                'take-profit': limit_level,
-                                'profit-loss': profit_loss,
-                                'profit-currency': profit_currency,
-                                'info': 'open',
-                                'time-in-force': time_in_force
-                            }
+                            # no longer do here because done at trader create_order or WOU now working
+                            # not done at CONFIRM because missing timeInForce, tradeType...
+                            # order_data = {
+                            #     'id': order_id,
+                            #     'symbol': epic,
+                            #     'timestamp': event_time,
+                            #     'direction': direction,
+                            #     'type': order_type,
+                            #     'quantity': quantity,
+                            #     'filled': filled,
+                            #     'cumulative-filled': cumulative_filled,
+                            #     'fully-filled': fully_filled,
+                            #     'exec-price': exec_price,
+                            #     'avg-price': avg_price,
+                            #     'stop-loss': stop_level,
+                            #     'take-profit': limit_level,
+                            #     'profit-loss': profit_loss,
+                            #     'profit-currency': profit_currency,
+                            #     'info': 'open',
+                            #     'time-in-force': time_in_force
+                            # }
 
-                            self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (
-                                epic, order_data, ref_order_id))
+                            # self.service.notify(Signal.SIGNAL_ORDER_OPENED, self.name, (
+                            #     epic, order_data, ref_order_id))
 
                             # filled from position but also on order opened (could be improved with WOU)
                             # if order_type == Order.ORDER_MARKET:
@@ -1078,12 +1150,10 @@ class IGWatcher(Watcher):
                                 'liquidation-price': None
                             }
 
-                            # but this can be a pending position if not MARKET order
                             self.service.notify(Signal.SIGNAL_POSITION_OPENED, self.name, (
                                 epic, position_data, ref_order_id))
 
                         elif status == "UPDATED":
-                            # @todo in case of Working Order filled
                             cumulative_filled = None
 
                             # signal of updated position

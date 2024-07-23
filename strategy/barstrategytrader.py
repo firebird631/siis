@@ -224,12 +224,12 @@ class BarStrategyTrader(StrategyTraderBase):
     def stream(self):
         super().stream()
 
-    def create_chart_streamer(self, strategy_sub: StrategyBaseAnalyser) -> Streamable:
+    def create_chart_streamer(self, analyser: StrategyBaseAnalyser) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
-                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, strategy_sub.timeframe))
-        streamer.add_member(StreamMemberInt('tf'))
+                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, analyser.bar_size))
+        streamer.add_member(StreamMemberInt('rb'))
 
-        strategy_sub.setup_streamer(streamer)
+        analyser.setup_streamer(streamer)
 
         return streamer
 
@@ -260,28 +260,46 @@ class BarStrategyTrader(StrategyTraderBase):
 
         return result
 
-    def subscribe_stream(self, tf: float) -> bool:
+    def subscribe_stream(self, name: str) -> bool:
         """
         Use or create a specific streamer.
         @param 
         """
-        result = False
-
         with self._mutex:
-            pass  # @todo
+            analyser = self.find_analyser(name)
+            if analyser is None:
+                return False
+
+            if name in self._analysers_streamers:
+                self._analysers_streamers[name].use()
+                return True
+            else:
+                streamer = self.create_chart_streamer(analyser)
+                if streamer:
+                    streamer.use()
+                    self._analysers_streamers[name] = streamer
+                    return True
 
         return False
 
-    def unsubscribe_stream(self, tf: float) -> bool:
+    def unsubscribe_stream(self, name: str) -> bool:
         """
         Delete a specific streamer when no more subscribers.
         """
-        result = False
-
         with self._mutex:
-            pass  # @todo
+            analyser = self.find_analyser(name)
+            if analyser is None:
+                return False
 
-        return result
+            if name in self._analysers_streamers:
+                self._analysers_streamers[name].unuse()
+                if self._analysers_streamers[name].is_free():
+                    # delete if 0 subscribers
+                    del self._analysers_streamers[name]
+
+                return True
+
+        return False
 
     def report_state(self, mode: int = 0) -> dict:
         """

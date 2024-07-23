@@ -327,7 +327,7 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
         return self._last_closed
 
     #
-    # data streaming (@deprecated way) and monitoring
+    # data streaming
     #
 
     def setup_streamer(self, streamer: Streamable):
@@ -335,3 +335,14 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
 
     def stream(self, streamer: Streamable):
         pass
+
+    def retrieve_bar_index(self, streamer: Streamable):
+        from_idx = -1
+
+        for i, ts in enumerate(reversed(self.price.timestamp)):
+            if streamer.last_timestamp > ts:
+                break
+
+            from_idx = -i - 1
+
+        return from_idx

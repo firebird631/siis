@@ -59,6 +59,14 @@ class Streamable(object):
     def activity(self) -> bool:
         return self._activity
 
+    @property
+    def last_timestamp(self) -> float:
+        return self._last_timestamp
+
+    @last_timestamp.setter
+    def last_timestamp(self, value):
+        self._last_timestamp = value
+
     def add_member(self, member):
         self._members[member.name] = member
 

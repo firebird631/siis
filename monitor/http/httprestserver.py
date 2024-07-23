@@ -285,7 +285,7 @@ class StrategyInfoRestAPI(resource.Resource):
             command = content.get('command', "")
             typename = content.get('type', "")
             market_id = content.get('market-id', "")
-            timeframe = content.get('timeframe', "")
+            analyser_name = content.get('timeframe', "")  # @todo analyser name
 
             if self._strategy_service.strategy():
                 with self._strategy_service.strategy().mutex:
@@ -295,7 +295,7 @@ class StrategyInfoRestAPI(resource.Resource):
 
             if command == "subscribe":
                 if typename == "chart":
-                    if not strategy_trader.subscribe_stream(timeframe_from_str(timeframe)):
+                    if not strategy_trader.subscribe_stream(analyser_name):
                         results['error'] = True
                 else:
                     results['messages'].append("Missing type.")
@@ -303,7 +303,7 @@ class StrategyInfoRestAPI(resource.Resource):
 
             elif command == "unsubscribe":
                 if typename == "chart":
-                    if not strategy_trader.unsubscribe_stream(timeframe_from_str(timeframe)):
+                    if not strategy_trader.unsubscribe_stream(analyser_name):
                         results['error'] = True
                 else:
                     results['messages'].append("Missing type.")

@@ -2,7 +2,8 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2018 Dream Overflow
 # Simple average price indicator using candle data.
-from typing import Union
+
+from typing import Union, List
 
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.utils import down_sample
@@ -27,14 +28,14 @@ class PriceIndicator(Indicator):
                 '_timestamp', '_last_closed_timestamp', '_consolidated'
 
     @classmethod
-    def indicator_type(cls):
+    def indicator_type(cls) -> int:
         return Indicator.TYPE_TREND
 
     @classmethod
-    def indicator_class(cls):
+    def indicator_class(cls) -> int:
         return Indicator.CLS_OSCILLATOR
 
-    def __init__(self, timeframe, method=PRICE_CLOSE):
+    def __init__(self, timeframe: float, method: int = PRICE_CLOSE):
         super().__init__("price", timeframe)
 
         self._method = method
@@ -57,43 +58,43 @@ class PriceIndicator(Indicator):
         self._last_closed_timestamp = 0.0
 
     @property
-    def last(self):
+    def last(self) -> float:
         return self._last
 
     @property
-    def prev(self):
+    def prev(self) -> float:
         return self._prev
 
     @property
-    def prices(self):
+    def prices(self) -> np.array:
         return self._prices
 
     @property
-    def open(self):
+    def open(self) -> np.array:
         return self._open
 
     @property
-    def high(self):
+    def high(self) -> np.array:
         return self._high
 
     @property
-    def low(self):
+    def low(self) -> np.array:
         return self._low
     
     @property
-    def close(self):
+    def close(self) -> np.array:
         return self._close
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> np.array:
         return self._timestamp
 
     @property
-    def min(self):
+    def min(self) -> float:
         return self._min
     
     @property
-    def max(self):
+    def max(self) -> float:
         return self._max
 
     @property
@@ -104,7 +105,7 @@ class PriceIndicator(Indicator):
     def ended(self) -> bool:
         return self._consolidated
 
-    def cross(self, price: float) -> float:
+    def cross(self, price: float) -> int:
         """
         Cross the previous and last price with a specified price (horizontal line).
         @param price:
@@ -116,21 +117,21 @@ class PriceIndicator(Indicator):
         if self.prev > price and self.last < price:
             return -1
 
-        return 0.0
+        return 0
 
-    def cross_close(self, serie: Union[list, np.array]):
+    def cross_close(self, series: Union[list, np.array]) -> int:
         """
-        Cross the previous and last price with the two last values of a serie (np.array or list).
-        @param serie:
+        Cross the previous and last price with the two last values of a series (np.array or list).
+        @param series:
         @return: -1 1 or 0 cross direction
         """
-        if self.close[-2] < serie[-2] and self.close[-1] > serie[-1]:
+        if self.close[-2] < series[-2] and self.close[-1] > series[-1]:
             return 1
 
-        if self.close[-2] > serie[-2] and self.close[-1] < serie[-1]:
+        if self.close[-2] > series[-2] and self.close[-1] < series[-1]:
             return -1
 
-        return 0.0
+        return 0
 
     @staticmethod
     def Price(method, data):
@@ -216,7 +217,7 @@ class PriceIndicator(Indicator):
 
         return prices
 
-    def compute(self, timestamp, candles):
+    def compute(self, timestamp: float, candles: List) -> np.array:
         # @todo could optimize with AVGPRICE, MEDPRICE, TYPPRICE
         self._prev = self._last
         self._consolidated = False

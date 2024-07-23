@@ -11,7 +11,7 @@ class CryptoAlphaAnalyser(StrategyTimeframeAnalyser):
     CryptoAlpha sub computation.
     """
 
-    def __init__(self, strategy_trader, params):
+    def __init__(self, name: str, strategy_trader, params: dict):
         self.rsi = None
         self.sma = None
         self.ema = None
@@ -25,7 +25,7 @@ class CryptoAlphaAnalyser(StrategyTimeframeAnalyser):
         self.mama = None
         self.pivotpoint = None
 
-        super().__init__(strategy_trader, params['timeframe'], params['depth'], params['history'], params)
+        super().__init__(name, strategy_trader, params['timeframe'], params['depth'], params['history'], params)
 
         self.setup_indicators(params)
 

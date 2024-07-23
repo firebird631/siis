@@ -43,7 +43,6 @@ class TimeframeStrategyTrader(StrategyTraderBase):
     """
 
     timeframes: Dict[float, StrategyTimeframeAnalyser]  # @deprecated
-    _timeframe_streamers: Dict[float, Streamable]  # @deprecated
 
     _last_ticks: List[TickType]
     _last_candles: List[Candle]
@@ -59,8 +58,7 @@ class TimeframeStrategyTrader(StrategyTraderBase):
 
         self._base_timeframe = base_timeframe
 
-        self._timeframe_streamers = {}  # data streamers per timeframe
-        self.timeframes = {}  # analyser per timeframe
+        self.timeframes = {}  # analyser per timeframe @deprecated
 
         self.prev_price = 0.0
         self.last_price = 0.0
@@ -264,16 +262,15 @@ class TimeframeStrategyTrader(StrategyTraderBase):
 
         with self._mutex:
             for k, analyser in self._analysers.items():
-                # @todo
-                if analyser.timeframe in self._timeframe_streamers:
-                    analyser.stream(self._timeframe_streamers[analyser.timeframe])
+                if k in self._analysers_streamers:
+                    analyser.stream(self._analysers_streamers[k])
 
-    def create_chart_streamer(self, timeframe: StrategyBaseAnalyser) -> Streamable:
+    def create_chart_streamer(self, analyser: StrategyBaseAnalyser) -> Streamable:
         streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_CHART,
-                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, timeframe.timeframe))
+                              self.strategy.identifier, "%s:%i" % (self.instrument.market_id, analyser.timeframe))
         streamer.add_member(StreamMemberInt('tf'))
 
-        timeframe.setup_streamer(streamer)
+        analyser.setup_streamer(streamer)
 
         return streamer
 
@@ -304,44 +301,42 @@ class TimeframeStrategyTrader(StrategyTraderBase):
 
         return result
 
-    def subscribe_stream(self, tf: float) -> bool:
+    def subscribe_stream(self, name: str) -> bool:
         """
         Use or create a specific streamer.
         @param 
         """
         with self._mutex:
-            # @todo
-            timeframe = self.timeframes.get(tf)
-            if timeframe is None:
+            analyser = self.find_analyser(name)
+            if analyser is None:
                 return False
 
-            if timeframe.tf in self._timeframe_streamers:
-                self._timeframe_streamers[timeframe.tf].use()
+            if name in self._analysers_streamers:
+                self._analysers_streamers[name].use()
                 return True
             else:
-                streamer = self.create_chart_streamer(timeframe)
+                streamer = self.create_chart_streamer(analyser)
                 if streamer:
                     streamer.use()
-                    self._timeframe_streamers[timeframe.tf] = streamer
+                    self._analysers_streamers[name] = streamer
                     return True
 
         return False
 
-    def unsubscribe_stream(self, tf: float) -> bool:
+    def unsubscribe_stream(self, name: str) -> bool:
         """
         Delete a specific streamer when no more subscribers.
         """
         with self._mutex:
-            # @todo
-            timeframe = self.timeframes.get(tf)
-            if timeframe is None:
+            analyser = self.find_analyser(name)
+            if analyser is None:
                 return False
 
-            if timeframe.tf in self._timeframe_streamers:
-                self._timeframe_streamers[timeframe.tf].unuse()
-                if self._timeframe_streamers[timeframe.tf].is_free():
+            if name in self._analysers_streamers:
+                self._analysers_streamers[name].unuse()
+                if self._analysers_streamers[name].is_free():
                     # delete if 0 subscribers
-                    del self._timeframe_streamers[timeframe.tf]
+                    del self._analysers_streamers[name]
 
                 return True
 

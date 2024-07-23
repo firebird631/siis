@@ -64,6 +64,10 @@ class CryptoAlphaStrategyTrader(TimeframeStrategyTrader):
 
         self.setup_analysers(params)
 
+        # retro-compatibility until refactoring of this strategy
+        for analyser in self.analysers():
+            self.timeframes[analyser.timeframe] = analyser
+
         self._last_filter_cache = (0, False, False)
 
         self.setup_streaming()

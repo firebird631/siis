@@ -11,7 +11,7 @@ class BitcoinAlphaAnalyser(StrategyTimeframeAnalyser):
     Bitcoin Alpha sub computation.
     """
 
-    def __init__(self, strategy_trader, params):
+    def __init__(self, name: str, strategy_trader, params: dict):
         self.sma = None
         self.ema = None
         self.rsi = None
@@ -29,7 +29,7 @@ class BitcoinAlphaAnalyser(StrategyTimeframeAnalyser):
 
         self.mama_cross = (0, 0.0, 0.0)
 
-        super().__init__(strategy_trader, params['timeframe'], params['depth'], params['history'], params)
+        super().__init__(name, strategy_trader, params['timeframe'], params['depth'], params['history'], params)
 
         self.setup_indicators(params)
 

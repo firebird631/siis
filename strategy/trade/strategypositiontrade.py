@@ -79,6 +79,12 @@ class StrategyPositionTrade(StrategyTrade):
         if hedging:
             order.hedging = hedging
 
+        # target initially defined
+        if stop_loss:
+            order.stop_loss = stop_loss
+        if take_profit:
+            order.take_profit = take_profit
+
         # generated a reference order id
         trader.set_ref_order_id(order)
         self.create_ref_oid = order.ref_order_id

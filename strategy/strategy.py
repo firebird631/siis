@@ -345,7 +345,7 @@ class Strategy(Runnable):
             signal_data = alert.dumps_notify(timestamp, result, strategy_trader)
             self.service.notify(Signal.SIGNAL_STRATEGY_ALERT, self._name, signal_data)
 
-    def subscribe_stream(self, market_id: str, timeframe: float) -> bool:
+    def subscribe_stream(self, market_id: str, name: str) -> bool:
         """
         Override to create a specific streamer.
         """
@@ -354,9 +354,9 @@ class Strategy(Runnable):
         if not strategy_trader:
             return False
 
-        return strategy_trader.subscribe_stream(timeframe)
+        return strategy_trader.subscribe_stream(name)
 
-    def unsubscribe_stream(self, market_id: str, timeframe: float) -> bool:
+    def unsubscribe_stream(self, market_id: str, name: str) -> bool:
         """
         Override to delete a specific streamer.
         """
@@ -365,7 +365,7 @@ class Strategy(Runnable):
         if not strategy_trader:
             return False
 
-        return strategy_trader.unsubscribe_stream(timeframe)
+        return strategy_trader.unsubscribe_stream(name)
 
     #
     # processing

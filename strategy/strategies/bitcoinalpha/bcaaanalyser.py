@@ -2,7 +2,9 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2019 Dream Overflow
 # Bitcoin Alpha strategy, sub-strategy A.
+from typing import Union, List
 
+from instrument.instrument import TickType
 from strategy.indicator import utils
 from strategy.strategysignal import StrategySignal
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
@@ -35,7 +37,7 @@ class BitcoinAlphaAAnalyser(BitcoinAlphaAnalyser):
         self.rsi_low = params['constants']['rsi_low']
         self.rsi_high = params['constants']['rsi_high']
 
-    def process(self, timestamp):
+    def process(self, timestamp: float, last_ticks: Union[List[TickType], None] = None):
         candles = self.get_bars()
 
         if len(candles) < self.depth:
@@ -451,9 +453,9 @@ class BitcoinAlphaAAnalyser(BitcoinAlphaAnalyser):
         streamer.last_timestamp = self.last_timestamp
 
     def stream(self, streamer):
-        delta = min(int((self.last_timestamp - streamer.last_timestamp) / self.tf) + 1, len(self.price.prices))
+        delta = self.retrieve_bar_index(streamer)
 
-        for i in range(-delta, 0, 1):
+        for i in range(delta, 0, 1):
             ts = self.price.timestamp[i]
 
             streamer.member('begin').update(ts)

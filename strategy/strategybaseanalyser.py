@@ -191,7 +191,7 @@ class StrategyBaseAnalyser(object):
         return self._strategy_trader.instrument
 
     #
-    # data streaming (@deprecated way) and monitoring
+    # data streaming
     #
 
     def setup_streamer(self, streamer: Streamable):
@@ -199,6 +199,9 @@ class StrategyBaseAnalyser(object):
 
     def stream(self, streamer: Streamable):
         pass
+
+    def retrieve_bar_index(self, streamer: Streamable):
+        return -1
 
     #
     # data series reporting

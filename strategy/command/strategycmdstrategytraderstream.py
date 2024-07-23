@@ -11,8 +11,6 @@ if TYPE_CHECKING:
     from strategy.strategy import Strategy
     from strategy.strategytraderbase import StrategyTraderBase
 
-from common.utils import timeframe_from_str
-
 
 def cmd_strategy_trader_stream(strategy: Strategy, strategy_trader: StrategyTraderBase, data: dict):
     """
@@ -23,15 +21,15 @@ def cmd_strategy_trader_stream(strategy: Strategy, strategy_trader: StrategyTrad
         'error': False
     }      
 
-    timeframe = data.get('timeframe', None)
+    analyser_name = data.get('analyser', None)
     action = data.get('action', "")
     typename = data.get('type', "")
 
     if action == "subscribe":
         if typename == "chart":
-            strategy_trader.subscribe_stream(timeframe_from_str(timeframe))
+            strategy_trader.subscribe_stream(analyser_name)
             results['messages'].append("Subscribed for stream %s %s %s" % (
-                strategy.identifier, strategy_trader.instrument.market_id, timeframe or "default"))
+                strategy.identifier, strategy_trader.instrument.market_id, analyser_name or "default"))
         elif typename == "info":
             strategy_trader.subscribe_info()
             results['messages'].append("Subscribed for stream info %s %s" % (
@@ -44,9 +42,9 @@ def cmd_strategy_trader_stream(strategy: Strategy, strategy_trader: StrategyTrad
 
     elif action == "unsubscribe":
         if typename == "chart":            
-            strategy_trader.unsubscribe_stream(timeframe_from_str(timeframe))
+            strategy_trader.unsubscribe_stream(analyser_name)
             results['messages'].append("Unsubscribed from stream %s %s %s" % (
-                strategy.identifier, strategy_trader.instrument.market_id, timeframe or "any"))
+                strategy.identifier, strategy_trader.instrument.market_id, analyser_name or "any"))
         elif typename == "info":
             strategy_trader.unsubscribe_info()
             results['messages'].append("Unsubscribed from stream info %s %s" % (

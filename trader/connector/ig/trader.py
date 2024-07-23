@@ -235,6 +235,7 @@ class IGTrader(Trader):
                 force_open = True
 
         elif order.order_type == Order.ORDER_STOP:
+            # @todo but need more info
             order_type = 'MARKET'
 
         else:
@@ -274,10 +275,9 @@ class IGTrader(Trader):
                 stop_level = market_or_instrument.format_price(order.stop_loss)
                 force_open = True
    
-        # trailing-stop
-        trailing_stop = False
-        trailing_stop_increment = None
-        # @todo
+        # trailing-stop (not necessary)
+        # trailing_stop = False
+        # trailing_stop_increment = None
 
         # time in force
         time_in_force = 'EXECUTE_AND_ELIMINATE'
@@ -349,6 +349,9 @@ class IGTrader(Trader):
             # @todo reason to error
             return Order.REASON_ERROR
 
+        # done at OPU now it works fine
+        # self._orders[order.order_id] = order
+
         return Order.REASON_OK
 
     def cancel_order(self, order_id: str, market_or_instrument: Union[Market, Instrument]) -> int:
@@ -363,7 +366,7 @@ class IGTrader(Trader):
             results = self._watcher.connector.ig.delete_working_order(order_id)
             order_logger.info(results)
 
-            if results.get('dealReference', '') != 'ACCEPTED':
+            if results.get('dealStatus', '') != 'ACCEPTED':
                 error_logger.error("%s rejected cancel order %s - %s !" % (self.name, order_id,
                                                                            market_or_instrument.market_id))
 

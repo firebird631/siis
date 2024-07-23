@@ -31,7 +31,10 @@ class BollingerBandsIndicator(Indicator):
     +++ #define TA_IS_ZERO_OR_NEG(v) (v<0.000000000000000001)
     """
 
-    __slots__ = '_length', '_prev_bottom', '_prev_ma', '_prev_top', '_last_bottom', '_last_ma', '_last_top', '_bottoms', '_tops', '_mas'
+    __slots__ = ('_length', '_factor',
+                 '_prev_bottom', '_prev_ma', '_prev_top',
+                 '_last_bottom', '_last_ma', '_last_top',
+                 '_bottoms', '_tops', '_mas')
 
     @classmethod
     def indicator_type(cls):
@@ -41,10 +44,11 @@ class BollingerBandsIndicator(Indicator):
     def indicator_class(cls):
         return Indicator.CLS_INDEX
 
-    def __init__(self, timeframe, length=20):
+    def __init__(self, timeframe, length=20, factor=2.0):
         super().__init__("bollingerbands", timeframe)
         
         self._length = length   # periods number
+        self._factor = factor   # std-dev factor
 
         self._prev_bottom = 0.0
         self._prev_ma = 0.0
@@ -59,12 +63,20 @@ class BollingerBandsIndicator(Indicator):
         self._tops = np.array([])
 
     @property
-    def length(self):
+    def length(self) -> int:
         return self._length
     
     @length.setter
-    def length(self, length):
+    def length(self, length: int):
         self._length = length
+
+    @property
+    def factor(self) -> float:
+        return self._factor
+
+    @factor.setter
+    def factor(self, factor: float):
+        self._factor = factor
 
     # @property
     # def step(self):
@@ -119,7 +131,7 @@ class BollingerBandsIndicator(Indicator):
         return self._mas
 
     @staticmethod
-    def BB(n, data):
+    def BB(n, data, factor=2.0):
         mm = MM_n(n, data)
         up_bol = copy.deepcopy(mm)
         bottom_bol = copy.deepcopy(mm)
@@ -128,13 +140,13 @@ class BollingerBandsIndicator(Indicator):
             i = min(j, n)
             sample = data[j-i:j+1]
             sigma = 0 if j == 0 else np.sqrt(stat.variance(sample, up_bol[j]))
-            up_bol[j] = up_bol[j] + 2*sigma
-            bottom_bol[j] = bottom_bol[j] - 2*sigma
+            up_bol[j] = up_bol[j] + factor * sigma
+            bottom_bol[j] = bottom_bol[j] - factor * sigma
 
         return bottom_bol, mm, up_bol
 
     @staticmethod
-    def BB_sf(n: int, data, step=1, filtering=False):
+    def BB_sf(n: int, data, step=1, factor=2.0, filtering=False):
         """
         Calcul des bandes de Bollinger
         N est le nombre de periodes à observer pour calculer la MM et sigma
@@ -152,8 +164,8 @@ class BollingerBandsIndicator(Indicator):
             i = min(j, n)
             sample = sub_data[j-i:j+1]
             sigma = 0 if j == 0 else np.sqrt(stat.variance(sample, up_bol[j]))
-            up_bol[j] = up_bol[j] + 2*sigma
-            bottom_bol[j] = bottom_bol[j] - 2*sigma
+            up_bol[j] = up_bol[j] + factor*sigma
+            bottom_bol[j] = bottom_bol[j] - factor*sigma
 
         return (np.interp(range(len(data)), t_subdata,bottom_bol),
                 np.interp(range(len(data)), t_subdata, mm),
@@ -164,13 +176,19 @@ class BollingerBandsIndicator(Indicator):
         self._prev_ma = self._last_ma
         self._prev_bottom = self._last_bottom
 
+        # without TA-lib
         # self._tops, self._mas, self._bottoms = BollingerBandsIndicator.BB(self._length, prices)
-        # self._tops, self._mas, self._bottoms = ta_BBANDS(prices*10000.0, timeperiod=self._length, nbdevup=2, nbdevdn=2, matype=0)
-        self._tops, self._mas, self._bottoms = ta_BBANDS(prices, timeperiod=self._length, nbdevup=2, nbdevdn=2, matype=0)
 
+        # or only for testing without fix on the C TA-lib
+        # self._tops, self._mas, self._bottoms = ta_BBANDS(prices*10000.0, timeperiod=self._length, nbdevup=2, nbdevdn=2, matype=0)
         # self._tops *= 0.0001
         # self._mas *= 0.0001
         # self._bottoms *= 0.0001
+
+        # works fine only if C TA-lib is fixed for low value on some instruments
+        self._tops, self._mas, self._bottoms = ta_BBANDS(prices, timeperiod=self._length,
+                                                         nbdevup=self._factor, nbdevdn=self._factor,
+                                                         matype=0)
 
         self._last_top = self._tops[-1]
         self._last_ma = self._mas[-1]

@@ -339,7 +339,7 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
         return self._last_closed
 
     #
-    # data streaming (@deprecated way) and monitoring
+    # data streaming and monitoring
     #
 
     def setup_streamer(self, streamer: Streamable):
@@ -347,3 +347,6 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
 
     def stream(self, streamer: Streamable):
         pass
+
+    def retrieve_bar_index(self, streamer: Streamable):
+        return -min(int((self.last_timestamp - streamer.last_timestamp) / self.tf) + 1, len(self.price.prices))

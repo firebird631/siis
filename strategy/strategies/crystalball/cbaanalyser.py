@@ -5,10 +5,11 @@
 
 from __future__ import annotations
 
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 
+from instrument.instrument import TickType
 from strategy.strategysignal import StrategySignal
 from monitor.streamable import StreamMemberFloatSerie, StreamMemberSerie, StreamMemberFloatBarSerie, \
     StreamMemberOhlcSerie
@@ -44,11 +45,8 @@ class CrystalBallAAnalyser(CrystalBallAnalyser):
 
         self.last_signal = None
 
-    def process(self, timestamp: float) -> Union[StrategySignal, None]:
+    def process(self, timestamp: float, last_ticks: Union[List[TickType], None] = None):
         candles = self.get_bars()
-
-        if self.tf <= self.strategy_trader._min_traded_timeframe:
-            return None
 
         if len(candles) < self.depth:
             # not enough samples
@@ -162,9 +160,9 @@ class CrystalBallAAnalyser(CrystalBallAnalyser):
         streamer.last_timestamp = self.last_timestamp
 
     def stream(self, streamer):
-        delta = min(int((self.last_timestamp - streamer.last_timestamp) / self.tf) + 1, len(self.price.prices))
+        delta = self.retrieve_bar_index(streamer)
 
-        for i in range(-delta, 0, 1):
+        for i in range(delta, 0, 1):
             ts = self.price.timestamp[i]
 
             streamer.member('begin').update(ts)

@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, List
+
+from instrument.instrument import TickType
 
 if TYPE_CHECKING:
     from strategy.strategysignal import StrategySignal
@@ -31,7 +33,7 @@ class CryptoAlphaCAnalyser(CryptoAlphaAnalyser):
         self.rsi_low = params['constants']['rsi_low']
         self.rsi_high = params['constants']['rsi_high']
 
-    def process(self, timestamp: float) -> Union[StrategySignal, None]:
+    def process(self, timestamp: float, last_ticks: Union[List[TickType], None] = None):
         candles = self.get_bars()
 
         if len(candles) < self.depth:
@@ -153,9 +155,9 @@ class CryptoAlphaCAnalyser(CryptoAlphaAnalyser):
         streamer.last_timestamp = self.last_timestamp
 
     def stream(self, streamer):
-        delta = min(int((self.last_timestamp - streamer.last_timestamp) / self.tf) + 1, len(self.price.prices))
+        delta = self.retrieve_bar_index(streamer)
 
-        for i in range(-delta, 0, 1):
+        for i in range(delta, 0, 1):
             ts = self.price.timestamp[i]
 
             streamer.member('begin').update(ts)
