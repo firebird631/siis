@@ -11,9 +11,9 @@ It also supports semi-automated trading in way to manage your entries and exits
 with more possibilities than exchanges allows using terminal version or Web trader.
 
 It is developed in Python3, using TA-lib, numpy and twisted/autobahn.
-Uses a PostgreSQL database. Can support MySQL (not officially tested).
+Persistence uses a PostgreSQL database but can support MySQL (not officially tested).
 
-It is co-developed with my secondary project in C++. 
+It is co-realized with my secondary project in C++. 
 This Python version can manage the C++ optimized strategies for backtesting and training.
 
 **SiiS** is able to itself optimize a strategy during its live or even during a backtest.
@@ -33,7 +33,7 @@ submit pull requests.
 Current supported version
 -------------------------
 
-The current supported version is 0.3.14 or greater, and release 501 or above.
+The current supported version is 0.4.0 or greater, and release 505 or above.
 Older versions are no longer supported. Any forks are not supported.
 
 Thanks to check that you use only the official repository : [https://github.com/firebird631/siis](https://github.com/firebird631/siis).
@@ -116,21 +116,33 @@ Features
 * Works on multiple timeframes from 1 second to 1 month
     * Can compute at each tick/trade or at any timeframe
 * Support for order-flow (WIP)
-* Common indicators are supported :
+* Common oscillators and more others indicators are supported :
     * Momentum, RSI, Stochastic, Stochastic RSI
-    * SMA, EMA, HMA, WMA, VWMA, MAMA, KAMA
+    * SMA, EMA, HMA, WMA, VWMA, MAMA, KAMA, triple HMA
     * MACD
     * Bollinger Bands
+    * Standard Deviation Bands
     * Donchian Channels
-    * ATR, ATR based Supports Resistances
+    * SuperTrend
+    * ATR
     * SAR
     * ADX, DMI
     * CCI
     * Ichimoku
     * SineWave
-    * Pivot Point Supports/Resistances
     * TomDemark TD9 ...
+    * Williams Fractals
+    * Willy (A William %R norm EMA variation)
     * [See strategy indicators for more details](doc/strategies/indicators.md)
+* Support/Resistance indicators
+    * Pivot Point Supports/Resistances
+    * ATR based Supports/Resistances detection
+* Volume analysis :
+    * [x] Volume Profile (WIP)
+    * [x] Composite Volume profile (WIP)
+    * [x] VWAP (WIP)
+    * [ ] Cumulative Volume Delta (WIP)
+    * [ ] Imbalance, Footprint (planned)
 * Full automated trading or semi-automated trading
   * Notify and display signals to manually validate
 * External notifiers for signals, trading and status :
@@ -139,26 +151,27 @@ Features
     * [x] Telegram (with bot commands)
     * [x] Android application (signal, trade, account) with an external project
     * [ ] XMPP (planned)
-* 4 initials strategies serves as examples (deprecated, more will come):
-    * BitcoinAlpha for big caps coins
-    * CryptoAlpha for alt-coins
-    * ForexAlpha for FOREX pairs
-    * CrystalBall signal only
-    * Ability to implements your own strategies or to pay for a development
-    * Please, consider developing or contacting me for a serious working strategy
-* WebHook on TradingView strategies (not maintained) 
+* WebHook on TradingView strategies (no longer maintained) 
   * Uses TamperMonkey with Javascript
   * Watch the strategy trade last
 * Manually add per trade directives
-    * One or many step stop-loss operation (trigger level + new stop price)
-* Manually add per market some regions of interest to help the bot filtering signals
-    * Define a region for trade entry | exit | both in long | short | both direction
+    * One or many step stop-loss operation, at trigger price move to a better stop price
+* Manually configure per market regions of interest to help the strategies to filters signals
+    * Define a region for trade entry | exit | both, in long | short | both directions
     * Strategy can filter signal to only be processed in your regions of interest
     * Two types of regions :
         * [x] Range region : parallels horizontals, low and high prices
         * [x] Trend channel region : slanting, symmetric or asymmetric low and high trends
     * Auto-expiration after a predefined delay
     * Cancellation above a trigger price
+
+### Strategies ###
+
+Some operational strategies are available on distinct GitHub repositories :
+* [...] Coming Soon 
+
+You have to ability to implements your own strategies or to ask for me services for a development and support.
+Else you can actively participate in the feedback, testing and fixing bugs.
 
 ### Donate and support ###
 
@@ -168,6 +181,13 @@ Feel free to donate for my work :
 * ETH (ERC20): 0xc2fc512df6ac6b5e2bd23873dc7df4c56bcdc214
 * XRP : rNxp4h8apvRis6mJf9Sh8C6iRxfrDWN7AV / memo 313602045
 
+## Support and Live ###
+
+A lot of videos to understand SiiS and to serve you will come on my **YouTube Channel** very soon ! 
+
+* https://www.youtube.com/@lecerclecrypto
+
+Firstly realized in english but possibly in French too.
 
 Installation
 ------------
@@ -254,20 +274,7 @@ The first line of comment in these files describe a possible way to install them
 
 #### PostgreSQL ####
 
-###### Debian or Ubuntu ######
-
-In root (or sudo) :
-
-```
-sh -c "echo 'deb https://packagecloud.io/timescale/timescaledb/debian/ `lsb_release -c -s` main' > /etc/apt/sources.list.d/timescaledb.list"
-wget --quiet -O - https://packagecloud.io/timescale/timescaledb/gpgkey | sudo apt-key add -
-sudo apt-get update
-sudo apt-get install timescaledb-postgresql-11
-```
-
-You could have to replace `lsb_release -c -s` by buster ou bulleye if you are on a Debian sid.
-
-##### Database creation #####
+##### Debian or Ubuntu #####
 
 ```
 su - postgres
@@ -285,6 +292,8 @@ If you are using a local unix socket :
 psql -U root -W
 ```
 
+##### Database creation #####
+
 Then in the psql CLI (you can define another username or password) :
 
 ```
@@ -293,11 +302,7 @@ CREATE USER siis WITH ENCRYPTED PASSWORD 'siis';
 GRANT ALL PRIVILEGES ON DATABASE siis TO siis;
 ```
 
-For the future usage of TimescaleDB (this step is not required for now)
-
-```
-CREATE EXTENSION timescaledb;
-```
+You can change database name, user and password.
 
 Now exit (CTRL-C) the psql CLI.
 
@@ -331,8 +336,9 @@ The directory will contain 4 subdirectories:
   * [Explanations of the different log files](/doc/logging.md)
 * **markets/** contains the market data with subdirectories for each exchange
   * [Explanations of the markets data](/doc/organisation/dataset.md)
+* **learning/** contains the temporary files used for training / machine learning 
 * **reports/** contains the reports of the strategies traders, and used by default for scripts executions results
-  * Some strategy have the capacity to log trades, signals, performance and even more.
+  * Some strategy have to log dedicated reports (trades, signals, performance and even more) here
   * Some user script write files to disk by using this directory as default
 
 Running
@@ -381,7 +387,7 @@ The identity name must be specified, and need to be configured into the _identit
 * --verbose Used by some tools to display more information.
 * --fetch or --tool=fetcher Process the data fetcher. Can get markets details, trade/tick and OHLCs history.
   * --install-market Used only with the fetcher tool, to install the fake market data info to database without trying to fetch anything from the exchange.
-  * --spec=\<specific-option\> Specific fetcher option (example STOCK for alphavantage.co fetcher to fetch a stock market).
+  * --spec=\<specific-option\> Specific to fetcher and cleaner tools option (example STOCK for alphavantage.co fetcher to fetch a stock market).
 * --binarize or --tool=binarizer Convert data from text file format to binary format for a specific market.
 * --rebuild or --tool=rebuilder To rebuild OHLC from the trades/ticks data for a market. Need to specify --broker, --market, --timeframe, --from and --to date, --cascaded
 * --optimize or --tool=optimizer Check one or many market for trades/ticks or OHLCs, and returns data corruption or gaps (later could propose some fix). Need to specify --broker, --market, --timeframe, --from and --to date
