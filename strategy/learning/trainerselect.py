@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import math
+import sys
 from typing import TYPE_CHECKING, Union, List
 
 import logging
@@ -49,6 +50,8 @@ def trainer_selection(results: List, learning_parameters: dict, method: int):
     """
     Simple implementation to select the best candidate from the evaluated ones.
     @return: A single candidate or None.
+    @todo Improve model for high avg efficiencies
+    @todo Implements for Sharpe ratio, Sortino ratio, Ulcer index
     """
     from strategy.learning.trainer import TrainerCommander
 
@@ -61,11 +64,11 @@ def trainer_selection(results: List, learning_parameters: dict, method: int):
     max_perf = min_perf
     max_profit = min_profit
     max_sf_rate = 0.0
-    min_loss_series = 9999
+    min_loss_series = sys.float_info.max
     best_take_profit_rate = 0.0
-    max_avg_mfe_rate = 0.0
-    min_avg_mae_rate = 1.0
-    min_avg_etd_rate = 1.0
+    max_avg_mfe_rate = sys.float_info.min
+    max_avg_mae_rate = sys.float_info.min
+    max_avg_etd_rate = sys.float_info.min
     best_std_mfe_rate = 9999
     best_std_etd_rate = 9999
     best_std_mae_rate = 9999
@@ -134,7 +137,7 @@ def trainer_selection(results: List, learning_parameters: dict, method: int):
                 best_take_profit_rate = take_profit_rate
                 best_result = candidate
 
-        elif method == TrainerCommander.HIGHER_AVG_MFE:
+        elif method == TrainerCommander.BEST_AVG_MFE:
             # only keep the best average MFE rate
             avg_mfe_rate = get_stats(candidate, "percent.mfe.avg")
 
@@ -143,21 +146,21 @@ def trainer_selection(results: List, learning_parameters: dict, method: int):
                     max_avg_mfe_rate = avg_mfe_rate
                     best_result = candidate
 
-        elif method == TrainerCommander.LOWER_AVG_MAE:
+        elif method == TrainerCommander.BEST_AVG_MAE:
             # one having the lower average MAE rate
             avg_mae_rate = get_stats(candidate, "percent.mae.avg")
 
             if avg_mae_rate is not None:
-                if avg_mae_rate < min_avg_mae_rate:
-                    min_avg_mae_rate = avg_mae_rate
+                if avg_mae_rate > max_avg_mae_rate:
+                    max_avg_mae_rate = avg_mae_rate
                     best_result = candidate
 
-        elif method == TrainerCommander.LOWER_AVG_ETD:
+        elif method == TrainerCommander.BEST_AVG_ETD:
             # one having the lower average ETD rate
             avg_etd_rate = get_stats(candidate, "percent.etd.avg")
             if avg_etd_rate is not None:
-                if avg_etd_rate < min_avg_etd_rate:
-                    min_avg_etd_rate = avg_etd_rate
+                if avg_etd_rate > max_avg_etd_rate:
+                    max_avg_etd_rate = avg_etd_rate
                     best_result = candidate
 
         elif method == TrainerCommander.BEST_STDDEV_MFE:

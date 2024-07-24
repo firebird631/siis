@@ -119,9 +119,9 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 mfe_pct = (best_price - entry_price) / entry_price - t['fees']
                 mae_pct = (worst_price - entry_price) / entry_price - t['fees']
 
-                if last_close_exec_price:
+                if best_price:
                     etd = last_close_exec_price - best_price
-                    etd_pct = etd / last_close_exec_price - t['fees']
+                    etd_pct = etd / best_price - t['fees']
                 else:
                     etd = 0
                     etd_pct = 0
@@ -129,9 +129,9 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
                 mfe_pct = (entry_price - best_price) / entry_price - t['fees']
                 mae_pct = (entry_price - worst_price) / entry_price - t['fees']
 
-                if last_close_exec_price:
+                if best_price:
                     etd = best_price - last_close_exec_price  # in price but gross
-                    etd_pct = etd / last_close_exec_price - t['fees']  # percentage net
+                    etd_pct = etd / best_price - t['fees']  # percentage net
                 else:
                     etd = 0
                     etd_pct = 0

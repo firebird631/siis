@@ -50,6 +50,8 @@ def trainer_fitness(candidate: dict, selection: int):
     @param candidate: dict with complete result set
     @param selection: TrainerCommander selection mode
     @return: float adjusted fitness
+    @todo Improve model for high avg efficiencies
+    @todo Implements for Sharpe ratio, Sortino ratio, Ulcer index
     """
     from strategy.learning.trainer import TrainerCommander
 
@@ -61,6 +63,9 @@ def trainer_fitness(candidate: dict, selection: int):
     # default to best performance
     fitness = -perf
 
+    if perf < 0.0:
+        return fitness
+
     # fitness adjustment according to the selection method
     if selection == TrainerCommander.BEST_WINRATE:
         # fitness is global performance multiply by best win-rate
@@ -68,12 +73,7 @@ def trainer_fitness(candidate: dict, selection: int):
         total_trades = get_stats(candidate, 'total-trades', 0)
 
         sf_rate = succeed / total_trades if total_trades > 0 else 0.0
-
-        if sf_rate < 0.45:
-            # poor win rate, penalty
-            fitness = 9999
-        else:
-            fitness = -(perf * ((0.55 + sf_rate) ** 2))
+        fitness = -(perf * ((0.5 + sf_rate) ** 2))
 
     elif selection == TrainerCommander.LOWER_CONT_LOSS:
         # fitness performance x by neg number contiguous loss
@@ -89,31 +89,29 @@ def trainer_fitness(candidate: dict, selection: int):
         total_trades = get_stats(candidate, 'total-trades', 0)
 
         tp_win_rate = tp_gain / total_trades if total_trades > 0 else 0
+        fitness = -(perf * ((0.5 + tp_win_rate) ** 2))
 
-        if tp_win_rate < 0.45:
-            fitness = 9999
-        else:
-            fitness = -(perf * ((0.55 + tp_win_rate) ** 2))
-
-    elif selection == TrainerCommander.HIGHER_AVG_MFE:
+    elif selection == TrainerCommander.BEST_AVG_MFE:
         # fitness performance x higher average MFE factor
         avg_mfe_rate = get_stats(candidate, "percent.mfe.avg")
 
         if avg_mfe_rate is not None:
             fitness = -perf * avg_mfe_rate
 
-    elif selection == TrainerCommander.LOWER_AVG_MAE:
+    elif selection == TrainerCommander.BEST_AVG_MAE:
         # fitness performance x lower average MAE factor
         avg_mae_rate = get_stats(candidate, "percent.mae.avg")
 
         if avg_mae_rate is not None:
+            # @todo 0 is better neg is worst
             fitness = -perf * math.pow(1.0 - avg_mae_rate, 2)
 
-    elif selection == TrainerCommander.LOWER_AVG_ETD:
+    elif selection == TrainerCommander.BEST_AVG_ETD:
         # fitness performance x lower average ETD factor
         avg_etd_rate = get_stats(candidate, "percent.etd.avg")
 
         if avg_etd_rate is not None:
+            # @todo 0 is better neg is worst
             fitness = -perf * math.pow(1.0 - avg_etd_rate, 2)
 
     elif selection == TrainerCommander.BEST_STDDEV_MFE:
@@ -144,9 +142,8 @@ def trainer_fitness(candidate: dict, selection: int):
         # fitness performance x higher average entry efficiency
         avg_eef_rate = get_stats(candidate, "percent.entry-efficiency.avg", min_value=-1.0, max_value=1.0)
 
-        # @todo issue perf negative avec rate positive => fitness negatif
         if avg_eef_rate is not None:
-            fitness = -perf * avg_eef_rate
+            fitness = -perf * avg_eef_rate if perf > 0 else -perf
 
     elif selection == TrainerCommander.HIGHER_AVG_XEF:
         # fitness performance x higher average exit efficiency

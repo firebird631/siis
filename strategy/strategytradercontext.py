@@ -1197,6 +1197,8 @@ class StrategyTraderContext(StrategyTraderContextBase):
         @param strategy_trader:
         @param trade:
         @note Do the work if trade.is_active() and when it is not.
+        In addition, this method can re-evaluate the legitimacy of the existence of an opened (but non filled) trade
+        and cancel it if necessary.
         """
         pass
 

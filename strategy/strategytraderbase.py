@@ -2235,6 +2235,7 @@ class StrategyTraderBase(object):
     def check_entry_canceled(self, trade: StrategyTrade) -> bool:
         """
         Cancel entry if take-profit price is reached before filling the entry.
+        @return True if canceled.
         """
         if trade is None:
             return False
@@ -2259,6 +2260,7 @@ class StrategyTraderBase(object):
     def check_entry_timeout(self, trade: StrategyTrade, timestamp: float, timeout: float) -> bool:
         """
         Timeout then can cancel a non-filled trade if exit signal occurs before timeout (timeframe).
+        @return True if canceled.
         """
         if trade is None:
             return False
@@ -2266,6 +2268,7 @@ class StrategyTraderBase(object):
         if timeout <= 0.0 or timestamp <= 0.0:
             return False
 
+        # timeout only if open state but not filled
         if trade.is_entry_timeout(timestamp, timeout):
             trader = self.strategy.trader()
             if trade.cancel_open(trader, self.instrument) > 0:
@@ -2276,17 +2279,25 @@ class StrategyTraderBase(object):
 
     def check_trade_timeout(self, trade: StrategyTrade, timestamp: float) -> bool:
         """
-        Close a profitable trade that has passed its expiry.
+        Close an active trade that has passed its expiry after a timeout :
+            - either in profit if take-profit timeout is defined
+            - either in loss if a stop-loss timeout is defined.
+        @return True if closed.
         """
+        if timestamp <= 0.0:
+            return False
+
         if not trade:
             return False
 
-        if timestamp <= 0.0:
+        if not trade.is_active() or trade.is_closed() or trade.is_closing():
+            # only for an active trade
             return False
 
         trade_profit_loss = trade.estimate_profit_loss_rate(self.instrument)
 
         if trade_profit_loss >= 0.0:
+            # close in profit if take-profit timeout is configured# close in profit
             if (trade.context and trade.context.take_profit and trade.context.take_profit.timeout > 0 and
                     trade.context.take_profit.timeout_distance != 0.0):
                 if (trade.is_duration_timeout(timestamp, trade.context.take_profit.timeout) and
@@ -2299,6 +2310,7 @@ class StrategyTraderBase(object):
                     return True
 
         elif trade_profit_loss < 0.0:
+            # close in loss if stop-loss timeout is configured
             if (trade.context and trade.context.stop_loss and trade.context.stop_loss.timeout > 0 and
                     trade.context.stop_loss.timeout_distance != 0.0):
                 if (trade.is_duration_timeout(timestamp, trade.context.stop_loss.timeout) and
@@ -2309,6 +2321,90 @@ class StrategyTraderBase(object):
                         trade.exit_reason = trade.REASON_MARKET_TIMEOUT
 
                     return True
+
+        return False
+
+    def check_reversal(self, trade: StrategyTrade, last_signal: StrategySignal) -> bool:
+        """
+        Check if a new signal is in opposite direction of an existing trade.
+        If the trade is active it is closed at market immediately.
+        If the trade is pending (opened) it is cancel immediately.
+        @note The strategy trader must be active (activity state True) and reversal must be True.
+        @param trade:
+        @param last_signal:
+        @return: True if close or canceled
+        """
+        if not self._activity or not self._reversal:
+            return False
+
+        if not trade:
+            return False
+
+        if not last_signal:
+            return False
+
+        if trade.direction == last_signal.direction:
+            # same direction nothing to do
+            return False
+
+        if trade.is_active() and not trade.is_closing():
+            trade.exit_reason = trade.REASON_CLOSE_MARKET
+            trade.close(self.strategy.trader(), self.instrument)
+            return True
+        elif trade.is_opened():
+            trade.cancel_open(self.strategy.trader(), self.instrument)
+            return True
+
+        return False
+
+    def check_exit(self, trade: StrategyTrade, last_signal: StrategySignal) -> bool:
+        """
+        Check if a new exit signal is in the same direction and the same context of an existing trade.
+        If the trade is active it is closed at market immediately.
+        If the trade is pending (opened) it is cancel immediately.
+        @note The strategy trader must be active (activity state True) and the context trade mode set to MODE_TRADE.
+        @note Context must be valid for signal and trade.
+        @param trade:
+        @param last_signal:
+        @return: True if close or canceled
+        @todo If last_signal as an entry price ... it could be used as stop or limit price for exit the trade
+        """
+        if not self._activity:
+            return False
+
+        if not trade:
+            return False
+
+        if not last_signal:
+            return False
+
+        if last_signal.signal != StrategySignal.SIGNAL_EXIT:
+            # only for an exit signal
+            return False
+
+        if trade.direction != last_signal.direction:
+            # opposite direction nothing to do
+            return False
+
+        if not last_signal.context or not trade.context:
+            # context must be valid for signal and trade
+            return False
+
+        if last_signal.context.mode != last_signal.context.MODE_TRADE:
+            # trade mode must be defined on the context
+            return False
+
+        if last_signal.context != trade.context:
+            # different context do nothing
+            return False
+
+        if trade.is_active():
+            trade.exit_reason = trade.REASON_CLOSE_MARKET
+            trade.close(self.strategy.trader(), self.instrument)
+            return True
+        elif trade.is_opened():
+            trade.cancel_open(self.strategy.trader(), self.instrument)
+            return True
 
         return False
 

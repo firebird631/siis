@@ -207,9 +207,9 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                     mfe_pct = 0
                     mae_pct = 0
 
-                if exit_price:
+                if best_price:
                     etd = direction * (exit_price - best_price)
-                    etd_pct = etd / exit_price - fees_pct
+                    etd_pct = etd / best_price - fees_pct
                 else:
                     etd = 0
                     etd_pct = 0

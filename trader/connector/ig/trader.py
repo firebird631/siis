@@ -294,7 +294,8 @@ class IGTrader(Trader):
 
         size = str(size)
 
-        logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), epic, limit_level, size))
+        logger.info("Trader %s order %s %s @%s %s" % (self.name, order.direction_to_str(), epic,
+                                                      level or "market", size))
 
         try:
             if order.order_type == Order.ORDER_MARKET:

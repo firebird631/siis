@@ -728,9 +728,9 @@ class TrainerCommander(object):
     BEST_WINRATE = 2         # best win-rate (win number of trade / loss number of trade)
     LOWER_CONT_LOSS = 3      # lesser contiguous losses
     TAKE_PROFIT_RATIO = 4    # best ratio of trade exit at take profit versus other exits
-    HIGHER_AVG_MFE = 5       # higher average MFE factor
-    LOWER_AVG_MAE = 6        # lower average MAE factor
-    LOWER_AVG_ETD = 7        # lower average ETD factor
+    BEST_AVG_MFE = 5         # greater value for the average MFE factor
+    BEST_AVG_MAE = 6         # nearest from 0 for the average MAE factor
+    BEST_AVG_ETD = 7         # nearest from 0 for the average ETD factor
     BEST_STDDEV_MFE = 8      # lower MFE std-dev crossed with higher avg MFE
     BEST_STDDEV_MAE = 9      # lower MAE std-dev crossed with higher avg MAE
     BEST_STDDEV_ETD = 10     # lower ETD std-dev crossed with higher avg ETD
@@ -746,9 +746,9 @@ class TrainerCommander(object):
         'best-winrate': BEST_WINRATE,
         'lower-cont-loss': LOWER_CONT_LOSS,
         'take-profit-ratio': TAKE_PROFIT_RATIO,
-        'higher-avg-mfe': HIGHER_AVG_MFE,
-        'lower-avg-mae': LOWER_AVG_MAE,
-        'lower-avg-etd': LOWER_AVG_ETD,
+        'best-avg-mfe': BEST_AVG_MFE,
+        'best-avg-mae': BEST_AVG_MAE,
+        'best-avg-etd': BEST_AVG_ETD,
         'best-stddev-mfe': BEST_STDDEV_MFE,
         'best-stddev-mae': BEST_STDDEV_MAE,
         'best-stddev-etd': BEST_STDDEV_ETD,

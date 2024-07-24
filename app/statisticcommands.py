@@ -292,6 +292,7 @@ class DrawStatsCommand(Command):
             aep = float(t['avg-entry-price'])
             best = float(t['stats']['best-price'])
 
+            # always positive, 0 is worst
             if t['direction'] == "long" and aep:
                 mfe_pct = (best - aep) / aep - (t['stats']['fees-pct'] * 0.01)
             elif t['direction'] == "short" and aep:
@@ -332,6 +333,7 @@ class DrawStatsCommand(Command):
             aep = float(t['avg-entry-price'])
             worst = float(t['stats']['worst-price'])
 
+            # always negative, 0 is best
             if t['direction'] == "long" and aep:
                 mae_pct = (worst - aep) / aep - (t['stats']['fees-pct'] * 0.01)
             elif t['direction'] == "short" and aep:
@@ -372,10 +374,11 @@ class DrawStatsCommand(Command):
             axp = float(t['avg-exit-price'])
             best = float(t['stats']['best-price'])
 
+            # always negative, 0 is best
             if t['direction'] == "long" and axp:
-                etd_pct = (axp - best) / axp - (t['stats']['fees-pct'] * 0.01)
+                etd_pct = (axp - best) / best - (t['stats']['fees-pct'] * 0.01)
             elif t['direction'] == "short" and axp:
-                etd_pct = (axp - best) / axp - (t['stats']['fees-pct'] * 0.01)
+                etd_pct = (best - axp) / best - (t['stats']['fees-pct'] * 0.01)
             else:
                 etd_pct = 0
 
