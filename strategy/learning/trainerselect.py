@@ -5,45 +5,16 @@
 
 from __future__ import annotations
 
-import math
 import sys
 from typing import TYPE_CHECKING, Union, List
 
 import logging
+
+from config.utils import get_stats
+
 logger = logging.getLogger('siis.strategy.learning.trainerselect')
 error_logger = logging.getLogger('siis.error.strategy.learning.trainerselect')
 traceback_logger = logging.getLogger('siis.traceback.strategy.learning.trainerselect')
-
-
-def get_stats(parent: dict, path: str, default=None, min_value=None, max_value=None):
-    root = parent
-
-    tokens = path.split('.')
-    for token in tokens:
-        if token in root:
-            root = root[token]
-        else:
-            return default
-
-    if type(root) is str:
-        try:
-            if root.endswith('%'):
-                v = float(root[:-1]) * 0.01
-            else:
-                v = float(root)
-        except ValueError:
-            return default
-    else:
-        v = root
-
-    if min_value is not None and max_value is not None:
-        v = min(max_value, max(min_value, v))
-    elif min_value is not None:
-        v = max(min_value, v)
-    if max_value is not None:
-        v = min(max_value, v)
-
-    return v
 
 
 def trainer_selection(results: List, learning_parameters: dict, method: int):
@@ -76,8 +47,8 @@ def trainer_selection(results: List, learning_parameters: dict, method: int):
     max_avg_xef_rate = 0.0
     max_avg_tef_rate = 0.0
     max_sharpe_ratio = 0.0
-    min_sortino_ratio = 1.0
-    max_ulcer_index = 0.0
+    max_sortino_ratio = 0.0
+    min_ulcer_index = sys.float_info.max
     max_avg_win_loss_rate = 0.0
 
     # simple method, the best overall performance
@@ -224,6 +195,33 @@ def trainer_selection(results: List, learning_parameters: dict, method: int):
             if avg_win_loss_rate is not None:
                 if avg_win_loss_rate > max_avg_win_loss_rate:
                     max_avg_win_loss_rate = avg_win_loss_rate
+                    best_result = candidate
+
+        elif method == TrainerCommander.BEST_SHARPE_RATIO:
+            # higher Sharpe ratio
+            sharpe_ratio = get_stats(candidate, "percent.sharpe-ratio")
+
+            if sharpe_ratio is not None:
+                if sharpe_ratio > max_sharpe_ratio:
+                    max_sharpe_ratio = sharpe_ratio
+                    best_result = candidate
+
+        elif method == TrainerCommander.BEST_SORTINO_RATIO:
+            # higher Sortino ratio
+            sortino_ratio = get_stats(candidate, "percent.sortino-ratio")
+
+            if sortino_ratio is not None:
+                if sortino_ratio > max_sortino_ratio:
+                    max_sortino_ratio = sortino_ratio
+                    best_result = candidate
+
+        elif method == TrainerCommander.BEST_ULCER_INDEX:
+            # lower Ulcer index
+            ulcer_index = get_stats(candidate, "percent.ulcer-index")
+
+            if ulcer_index is not None:
+                if ulcer_index > min_ulcer_index:
+                    min_ulcer_index = ulcer_index
                     best_result = candidate
 
     return best_result

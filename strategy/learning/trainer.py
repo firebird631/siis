@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Union
 
 from common.utils import timeframe_from_str, period_from_str
 from config import utils
+from config.utils import get_stats
 from terminal.terminal import Terminal
 from .trainerselect import trainer_selection
 
@@ -276,37 +277,11 @@ class Trainer(object):
             # no results meaning undetermined ability then pause the market until manual or next training
             strategy_trader.set_activity(False)
         else:
+            # log summary, will display in primary console
             logger.info("Best performance for %s : %s" % (strategy_trader.instrument.market_id, performance))
-
-            # summary
-            logger.info("Summary :")
-            logger.info("-- max-draw-down = %s (%s)" % (learning_result.get('max-draw-down', "0"),
-                                                        learning_result.get('max-draw-down-rate', "0.00%")))
-            logger.info("-- total-trades = %s" % learning_result.get('total-trades', 0))
-
-            logger.info("-- best = %s" % learning_result.get('best', "0.00%"))
-            logger.info("-- worst = %s" % learning_result.get('worst', "0.00%"))
-
-            logger.info("-- succeed-trades = %s" % learning_result.get('succeed-trades', 0))
-            logger.info("-- failed-trades = %s" % learning_result.get('failed-trades', 0))
-            logger.info("-- roe-trades = %s" % learning_result.get('roe-trades', 0))
-            logger.info("-- canceled-trades = %s" % learning_result.get('canceled-trades', 0))
-
-            logger.info("-- max-loss-series = %s" % learning_result.get('max-loss-series', 0))
-            logger.info("-- max-win-series = %s" % learning_result.get('max-win-series', 0))
-
-            logger.info("-- stop-loss-in-loss = %s" % learning_result.get('stop-loss-in-loss', 0))
-            logger.info("-- stop-loss-in-gain = %s" % learning_result.get('canceled-trades', 0))
-            logger.info("-- take-profit-in-loss = %s" % learning_result.get('take-profit-in-loss', 0))
-            logger.info("-- take-profit-in-gain = %s" % learning_result.get('take-profit-in-gain', 0))
-
-            logger.info("-- open-trades = %s" % learning_result.get('open-trades', 0))
-            logger.info("-- active-trades = %s" % learning_result.get('active-trades', 0))
-
-            # @todo could display some others (Sharpe Ratio, Sortino Ratio, Ulcer Index, avg MFE MAE ETD, efficiency...)
+            log_summary(learning_result)
 
             logger.info("Trainer apply new parameters to %s." % strategy_trader.instrument.market_id)
-
             new_parameters = copy.deepcopy(self._strategy_trader_params)
 
             # merge new parameters
@@ -738,6 +713,9 @@ class TrainerCommander(object):
     HIGHER_AVG_XEF = 12      # higher average exit efficiency
     HIGHER_AVG_TEF = 13      # higher average total (entry and exit) efficiency
     BEST_WIN_LOSS_RATE = 14  # higher winning/loosing rate
+    BEST_SHARPE_RATIO = 30   # higher Sharpe ratio
+    BEST_SORTINO_RATIO = 31  # higher Sortino ratio
+    BEST_ULCER_INDEX = 32    # lower Ulcer index
 
     SELECTION = {
         'best-performance': BEST_PERF,
@@ -755,7 +733,10 @@ class TrainerCommander(object):
         'higher-avg-entry-efficiency': HIGHER_AVG_EEF,
         'higher-avg-exit-efficiency': HIGHER_AVG_XEF,
         'higher-avg-total-efficiency': HIGHER_AVG_TEF,
-        'best-win-loss-rate': BEST_WIN_LOSS_RATE
+        'best-win-loss-rate': BEST_WIN_LOSS_RATE,
+        'best-sharpe-ratio': BEST_SHARPE_RATIO,
+        'best-sortino-ratio': BEST_SORTINO_RATIO,
+        'best-ulcer-index': BEST_ULCER_INDEX,
     }
 
     _profile_parameters: dict
@@ -865,3 +846,84 @@ class TrainerCommander(object):
         @return: A single candidate or None.
         """
         return trainer_selection(self.results, self._learning_parameters, method)
+
+
+def log_summary(candidate):
+    # summary
+    logger.info("Summary :")
+
+    logger.info("-- performance / profit / non-realized = %s / %s / %s" % (candidate.get('performance', "0.00%"),
+                                                                           candidate.get('realized-pnl', "0.00"),
+                                                                           candidate.get('profit-loss', "0.00")))
+    logger.info("-- max-draw-down = %s %s" % (candidate.get('max-draw-down', "0"),
+                                              candidate.get('max-draw-down-rate', "0.00%")))
+    logger.info("-- best / worst = %s / %s" % (candidate.get('best', "0.00%"),
+                                               candidate.get('worst', "0.00%")))
+    logger.info("-- # trades : total / canceled = %i / %i" % (
+        candidate.get('total-trades', 0), candidate.get('canceled-trades', 0)))
+    logger.info("-- # trades : succeed / failed / ROE = %i / %i / %i" % (
+        candidate.get('succeed-trades', 0), candidate.get('failed-trades', 0), candidate.get('roe-trades', 0)))
+    logger.info("-- max win / loss series = %i / %i" % (
+        candidate.get('max-win-series', 0), candidate.get('max-loss-series', 0)))
+    logger.info("-- stop-loss in gain / loss = %i / %i" % (
+        candidate.get('stop-loss-in-gain', 0), candidate.get('stop-loss-in-loss', 0)))
+    logger.info("-- take-profit in gain / loss = %i / %i" % (
+        candidate.get('take-profit-in-gain', 0), candidate.get('take-profit-in-loss', 0)))
+    logger.info("-- # trades : open / active = %i / %i" % (
+        candidate.get('open-trades', 0), candidate.get('active-trades', 0)))
+
+    # global stats
+    logger.info("-- longest flat period = %ssec" % candidate.get('longest-flat-period', '0.000'))
+    logger.info("-- avg time in market = %ssec" % candidate.get('avg-time-in-market', '0.000'))
+
+    logger.info("-- # traded days = %i" % candidate.get('num-traded-days', '0'))
+    logger.info("-- avg trade per day / inc WE = %g / %g" % (candidate.get('avg-trade-per-day', 0),
+                                                             candidate.get('avg-trade-per-day-inc-we', 0)))
+
+    # based on percent PNL per trade (not on quote/settlement currency)
+    percent = candidate.get('percent', {})
+
+    logger.info("-- Sharpe ratio / Sortino ratio / Ulcer index = %g / %g / %g" % (
+        get_stats(candidate, 'percent.sharpe-ratio', 1),
+        get_stats(candidate, 'percent.sortino-ratio', 1),
+        get_stats(candidate, 'percent.ulcer-index', 0)))
+
+    logger.info("-- MFE : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+        get_stats(candidate, 'percent.mfe.min', 0) * 100,
+        get_stats(candidate, 'percent.mfe.max', 0) * 100,
+        get_stats(candidate, 'percent.mfe.avg', 0) * 100,
+        get_stats(candidate, 'percent.mfe.std-dev', 0) * 100))
+
+    logger.info("-- MAE : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+        get_stats(candidate, 'percent.mae.min', 0) * 100,
+        get_stats(candidate, 'percent.mae.max', 0) * 100,
+        get_stats(candidate, 'percent.mae.avg', 0) * 100,
+        get_stats(candidate, 'percent.mae.std-dev', 0) * 100))
+
+    logger.info("-- ETD : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+        get_stats(candidate, 'percent.etd.min', 0) * 100,
+        get_stats(candidate, 'percent.etd.max', 0) * 100,
+        get_stats(candidate, 'percent.etd.avg', 0) * 100,
+        get_stats(candidate, 'percent.etd.std-dev', 0) * 100))
+
+    logger.info("-- entry efficiency : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+        get_stats(candidate, 'percent.entry-efficiency.min', 0) * 100,
+        get_stats(candidate, 'percent.entry-efficiency.max', 0) * 100,
+        get_stats(candidate, 'percent.entry-efficiency.avg', 0) * 100,
+        get_stats(candidate, 'percent.entry-efficiency.std-dev', 0) * 100))
+
+    logger.info("-- exit efficiency : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+        get_stats(candidate, 'percent.exit-efficiency.min', 0) * 100,
+        get_stats(candidate, 'percent.exit-efficiency.max', 0) * 100,
+        get_stats(candidate, 'percent.exit-efficiency.avg', 0) * 100,
+        get_stats(candidate, 'percent.exit-efficiency.std-dev', 0) * 100))
+
+    logger.info("-- total efficiency : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+        get_stats(candidate, 'percent.total-efficiency.min', 0) * 100,
+        get_stats(candidate, 'percent.total-efficiency.max', 0) * 100,
+        get_stats(candidate, 'percent.total-efficiency.avg', 0) * 100,
+        get_stats(candidate, 'percent.total-efficiency.std-dev', 0) * 100))
+
+    logger.info("-- max time to recover = %ssec" % percent.get('max-time-to-recover', '0.000'))
+    logger.info("-- estimate profit per month = %s" % percent.get('estimate-profit-per-month', '0.00%'))
+    logger.info("-- avg win/loss rate = %g" % percent.get('avg-win-loss-rate', 0))

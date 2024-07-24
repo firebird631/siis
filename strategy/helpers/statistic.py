@@ -55,7 +55,7 @@ class BaseSampler(object):
 
     def finalize(self):
         self.avg = np.average(np.array(self.samples)) if len(self.samples) > 0 else 0.0
-        self.std_dev = np.std(np.array(self.samples), ddof=len(self.samples)-1) if len(self.samples) > 1 else 0.0
+        self.std_dev = np.std(np.array(self.samples), ddof=1) if len(self.samples) > 1 else 0.0
 
         return self
 
@@ -353,19 +353,17 @@ def compute_strategy_statistics(strategy):
 
     # Sharpe Ratio
     if len(profit_per_month_pct) > 1:
-        dof = len(profit_per_month_pct) - 1
-
         # Sharpe ratio (Student t distribution)
         results.percent.sharpe_ratio = ((results.percent.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                        np.std(np.array(profit_per_month_pct), ddof=dof))
+                                        np.std(np.array(profit_per_month_pct), ddof=1))
         results.currency.sharpe_ratio = ((results.currency.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                         np.std(np.array(profit_per_month), ddof=dof))
+                                         np.std(np.array(profit_per_month), ddof=1))
 
         # Sortino ratio (Student t distribution)
         results.percent.sortino_ratio = ((results.percent.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                         np.std(np.array(draw_down_per_month_pct), ddof=dof))
+                                         np.std(np.array(draw_down_per_month_pct), ddof=1))
         results.currency.sortino_ratio = ((results.currency.estimate_profit_per_month - RISK_FREE_RATE_OF_RETURN) /
-                                          np.std(np.array(draw_down_per_month), ddof=dof))
+                                          np.std(np.array(draw_down_per_month), ddof=1))
 
         # Ulcer index
         results.percent.ulcer_index = np.sqrt(np.mean(np.array(draw_downs_sqr_pct)))

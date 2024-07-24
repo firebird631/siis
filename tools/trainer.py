@@ -20,7 +20,7 @@ from importlib import import_module
 
 from common.utils import UTC, period_from_str
 from config import utils
-from strategy.learning.trainer import TrainerJob, TrainerCommander
+from strategy.learning.trainer import TrainerJob, TrainerCommander, log_summary
 from strategy.learning.trainerfitness import trainer_fitness
 from strategy.strategy import Strategy
 from tools.tool import Tool
@@ -473,33 +473,8 @@ class TrainerTool(Tool):
             # found best result
             logger.info("Best candidate found !")
 
-            # summary
-            logger.info("Summary :")
-            logger.info("-- performance = %s" % best_result.get('performance', "0.00%"))
-            logger.info("-- max-draw-down = %s (%s)" % (best_result.get('max-draw-down', "0"),
-                                                        best_result.get('max-draw-down-rate', "0.00%")))
-            logger.info("-- total-trades = %s" % best_result.get('total-trades', 0))
-
-            logger.info("-- best = %s" % best_result.get('best', "0.00%"))
-            logger.info("-- worst = %s" % best_result.get('worst', "0.00%"))
-
-            logger.info("-- succeed-trades = %s" % best_result.get('succeed-trades', 0))
-            logger.info("-- failed-trades = %s" % best_result.get('failed-trades', 0))
-            logger.info("-- roe-trades = %s" % best_result.get('roe-trades', 0))
-            logger.info("-- canceled-trades = %s" % best_result.get('canceled-trades', 0))
-
-            logger.info("-- max-loss-series = %s" % best_result.get('max-loss-series', 0))
-            logger.info("-- max-win-series = %s" % best_result.get('max-win-series', 0))
-
-            logger.info("-- stop-loss-in-loss = %s" % best_result.get('stop-loss-in-loss', 0))
-            logger.info("-- stop-loss-in-gain = %s" % best_result.get('canceled-trades', 0))
-            logger.info("-- take-profit-in-loss = %s" % best_result.get('take-profit-in-loss', 0))
-            logger.info("-- take-profit-in-gain = %s" % best_result.get('take-profit-in-gain', 0))
-
-            logger.info("-- open-trades = %s" % best_result.get('open-trades', 0))
-            logger.info("-- active-trades = %s" % best_result.get('active-trades', 0))
-
-            # @todo could display some others (Sharpe Ratio, Sortino Ratio, Ulcer Index, avg MFE MAE ETD, efficiency...)
+            # log summary, will display in term
+            log_summary(best_result)
 
             # display news values
             logger.info("Selected parameters :")
@@ -553,7 +528,8 @@ class TrainerTool(Tool):
     def forced_interrupt(self, options):
         if self._trainer_commander:
             logger.debug("Force terminate commander")
-            self._trainer_commander.kill()
+            # bad idea to kill, sides effects
+            self._trainer_commander.term()  # kill()
             self._trainer_commander = None
 
         return True

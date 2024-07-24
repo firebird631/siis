@@ -305,3 +305,34 @@ def merge_learning_config(parameters, learning_config):
 
         if found:
             set_to_dictionary(parameters, new_value, split_path)
+
+
+def get_stats(parent: dict, path: str, default=None, min_value=None, max_value=None):
+    root = parent
+
+    tokens = path.split('.')
+    for token in tokens:
+        if token in root:
+            root = root[token]
+        else:
+            return default
+
+    if type(root) is str:
+        try:
+            if root.endswith('%'):
+                v = float(root[:-1]) * 0.01
+            else:
+                v = float(root)
+        except ValueError:
+            return default
+    else:
+        v = root
+
+    if min_value is not None and max_value is not None:
+        v = min(max_value, max(min_value, v))
+    elif min_value is not None:
+        v = max(min_value, v)
+    if max_value is not None:
+        v = min(max_value, v)
+
+    return v
