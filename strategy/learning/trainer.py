@@ -848,7 +848,13 @@ class TrainerCommander(object):
         return trainer_selection(self.results, self._learning_parameters, method)
 
 
-def log_summary(candidate):
+def log_summary(candidate: dict, currency: bool = False):
+    """
+    Write into the default logger at info level (that mean in log + default console) a report of statistics.
+
+    @param candidate: A compatible report object
+    @param currency: If True will display currency computed values else default using percentage statistics.
+    """
     # summary
     logger.info("Summary :")
 
@@ -880,50 +886,102 @@ def log_summary(candidate):
     logger.info("-- avg trade per day / inc WE = %g / %g" % (candidate.get('avg-trade-per-day', 0),
                                                              candidate.get('avg-trade-per-day-inc-we', 0)))
 
-    # based on percent PNL per trade (not on quote/settlement currency)
-    percent = candidate.get('percent', {})
+    if currency:
+        # based on currency PNL per trade (not on quote/settlement currency)
+        currency_token = candidate.get('currency', {})
 
-    logger.info("-- Sharpe ratio / Sortino ratio / Ulcer index = %g / %g / %g" % (
-        get_stats(candidate, 'percent.sharpe-ratio', 1),
-        get_stats(candidate, 'percent.sortino-ratio', 1),
-        get_stats(candidate, 'percent.ulcer-index', 0)))
+        logger.info("-- Sharpe ratio / Sortino ratio / Ulcer index = %g / %g / %g" % (
+            get_stats(candidate, 'currency.sharpe-ratio', 1),
+            get_stats(candidate, 'currency.sortino-ratio', 1),
+            get_stats(candidate, 'currency.ulcer-index', 0)))
 
-    logger.info("-- MFE : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
-        get_stats(candidate, 'percent.mfe.min', 0) * 100,
-        get_stats(candidate, 'percent.mfe.max', 0) * 100,
-        get_stats(candidate, 'percent.mfe.avg', 0) * 100,
-        get_stats(candidate, 'percent.mfe.std-dev', 0) * 100))
+        logger.info("-- MFE : min / max / avg / std-dev = %f / %f / %f / %f" % (
+            get_stats(candidate, 'currency.mfe.min', 0),
+            get_stats(candidate, 'currency.mfe.max', 0),
+            get_stats(candidate, 'currency.mfe.avg', 0),
+            get_stats(candidate, 'currency.mfe.std-dev', 0)))
 
-    logger.info("-- MAE : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
-        get_stats(candidate, 'percent.mae.min', 0) * 100,
-        get_stats(candidate, 'percent.mae.max', 0) * 100,
-        get_stats(candidate, 'percent.mae.avg', 0) * 100,
-        get_stats(candidate, 'percent.mae.std-dev', 0) * 100))
+        logger.info("-- MAE : min / max / avg / std-dev = %f / %f / %f / %f" % (
+            get_stats(candidate, 'currency.mae.min', 0),
+            get_stats(candidate, 'currency.mae.max', 0),
+            get_stats(candidate, 'currency.mae.avg', 0),
+            get_stats(candidate, 'currency.mae.std-dev', 0)))
 
-    logger.info("-- ETD : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
-        get_stats(candidate, 'percent.etd.min', 0) * 100,
-        get_stats(candidate, 'percent.etd.max', 0) * 100,
-        get_stats(candidate, 'percent.etd.avg', 0) * 100,
-        get_stats(candidate, 'percent.etd.std-dev', 0) * 100))
+        logger.info("-- ETD : min / max / avg / std-dev = %f / %f / %f / %f" % (
+            get_stats(candidate, 'currency.etd.min', 0),
+            get_stats(candidate, 'currency.etd.max', 0),
+            get_stats(candidate, 'currency.etd.avg', 0) ,
+            get_stats(candidate, 'currency.etd.std-dev', 0)))
 
-    logger.info("-- entry efficiency : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
-        get_stats(candidate, 'percent.entry-efficiency.min', 0) * 100,
-        get_stats(candidate, 'percent.entry-efficiency.max', 0) * 100,
-        get_stats(candidate, 'percent.entry-efficiency.avg', 0) * 100,
-        get_stats(candidate, 'percent.entry-efficiency.std-dev', 0) * 100))
+        logger.info("-- entry efficiency : min / max / avg / std-dev = %f / %f / %f / %f" % (
+            get_stats(candidate, 'currency.entry-efficiency.min', 0),
+            get_stats(candidate, 'currency.entry-efficiency.max', 0),
+            get_stats(candidate, 'currency.entry-efficiency.avg', 0),
+            get_stats(candidate, 'currency.entry-efficiency.std-dev', 0)))
 
-    logger.info("-- exit efficiency : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
-        get_stats(candidate, 'percent.exit-efficiency.min', 0) * 100,
-        get_stats(candidate, 'percent.exit-efficiency.max', 0) * 100,
-        get_stats(candidate, 'percent.exit-efficiency.avg', 0) * 100,
-        get_stats(candidate, 'percent.exit-efficiency.std-dev', 0) * 100))
+        logger.info("-- exit efficiency : min / max / avg / std-dev = %f / %f / %f / %f" % (
+            get_stats(candidate, 'currency.exit-efficiency.min', 0),
+            get_stats(candidate, 'currency.exit-efficiency.max', 0),
+            get_stats(candidate, 'currency.exit-efficiency.avg', 0),
+            get_stats(candidate, 'currency.exit-efficiency.std-dev', 0)))
 
-    logger.info("-- total efficiency : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
-        get_stats(candidate, 'percent.total-efficiency.min', 0) * 100,
-        get_stats(candidate, 'percent.total-efficiency.max', 0) * 100,
-        get_stats(candidate, 'percent.total-efficiency.avg', 0) * 100,
-        get_stats(candidate, 'percent.total-efficiency.std-dev', 0) * 100))
+        logger.info("-- total efficiency : min / max / avg / std-dev = %f / %f / %f / %f" % (
+            get_stats(candidate, 'currency.total-efficiency.min', 0),
+            get_stats(candidate, 'currency.total-efficiency.max', 0),
+            get_stats(candidate, 'currency.total-efficiency.avg', 0),
+            get_stats(candidate, 'currency.total-efficiency.std-dev', 0)))
 
-    logger.info("-- max time to recover = %s" % timedelta(seconds=float(percent.get('max-time-to-recover', '0.000'))))
-    logger.info("-- estimate profit per month = %s" % percent.get('estimate-profit-per-month', '0.00%'))
-    logger.info("-- avg win/loss rate = %g" % percent.get('avg-win-loss-rate', 0))
+        logger.info(
+            "-- max time to recover = %s" % timedelta(seconds=float(currency_token.get(
+                'max-time-to-recover', '0.000'))))
+        logger.info("-- estimate profit per month = %g" % currency_token.get('estimate-profit-per-month', 0))
+        logger.info("-- avg win/loss rate = %g" % currency_token.get('avg-win-loss-rate', 0))
+    else:
+        # based on percent PNL per trade (not on quote/settlement currency)
+        percent_token = candidate.get('percent', {})
+
+        logger.info("-- Sharpe ratio / Sortino ratio / Ulcer index = %g / %g / %g" % (
+            get_stats(candidate, 'percent.sharpe-ratio', 1),
+            get_stats(candidate, 'percent.sortino-ratio', 1),
+            get_stats(candidate, 'percent.ulcer-index', 0)))
+
+        logger.info("-- MFE : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+            get_stats(candidate, 'percent.mfe.min', 0) * 100,
+            get_stats(candidate, 'percent.mfe.max', 0) * 100,
+            get_stats(candidate, 'percent.mfe.avg', 0) * 100,
+            get_stats(candidate, 'percent.mfe.std-dev', 0) * 100))
+
+        logger.info("-- MAE : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+            get_stats(candidate, 'percent.mae.min', 0) * 100,
+            get_stats(candidate, 'percent.mae.max', 0) * 100,
+            get_stats(candidate, 'percent.mae.avg', 0) * 100,
+            get_stats(candidate, 'percent.mae.std-dev', 0) * 100))
+
+        logger.info("-- ETD : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+            get_stats(candidate, 'percent.etd.min', 0) * 100,
+            get_stats(candidate, 'percent.etd.max', 0) * 100,
+            get_stats(candidate, 'percent.etd.avg', 0) * 100,
+            get_stats(candidate, 'percent.etd.std-dev', 0) * 100))
+
+        logger.info("-- entry efficiency : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+            get_stats(candidate, 'percent.entry-efficiency.min', 0) * 100,
+            get_stats(candidate, 'percent.entry-efficiency.max', 0) * 100,
+            get_stats(candidate, 'percent.entry-efficiency.avg', 0) * 100,
+            get_stats(candidate, 'percent.entry-efficiency.std-dev', 0) * 100))
+
+        logger.info("-- exit efficiency : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+            get_stats(candidate, 'percent.exit-efficiency.min', 0) * 100,
+            get_stats(candidate, 'percent.exit-efficiency.max', 0) * 100,
+            get_stats(candidate, 'percent.exit-efficiency.avg', 0) * 100,
+            get_stats(candidate, 'percent.exit-efficiency.std-dev', 0) * 100))
+
+        logger.info("-- total efficiency : min / max / avg / std-dev = %.2f%% / %.2f%% / %.2f%% / %.2f%%" % (
+            get_stats(candidate, 'percent.total-efficiency.min', 0) * 100,
+            get_stats(candidate, 'percent.total-efficiency.max', 0) * 100,
+            get_stats(candidate, 'percent.total-efficiency.avg', 0) * 100,
+            get_stats(candidate, 'percent.total-efficiency.std-dev', 0) * 100))
+
+        logger.info("-- max time to recover = %s" % timedelta(seconds=float(percent_token.get(
+            'max-time-to-recover', '0.000'))))
+        logger.info("-- estimate profit per month = %s" % percent_token.get('estimate-profit-per-month', '0.00%'))
+        logger.info("-- avg win/loss rate = %g" % percent_token.get('avg-win-loss-rate', 0))

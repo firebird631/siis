@@ -437,6 +437,8 @@ class StatsSummaryCommand(Command):
         "param1: <market-id> for strategy only (optional)",
     )
 
+    OPTIONS = ('percent', 'currency')
+
     def __init__(self, commands_handler, strategy_service):
         super().__init__('stats', None)
 
@@ -456,8 +458,8 @@ class StatsSummaryCommand(Command):
                     market_id = instrument.market_id
 
         summary = {}
-        self._strategy_service.strategy().dumps_trainer_report(summary)
-        log_summary(summary)
+        self._strategy_service.strategy().dumps_trainer_report(summary, market_id)
+        log_summary(summary, 'currency' in args)
 
         return True, "Summary done"
 
@@ -465,9 +467,9 @@ class StatsSummaryCommand(Command):
         if len(args) <= 1:
             strategy = self._strategy_service.strategy()
             if strategy:
-                return self.iterate(0, list(DrawStatsCommand.CHARTS) + strategy.symbols_ids(), args, tab_pos, direction)
+                return self.iterate(0, list(StatsSummaryCommand.OPTIONS) + strategy.symbols_ids(), args, tab_pos, direction)
         elif len(args) > 1:
-            return self.iterate(len(args) - 1, DrawStatsCommand.CHARTS, args, tab_pos, direction)
+            return self.iterate(len(args) - 1, StatsSummaryCommand.OPTIONS, args, tab_pos, direction)
 
         return args, 0
 

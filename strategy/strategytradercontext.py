@@ -1292,6 +1292,14 @@ class StrategyTraderContext(StrategyTraderContextBase):
             # custom method call
             new_stop_price = self.custom_dynamic_stop_loss(strategy_trader, trade)
 
+        # do nothing if stop is increased in absolute (only safer)
+        # and this avoids flooding due to possible imprecision error
+        if new_stop_price > 0.0:
+            if trade.direction > 0 and new_stop_price <= trade.stop_loss:
+                new_stop_price = 0.0
+            elif trade.direction < 0 and new_stop_price >= trade.stop_loss:
+                new_stop_price = 0.0
+
         if new_stop_price > 0.0:
             new_stop_price = strategy_trader.instrument.adjust_price(new_stop_price)
             if new_stop_price != trade.stop_loss:
@@ -1309,6 +1317,8 @@ class StrategyTraderContext(StrategyTraderContextBase):
         @param strategy_trader:
         @param trade:
         @param hard:
+
+        @todo complete as for apply_dynamic_stop_loss
         """
         pass
 

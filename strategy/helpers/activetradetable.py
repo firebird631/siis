@@ -138,6 +138,8 @@ def trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None
             else:
                 mfe_pct = 0
                 mae_pct = 0
+
+                etd = 0
                 etd_pct = 0
 
             # compute exit targets in percentage
