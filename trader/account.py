@@ -381,7 +381,7 @@ class Account(object):
 
     def update_stats(self, timestamp: float):
         # update each day
-        current_bt = Instrument.basetime(timestamp, self._stats_sampling_timeframe)
+        current_bt = Instrument.basetime(self._stats_sampling_timeframe, timestamp)
 
         if not self._stats_samples:
             # initial sample
@@ -393,7 +393,7 @@ class Account(object):
                 self._draw_down))
 
         if self._last_stats_update > 0.0:
-            prev_bt = Instrument.basetime(self._last_stats_update, self._stats_sampling_timeframe)
+            prev_bt = Instrument.basetime(self._stats_sampling_timeframe, self._last_stats_update)
             elapsed_days = int((current_bt - prev_bt) / self._stats_sampling_timeframe)
 
             if elapsed_days > 0:

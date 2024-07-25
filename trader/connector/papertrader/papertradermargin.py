@@ -18,8 +18,9 @@ logger = logging.getLogger('siis.trader.papertrader.margin')
 def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
     """
     Execute the order for margin position.
+    It is also used to open a position in place of open_position but should be distinct
     @note Must be mutex locked.
-    @todo support of hedging else reduce first the opposite direction positions (FIFO method)
+    @todo complete support of hedging else reduce first existing positions in opposite direction (FIFO method)
     @todo partial reduce position (avg exit price, qty of position)
     """
     current_position = None
@@ -34,8 +35,6 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
 
     elif market.fifo_position:
         # or retrieve position of the same market on any directions FIFO ordering (using created timestamp)
-        # @todo
-        pass
         if order.hedging and market.hedging:
             # filter position by symbol, direction and only if active
             for k, pos in trader._positions.items():
@@ -49,7 +48,7 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
         # order them by created timestamp
         positions.sort(key=lambda p: p.created_time, reverse=True)
 
-        # begin with the older active position
+        # begin with the older active position, update as necessary and take next in FIFO...
         if positions:
             current_position = positions.pop()
 
@@ -363,6 +362,10 @@ def exec_margin_order(trader, order, market, open_exec_price, close_exec_price):
         position.leverage = order.leverage
 
         position.created_time = trader.timestamp
+
+        # optional initial bracket
+        position.take_profit = order.take_profit
+        position.stop_loss = order.stop_loss
 
         account_currency = trader.account.currency
 

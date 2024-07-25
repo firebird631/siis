@@ -873,8 +873,8 @@ def log_summary(candidate):
         candidate.get('open-trades', 0), candidate.get('active-trades', 0)))
 
     # global stats
-    logger.info("-- longest flat period = %ssec" % candidate.get('longest-flat-period', '0.000'))
-    logger.info("-- avg time in market = %ssec" % candidate.get('avg-time-in-market', '0.000'))
+    logger.info("-- longest flat period = %s" % timedelta(seconds=float(candidate.get('longest-flat-period', '0.000'))))
+    logger.info("-- avg time in market = %s" % timedelta(seconds=float(candidate.get('avg-time-in-market', '0.000'))))
 
     logger.info("-- # traded days = %i" % candidate.get('num-traded-days', '0'))
     logger.info("-- avg trade per day / inc WE = %g / %g" % (candidate.get('avg-trade-per-day', 0),
@@ -924,6 +924,6 @@ def log_summary(candidate):
         get_stats(candidate, 'percent.total-efficiency.avg', 0) * 100,
         get_stats(candidate, 'percent.total-efficiency.std-dev', 0) * 100))
 
-    logger.info("-- max time to recover = %ssec" % percent.get('max-time-to-recover', '0.000'))
+    logger.info("-- max time to recover = %s" % timedelta(seconds=float(percent.get('max-time-to-recover', '0.000'))))
     logger.info("-- estimate profit per month = %s" % percent.get('estimate-profit-per-month', '0.00%'))
     logger.info("-- avg win/loss rate = %g" % percent.get('avg-win-loss-rate', 0))

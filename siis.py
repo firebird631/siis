@@ -846,9 +846,10 @@ def application(argv):
                 if strategy_service.timestamp - prev_timestamp >= 1.0:
                     mode = "live"
                     if trader_service.backtesting:
-                        mode = "backtesting" + (" (paused)" if not strategy_service.backtesting_play else "")
+                        mode = "Backtesting %.2f%%" % strategy_service.backtest_progress + (
+                            " (paused)" if not strategy_service.backtesting_play else "")
                     elif trader_service.paper_mode:
-                        mode = "paper-mode"
+                        mode = "Paper-mode"
 
                     Terminal.inst().message("%s - %s" % (mode, datetime.fromtimestamp(
                         strategy_service.timestamp).strftime('%a %Y-%m-%d %H:%M:%S')), view='notice')

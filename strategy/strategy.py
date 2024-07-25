@@ -1904,6 +1904,103 @@ class Strategy(Runnable):
 
         write_learning(learning_path, filename, new_content)
 
+    def dumps_trainer_report(self, output: dict):
+        """
+        Fill the output dict with statistics summary.
+        Some statistics are computed at each trade or tick and some others are derived from measured data.
+        @see write_trainer_report
+        """
+        from strategy.helpers.aggtradedataset import get_agg_trades
+        with self._mutex:
+            agg_trades = get_agg_trades(self)
+
+        # per strategy trader dataset are merged globally
+        pl_sum = 0.0    # pending profit and loss rate
+        perf_sum = 0.0  # sum of realized profit and loss rate
+        rpnl_sum = 0.0  # realized profit and loss in currency
+
+        best_best = 0.0
+        worst_worst = 0.0
+
+        high_sum = 0.0
+        low_sum = 0.0
+
+        success_sum = 0
+        failed_sum = 0
+        roe_sum = 0
+
+        num_open_trades_sum = 0
+        num_actives_trades_sum = 0
+
+        sl_loss = 0
+        sl_win = 0
+        tp_loss = 0
+        tp_win = 0
+
+        max_adj_loss = 0
+        max_adj_win = 0
+
+        for t in agg_trades:
+            pl_sum += t['pl']
+            perf_sum += t['perf']
+            rpnl_sum += t['rpnl']  # in 'rpnl-currency'
+
+            best_best = max(best_best, t['best'])
+            worst_worst = min(worst_worst, t['worst'])
+
+            high_sum += t['high']
+            low_sum += t['low']
+
+            success_sum += t['success']
+            failed_sum += t['failed']
+            roe_sum += t['roe']
+
+            num_open_trades_sum += t['num-open-trades']
+            num_actives_trades_sum += t['num-actives-trades']
+
+            sl_loss += t['sl-loss']
+            tp_loss += t['tp-loss']
+            sl_win += t['sl-win']
+            tp_win += t['tp-win']
+
+            max_adj_loss = max(max_adj_loss, t['cont-loss'])
+            max_adj_win = max(max_adj_win, t['cont-win'])
+
+        trader = self.trader()
+
+        # final account stats
+        output['max-draw-down-rate'] = "%.2f%%" % (trader.account.max_draw_down_rate * 100.0)
+        output['max-draw-down'] = trader.account.format_price(trader.account.max_draw_down)
+        output['final-equity'] = trader.account.format_price(trader.account.balance)
+        output['account-daily-samples'] = [x.dumps() for x in trader.account.stats_samples]
+
+        output['performance'] = "%.2f%%" % (perf_sum * 100.0)
+        output['profit-loss'] = trader.account.format_price(pl_sum)
+        output['realized-pnl'] = trader.account.format_price(rpnl_sum)
+
+        output['best'] = "%.2f%%" % (best_best * 100.0)
+        output['worst'] = "%.2f%%" % (worst_worst * 100.0)
+
+        # winning, loosing, even trades stats
+        output['succeed-trades'] = success_sum
+        output['failed-trades'] = failed_sum
+        output['roe-trades'] = roe_sum
+        output['total-trades'] = success_sum + failed_sum + roe_sum
+        output['open-trades'] = num_open_trades_sum
+        output['active-trades'] = num_actives_trades_sum
+
+        output['stop-loss-in-loss'] = sl_loss
+        output['take-profit-in-loss'] = tp_loss
+        output['stop-loss-in-gain'] = sl_win
+        output['take-profit-in-gain'] = tp_win
+
+        output["max-loss-series"] = max_adj_loss
+        output["max-win-series"] = max_adj_win
+
+        # compute trades and equity statistics and merge them into new_content
+        trades_stats = compute_strategy_statistics(self)
+        trades_stats.dumps(output)
+
     #
     # static
     #

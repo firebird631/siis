@@ -5,6 +5,7 @@
 
 from strategy.helpers.closedtradedataset import get_closed_trades
 from strategy.indicator.utils import down_sample, MM_n
+from strategy.learning.trainer import log_summary
 from terminal.command import Command
 
 from terminal.terminal import Terminal, Color
@@ -23,6 +24,7 @@ class DrawStatsCommand(Command):
     Display in CLI some statistics plots.
     @todo cumulative pnl might be computed using trade notional quantity and average by total notional quantity
         to make the difference between strategy having trades of different quantities
+    @todo add an option to display like as the log_summary of the strategy
     """
 
     SUMMARY = "to display a CLI chart of a statistic"
@@ -425,5 +427,51 @@ def compute_std_dev(series, factor=1.0):
     return basis, top_series, bottom_series
 
 
+class StatsSummaryCommand(Command):
+    """
+    Display statistics summary.
+    """
+
+    SUMMARY = "to display statistic summary"
+    HELP = (
+        "param1: <market-id> for strategy only (optional)",
+    )
+
+    def __init__(self, commands_handler, strategy_service):
+        super().__init__('stats', None)
+
+        self._commands_handler = commands_handler
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        market_id = None
+
+        if len(args) >= 1:
+            # specific market
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                instrument = strategy.find_instrument(args[0])
+                if instrument:
+                    market_id = instrument.market_id
+
+        summary = {}
+        self._strategy_service.strategy().dumps_trainer_report(summary)
+        log_summary(summary)
+
+        return True, "Summary done"
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            strategy = self._strategy_service.strategy()
+            if strategy:
+                return self.iterate(0, list(DrawStatsCommand.CHARTS) + strategy.symbols_ids(), args, tab_pos, direction)
+        elif len(args) > 1:
+            return self.iterate(len(args) - 1, DrawStatsCommand.CHARTS, args, tab_pos, direction)
+
+        return args, 0
+
+
 def register_statistic_commands(commands_handler, strategy_service):
     commands_handler.register(DrawStatsCommand(commands_handler, strategy_service))
+    commands_handler.register(StatsSummaryCommand(commands_handler, strategy_service))

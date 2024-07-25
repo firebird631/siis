@@ -68,11 +68,11 @@ def positions_stats_table(trader, style='', offset=None, limit=None, col_ofs=Non
                     cr_pnl = "%s%s" % (t['pnl'], t['pnlcur'])
 
                 if t['d'] == 'long' and aep:
-                    sl_pct = (sl - aep) / aep
-                    tp_pct = (tp - aep) / aep
+                    sl_pct = (sl - aep) / aep if sl else 0
+                    tp_pct = (tp - aep) / aep if tp else 0
                 elif t['d'] == 'short' and aep:
-                    sl_pct = (aep - sl) / aep
-                    tp_pct = (aep - tp) / aep
+                    sl_pct = (aep - sl) / aep if tp else 0
+                    tp_pct = (aep - tp) / aep if tp else 0
                 else:
                     sl_pct = 0
                     tp_pct = 0
@@ -83,8 +83,8 @@ def positions_stats_table(trader, style='', offset=None, limit=None, col_ofs=Non
                     direction,
                     "%.2f" % t['l'] if t['l'] else '-',
                     cr_pl,
-                    "%s %.2f%%" % (t['sl'], sl_pct * 100) if percents else t['sl'],
-                    "%s %.2f%%" % (t['tp'], tp_pct * 100) if percents else t['tp'],
+                    ("%s %.2f%%" % (t['sl'], sl_pct * 100) if percents else t['sl']) if sl else '-',
+                    ("%s %.2f%%" % (t['tp'], tp_pct * 100) if percents else t['tp']) if tp else '-',
                     t['tr'],
                     datetime.fromtimestamp(t['et']).strftime(datetime_format) if t['et'] > 0 else "",
                     t['aep'],

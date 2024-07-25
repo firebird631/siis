@@ -16,11 +16,15 @@ import logging
 logger = logging.getLogger('siis.trader.papertrader.position')
 
 
-def open_position(trader, order, market, open_exec_price):
+def open_position(trader, order, market, open_exec_price: float, close_exec_price: float):
     """
     Execute the order for margin position.
     @note Not currently used because papertradermargin.exec_margin_order has the same effect in that case.
+    @warning It is not operational and need some modification to work as well as  papertradermargin.exec_margin_order
     @note Must be mutex locked.
+    @note No fees/commission because it is in the spread for that case.
+    @todo Must support FIFO and hedging. If hedging simply open new position else uses FIFO to close as necessary
+        existing positions in the opposite order
     """
     trader.lock()
 
@@ -29,6 +33,14 @@ def open_position(trader, order, market, open_exec_price):
 
     realized_position_cost = market.effective_cost(order.quantity, open_exec_price)
     margin_cost = market.margin_cost(order.quantity, open_exec_price)
+
+    # or retrieve position of the same market on any directions FIFO ordering (using created timestamp)
+    if not order.hedging or not market.hedging:
+        # @todo if no hedging retrieve the actives positions in opposites direction and first reduce qty from them
+        # the field hedging must be stored and retrieved on market info else this could create side effect during
+        # a backtest
+        # do for each positions until qty is filled. if necessary a new position is created with remaining qty.
+        pass
 
     if not trader._unlimited and trader.account.margin_balance < margin_cost:
         # and then rejected order
@@ -58,6 +70,10 @@ def open_position(trader, order, market, open_exec_price):
 
     # long are open on ask and short on bid
     position.entry_price = market.open_exec_price(order.direction)
+
+    # optional initial bracket
+    position.take_profit = order.take_profit
+    position.stop_loss = order.stop_loss
 
     # transaction time is creation position date time
     order.transact_time = position.created_time
@@ -135,6 +151,8 @@ def open_position(trader, order, market, open_exec_price):
         'stop-loss': position.stop_loss,
         'take-profit': position.take_profit,
         'avg-entry-price': position.entry_price,
+        'filled': order.executed,
+        'cumulative-filled': order.executed,
         'profit-loss': 0.0,
         'profit-loss-currency': market.quote
     }

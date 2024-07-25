@@ -492,6 +492,9 @@ class TrainerTool(Tool):
             for p, v in best_result.items():
                 if type(v) in (str, int, float, bool):
                     final_learning_config[p] = v
+                elif p == 'percent' or p == 'currency':
+                    # two sub-dicts we want to keep too
+                    final_learning_config[p] = copy.deepcopy(v)
 
             for pname, value in best_result_strategy_parameters.items():
                 final_strategy_parameters[pname] = value

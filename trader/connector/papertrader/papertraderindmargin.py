@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger('siis.trader.papertrader.indmargin')
 
 
-def exec_indmargin_order(trader, order, market, open_exec_price, close_exec_price):
+def exec_indmargin_order(trader, order, market, open_exec_price: float, close_exec_price: float):
     """
     Execute the order for indivisible margin position.
     @note No hedging possible.

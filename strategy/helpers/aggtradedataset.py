@@ -23,13 +23,13 @@ def get_agg_trades(strategy):
     """
     results = []
 
-    with strategy._mutex:
+    with strategy.mutex:
         try:
-            for k, strategy_trader in strategy._strategy_traders.items():
+            for k, strategy_trader in strategy.strategy_traders.items():
                 pl = 0.0
                 perf = 0.0
 
-                with strategy_trader._mutex:
+                with strategy_trader.mutex:
                     perf = strategy_trader._stats['perf']
                     best = strategy_trader._stats['best']
                     worst = strategy_trader._stats['worst']
@@ -42,6 +42,9 @@ def get_agg_trades(strategy):
                     tp_loss = strategy_trader._stats['tp-loss']
                     sl_win = strategy_trader._stats['sl-win']
                     sl_loss = strategy_trader._stats['sl-loss']
+
+                    cont_win = strategy_trader._stats['cont-win']
+                    cont_loss = strategy_trader._stats['cont-loss']
 
                     rpnl = strategy_trader.instrument.adjust_settlement(strategy_trader._stats['rpnl'])
 
@@ -68,7 +71,7 @@ def get_agg_trades(strategy):
                         'sym': sym,
                         'pl': pl,
                         'num-open-trades': len(strategy_trader.trades),
-                        'perf': perf,
+                        'perf': perf,  # realized PNL in percentage
                         'best': best,
                         'worst': worst,
                         'success': success,
@@ -83,7 +86,9 @@ def get_agg_trades(strategy):
                         'tp-win': tp_win,
                         'tp-loss': tp_loss,
                         'sl-loss': sl_loss,
-                        'sl-win': sl_win
+                        'sl-win': sl_win,
+                        'cont-win': cont_win,
+                        'cont-loss': cont_loss,
                     })
         except Exception as e:
             error_logger.error(repr(e))

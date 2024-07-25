@@ -33,7 +33,7 @@ from trader.position import Position
 
 from .papertraderindmargin import exec_indmargin_order
 from .papertradermargin import exec_margin_order
-from .papertraderposition import close_position, reduce_position
+from .papertraderposition import close_position, reduce_position, open_position
 from .papertraderspot import exec_buysell_order
 
 import logging
@@ -584,11 +584,19 @@ class PaperTrader(Trader):
             # @todo add to orders for emulate the slippage
 
             if order.margin_trade and trader_market.has_margin:
+                # if trader_market.has_position:
+                #     # @todo update and prefer open_position if has_position
+                #     # CFD, support hedging (forced-position) or FIFO, multiple positions in both sides
+                #     return open_position(self, order, trader_market, open_exec_price, close_exec_price)
                 if trader_market.indivisible_position:
+                    # uses for unique direction, a single active position per market at time
                     return exec_indmargin_order(self, order, trader_market, open_exec_price, close_exec_price)
                 else:
+                    # use for margin and position unique or both sides (if hedging) (support CFD)
                     return exec_margin_order(self, order, trader_market, open_exec_price, close_exec_price)
+
             elif not order.margin_trade and trader_market.has_spot:
+                # spot/asset markets, no long/short (can only sell a free qty for an asset)
                 return exec_buysell_order(self, order, trader_market, open_exec_price, close_exec_price)
         else:
             # create accepted, add to orders

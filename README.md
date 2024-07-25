@@ -170,7 +170,7 @@ Features
 Some operational strategies are available on distinct GitHub repositories :
 * [...] Coming Soon 
 
-You have to ability to implements your own strategies or to ask for me services for a development and support.
+You have the ability to implements your own strategies or to ask for me services for a development and support.
 Else you can actively participate in the feedback, testing and fixing bugs.
 
 ### Donate and support ###

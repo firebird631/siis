@@ -6,7 +6,7 @@
 from datetime import datetime
 from typing import List
 
-from common.utils import UTC
+from common.utils import UTC, truncate
 from instrument.instrument import Instrument
 from strategy.helpers.closedtradedataset import get_closed_trades
 
@@ -28,7 +28,7 @@ def parse_datetime(dt_str: str) -> float:
 class BaseSampler(object):
     name: str = ""
 
-    samples: List[float] = []
+    samples: List[float]
     max_value: float = 0.0
     min_value: float = 0.0
     cumulated: float = 0.0
@@ -38,6 +38,7 @@ class BaseSampler(object):
 
     def __init__(self, name):
         self.name = name
+        self.samples = []
 
     def add_sample(self, value):
         self.samples.append(value)
@@ -96,7 +97,10 @@ class StrategyStatistics:
         sortino_ratio: float = 1.0
         ulcer_index: float = 0.0
 
-        samplers: List[BaseSampler] = []
+        samplers: List[BaseSampler]
+
+        def __init__(self):
+            self.samplers = []
 
         def add_sampler(self, sampler):
             self.samplers.append(sampler)
@@ -105,9 +109,9 @@ class StrategyStatistics:
             return value
 
         def dumps(self, to_dict):
-            to_dict["max-time-to-recover"] = self.fmt_value(self.max_time_to_recover)
+            to_dict["max-time-to-recover"] = "%.3f" % self.max_time_to_recover
             to_dict['estimate-profit-per-month'] = self.fmt_value(self.estimate_profit_per_month)
-            to_dict['avg-win-loss-rate'] = self.fmt_value(self.avg_win_loss_rate)
+            to_dict['avg-win-loss-rate'] = truncate(self.avg_win_loss_rate, 2)
 
             to_dict['sharpe-ratio'] = self.sharpe_ratio
             to_dict['sortino-ratio'] = self.sortino_ratio
@@ -118,7 +122,10 @@ class StrategyStatistics:
 
     class PercentStats(BaseStats):
 
-        samplers: List[PercentSampler] = []
+        samplers: List[PercentSampler]
+
+        def __init__(self):
+            super().__init__()
 
         def add_sampler(self, sampler):
             self.samplers.append(sampler)
@@ -136,12 +143,15 @@ class StrategyStatistics:
     percent: PercentStats = PercentStats()
 
     def dumps(self, to_dict):
-        to_dict["longest-flat-period"] = self.longest_flat_period
-        to_dict["avg-time-in-market"] = self.avg_time_in_market
-        to_dict['num-traded-days'] = self.num_traded_days
-        to_dict['avg-trades-per-day'] = self.avg_trades_per_day
+        to_dict["longest-flat-period"] = "%.3f" % self.longest_flat_period
+        to_dict["avg-time-in-market"] = "%.3f" % self.avg_time_in_market
+        to_dict['num-traded-days'] = truncate(self.num_traded_days, 2)
+        to_dict['avg-trades-per-day'] = truncate(self.avg_trades_per_day, 2)
 
+        to_dict['percent'] = {}
         self.percent.dumps(to_dict['percent'])
+
+        to_dict['currency'] = {}
         self.currency.dumps(to_dict['currency'])
 
 
@@ -233,12 +243,12 @@ def compute_strategy_statistics(strategy):
             trade_lrx_ts = parse_datetime(t['stats']['last-realized-exit-datetime'])
 
             # cumulative PNL
-            any_trade_pnl_pct.add_sample(t['profit-loss-pct'])
-            any_trade_pnl.add_sample(t['profit-loss'])
+            any_trade_pnl_pct.add_sample(t['profit-loss-pct'] * 0.01)
+            any_trade_pnl.add_sample(t['stats']['profit-loss'])
 
             # but this cumulative is used for max time to recover
-            cum_pnl_pct += t['profit-loss-pct']
-            cum_pnl += t['profit-loss']
+            cum_pnl_pct += t['profit-loss-pct'] * 0.01
+            cum_pnl += t['stats']['profit-loss']
 
             # max time to recover (by percentage)
             if cum_pnl_pct >= max_pnl_pct:
@@ -260,8 +270,8 @@ def compute_strategy_statistics(strategy):
                 longest_flat_period = max(longest_flat_period, trade_fre_ts - prev_lrx_ts)
 
                 # new monthly sample
-                elapsed_months = int((Instrument.basetime(trade_fre_ts, Instrument.TF_MONTH) - Instrument.basetime(
-                        prev_fre_ts, Instrument.TF_MONTH)) / Instrument.TF_MONTH)
+                elapsed_months = int((Instrument.basetime(Instrument.TF_MONTH, trade_fre_ts) - Instrument.basetime(
+                        Instrument.TF_MONTH, prev_fre_ts)) / Instrument.TF_MONTH)
 
                 if elapsed_months > 0:
                     profit_per_month_pct += [0.0] * elapsed_months
@@ -278,18 +288,18 @@ def compute_strategy_statistics(strategy):
 
             # winning, loosing trade profit/loss
             if t['profit-loss-pct'] > 0:
-                winning_trade_pnl_pct.add_sample(t['profit-loss-pct'])
+                winning_trade_pnl_pct.add_sample(t['profit-loss-pct'] * 0.01)
             elif t['profit-loss-pct'] < 0:
-                loosing_trade_pnl_pct.add_sample(t['profit-loss-pct'])
+                loosing_trade_pnl_pct.add_sample(t['profit-loss-pct'] * 0.01)
 
-            if t['profit-loss'] > 0:
-                winning_trade_pnl.add_sample(t['profit-loss'])
-            elif t['profit-loss'] < 0:
-                loosing_trade_pnl.add_sample(t['profit-loss'])
+            if t['stats']['profit-loss'] > 0:
+                winning_trade_pnl.add_sample(t['stats']['profit-loss'])
+            elif t['stats']['profit-loss'] < 0:
+                loosing_trade_pnl.add_sample(t['stats']['profit-loss'])
 
             # cumulative per month
-            profit_per_month_pct[-1] += t['profit-loss-pct']
-            profit_per_month[-1] += t['profit-loss']
+            profit_per_month_pct[-1] += t['profit-loss-pct'] * 0.01
+            profit_per_month[-1] += t['stats']['profit-loss']
 
             # draw-downs square samples for Ulcer ratio (relative or absolute percentage)
             # draw_downs_sqr_pct.append(((1.0 + cum_pnl_pct) / (1.0 + max_pnl_pct) - 1.0) ** 2)
@@ -313,7 +323,7 @@ def compute_strategy_statistics(strategy):
     prev_sample_month = 0
 
     for n in range(0, len(trader.account.stats_samples)):
-        sample_bt = Instrument.basetime(trader.account.stats_samples[n].timestamp, Instrument.TF_MONTH)
+        sample_bt = Instrument.basetime(Instrument.TF_MONTH, trader.account.stats_samples[n].timestamp)
 
         if prev_sample_month == 0:
             prev_sample_month = sample_bt
@@ -337,8 +347,8 @@ def compute_strategy_statistics(strategy):
 
     results.avg_time_in_market = np.average(np.array(time_in_market_samples))
 
-    first_day_ts = Instrument.basetime(first_trade_ts, Instrument.TF_DAY)
-    last_day_ts = Instrument.basetime(last_trade_ts, Instrument.TF_DAY)
+    first_day_ts = Instrument.basetime(Instrument.TF_DAY, first_trade_ts)
+    last_day_ts = Instrument.basetime(Instrument.TF_DAY, last_trade_ts)
 
     # at least one day because of min one trade
     results.num_traded_days = int((last_day_ts - first_day_ts) / Instrument.TF_DAY) + 1
