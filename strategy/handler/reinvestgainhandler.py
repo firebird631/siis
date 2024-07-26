@@ -213,7 +213,7 @@ class ReinvestGainHandler(Handler):
                     cur_trade_quantity = trade.order_quantity * trade.order_price
 
                     if abs(round(new_trade_quantity - cur_trade_quantity)) >= self._step_quantity:
-                        # the asset quantity for quote could not be up to date at this time
+                        # the asset quantity for quote could not be up-to-date at this time
                         # quantity = strategy_trader.compute_asset_quantity(
                         #     trader, trade.order_price, new_trade_quantity)
 

@@ -913,11 +913,11 @@ class StrategyTraderContext(StrategyTraderContextBase):
         'last': PRICE_LAST,
         'best+1': PRICE_BEST1,
         'best+2': PRICE_BEST2,
-        'bollinger': PRICE_BOLLINGER,  # @deprecated
-        'atrsr': PRICE_ATR_SR,  # @deprecated
-        'cur-atrsr': PRICE_CUR_ATR_SR,  # @deprecated
-        'hma': PRICE_HMA,  # @deprecated
-        'vol-sr': PRICE_VOL_SR,  # @deprecated
+        'bollinger': PRICE_BOLLINGER,  # @deprecated, need custom
+        'atrsr': PRICE_ATR_SR,  # @deprecated, need custom
+        'cur-atrsr': PRICE_CUR_ATR_SR,  # @deprecated, need custom
+        'hma': PRICE_HMA,  # @deprecated, need custom
+        'vol-sr': PRICE_VOL_SR,  # @deprecated, need custom
     }
 
     PRICE_FROM_STR_MAP = {v: k for k, v in PRICE.items()}

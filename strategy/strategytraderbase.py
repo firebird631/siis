@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from .region.region import Region
     from .handler.handler import Handler
     from trader.trader import Trader
-    from instrument.instrument import TickType, Candle
+    from instrument.instrument import TickType
     from monitor.streamable import Streamable
 
 import pathlib
@@ -323,12 +323,12 @@ class StrategyTraderBase(object):
 
             try:
                 # retrieve or instantiate
-                ma_adx = self.retrieve_context(name) or context_class(name)
-                ma_adx.loads(self, data)
+                ctx = self.retrieve_context(name) or context_class(name)
+                ctx.loads(self, data)
 
-                if ma_adx.mode != ma_adx.MODE_NONE:
-                    contexts.append(ma_adx)
-                    self.register_context(ma_adx)
+                if ctx.mode != ctx.MODE_NONE:
+                    contexts.append(ctx)
+                    self.register_context(ctx)
 
             except Exception as e:
                 error_logger.error("Unable to validate context %s : %s" % (name, str(e)))
