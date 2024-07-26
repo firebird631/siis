@@ -7,7 +7,6 @@ import json
 import base64
 import uuid
 
-from common.utils import timeframe_from_str
 from monitor.service import MonitorService
 
 from twisted.web import server, resource, static
@@ -252,10 +251,11 @@ class StrategyInfoRestAPI(resource.Resource):
 
                 for context_id in contexts_ids:
                     context = self._strategy_service.strategy().dumps_context(market_id, context_id)
-                    context['strategy'] = strategy_name  # related strategy
-                    context['profile-id'] = context_id   # context id to profile id
+                    if context:
+                        context['strategy'] = strategy_name  # related strategy
+                        context['profile-id'] = context_id   # context id to profile id
 
-                    profiles[context_id] = context
+                        profiles[context_id] = context
 
         results = {
             'broker': {
@@ -285,7 +285,7 @@ class StrategyInfoRestAPI(resource.Resource):
             command = content.get('command', "")
             typename = content.get('type', "")
             market_id = content.get('market-id', "")
-            analyser_name = content.get('timeframe', "")  # @todo analyser name
+            analyser_name = content.get('analyser', "")
 
             if self._strategy_service.strategy():
                 with self._strategy_service.strategy().mutex:

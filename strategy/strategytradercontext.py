@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 from trader.order import Order
 from instrument.instrument import Instrument
 
-from common.utils import timeframe_from_str
+from common.utils import timeframe_from_str, timeframe_to_str
 
 import logging
 
@@ -67,13 +67,11 @@ class StrategyTraderContextBase(object):
 
     def dumps(self) -> dict:
         """
-        Store settings of the context for later usage, into the database.
-        Rarely used because of the complexity and possible side effect on choosing between original file settings or
+        Return a dict with currency parameters and stats of the context.
+        It is used for the persistence (database) or by external trading tools (Web trader).
         database version store at the last save/exit.
-
-        @return:
         """
-        return {}
+        return dict()
 
     def loads(self, strategy_trader, params: dict):
         """
@@ -235,11 +233,20 @@ class EntryExit(object):
         self.orientation = StrategyTraderContext.ORIENTATION.get(params.get('orientation', 'both'))
 
     def dumps(self) -> dict:
-        result = {}
-
-        # @todo
-
-        return result
+        return {
+            'type': self.type_to_str(),
+            'timeframe': timeframe_to_str(self.timeframe),
+            'num-bars': self.num_bars,
+            'timeout': self.timeout,
+            'timeout-distance': self.timeout_distance * 100 if self.timeout_distance_type == StrategyTraderContext.DIST_PERCENTILE else self.timeout_distance,
+            'timeout-distance-type': "percent" if self.timeout_distance_type == StrategyTraderContext.DIST_PERCENTILE else "dist",
+            'distance': self.distance * 100 if self.distance_type == StrategyTraderContext.DIST_PERCENTILE else self.distance,
+            'distance-type': "percent" if self.distance_type == StrategyTraderContext.DIST_PERCENTILE else "dist",
+            'offset': self.offset * 100 if self.offset_type == StrategyTraderContext.DIST_PERCENTILE else self.offset,
+            'offset-type': "percent" if self.offset_type == StrategyTraderContext.DIST_PERCENTILE else "dist",
+            'depth': self.depth,
+            'orientation': self.orientation
+        }
 
     def update(self, timestamp):
         """
@@ -468,11 +475,7 @@ class EXEntry(EntryExit):
             self.max_spread = self.max_spread_value * strategy_trader.instrument.one_pip_means
 
     def dumps(self) -> dict:
-        result = super().dumps()
-
-        # @todo
-
-        return result
+        return super().dumps()
 
     def check_spread(self, instrument: Instrument) -> bool:
         """Compare spread from entry signal max allowed spread value, only if max-spread parameters is valid"""
@@ -612,11 +615,7 @@ class EXTakeProfit(EntryExit):
         super().loads(strategy_trader, params)
 
     def dumps(self) -> dict:
-        result = super().dumps()
-
-        # @todo
-
-        return result
+        return super().dumps()
 
 
 class EXStopLoss(EntryExit):
@@ -777,11 +776,7 @@ class EXStopLoss(EntryExit):
         super().loads(strategy_trader, params)
 
     def dumps(self) -> dict:
-        result = super().dumps()
-
-        # @todo
-
-        return result
+        return super().dumps()
 
 
 class EXBreakeven(EntryExit):
@@ -863,11 +858,7 @@ class EXBreakeven(EntryExit):
         super().loads(strategy_trader, params)
 
     def dumps(self) -> dict:
-        result = super().dumps()
-
-        # @todo
-
-        return result
+        return super().dumps()
 
 
 class StrategyTraderContext(StrategyTraderContextBase):
@@ -919,8 +910,6 @@ class StrategyTraderContext(StrategyTraderContextBase):
         'none': PRICE_NONE,
         'custom': PRICE_CUSTOM,
         'fixed': PRICE_FIXED,
-        'fixed-pct': PRICE_FIXED,   # @deprecated use FIXED + dist with %
-        'fixed-dist': PRICE_FIXED,  # @deprecated use FIXED
         'last': PRICE_LAST,
         'best+1': PRICE_BEST1,
         'best+2': PRICE_BEST2,
@@ -1013,12 +1002,31 @@ class StrategyTraderContext(StrategyTraderContextBase):
         pass
 
     def dumps(self) -> dict:
-        # @todo others members (and specializations)
-        result = {
-            'name': self.name
+        results = {
+                'id': self.name,  # for compatibility
+                'name': self.name,
+                'mode': self.mode_to_str(),
+                'min-profit': self.min_profit,
+                'max-trades': self.max_trades,
+                'trade-quantity-type': self.trade_quantity_type_to_str(),
+                'trade-quantity': self.trade_quantity,
+                'trade-quantity-step': self.trade_quantity_step
         }
 
-        return result
+        if self.entry:
+            results['entry'] = self.entry.dumps()
+        if self.take_profit:
+            results['take-profit'] = self.take_profit.dumps()
+        if self.stop_loss:
+            results['stop-loss'] = self.stop_loss.dumps()
+        if self.breakeven:
+            results['breakeven'] = self.breakeven.dumps()
+        if self.dynamic_stop_loss:
+            results['dynamic-stop-loss'] = self.dynamic_stop_loss.dumps()
+        if self.dynamic_take_profit:
+            results['dynamic-take-profit'] = self.dynamic_take_profit.dumps()
+
+        return results
 
     def update(self, timestamp):
         # update EX

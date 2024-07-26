@@ -388,10 +388,10 @@ def compute_strategy_statistics(strategy):
     results.currency.add_sampler(loosing_trade_pnl.finalize())
 
     # Win/Loss Rate (after finalize)
-    results.percent.avg_win_loss_rate = winning_trade_pnl_pct.avg / loosing_trade_pnl_pct.avg if (
+    results.percent.avg_win_loss_rate = winning_trade_pnl_pct.avg / -loosing_trade_pnl_pct.avg if (
             loosing_trade_pnl_pct.avg != 0) else 1.0
 
-    results.currency.avg_win_loss_rate = winning_trade_pnl.avg / loosing_trade_pnl.avg if (
+    results.currency.avg_win_loss_rate = winning_trade_pnl.avg / -loosing_trade_pnl.avg if (
             loosing_trade_pnl.avg != 0) else 1.0
 
     # MFE, MAE, ETD

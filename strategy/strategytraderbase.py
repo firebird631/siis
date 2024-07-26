@@ -393,6 +393,11 @@ class StrategyTraderBase(object):
         Returns a dict with the normalized contexts details or None if it doesn't exist.
         Must be overridden.
         """
+        with self.mutex:
+            context = self.retrieve_context(context_id)
+            if context:
+                return context.dumps()
+
         return None
 
     #

@@ -9,8 +9,8 @@ function on_chart_data_serie(market_id, timestamp, value) {
     console.log(value);
 }
 
-function subscribe_chart(market_id, timeframe) {
-    let key = market_id + ':' + timeframe;
+function subscribe_chart(market_id, analyser_name) {
+    let key = market_id + ':' + analyser_name;
 
     if (!(key in window.charts) || !window.charts[key].subscribed) {
         let endpoint = "strategy/chart";
@@ -21,7 +21,7 @@ function subscribe_chart(market_id, timeframe) {
             'action': 'subscribe',
             'type': 'chart',
             'market-id': market_id,
-            'timeframe': timeframe,
+            'analyser': analyser_name,
         };
 
         $.ajax({
@@ -57,8 +57,8 @@ function subscribe_chart(market_id, timeframe) {
     }
 }
 
-function unsubscribe_chart(market_id, timeframe) {
-    let key = market_id + ':' + timeframe;
+function unsubscribe_chart(market_id, analyser_name) {
+    let key = market_id + ':' + analyser_name;
 
     if (window.charts.get(key) && window.charts[key].subscribed) {
         // unsubscribe
@@ -70,7 +70,7 @@ function unsubscribe_chart(market_id, timeframe) {
             'action': 'unsubscribe',
             'type': 'chart',
             'market-id': market_id,
-            'timeframe': timeframe,
+            'analyser': analyser_name,
         };
 
         $.ajax({
@@ -102,13 +102,13 @@ function unsubscribe_chart(market_id, timeframe) {
     }
 }
 
-function setup_charting(elt, market_id, timeframe) {
+function setup_charting(elt, market_id, analyser_name) {
     if (window.charts.mode) {
         // remove current and replace
         remove_charting();
     }
 
-    subscribe_chart(market_id, timeframe);
+    subscribe_chart(market_id, analyser_name);
 
     let canvas = $('<canvas id="chart1" class="chart"></canvas>');
     $(elt).children('div.chart').append(canvas);
@@ -129,8 +129,8 @@ function remove_charting() {
 
     for (let key in window.charts) {
         let v = window.charts[key];
-        const [market_id, timeframe] = key.split(':');
-        subs.push([market_id, timeframe]);
+        const [market_id, analyser_name] = key.split(':');
+        subs.push([market_id, analyser_name]);
     }
 
     for (let i = 0; i < subs.length; ++i) {
