@@ -16,6 +16,7 @@ class FibonacciIndicator(Indicator):
     Works with candles and not only a price.
 
     @todo
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_threshold', '_lowers', '_highers', '_pattern'
@@ -31,6 +32,10 @@ class FibonacciIndicator(Indicator):
     @classmethod
     def indicator_class(cls) -> int:
         return Indicator.CLS_OVERLAY
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe: float):
         super().__init__("fibonacci", timeframe)

@@ -14,7 +14,9 @@ logger = logging.getLogger('siis.strategy.indicator.stddevbands')
 
 class StdDevBandsIndicator(Indicator):
     """
-    Standard Deviation Bands indicator
+    Standard Deviation Bands indicator.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_mult',  '_prev_bottom', '_prev_ma', '_prev_top', '_prev_tr', \
@@ -28,6 +30,10 @@ class StdDevBandsIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_INDEX
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=20, mult=2.0):
         super().__init__("stddevbands", timeframe)

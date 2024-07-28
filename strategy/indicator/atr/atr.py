@@ -20,6 +20,8 @@ class ATRIndicator(Indicator):
         - distance entre la clôture de la veille et le haut du jour
         - distance entre la clôture de la veille et le bas du jour
         - ATR est une moyenne mobile (habituellement a 14 jours) de ces True Ranges
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_coeff', '_atrs', '_last', '_prev', '_long_sl', '_short_sl'
@@ -31,6 +33,10 @@ class ATRIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=9, coeff=3):
         super().__init__("atr", timeframe)

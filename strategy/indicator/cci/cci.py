@@ -12,6 +12,8 @@ import numpy as np
 class CCIIndicator(Indicator):
     """
     Commodity Channel Index indicator using low and high prices.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_prev', '_last', '_ccis'
@@ -23,6 +25,10 @@ class CCIIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=20):
         super().__init__("cci", timeframe)

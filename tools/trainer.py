@@ -383,16 +383,20 @@ class TrainerTool(Tool):
 
                     now = time.time()
 
+                    # if process duration exceed 3 times average duration kill it
                     if self._max_process_time:
+                        # at 2 times, display a warning
                         if now - initial_time > 2.0 * self._max_process_time and not err:
                             logger.warning("Abnormal process %s duration > %g seconds, wait a little before kill it" % (
                                 learning_filename, now - initial_time))
                             err = True
 
+                        # at 3 times, send a sig-kill to process
                         if now - initial_time > 3.0 * self._max_process_time and err:
                             logger.error("Abnormal process %s duration > %g seconds kill" % (
                                 learning_filename, now - initial_time))
                             process.kill()
+
                     try:
                         while 1:
                             # stdout, stderr = process.communicate(timeout=0.1)
@@ -400,8 +404,10 @@ class TrainerTool(Tool):
                             if not stdout:
                                 break
 
+                            # decode stdout last line
                             msg = stdout.decode()
                             if msg:
+                                # remove ESC[ code (colored messages) as necessary
                                 if msg.startswith("["):
                                     while 1:
                                         i = msg.find("[")
@@ -419,8 +425,8 @@ class TrainerTool(Tool):
                                     logger.debug(msg.rstrip('\n'))
                                     logger.error("Kill process %s error" % learning_filename)
 
-                                    # process.kill()
-                                    process.terminate()
+                                    # sig-term to process on error
+                                    process.terminate()  # .kill()
 
                     except subprocess.TimeoutExpired:
                         pass

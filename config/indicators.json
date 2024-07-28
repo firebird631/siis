@@ -146,7 +146,12 @@
     },
     "vwap": {
         "status": "load",
-        "classpath": "strategy.indicator.vwap.vwap.VWAPIndicator",
+        "classpath": "strategy.indicator.vwap.vwapbase.VWAPBaseIndicator",
+        "options": {}
+    },
+    "tickvwap": {
+        "status": "load",
+        "classpath": "strategy.indicator.vwap.tickvwap.TickVWAPIndicator",
         "options": {}
     },
     "stddevbands": {
@@ -156,7 +161,12 @@
     },
     "volumeprofile": {
         "status": "load",
-        "classpath": "strategy.indicator.volumeprofile.volumeprofile.VolumeProfileIndicator",
+        "classpath": "strategy.indicator.volumeprofile.volumeprofilebase.VolumeProfileBaseIndicator",
+        "options": {}
+    },
+    "tickvolumeprofile": {
+        "status": "load",
+        "classpath": "strategy.indicator.volumeprofile.tickvolumeprofile.TickVolumeProfileIndicator",
         "options": {}
     },
     "cci": {
@@ -182,6 +192,16 @@
     "kama": {
         "status": "load",
         "classpath": "strategy.indicator.kama.kama.KAMAIndicator",
+        "options": {}
+    },
+    "cumulativevolumedelta": {
+        "status": "load",
+        "classpath": "strategy.indicator.cumulativevolumedelta.cvdbase.CumulativeVolumeDeltaBase",
+        "options": {}
+    },
+    "tickcumulativevolumedelta": {
+        "status": "load",
+        "classpath": "strategy.indicator.cumulativevolumedelta.tickcvd.TickCumulativeVolumeDelta",
         "options": {}
     }
 }

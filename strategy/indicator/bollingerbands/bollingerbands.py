@@ -29,6 +29,8 @@ class BollingerBandsIndicator(Indicator):
     +++ #define TA_IS_ZERO(v) (((-0.000000000000000001)<v)&&(v<0.000000000000000001))
     --- #define TA_IS_ZERO_OR_NEG(v) (v<0.00000001)
     +++ #define TA_IS_ZERO_OR_NEG(v) (v<0.000000000000000001)
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = ('_length', '_factor',
@@ -43,6 +45,10 @@ class BollingerBandsIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_INDEX
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=20, factor=2.0):
         super().__init__("bollingerbands", timeframe)

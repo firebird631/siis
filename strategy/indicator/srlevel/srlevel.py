@@ -18,6 +18,8 @@ class SRLevelIndicator(Indicator):
 
     It is a complement on ATRSR indicator or any other S/R indicator.
     Take in compute parameters two list of levels (down and up).
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_depth', '_step_size', '_currents', '_previous'
@@ -29,6 +31,10 @@ class SRLevelIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_INDEX
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, depth=5, step_size=1.0):
         super().__init__("srlevel", timeframe)

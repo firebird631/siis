@@ -13,7 +13,9 @@ from talib import EMA as ta_EMA
 
 class EMAIndicator(Indicator):
     """
-    Exponential Moving Average indicator
+    Exponential Moving Average indicator.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_prev', '_last', '_emas'
@@ -25,6 +27,10 @@ class EMAIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=9):
         super().__init__("ema", timeframe)

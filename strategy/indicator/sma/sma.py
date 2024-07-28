@@ -14,6 +14,8 @@ from talib import SMA as TA_SMA
 class SMAIndicator(Indicator):
     """
     Simple Moving Average indicator
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_prev', '_last', '_smas'
@@ -25,6 +27,10 @@ class SMAIndicator(Indicator):
     @classmethod
     def indicator_class(cls) -> int:
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe: float, length: int = 9):
         super().__init__("sma", timeframe)

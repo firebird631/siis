@@ -15,6 +15,8 @@ class StochasticIndicator(Indicator):
     """
     Stochastique indicator.
     https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/slow-stochastic
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_len_K', '_len_D', '_prev_k', '_last_k', '_prev_d', '_last_d', '_ks', '_ds'
@@ -26,6 +28,10 @@ class StochasticIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=9, len_K=3, len_D=3):
         super().__init__("stochastic", timeframe)

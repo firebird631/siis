@@ -38,6 +38,9 @@ class TomDemarkIndicator(Indicator):
     @see https://www.youtube.com/watch?v=fpy6XIZ5i8w&index=19&list=LLFsBV7tmWUGtCS8CRRPv5dQ&t=1686s
     @see http://practicaltechnicalanalysis.blogspot.com/2013/01/tom-demark-sequential.html
     @see https://www.mql5.com/en/code/viewcode/8966/130033/MAB_TD_Sequential.mq4
+
+    @note Only works with temporal bars (timeframes OHLC).
+    @todo Update to support non-temporal bars (helper to retrieve quickly the last delta bar)
     """
 
     __slots__ =  '_length', '_c', '_prev_c', '_cd', '_prev_cd', '_agg_cd', '_prev_agg_cd', '_high_low'
@@ -49,6 +52,10 @@ class TomDemarkIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_INDEX
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME
 
     def __init__(self, timeframe, length=9):
         super().__init__("tomdemark", timeframe)

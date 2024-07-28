@@ -12,6 +12,8 @@ import numpy as np
 class ADXIndicator(Indicator):
     """
     Average Directional Index indicator using low and high prices.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_prev', '_last', '_adxs'
@@ -23,6 +25,10 @@ class ADXIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=14):
         super().__init__("adx", timeframe)

@@ -13,6 +13,8 @@ import numpy as np
 class DonchianIndicator(Indicator):
     """
     Donchian channel indicator using low and high prices.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_prev_low', '_prev_high', '_last_low', '_last_high', '_highs', '_lows'
@@ -24,6 +26,10 @@ class DonchianIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_INDEX
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=30):
         super().__init__("donchian", timeframe)

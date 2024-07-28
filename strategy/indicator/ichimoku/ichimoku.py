@@ -19,6 +19,8 @@ class IchimokuIndicator(Indicator):
         - Senkou span A and senkou span B are shift in future by kijun sen length (26)
         - Chikou span is shift in past by kijun sen length (26)
         - Tenkan sen and kijun sen are aligned to initial data
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_tenkan_sen_l', '_kijun_sen_l', '_senkou_span_b_l', '_tenkans' ,'_kijuns', \
@@ -32,6 +34,10 @@ class IchimokuIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OVERLAY
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, tenkan_sen_l=9, kijun_sen_l=26, senkou_span_b_l=52):
         super().__init__("ichimoku", timeframe)

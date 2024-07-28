@@ -27,8 +27,8 @@ class Indicator(object):
     TYPE_SUPPORT_RESISTANCE = 8
     TYPE_TREND = 16
     TYPE_VOLUME = 32
-    TYPE_MOMENTUM_VOLUME = 2|32
-    TYPE_MOMENTUM_SUPPORT_RESISTANCE_TREND = 2|8|16
+    TYPE_MOMENTUM_VOLUME = 2 | 32
+    TYPE_MOMENTUM_SUPPORT_RESISTANCE_TREND = 2 | 8 | 16
 
     CLS_UNDEFINED = 0
     CLS_CUMULATIVE = 1
@@ -37,9 +37,9 @@ class Indicator(object):
     CLS_OVERLAY = 4
     CLS_CYCLE = 5
 
-    BASE_TIMEFRAME = 0
-    BASE_TICKBAR = 1
-    BASE_TICK = 2
+    BASE_TIMEFRAME = 1   # works from timeframe series
+    BASE_TICKBAR = 2     # works from non-temporal series
+    BASE_TICK = 4        # works from tick leval data (TickType[])
 
     @classmethod
     def indicator_type(cls) -> int:
@@ -58,25 +58,49 @@ class Indicator(object):
         return Indicator.BASE_TIMEFRAME
 
     @classmethod
-    def indicator_tickbar_based(cls) -> bool:
-        """
-        Is timeframe bar based indicator.
-        """
-        return cls.indicator_base() == Indicator.BASE_TICKBAR
-
-    @classmethod
     def indicator_timeframe_based(cls) -> bool:
         """
-        Is tick bar based indicator.
+        Is indicator based on temporal bars series (timeframe OHLC / candles)
         """
-        return cls.indicator_base() == Indicator.BASE_TIMEFRAME
+        return cls.indicator_base() & Indicator.BASE_TIMEFRAME is True
+
+    @classmethod
+    def indicator_tickbar_based(cls) -> bool:
+        """
+        Is indicator based on non-temporal bars series (range, reversal, tick, volume, renko...)
+        """
+        return cls.indicator_base() & Indicator.BASE_TICKBAR is True
 
     @classmethod
     def indicator_tick_based(cls) -> bool:
         """
-        Is tick based indicator.
+        Is indicator base on tick data (TickType[])
         """
-        return cls.indicator_base() == Indicator.BASE_TICK
+        return cls.indicator_base() & Indicator.BASE_TICK is True
+
+    @classmethod
+    def builder(cls, base_type: int, timeframe: float, *args):
+        """
+        Default class builder. Base type use to distinct the type of instance (tick, tickbar, timeframe...)
+        @param base_type: One of BASE_TIMEFRAME, BASE_TICK, BASE_TICKBAR
+        @param timeframe: Timeframe in second or 0 if none.
+        @param kargs: Args given to indicator __init__
+        @return: A new instance of the indicator
+        """
+        # return cls("", timeframe, **args)
+        return cls(timeframe, *args)
+
+    # @classmethod
+    # def builder_dict(cls, base_type: int, timeframe: float, **kwargs):
+    #     """
+    #     Default class builder. Base type use to distinct the type of instance (tick, tickbar, timeframe...)
+    #     @param base_type: One of BASE_TIMEFRAME, BASE_TICK, BASE_TICKBAR
+    #     @param timeframe: Timeframe in second or 0 if none.
+    #     @param kwargs: Args given to indicator __init__
+    #     @return: A new instance of the indicator
+    #     """
+    #     # return cls("", timeframe, **kwargs)
+    #     return cls(timeframe, **kwargs)
 
     def __init__(self, name: str, timeframe: float):
         self._name = name

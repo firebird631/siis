@@ -44,6 +44,8 @@ class PivotPointIndicator(Indicator):
     Woodie:
     Pivot = (H + L + 2 x C) / 4
     Like as classical
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     METHOD_CLASSICAL = 0
@@ -63,6 +65,10 @@ class PivotPointIndicator(Indicator):
     @classmethod
     def indicator_class(cls) -> int:
         return Indicator.CLS_OVERLAY
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe: float, method: int = METHOD_CLASSICAL, num: int = 6):
         super().__init__("pivotpoint", timeframe)

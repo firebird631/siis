@@ -16,6 +16,8 @@ class HMA3Indicator(Indicator):
     Hull Moving Three Average indicator
     https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/hull-moving-average
     It is a variation with : hma3 = wma(wma(x, len/3)*3 - wma(x, len/2) - wma(x, len), len)
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_prev', '_last', '_hma3s'
@@ -26,7 +28,11 @@ class HMA3Indicator(Indicator):
 
     @classmethod
     def indicator_class(cls):
-        return Indicator.CLS_OVERLAY
+        return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=9):
         super().__init__("hma3", timeframe)

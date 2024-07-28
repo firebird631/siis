@@ -17,6 +17,8 @@ logger = logging.getLogger('siis.strategy.indicator.price')
 class PriceIndicator(Indicator):
     """
     Simple average price indicator using candle data.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     PRICE_CLOSE = 0   # return close price
@@ -34,6 +36,10 @@ class PriceIndicator(Indicator):
     @classmethod
     def indicator_class(cls) -> int:
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe: float, method: int = PRICE_CLOSE):
         super().__init__("price", timeframe)

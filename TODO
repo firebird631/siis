@@ -134,17 +134,10 @@ Sum order :
 
 - def update_exit_qty(order_exec): fixer le avg exit price car peut être sur plusieurs ordres de sortie
 
-- certains outils fonctionnent en multi-market list --market=A,B,C...' d'autres ne supporte qu'un seul market (check options)
-
 - auto unsubscribe chart at web client close
 - auto unsubscribe charts when no web client connected on server
 
-- paper trader base exchange rate mais surtout contract size doit etre recalcule a chaque step en backtest
-    - pose probleme sur bitmex XTBUSD => 1/price**2 uniquement sinon la valeur reste a l'initiale en DB
-    - devrait ajouter un MARKET TYPE INVERSE (PERPETUAL) et donc calculer 1/price et contract_size = 1
-
-- def dumps_context(self, context_id: str) -> Union[dict, None]: doit etre generic et doit utiliser context dumps method
-   - est ce qu'on veut vraiment dumps ca... au final c'est plus l'oeuvre de la strategy
+- paper-trader : base exchange rate parfois peut être calcule si le market necessaire est disponnible
 
 - Verification des trades par la method check :
     - implementer order_info pour le trader bitmex et verifier
@@ -153,12 +146,10 @@ Sum order :
     - verifier order_info pour le trader kraken car des bug etrangent se produisent parfois
     - verifier order_info pour le trader binancefutures (plus possible pour l'instant)
 
-- Le context, dans le cas du breakeven, stop-loss dynamic, take-profit dynamic, le parametre timeframe affect la durée
-    de consolidation, mais dans le cas de rangebar/tickbar cela est potentiellement moins cohérent. comment tester
-    que la bar est cloture sans avoir besoin de la tickbar dataserie
+- Dans les trades context (exits) utiliser le param num_bars si définie mais comment on fait le comptage relatif,
+    il faut nécessaire un analyser pour savoir si last_closed est vrai
 
-- Ajouter statistiques par strategy trader et/ou trader account si possible pour afficher en live :
-    - Average Entry, Exit and Total Efficiency -> afficher sur aggtradeview
+- On pourrait afficher un chart et ou tableau account samples (par jour) comme ça on voir la perf par journée
 
 - Ajouter le plot bar CLI
 
@@ -216,14 +207,9 @@ Sum order :
 # Bonus #
 #########
 
-- market profile (+session offset/duration)
-
 - tool trainer :: run doit override les parameters markets specifics si presents
 
-- Ne pas utiliser l'api-key/auth en paper-mode a finir pour binance et binancefutures
-- Ne pas utiliser l'api-key/auth en paper-mode a finir pour bitmex
-
-- Commande de fusion et split des trades pour un instrument donné (à réfléchir)
+- Ne pas utiliser l'api-key/auth en paper-mode sur : kraken, bitmex, binance, binancefutures
 
 - Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, ainsi avoir le trigger coté bot,
     et ne pas bloquer les fonds coté broker
@@ -239,15 +225,17 @@ Sum order :
     sur une seule de reference et ensuite transferer sur le le wallet de reference
         - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
 
-- ajouter renko bar (voir https://tradewithpython.com/constructing-renko-charts-using-python exemple avec ATR)
-- ajouter unirenko bar
-- ajouter tick bar
-- ajouter volume bar
+- ajouter renko bar (voir https://tradewithpython.com/constructing-renko-charts-using-python exemple avec ATR) et %
+- ajouter unirenko bar (x,y,z)
+- ajouter tick bar (t)
+- ajouter volume bar (v)
 - finir le footprint
 
-- update to latest IG API
+- market profile (+session offset/duration)
 
 - cumulative volume delta indicateur mais doit être calculé par tick (comme vwap, volume profile...)
+
+- update to latest IG API
 
 ############
 ## Divers ##

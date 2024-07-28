@@ -13,7 +13,9 @@ import numpy as np
 
 class MomentumIndicator(Indicator):
     """
-    Momentum indicator
+    Momentum indicator.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_prev', '_last', '_mmts'
@@ -25,6 +27,10 @@ class MomentumIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=7):
         super().__init__("momentum", timeframe)

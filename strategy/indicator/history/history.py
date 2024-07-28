@@ -16,10 +16,13 @@ class HistoryIndicator(Indicator):
     History indicator allow to store max N last value of any other indicator,
     The others indicator only store theirs previous and latest value, and some other cache
     and computations data.
-    They does not store more to avoid the cost of the array managing, very costly in Python (slow slicing).
+    They do not store more to avoid the cost of the array managing, very costly in Python (slow slicing).
 
-    An example of usage, could be using this indicator on an RSi or a SMA, and use the SlopeIndicator over this
+    An example of usage, could be using this indicator on an RSi or a SMA, and use the SlopeIndicator over these
     values.
+
+    @note Only works with temporal bars (timeframes OHLC).
+    @todo Update to support non-temporal bars (helper to retrieve quickly the last delta bar)
     """
 
     __slots__ = '_length', '_values'
@@ -31,6 +34,10 @@ class HistoryIndicator(Indicator):
     @classmethod
     def indicator_class(cls) -> int:
         return Indicator.CLS_INDEX
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME
 
     def __init__(self, timeframe: float, length: int = 9):
         super().__init__("history", timeframe)

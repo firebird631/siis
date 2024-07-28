@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, List, Tuple, Union, Optional
 
 from watcher.watcher import Watcher
+from .indicator.indicator import Indicator
 
 if TYPE_CHECKING:
     from monitor.streamable import Streamable
@@ -114,10 +115,10 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
             if param is not None:
                 if self._strategy_trader.strategy.indicator(param[0]):
                     # instantiate and setup indicator
-                    indicator = self._strategy_trader.strategy.indicator(param[0])(0.0, *param[1:])
-                    indicator.setup(self._strategy_trader.instrument)
+                    indicator = self._strategy_trader.strategy.indicator(param[0]).builder(
+                        Indicator.BASE_TICKBAR, 0.0, *param[1:])
 
-                    # @todo warning if not enough depth/history
+                    indicator.setup(self._strategy_trader.instrument)
 
                     setattr(self, ind, indicator)
                 else:

@@ -15,6 +15,8 @@ class HMAIndicator(Indicator):
     """
     Hull Moving Average indicator
     https://www.fidelity.com/learning-center/trading-investing/technical-analysis/technical-indicator-guide/hull-moving-average
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_prev', '_last', '_hmas'
@@ -25,7 +27,11 @@ class HMAIndicator(Indicator):
 
     @classmethod
     def indicator_class(cls):
-        return Indicator.CLS_OVERLAY
+        return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=9):
         super().__init__("hma", timeframe)

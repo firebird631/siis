@@ -12,6 +12,8 @@ import numpy as np
 class VolumeIndicator(Indicator):
     """
     Simple volume indicator using candle data.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     VOLUME_TICK = 0   # take the tick volume
@@ -25,6 +27,10 @@ class VolumeIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, method=VOLUME_TICK):
         super().__init__("volume", timeframe)

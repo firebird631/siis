@@ -15,6 +15,8 @@ class MACDIndicator(Indicator):
     """
     Moving Average Convergence Divergence indicator
     https://fr.wikipedia.org/wiki/MACD
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_short_l', '_long_l', '_signal_l', '_prev_macd', '_last_macd', '_prev_signal', '_last_signal', \
@@ -26,7 +28,11 @@ class MACDIndicator(Indicator):
 
     @classmethod
     def indicator_class(cls):
-        return Indicator.CLS_OVERLAY
+        return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, short_l=12, long_l=26, signal_l=9):
         super().__init__("macd", timeframe)

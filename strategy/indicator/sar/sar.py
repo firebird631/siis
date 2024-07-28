@@ -12,7 +12,9 @@ from talib import SAR as ta_SAR
 
 class SARIndicator(Indicator):
     """
-    Parabolic SAR indicator
+    Parabolic SAR indicator.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_acceleration', '_maximum', '_prev', '_last', '_sars'
@@ -24,6 +26,10 @@ class SARIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, acceleration=0, maximum=0):
         super().__init__("sar", timeframe)

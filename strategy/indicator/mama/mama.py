@@ -12,7 +12,9 @@ import numpy as np
 
 class MAMAIndicator(Indicator):
     """
-    MESA Adaptive Moving Average indicator
+    MESA Adaptive Moving Average indicator.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_fast_limit', '_slow_limit', '_prev_mama', '_prev_fama', '_last_mama', '_last_fama', '_famas', '_mamas'
@@ -23,7 +25,11 @@ class MAMAIndicator(Indicator):
 
     @classmethod
     def indicator_class(cls):
-        return Indicator.CLS_OVERLAY
+        return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, fast_limit=0.5, slow_limit=0.05):
         super().__init__("mama", timeframe)

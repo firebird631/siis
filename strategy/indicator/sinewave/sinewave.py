@@ -12,7 +12,9 @@ from talib import HT_SINE as ta_HT_SINE
 
 class SineWaveIndicator(Indicator):
     """
-    SineWave Hilbert transform indicator
+    SineWave Hilbert transform indicator.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_prev_sine', '_last_sine',  '_prev_lead_sine', '_last_lead_sine', '_sines', '_lead_sines'
@@ -24,6 +26,10 @@ class SineWaveIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_CYCLE
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe):
         super().__init__("sineware", timeframe)

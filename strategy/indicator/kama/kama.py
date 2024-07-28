@@ -13,6 +13,8 @@ class KAMAIndicator(Indicator):
     """
     Kaufman Adaptative Moving Average indicator
     @see https://corporatefinanceinstitute.com/resources/career-map/sell-side/capital-markets/kaufmans-adaptive-moving-average-kama/
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_fast', '_slow', '_prev', '_last', '_kamas'
@@ -23,7 +25,11 @@ class KAMAIndicator(Indicator):
 
     @classmethod
     def indicator_class(cls):
-        return Indicator.CLS_OVERLAY
+        return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=10, fast=2, slow=30):
         super().__init__("kama", timeframe)

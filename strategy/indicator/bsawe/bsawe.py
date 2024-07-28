@@ -19,6 +19,8 @@ class BSAweIndicator(Indicator):
 
     @see https://www.forexstrategiesresources.com/scalping-forex-strategies-iii/337-bollinger-bands-and-chaos-awesome-scalping-system
     @author Squeeze Momentum Indicator [LazyBear]
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_bb_L', '_fast_MA_L', '_awesome_fast_L', '_awesome_slow_L', '_use_EMA', '_signal'
@@ -30,6 +32,10 @@ class BSAweIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, bb_L=20, fast_MA_L=3.0, awesome_fast_L=5, awesome_slow_L=34, use_EMA=False):
         super().__init__("bsawe", timeframe)

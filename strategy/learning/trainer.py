@@ -497,8 +497,10 @@ class Trainer(object):
                                 if not stdout:
                                     break
 
+                                # decode stdout last line
                                 msg = stdout.decode()
                                 if msg:
+                                    # remove ESC[ code (colored messages) as necessary
                                     if msg.startswith("["):
                                         while 1:
                                             i = msg.find("[")
@@ -513,10 +515,15 @@ class Trainer(object):
 
                                     if "error" in msg.lower():
                                         logger.error("Error during process of training for %s" % market_id)
+
+                                        # sig-kill to process (abnormal error)
                                         process.kill()
                                     elif "Progress " in msg:
-                                        Terminal.inst().message("%s for %s" % (msg.rstrip('\n'), market_id), view='default')
+                                        # info progression into terminal
+                                        Terminal.inst().message("Training %s for %s" % (
+                                            msg.lower().rstrip('\n'), market_id), view='default')
                                     elif "Estimate total duration to " in msg:
+                                        # estimate duration in debug view only
                                         logger.debug("%s for %s" % (msg.rstrip('\n'), market_id))
 
                         except subprocess.TimeoutExpired:

@@ -13,6 +13,9 @@ logger = logging.getLogger('siis.strategy.kahlman')
 class KahlmanFilter(object):
     """
     Kahlman Filter implementation working with indicators.
+    It is not directly based on Indicator model.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     def __init__(self, _len: int, gain: float = 0.7):

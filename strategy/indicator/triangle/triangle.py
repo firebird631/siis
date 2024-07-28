@@ -16,6 +16,8 @@ import math
 class TriangleIndicator(Indicator):
     """
     Triangle indicator and trend detection.
+
+    @note Works with both temporal and non-temporal bars.
     """
 
     __slots__ = '_length', '_split_idx', '_bottom_partial_interp', '_top_partial_interp', '_bottom', '_top'
@@ -27,6 +29,10 @@ class TriangleIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_INDEX
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
     def __init__(self, timeframe, length=20):
         super().__init__("triangle", timeframe)

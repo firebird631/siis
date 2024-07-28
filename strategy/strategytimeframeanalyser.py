@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, List, Union, Optional
 
 from watcher.watcher import Watcher
+from .indicator.indicator import Indicator
 from .strategytraderbase import StrategyTraderBase
 
 if TYPE_CHECKING:
@@ -113,10 +114,10 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
             if param is not None:
                 if self._strategy_trader.strategy.indicator(param[0]):
                     # instantiate and setup indicator
-                    indicator = self._strategy_trader.strategy.indicator(param[0])(self.tf, *param[1:])
-                    indicator.setup(self._strategy_trader.instrument)
+                    indicator = self._strategy_trader.strategy.indicator(param[0]).builder(
+                        Indicator.BASE_TIMEFRAME, self.tf, *param[1:])
 
-                    # @todo warning if not enough depth/history
+                    indicator.setup(self._strategy_trader.instrument)
 
                     setattr(self, ind, indicator)
                 else:

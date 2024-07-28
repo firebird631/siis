@@ -19,6 +19,9 @@ logger = logging.getLogger('siis.strategy.indicator')
 class ATRSRIndicator(Indicator):
     """
     Average True Range Support and Resistance indicator.
+
+    @note Only works with temporal bars (timeframes OHLC).
+    @todo Update to support non-temporal bars (helper to retrieve quickly the last delta bar)
     """
 
     __slots__ = '_length', '_coeff', '_length_MA', '_down', '_up', '_both', '_max_history', '_tup', '_tdn', '_last_atr'
@@ -30,6 +33,10 @@ class ATRSRIndicator(Indicator):
     @classmethod
     def indicator_class(cls):
         return Indicator.CLS_OSCILLATOR
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME
 
     def __init__(self, timeframe, length=14, coeff=2, length_MA=7, max_history=100):
         super().__init__("atrsr", timeframe)
