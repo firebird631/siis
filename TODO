@@ -216,9 +216,6 @@ Sum order :
 # Bonus #
 #########
 
-- sur la table market info il manque hedging, rajouter au storage et query
-    - actuellement ne pose pas probleme en backtest car les stratégies gèrent mais indispensable quand même
-
 - market profile (+session offset/duration)
 
 - tool trainer :: run doit override les parameters markets specifics si presents

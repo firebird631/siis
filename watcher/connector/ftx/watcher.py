@@ -659,6 +659,9 @@ class FTXWatcher(Watcher):
             vol24_base = symbol.get('quoteVolume24h', 0.0)
             vol24_quote = symbol.get('volumeUsd24h', 0.0)
 
+            # no hedging
+            flags = 0
+
             # notify for strategy
             self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
@@ -677,8 +680,8 @@ class FTXWatcher(Watcher):
                 *notional_limits,
                 *price_limits,
                 str(market.maker_fee), str(market.taker_fee),
-                str(market.maker_commission), str(market.taker_commission))
-            )
+                str(market.maker_commission), str(market.taker_commission),
+                flags))
 
         return market
 

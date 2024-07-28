@@ -168,7 +168,7 @@ class Notifier(Runnable):
     def watchdog(self, watchdog_service, timeout):
         pass
 
-    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
+    def pong(self, timestamp: float, pid: int, watchdog_service, status: bool):
         pass
 
     @staticmethod

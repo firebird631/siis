@@ -578,8 +578,8 @@ class BinanceFuturesWatcher(Watcher):
                 *notional_limits,
                 *price_limits,
                 str(market.maker_fee), str(market.taker_fee), str(market.maker_commission),
-                str(market.taker_commission))
-            )
+                str(market.taker_commission),
+                market.flags_to_int()))
 
         return market
 

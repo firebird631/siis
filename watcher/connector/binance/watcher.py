@@ -545,6 +545,9 @@ class BinanceWatcher(Watcher):
             # vol24_base = ticker24h('volume')
             # vol24_quote = ticker24h('quoteVolume')
 
+            # no hedging...
+            flags = 0
+
             # notify for strategy
             self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
@@ -563,8 +566,8 @@ class BinanceWatcher(Watcher):
                 *notional_limits,
                 *price_limits,
                 str(market.maker_fee), str(market.taker_fee),
-                str(market.maker_commission), str(market.taker_commission))
-            )
+                str(market.maker_commission), str(market.taker_commission),
+                flags))
 
         return market
 

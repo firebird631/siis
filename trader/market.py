@@ -33,6 +33,7 @@ class Market(object):
     TYPE_CURRENCY = 1
     TYPE_COMMODITY = 2
     TYPE_INDICE = 3
+    TYPE_INDEX = 3
     TYPE_STOCK = 4
     TYPE_RATE = 5
     TYPE_SECTOR = 6
@@ -993,3 +994,14 @@ class Market(object):
 
     def loads(self, data: dict):
         pass
+
+    def flags_to_int(self) -> int:
+        flags = 0
+
+        if self.hedging:
+            flags |= 1
+
+        return flags
+
+    def flags_from_int(self, flags: int):
+        self.hedging = True if flags & 1 else False

@@ -461,14 +461,13 @@ class Strategy(Runnable):
                                              "Unable to join appliance %s - %s for %s seconds" % (
                                                  self._name, self._identifier, timeout))
 
-    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
-        if msg:
+    def pong(self, timestamp: float, pid: int, watchdog_service, status: bool):
+        if status:
             # display strategy activity
-            Terminal.inst().action("Strategy worker %s - %s is alive %s" % (
-                self._name, self._identifier, msg), view='content')
+            Terminal.inst().action("Strategy worker %s - %s is alive" % (self._name, self._identifier), view='content')
 
         if watchdog_service:
-            watchdog_service.service_pong(pid, timestamp, msg)
+            watchdog_service.service_pong(pid, timestamp, status)
 
     #
     # strategy-trader processing

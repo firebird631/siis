@@ -270,7 +270,7 @@ class HistDataFetcher(Fetcher):
 
         return ts, parts[1], parts[2], parts[3], parts[4], 0.0, parts[5]
 
-    def install_market(self, market_id):
+    def install_market(self, market_id: str):
         fetcher_config = self.service.fetcher_config(self._name)
         if fetcher_config:
             markets = fetcher_config.get('markets', {})

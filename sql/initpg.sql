@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS market(
     min_price VARCHAR(32) NOT NULL, max_price VARCHAR(32) NOT NULL, step_price VARCHAR(32) NOT NULL,
     maker_fee VARCHAR(32) NOT NULL DEFAULT '0', taker_fee VARCHAR(32) NOT NULL DEFAULT '0',
     maker_commission VARCHAR(32) NOT NULL DEFAULT '0', taker_commission VARCHAR(32) NOT NULL DEFAULT '0',
+    flags INTEGER NOT NULL DEFAULT 0,
     UNIQUE(broker_id, market_id));
 
 -- asset
@@ -84,3 +85,13 @@ CREATE TABLE IF NOT EXISTS user_closed_trade(
     data TEXT NOT NULL DEFAULT '{}');
 
 CREATE INDEX IF NOT EXISTS idx_user_closed_trade_all on user_closed_trade(broker_id, account_id, market_id, strategy_id);
+
+-- range_bar
+CREATE TABLE IF NOT EXISTS range_bar(
+    id SERIAL PRIMARY KEY,
+    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+    timestamp BIGINT NOT NULL, duration BIGINT NOT NULL,
+    size INTEGER NOT NULL,
+    open VARCHAR(32) NOT NULL, high VARCHAR(32) NOT NULL, low VARCHAR(32) NOT NULL, close VARCHAR(32) NOT NULL,
+    volume VARCHAR(48) NOT NULL,
+    UNIQUE(broker_id, market_id, timestamp, size));

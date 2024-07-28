@@ -93,6 +93,7 @@ class PgSql(Database):
                 min_price VARCHAR(32) NOT NULL, max_price VARCHAR(32) NOT NULL, step_price VARCHAR(32) NOT NULL,
                 maker_fee VARCHAR(32) NOT NULL DEFAULT '0', taker_fee VARCHAR(32) NOT NULL DEFAULT '0',
                 maker_commission VARCHAR(32) NOT NULL DEFAULT '0', taker_commission VARCHAR(32) NOT NULL DEFAULT '0',
+                flags INTEGER NOT NULL DEFAULT 0,
                 UNIQUE(broker_id, market_id))""")
 
         self._db.commit()
@@ -388,7 +389,9 @@ class PgSql(Database):
                             min_size, max_size, step_size,
                             min_notional, max_notional, step_notional,
                             min_price, max_price, step_price,
-                            maker_fee, taker_fee, maker_commission, taker_commission FROM market
+                            maker_fee, taker_fee, 
+                            maker_commission, taker_commission,
+                            flags FROM market
                         WHERE broker_id = '%s' AND market_id = '%s'""" % (
             broker_id, market_id))
 
@@ -434,6 +437,8 @@ class PgSql(Database):
 
             market_info.maker_commission = float(row[34])
             market_info.taker_commission = float(row[35])
+
+            market_info.flags_from_int(row[36])
         else:
             market_info = None
 
@@ -488,8 +493,10 @@ class PgSql(Database):
                                         min_size, max_size, step_size,
                                         min_notional, max_notional, step_notional,
                                         min_price, max_price, step_price,
-                                        maker_fee, taker_fee, maker_commission, taker_commission) 
-                                    VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        maker_fee, taker_fee, 
+                                        maker_commission, taker_commission,
+                                        flags) 
+                                    VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                     ON CONFLICT (broker_id, market_id) DO UPDATE SET symbol = EXCLUDED.symbol,
                                         market_type = EXCLUDED.market_type, unit_type = EXCLUDED.unit_type, contract_type = EXCLUDED.contract_type,
                                         trade_type = EXCLUDED.trade_type, orders = EXCLUDED.orders,
@@ -502,8 +509,9 @@ class PgSql(Database):
                                         min_size = EXCLUDED.min_size, max_size = EXCLUDED.max_size, step_size = EXCLUDED.step_size,
                                         min_notional = EXCLUDED.min_notional, max_notional = EXCLUDED.max_notional, step_notional = EXCLUDED.step_notional,
                                         min_price = EXCLUDED.min_price, max_price = EXCLUDED.max_price, step_price = EXCLUDED.step_price,
-                                        maker_fee = EXCLUDED.maker_fee, taker_fee = EXCLUDED.taker_fee, maker_commission = EXCLUDED.maker_commission, taker_commission = EXCLUDED.taker_commission""",
-                                    (*mi,))
+                                        maker_fee = EXCLUDED.maker_fee, taker_fee = EXCLUDED.taker_fee, 
+                                        maker_commission = EXCLUDED.maker_commission, taker_commission = EXCLUDED.taker_commission,
+                                        flags = EXCLUDED.flags""", (*mi,))
 
                 self._db.commit()
                 cursor = None
@@ -546,7 +554,9 @@ class PgSql(Database):
                                         min_size, max_size, step_size,
                                         min_notional, max_notional, step_notional,
                                         min_price, max_price, step_price,
-                                        maker_fee, taker_fee, maker_commission, taker_commission FROM market
+                                        maker_fee, taker_fee, 
+                                        maker_commission, taker_commission, flags
+                                        FROM market
                                     WHERE broker_id = '%s' AND market_id = '%s'""" % (
                                         mi[1], mi[2]))
 
@@ -592,6 +602,8 @@ class PgSql(Database):
 
                         market_info.maker_commission = float(row[34])
                         market_info.taker_commission = float(row[35])
+
+                        market_info.flags_from_int(row[36])
                     else:
                         market_info = None
 

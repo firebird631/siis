@@ -106,7 +106,7 @@ class KrakenFetcher(Fetcher):
     def authenticated(self) -> bool:
         return self._connector and self._connector.authenticated
 
-    def install_market(self, market_id):
+    def install_market(self, market_id: str):
         instrument = self._instruments.get(market_id)
 
         logger.info("Fetcher %s retrieve and install market %s from local data" % (self.name, market_id))
@@ -193,6 +193,9 @@ class KrakenFetcher(Fetcher):
                 # contract_size = 1.0 / mid_price
                 # value_per_pip = contract_size / mid_price
 
+                # no hedging...
+                flags = 0
+
                 # store the last market info to be used for backtesting
                 Database.inst().store_market_info((
                     self.name, market_id, symbol,
@@ -207,7 +210,8 @@ class KrakenFetcher(Fetcher):
                     *size_limits,
                     *notional_limits,
                     *price_limits,
-                    str(maker_fee), str(taker_fee), "0.0", "0.0")
+                    str(maker_fee), str(taker_fee), "0.0", "0.0",
+                    flags)
                 )
             except Exception as e:
                 logger.error("Fetcher %s error retrieve market %s on local data" % (self.name, market_id))

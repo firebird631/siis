@@ -372,17 +372,17 @@ class Trader(Runnable):
     def ping(self, timeout: float):
         self._ping = (0, None, True)
 
-    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
-        if msg:
+    def pong(self, timestamp: float, pid: int, watchdog_service, status: bool):
+        if status:
             # display trader activity
             if self.connected:
-                Terminal.inst().action("Trader worker %s is alive %s" % (self._name, msg), view='content')
+                Terminal.inst().action("Trader worker %s is alive" % self._name, view='content')
             else:
-                Terminal.inst().action("Trader worker %s is alive but waiting for (re)connection %s" % (
-                    self._name, msg), view='content')
+                Terminal.inst().action("Trader worker %s is alive but waiting for (re)connection" % self._name,
+                                       view='content')
 
         if watchdog_service:
-            watchdog_service.service_pong(pid, timestamp, msg)
+            watchdog_service.service_pong(pid, timestamp, status)
 
     #
     # global information

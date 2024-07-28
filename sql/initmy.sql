@@ -83,4 +83,14 @@ CREATE TABLE IF NOT EXISTS user_closed_trade(
     timestamp BIGINT NOT NULL,
     data TEXT NOT NULL DEFAULT '{}') ENGINE=InnoDB;
 
+-- range_bar
+CREATE TABLE IF NOT EXISTS range_bar(
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    broker_id VARCHAR(255) NOT NULL, market_id VARCHAR(255) NOT NULL,
+    timestamp BIGINT NOT NULL, duration BIGINT NOT NULL,
+    size INTEGER NOT NULL,
+    open VARCHAR(32) NOT NULL, high VARCHAR(32) NOT NULL, low VARCHAR(32) NOT NULL, close VARCHAR(32) NOT NULL,
+    volume VARCHAR(48) NOT NULL,
+    UNIQUE(broker_id, market_id, timestamp, size)) ENGINE=InnoDB;
+
 -- @todo index on user_closed_trade(broker_id, account_id, market_id, strategy_id)

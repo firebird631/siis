@@ -753,6 +753,9 @@ class KrakenWatcher(Watcher):
 
             # volume 24h : not have here
 
+            # no hedging
+            flags = 0
+
             # notify for strategy
             self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))
 
@@ -770,8 +773,9 @@ class KrakenWatcher(Watcher):
                 *size_limits,
                 *notional_limits,
                 *price_limits,
-                str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))
-            )
+                str(market.maker_fee), str(market.taker_fee),
+                str(market.maker_commission), str(market.taker_commission),
+                flags))
 
         return market
 

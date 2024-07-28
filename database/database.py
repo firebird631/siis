@@ -459,7 +459,7 @@ class Database(object):
 
     def store_market_info(self, data: Tuple[str, str, str, int, int, int, int, int, str, str, int, str, str, int,
                                             str, str, int, str, int, str, str, str, str, str, str, str, str, str,
-                                            str, str, str, str, str, str, str, str, str, str]):
+                                            str, str, str, str, str, str, str, str, str, str, int]):
         """
         @param data: is a tuple or an array of tuples containing data in that order and format :
             str broker_id (not empty)
@@ -500,6 +500,7 @@ class Database(object):
             str taker_fee
             str maker_commission
             str taker_commission
+            int flags (bit mask : 0/hedging)
         """
         with self._mutex:
             if isinstance(data, list):

@@ -926,6 +926,9 @@ class BitMexWatcher(Watcher):
             market.maker_fee = instrument.get('makerFee', 0.02)
             market.taker_fee = instrument.get('takerFee', 0.075)
 
+            # flags, no hedging
+            flags = 0
+
             # store the last market info to be used for backtesting
             Database.inst().store_market_info((
                 self.name, market_id, market.symbol,
@@ -940,8 +943,9 @@ class BitMexWatcher(Watcher):
                 str(market.min_size), str(market.max_size), str(market.step_size),  # size limits
                 str(market.min_notional), str(market.max_notional), str(market.step_notional),  # notional limits
                 str(market.min_price), str(market.max_price), str(market.tick_price),  # price limits
-                str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))  # fees
-            )
+                str(market.maker_fee), str(market.taker_fee),  # fees
+                str(market.maker_commission), str(market.taker_commission),  # no commissions
+                flags))
 
             # notify for strategy
             self.service.notify(Signal.SIGNAL_MARKET_INFO_DATA, self.name, (market_id, market))

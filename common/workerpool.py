@@ -8,6 +8,7 @@ import threading
 import time
 import multiprocessing
 import collections
+from typing import Optional, Tuple
 
 from strategy.strategytraderbase import StrategyTraderBase
 from terminal.terminal import Terminal
@@ -41,6 +42,8 @@ class CountDown(object):
 
 
 class Worker(threading.Thread):
+
+    _ping: Optional[Tuple[int, object, bool]]
 
     def __init__(self, pool, uid):
         super().__init__(name="st-wk-%s" % uid)
@@ -124,7 +127,7 @@ class Worker(threading.Thread):
         return self._uid
 
     def ping(self, timeout: float):
-        self._ping = (0, None, True)
+        self._ping = (0, None, False)
 
     def watchdog(self, watchdog_service, timeout):
         if self._long_process:
@@ -133,12 +136,12 @@ class Worker(threading.Thread):
 
         self._ping = (watchdog_service.gen_pid("worker-%s" % self._uid), watchdog_service, False)
 
-    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
-        if msg:
-            Terminal.inst().action("WorkerPool::Worker %s is alive %s" % (self._uid, msg), view='content')
+    def pong(self, timestamp: float, pid: int, watchdog_service, status: bool):
+        if status:
+            Terminal.inst().action("WorkerPool::Worker %s is alive" % self._uid, view='content')
 
         if watchdog_service:
-            watchdog_service.service_pong(pid, timestamp, msg)
+            watchdog_service.service_pong(pid, timestamp, status)
 
 
 class WorkerPool(object):

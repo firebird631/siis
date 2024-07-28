@@ -302,13 +302,13 @@ class Fetcher(object):
             str(candle.spread),
             str(candle.volume)))
 
-    def install_market(self, market_id):
+    def install_market(self, market_id: str):
         """
         From what is locally defined install the market data for a specific market id
         """
         pass
 
-    def install_market_data(self, market_id, market_data):
+    def install_market_data(self, market_id: str, market_data: dict):
         """
         Install a market info data into the database.
         """
@@ -332,6 +332,7 @@ class Fetcher(object):
         market.is_open = True
 
         market.margin_factor = market_data.get('margin-factor', 1.0)
+        market.hedging = market_data.get('hedging', False)
 
         if 'unit' in market_data:
             if market_data['unit'] == 'amount':
@@ -446,8 +447,9 @@ class Fetcher(object):
             str(market.min_size), str(market.max_size), str(market.step_size),  # size limits
             str(market.min_notional), str(market.max_notional), str(market.step_notional),  # notional limits
             str(market.min_price), str(market.max_price), str(market.tick_price),  # price limits
-            str(market.maker_fee), str(market.taker_fee), str(market.maker_commission), str(market.taker_commission))  # fees
-        )
+            str(market.maker_fee), str(market.taker_fee),
+            str(market.maker_commission), str(market.taker_commission),  # fees
+            market.flags_to_int()))
 
     #
     # fetch orders

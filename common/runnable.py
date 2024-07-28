@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Union, Callable
+from typing import Union, Callable, Optional, Tuple
 
 import traceback
 import threading
@@ -22,6 +22,8 @@ class Runnable(object):
 
     DEFAULT_USE_BENCH = False
     MAX_BENCH_SAMPLES = 30
+
+    _ping: Optional[Tuple[int, object, bool]]
 
     def __init__(self, thread_name=""):
         self._running = False
@@ -222,12 +224,12 @@ class Runnable(object):
                 self._thread.name if self._thread else "unknown",
                 "Unable to join thread %s for %s seconds" % (self._thread.name if self._thread else "unknown", timeout))
 
-    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
-        if msg:
-            Terminal.inst().action("Thread %s is alive %s" % (self.name, msg), view='content')
+    def pong(self, timestamp: float, pid: int, watchdog_service, status: bool):
+        if status:
+            Terminal.inst().action("Thread %s is alive" % self.name, view='content')
 
         if watchdog_service:
-            watchdog_service.service_pong(pid, timestamp, msg)
+            watchdog_service.service_pong(pid, timestamp, status)
 
     @classmethod
     def mutexed(cls, fn: Callable):

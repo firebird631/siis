@@ -221,10 +221,6 @@ class IGWatcher(Watcher):
         if self._mutex.acquire(True, 5.0):
             try:
                 if self._lightstreamer:
-                    # if self._lightstreamer.connected:
-                    #   for sub_key in self._subscriptions:
-                    #       self._lightstreamer.unsubscribe(sub_key)
-
                     self._subscriptions = []
                     self._lightstreamer.disconnect()
                     # self._lightstreamer._join()
@@ -1335,6 +1331,9 @@ class IGWatcher(Watcher):
         # commission for stocks @todo
         commission = "0.0"
 
+        # flags, bit 0 for hedging
+        flags = 1 if market.hedging else 0
+
         # store the last market info to be used for backtesting
         Database.inst().store_market_info((
             self.name, epic, market.symbol,
@@ -1349,8 +1348,9 @@ class IGWatcher(Watcher):
             dealing_rules["minDealSize"]["value"], "0.0", dealing_rules["minDealSize"]["value"],  # size limits
             "0.0", "0.0", "0.0",  # notional limits
             market.min_price, market.max_price, market.step_price,  # price limits
-            "0.0", "0.0", commission, commission)  # fees
-        )
+            "0.0", "0.0",
+            commission, commission,  # fees
+            flags))
 
         # print(market.symbol, market._size_limits, market._price_limits)
 

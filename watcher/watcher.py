@@ -381,17 +381,17 @@ q
         # @todo info, subscribe, unsubscribe commands
         return None
 
-    def pong(self, timestamp: float, pid: int, watchdog_service, msg: str):
-        if msg:
+    def pong(self, timestamp: float, pid: int, watchdog_service, status: bool):
+        if status:
             # display watcher activity
             if self.connected:
-                Terminal.inst().action("Watcher worker %s is alive %s" % (self._name, msg), view='content')
+                Terminal.inst().action("Watcher worker %s is alive and connected" % self._name, view='content')
             else:
-                Terminal.inst().action("Watcher worker %s is alive but waiting for (re)connection %s" % (
-                    self._name, msg), view='content')
+                Terminal.inst().action("Watcher worker %s is alive but waiting for (re)connection %s" % self._name,
+                                       view='content')
 
         if watchdog_service:
-            watchdog_service.service_pong(pid, timestamp, msg)
+            watchdog_service.service_pong(pid, timestamp, status)
 
     def fetch_market(self, market_id: str) -> Union[Market, None]:
         """
