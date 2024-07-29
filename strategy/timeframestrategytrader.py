@@ -164,8 +164,7 @@ class TimeframeStrategyTrader(StrategyTraderBase):
         """
         Default implementation
         """
-        # compile contexts
-        self.compiles_all_contexts()
+        super().on_market_info()
 
     def generate_bars_from_ticks(self, timestamp: float):
         """

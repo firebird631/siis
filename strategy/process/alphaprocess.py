@@ -360,8 +360,8 @@ def alpha_setup_backtest(strategy, from_date: datetime, to_date: datetime, base_
 
             analyser.query_historical_data(from_date)
 
-            # fetch market info from the DB
-            Database.inst().load_market_info(strategy.service, watcher.name, strategy_trader.instrument.market_id)
+        # fetch market info from the DB
+        Database.inst().load_market_info(strategy.service, watcher.name, strategy_trader.instrument.market_id)
 
         # create a feeder per instrument for ticks history
         feeder = StrategyDataFeeder(strategy, strategy_trader.instrument.market_id, [], True)

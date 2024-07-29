@@ -317,6 +317,8 @@ class StrategyTraderBase(object):
     def loads_contexts(self, params: dict, class_model=None):
         contexts = []
 
+        logger.info("Load all strategy trader contexts for %s" % self.instrument.market_id)
+
         context_class = self._default_trader_context_class
         if class_model:
             context_class = class_model
@@ -342,6 +344,8 @@ class StrategyTraderBase(object):
 
     def compiles_all_contexts(self):
         rm_list = []
+
+        logger.info("Compile all strategy trader contexts for %s" % self.instrument.market_id)
 
         for name, ctx in self._trade_contexts.items():
             try:
@@ -1839,8 +1843,9 @@ class StrategyTraderBase(object):
     def on_market_info(self):
         """
         When receive initial or update of market/instrument data.
+        Default implementation compile any contexts.
         """
-        pass
+        self.compiles_all_contexts()
 
     def on_received_initial_bars(self, analyser: str):
         """
@@ -2526,6 +2531,12 @@ class StrategyTraderBase(object):
 
             result['data'].append(("----", "----"))
 
+            result['data'].append(("Min-Vol24h", "%g" % self.min_vol24h))
+            result['data'].append(("Min-Price", self.instrument.format_price(self.min_price)))
+            result['data'].append(("Max-Trades",  "%i" % self.max_trades))
+
+            result['data'].append(("----", "----"))
+
             result['data'].append(("Hedging", "Yes" if self.hedging else "No"))
             result['data'].append(("Reversal", "Yes" if self.reversal else "No"))
             result['data'].append(("Allow-Short", "Yes" if self.allow_short else "No"))
@@ -2547,8 +2558,10 @@ class StrategyTraderBase(object):
             # two columns
             result['members'] = tuple(("str", ctx_name) for ctx_name in contexts_ids)
 
-            # 15 initials rows
+            # 17 initials rows
             result['data'].append(["Mode"])
+            result['data'].append(["Min-Profit"])
+            result['data'].append(["Max-Spread"])
 
             result['data'].append(["----"])
 
@@ -2613,24 +2626,26 @@ class StrategyTraderBase(object):
                 max_amount = trade_quantity * ctx.max_trades
 
                 result['data'][0].append(ctx.mode_to_str())
+                result['data'][1].append("%.2f%%" % (ctx.min_profit * 100))
+                result['data'][2].append(self.instrument.format_price(ctx.entry.max_spread) if ctx.entry else "0")
 
-                result['data'][1].append("----")
+                result['data'][3].append("----")
 
-                result['data'][2].append("%i" % ctx.max_trades)
-                result['data'][3].append(self.instrument.trade_quantity_mode_to_str())
-                result['data'][4].append(ctx.trade_quantity_type_to_str())
-                result['data'][5].append("%g" % trade_quantity)
-                result['data'][6].append("%g" % ctx.trade_quantity_step)
-                result['data'][7].append("%g" % max_amount)
+                result['data'][4].append("%i" % ctx.max_trades)
+                result['data'][5].append(self.instrument.trade_quantity_mode_to_str())
+                result['data'][6].append(ctx.trade_quantity_type_to_str())
+                result['data'][7].append("%g" % trade_quantity)
+                result['data'][8].append("%g" % ctx.trade_quantity_step)
+                result['data'][9].append("%g" % max_amount)
 
-                result['data'][8].append("----")
+                result['data'][10].append("----")
 
-                result['data'][9].append(print_ex(ctx, 'entry'))
-                result['data'][10].append(print_ex(ctx, 'stop_loss'))
-                result['data'][11].append(print_ex(ctx, 'take_profit'))
-                result['data'][12].append(print_ex(ctx, 'dynamic_stop_loss'))
-                result['data'][13].append(print_ex(ctx, 'dynamic_take_profit'))
-                result['data'][14].append(print_ex(ctx, 'breakeven'))
+                result['data'][11].append(print_ex(ctx, 'entry'))
+                result['data'][12].append(print_ex(ctx, 'stop_loss'))
+                result['data'][13].append(print_ex(ctx, 'take_profit'))
+                result['data'][14].append(print_ex(ctx, 'dynamic_stop_loss'))
+                result['data'][15].append(print_ex(ctx, 'dynamic_take_profit'))
+                result['data'][16].append(print_ex(ctx, 'breakeven'))
 
         elif mode == 3:
             pass

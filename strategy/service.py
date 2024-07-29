@@ -72,7 +72,7 @@ class StrategyService(Service):
         self._identity = options.get('identity', 'demo')
         self._report_path = options.get('reports-path', './')
         self._watcher_only = options.get('watcher-only', False)
-        self._profile = options.get('profile', 'default')
+        self._profile = options.get('profile', 'mixins')
         self._fetch_delay = options.get('delay', 0.0)
         self._learning = options.get('learning')  # trainer input and output file
 

@@ -149,8 +149,7 @@ class BarStrategyTrader(StrategyTraderBase):
         """
         Default implementation
         """
-        # compile contexts
-        self.compiles_all_contexts()
+        super().on_market_info()
 
         # and setup generators with market info
         self.setup_generators()
