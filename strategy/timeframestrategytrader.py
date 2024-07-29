@@ -42,7 +42,12 @@ class TimeframeStrategyTrader(StrategyTraderBase):
     @see Strategy.base_timeframe
     """
 
+    _base_timeframe: float
+
     timeframes: Dict[float, StrategyTimeframeAnalyser]  # @deprecated
+
+    prev_price: float
+    last_price: float
 
     _last_ticks: List[TickType]
     _last_candles: List[Candle]
@@ -60,8 +65,8 @@ class TimeframeStrategyTrader(StrategyTraderBase):
 
         self.timeframes = {}  # analyser per timeframe @deprecated
 
-        self.prev_price = 0.0
-        self.last_price = 0.0
+        self.prev_price = 0.0   # previous value of last_price
+        self.last_price = 0.0   # last price processed during the last frame
 
         self._last_ticks = []
         self._last_candles = []
@@ -155,6 +160,13 @@ class TimeframeStrategyTrader(StrategyTraderBase):
         if analyser:
             analyser.init_generator()
 
+    def on_market_info(self):
+        """
+        Default implementation
+        """
+        # compile contexts
+        self.compiles_all_contexts()
+
     def generate_bars_from_ticks(self, timestamp: float):
         """
         Generate the news candles from ticks.
@@ -215,10 +227,19 @@ class TimeframeStrategyTrader(StrategyTraderBase):
 
         self._last_candles = last_candles
 
+    def bootstrap(self, timestamp: float):
+        """Default implementation compute any analysers and any contexts"""
+        self.compute(timestamp)
+
+        for k, ctx in self._trade_contexts.items():
+            ctx.update(timestamp)
+            ctx.compute_signal(self.instrument, timestamp, self.prev_price, self.last_price)
+
+        # reset prev close signals
+        self.cleanup_analyser(timestamp)
+
     def compute(self, timestamp: float):
-        """
-        Compute the per analyser data. Compute at bar close or at each trade.
-        """
+        """Compute the per analyser data. Compute at bar close or at each trade."""
         for k, analyser in self._analysers.items():
             if analyser.update_at_close:
                 if analyser.need_update(timestamp):

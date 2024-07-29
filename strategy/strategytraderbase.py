@@ -113,6 +113,8 @@ class StrategyTraderBase(object):
     _bootstrapping: int
     _processing: bool
 
+    last_timestamp: float
+
     _trade_mutex: threading.RLock
     _trades: List[StrategyTrade]
     _next_trade_id: int
@@ -186,6 +188,8 @@ class StrategyTraderBase(object):
         self._bootstrapping = StrategyTraderBase.STATE_WAITING
 
         self._processing = False   # True during processing
+        self.last_timestamp = 0.0  # Last processed timestamp
+
         self._trade_short = False  # short are supported by market/strategy
 
         self._trade_mutex = threading.RLock()   # trades locker
@@ -1013,6 +1017,21 @@ class StrategyTraderBase(object):
 
         This is useful for strategies having pre trigger signal, in way to don't miss the comings
         signals validations.
+
+        This is useful too for initiate the tick based indicators with some data.
+        """
+        self.compute(timestamp)
+
+        for k, ctx in self._trade_contexts.items():
+            ctx.update(timestamp)
+            ctx.compute_signal(self.instrument, timestamp, 0.0, 0.0)
+
+        # reset prev close signals
+        self.cleanup_analyser(timestamp)
+
+    def compute(self, timestamp: float):
+        """
+        Compute the per analyser data. Overrides in timeframe and bar models.
         """
         pass
 

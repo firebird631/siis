@@ -13,6 +13,11 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
             => une méthode bootstrap mais qui ne rejout pas les candles :
                 - ce qui en plus évite les imprécisions de ce pseudo replay
 
+- bootstrapping alphaprocess pourrait se faire en tick surtout quand il n'y a pas d'historique en DB
+   - on peut pas déterminer la période pour des non-temporals bar, donc obligé d'avoir une période arbitraire
+       - un param dans la config en plus
+   - à partir d'un tickstreamer procéder au bootstrapping
+
 Sum order :
   - si spot : sum base (au moins sum pour EUR et USD), pour et eviter le rejet de l'API si qty insuffisante
         - attention à l'arrondit pour que ça ne bloque pas un autre order
@@ -107,6 +112,8 @@ Sum order :
 # Bugs #
 ########
 
+- connector IG après la pause du weekend ne réussit pas à se reconnecter automatiquement
+
 - certains ordres avec binance ne sont pas retire du trader (oblige de reconnect pour purger la liste)
 - les ordres d'entrées market restent avec IG (avec le compte démo)
 
@@ -130,6 +137,9 @@ Sum order :
 # Urgent #
 ##########
 
+- Finir le volume profile et le composite volume profile
+    - Tester avec un plot bar CLI
+
 - transaction/rollback sur strategy trader save (on save tout ou rien sinon c'est inconsistant)
 
 - def update_exit_qty(order_exec): fixer le avg exit price car peut être sur plusieurs ordres de sortie
@@ -151,16 +161,9 @@ Sum order :
 
 - On pourrait afficher un chart et ou tableau account samples (par jour) comme ça on voir la perf par journée
 
-- Ajouter le plot bar CLI
-
-- Finir le volume profile et le composite volume profile
-    - Tester avec un plot bar CLI
-
-- Ajouter un display chart CLI pour un data-serie donné (une couleur par ligne)
-
-- ajouter un rangebarreversalgenerator inspiré du tickbarreversalgenerator sans la partie volume
-
-- Completer les methodes de comparaisons dans learning/trainer.py
+- Charting CLI :
+    - ajouter le plot bar CLI
+    - ajouter un display chart CLI pour un data-serie donné (une couleur par ligne)
 
 - Dans la vue trades history on n'a pas les valeurs en pts.
     - Le report ne les calculant pas d'une part (SL, TP, MAE, MFE, ETD, RPNL)
@@ -214,28 +217,28 @@ Sum order :
 - Ajouter TradeOp : TriggerEntry et TriggerLimitEntry, ainsi avoir le trigger coté bot,
     et ne pas bloquer les fonds coté broker
 
-- tool withdraw (ou command) simple avec pin code (2AF) paire et addresse
-    - peut utiliser un alias d'adresse ou l'adresse enregistré par défaut (wallets.json)
-    - montant de la transaction
+- non-temporal bars :
+    - ajouter tick bar (t)
+    - ajouter volume bar (v)
+    - ajouter renko bar (voir https://tradewithpython.com/constructing-renko-charts-using-python exemple avec ATR) et %
+    - ajouter unirenko bar (x,y,z)
 
-- tool withdraw emergency (ou command) qui annule tout les buy pending ou incomplet,
-    et qui transfert sur les hard wallets (ou soft wallet)
-
-- tool withdraw emergency (ou command) comme précédente mais qui va revendre toutes les paires
-    sur une seule de reference et ensuite transferer sur le le wallet de reference
-        - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
-
-- ajouter renko bar (voir https://tradewithpython.com/constructing-renko-charts-using-python exemple avec ATR) et %
-- ajouter unirenko bar (x,y,z)
-- ajouter tick bar (t)
-- ajouter volume bar (v)
-- finir le footprint
-
-- market profile (+session offset/duration)
-
-- cumulative volume delta indicateur mais doit être calculé par tick (comme vwap, volume profile...)
+- volumes indicators :
+    - market profile indicator (+session offset/duration)
+    - cumulative volume delta indicateur
+    - ancienne tickbar => footprint et completer
 
 - update to latest IG API
+
+- emergency assets commands :
+    - tool withdraw (ou command) simple avec pin code (2AF) paire et addresse
+        - peut utiliser un alias d'adresse ou l'adresse enregistré par défaut (wallets.json)
+        - montant de la transaction
+    - tool withdraw emergency (ou command) qui annule tout les buy pending ou incomplet,
+        et qui transfert sur les hard wallets (ou soft wallet)
+    - tool withdraw emergency (ou command) comme précédente mais qui va revendre toutes les paires
+        sur une seule de reference et ensuite transferer sur le le wallet de reference
+            - la même mais avec un découpe en % sur N asset, et N wallet (hard ou soft)
 
 ############
 ## Divers ##

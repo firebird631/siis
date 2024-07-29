@@ -217,6 +217,8 @@ def alpha_update_strategy(strategy, strategy_trader, timestamp: float):
                 else:
                     strategy_trader.process(timestamp)
 
+            strategy_trader.last_timestamp = timestamp
+
         except Exception as e:
             error_logger.error(repr(e))
             traceback_logger.error(traceback.format_exc())
@@ -261,6 +263,8 @@ def alpha_async_update_strategy(strategy, strategy_trader, timestamp: float):
             else:
                 # then : until process instrument update
                 strategy_trader.process(timestamp)
+
+            strategy_trader.last_timestamp = timestamp
 
         except Exception as e:
             error_logger.error(repr(e))

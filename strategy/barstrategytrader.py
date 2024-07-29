@@ -43,23 +43,24 @@ class BarStrategyTrader(StrategyTraderBase):
     A single configuration of tick-bar array can be generated.
     """
 
+    depth: int
+
+    prev_price: float
+    last_price: float
+
+    last_timestamp: float
+
     _last_ticks: List[TickType]
 
-    def __init__(self, strategy: Strategy, instrument: Instrument, depth=50, params: dict = None):
+    def __init__(self, strategy: Strategy, instrument: Instrument, placeholder=0, params: dict = None):
         """
         @param strategy Parent strategy (mandatory)
         @param instrument Related unique instance of instrument (mandatory)
         """
         super().__init__(strategy, instrument, params)
 
-        self._base_timeframe = Instrument.TF_TICK
-
-        self.depth = depth
-
-        self.prev_price = 0.0
-        self.last_price = 0.0
-
-        self.last_timestamp = 0.0
+        self.prev_price = 0.0  # previous value of last_price
+        self.last_price = 0.0  # last price processed during the last frame
 
         self._last_ticks = []  # retains the last updated ticks
 
@@ -144,6 +145,16 @@ class BarStrategyTrader(StrategyTraderBase):
         for k, analyser in self._analysers.items():
             analyser.setup_generator(self.instrument)
 
+    def on_market_info(self):
+        """
+        Default implementation
+        """
+        # compile contexts
+        self.compiles_all_contexts()
+
+        # and setup generators with market info
+        self.setup_generators()
+
     def generate_bars_from_ticks(self, timestamp: float):
         """
         Compute range-bar using the last received ticks.
@@ -159,7 +170,6 @@ class BarStrategyTrader(StrategyTraderBase):
                 # rest the previous last closed flag before update the current
                 analyser._last_closed = False
 
-                # @todo move to RangeBarAnalyser
                 generated = analyser.bar_generator.generate(last_ticks)
                 if generated:
                     analyser.add_bars(generated, analyser.depth)
@@ -179,10 +189,19 @@ class BarStrategyTrader(StrategyTraderBase):
             # keep for computing some ticks based indicators
             self._last_ticks = last_ticks
 
+    def bootstrap(self, timestamp: float):
+        """Default implementation compute any analysers and any contexts"""
+        self.compute(timestamp)
+
+        for k, ctx in self._trade_contexts.items():
+            ctx.update(timestamp)
+            ctx.compute_signal(self.instrument, timestamp, self.prev_price, self.last_price)
+
+        # reset prev close signals
+        self.cleanup_analyser(timestamp)
+
     def compute(self, timestamp: float):
-        """
-        Compute the indicators for the different tickbars depending on the update policy.
-        """
+        """Compute the indicators for the different tickbars depending on the update policy."""
         for k, analyser in self._analysers.items():
             if analyser.update_at_close:
                 if analyser.need_update(timestamp):

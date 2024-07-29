@@ -1179,15 +1179,14 @@ class StrategyTraderContext(StrategyTraderContextBase):
             if breakeven.timeframe or breakeven.num_bars:
                 return breakeven
 
-    def compute_signal(self, instrument: Instrument, timestamp: float, prev_price: float, last_price: float,
-                       price_epsilon: float) -> Optional[StrategySignal]:
+    def compute_signal(self, instrument: Instrument, timestamp: float,
+                       prev_price: float, last_price: float) -> Optional[StrategySignal]:
         """
         To be overridden to compute a signal par context at time.
-        @param instrument:
-        @param timestamp:
-        @param prev_price:
-        @param last_price:
-        @param price_epsilon:
+        @param instrument: Related instrument
+        @param timestamp: Current timestamp
+        @param prev_price: Previous last_price value
+        @param last_price: Last market trade processed price
         @return:
         """
         if not self.compiled:
