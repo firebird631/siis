@@ -685,6 +685,9 @@ class IGTrader(Trader):
         """
         This is the synchronous REST fetching, but prefer the WS asynchronous and live one.
         Mainly used for initial fetching.
+
+        @todo Trailing stop/level/dist
+        @todo Guarantee stop
         """
         try:
             positions = self._watcher.connector.positions()
@@ -767,7 +770,7 @@ class IGTrader(Trader):
                 if '-' in pos['createdDate']:
                     position.created_time = datetime.strptime(pos['createdDate'], "%Y-%m-%dT%H:%M:%S.%f").timestamp()
                 else:
-                    position.created_time = datetime.strptime(pos['createdDate'], "%Y/%m/%d %H:%M:%S.%f").timestamp()
+                    position.created_time = datetime.strptime(pos['createdDate'], "%Y/%m/%d %H:%M:%S:%f").timestamp()
 
             position.entry_price = pos.get('openLevel', 0.0)
             position.stop_loss = pos.get('stopLevel', 0.0)
@@ -778,8 +781,8 @@ class IGTrader(Trader):
                 pass  # @todo
 
             # @todo stop type (guarantee, market, trailing)
-            position.trailing_stop = pos.get('trailingStep', 0.0)
-            position.trailing_stop_dst = pos.get('trailingStopDistance', 0.0)
+            # position.trailing_stop = pos.get('trailingStep', 0.0)
+            # position.trailing_stop_dst = pos.get('trailingStopDistance', 0.0)
 
             if market:
                 position.update_profit_loss(market)

@@ -30,13 +30,13 @@ class Position(Keyed):
     @todo Update PNL and compute a RNPL on partial reduce.
     """
 
-    __slots_ = '_trader', '_position_id', '_state', '_symbol', '_symbol', '_quantity', \
-               '_profit_loss', '_profit_loss_rate', \
-               '_profit_loss_market', '_profit_loss_market_rate', '_raw_profit_loss', '_raw_profit_loss_rate', \
-               '_created_time', '_market_close', \
-               '_leverage', '_entry_price', '_exit_price' \
-               '_stop_loss', '_take_profit', '_trailing_stop', '_direction', \
-               '_entry_quantity', '_exit_quantity'
+    __slots_ = ('_trader', '_position_id', '_state', '_symbol', '_symbol', '_direction', '_quantity',
+                '_profit_loss', '_profit_loss_rate',
+                '_profit_loss_market', '_profit_loss_market_rate', '_raw_profit_loss', '_raw_profit_loss_rate',
+                '_created_time', '_market_close',
+                '_entry_quantity', '_exit_quantity',
+                '_leverage', '_entry_price', '_exit_price',
+                '_stop_loss', '_take_profit', '_trailing_stop', '_trailing_stop_dist')
 
     LONG = 1    # long direction
     SHORT = -1  # short direction
@@ -58,6 +58,7 @@ class Position(Keyed):
 
         self._symbol = ""
         self._quantity = 0.0
+        self._direction = Position.LONG
 
         self._raw_profit_loss = 0.0
         self._raw_profit_loss_rate = 0.0
@@ -78,13 +79,14 @@ class Position(Keyed):
         self._take_profit = None
         self._stop_loss = None
         self._trailing_stop = False
-        self._direction = Position.LONG
+        self._trailing_stop_dist = 0.0
 
         self._entry_quantity = 0.0
         self._exit_quantity = 0.0
 
     def entry(self, direction: int, symbol: str, quantity: float, take_profit: Optional[float] = None,
-              stop_loss: Optional[float] = None, leverage: float = 1.0, trailing_stop: bool = False):
+              stop_loss: Optional[float] = None, leverage: float = 1.0,
+              trailing_stop: bool = False, trailing_stop_dist: float = 0.0):
         """
         Initial entry (only the first time, after it must use update method).
         @note If quantity > 0, entry price must be modified.
@@ -97,12 +99,14 @@ class Position(Keyed):
         self._stop_loss = stop_loss
         self._leverage = leverage
         self._trailing_stop = trailing_stop
+        self._trailing_stop_dist = trailing_stop_dist
 
         # entry quantity
         self._entry_quantity = quantity
 
     def update(self, direction: int, symbol: str, quantity: float, take_profit: Optional[float] = None,
-               stop_loss: Optional[float] = None, leverage: float = 1.0, trailing_stop: bool = False):
+               stop_loss: Optional[float] = None, leverage: float = 1.0,
+               trailing_stop: bool = False, trailing_stop_dist: float = 0.0):
         """
         Very similar as entry but used for update. The entry quantity and exit quantity are also managed
         according to the updated new quantity.
@@ -116,6 +120,7 @@ class Position(Keyed):
         self._stop_loss = stop_loss
         self._leverage = leverage
         self._trailing_stop = trailing_stop
+        self._trailing_stop_dist = trailing_stop_dist
 
         if self._quantity != quantity:
             if quantity < self._quantity:
@@ -187,7 +192,11 @@ class Position(Keyed):
     @property
     def trailing_stop(self) -> bool:
         return self._trailing_stop
-    
+
+    @property
+    def trailing_stop_dist(self) -> bool:
+        return self._trailing_stop_dist
+
     @property
     def leverage(self) -> float:
         return self._leverage
@@ -434,6 +443,7 @@ class Position(Keyed):
             'take-profit-price': self._take_profit,
             'stop-loss-price': self._stop_loss,
             'trailing-stop': self._trailing_stop,
+            'trailing-stop-dist': self._trailing_stop_dist,
             'raw-profit-loss': self._raw_profit_loss,
             'raw-profit-loss-rate': self._raw_profit_loss_rate,
             'profit-loss': self._profit_loss,
@@ -463,6 +473,7 @@ class Position(Keyed):
         self._take_profit = data.get('take-profit-price', None)
         self._stop_loss = data.get('stop-loss-price', None)
         self._trailing_stop = data.get('trailing-stop', False)
+        self._trailing_stop_dist = data.get('trailing-stop-dist', 0.0)
 
         self._raw_profit_loss = data.get('raw-profit-loss', 0.0)
         self._raw_profit_loss_rate = data.get('raw-profit-loss-rate', 0.0)

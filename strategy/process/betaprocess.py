@@ -14,7 +14,6 @@ from instrument.instrument import Instrument
 
 from watcher.watcher import Watcher
 
-from strategy.indicator.models import Limits
 from strategy.strategydatafeeder import StrategyDataFeeder
 
 from database.database import Database

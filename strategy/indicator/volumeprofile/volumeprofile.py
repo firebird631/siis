@@ -21,7 +21,7 @@ class VolumeProfileIndicator(VolumeProfileBaseIndicator):
     Volume Profile indicator based on OHLCs list update.
     """
 
-    def __init__(self, timeframe:  float, length: int = 10, sensibility: float = 10, volume_area: float = 70):
+    def __init__(self, timeframe:  float, length: int = 10, sensibility: int = 10, volume_area: float = 70):
         super().__init__("volumeprofile", timeframe, length, sensibility, volume_area)
 
     def compute(self, timestamp, timestamps, highs, lows, closes, volumes):

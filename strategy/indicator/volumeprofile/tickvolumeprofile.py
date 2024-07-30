@@ -21,7 +21,7 @@ class TickVolumeProfileIndicator(VolumeProfileBaseIndicator):
     Volume Profile indicator based on tick or trade update.
     """
 
-    def __init__(self, timeframe:  float, length:  int = 10, sensibility: float = 10, volume_area: float = 70):
+    def __init__(self, timeframe:  float, length:  int = 10, sensibility: int = 10, volume_area: float = 70):
         super().__init__("tickvolumeprofile", timeframe, length, sensibility, volume_area)
 
     @classmethod

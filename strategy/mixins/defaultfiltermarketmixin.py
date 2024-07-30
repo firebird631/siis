@@ -3,7 +3,10 @@
 # @license Copyright (c) 2023 Dream Overflow
 # Default implementation of filter_market, mixin
 
-from typing import Tuple
+from typing import Tuple, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from strategy.strategytraderbase import StrategyTraderBase
 
 from instrument.instrument import Instrument
 from strategy.strategy import Strategy
@@ -18,7 +21,8 @@ class DefaultFilterMarketMixin(object):
 
         self._last_filter_cache = (0, False, False)
 
-    def filter_market(self, timestamp: float) -> Tuple[bool, bool]:
+    def filter_market(self,  # type: Union[DefaultFilterMarketMixin, StrategyTraderBase]
+                      timestamp: float) -> Tuple[bool, bool]:
         """
         The first boolean mean accept, the second compute.
         Return True, True if the market is accepted and can be computed this time.

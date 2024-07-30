@@ -71,7 +71,12 @@ class CompositeVolumeProfile(object):
         base_index = max(-self._length, -len(volume_profile.vps))
         base_timestamp = volume_profile.vps[base_index]
 
-        cvp = VolumeProfile(Instrument.basetime(self._timeframe, base_timestamp), self._timeframe)
+        if self._timeframe > 0:
+            # adjust for fixe timeframe
+            cvp = VolumeProfile(Instrument.basetime(self._timeframe, base_timestamp), self._timeframe)
+        else:
+            # simply use timestamp of the first VP
+            cvp = VolumeProfile(base_timestamp, 0.0)
 
         for vp in volume_profile.vps[base_index:]:
             for b, v in vp.volumes.items():
@@ -104,19 +109,27 @@ class CompositeVolumeProfile(object):
     # internal methods
     #
 
-    def _finalize(self, volume_profile, vp):
+    def _finalize(self, volume_profile, composite):
         """
         Finalize the computation of the last VP and push it.
         Does by update when the last trade timestamp open a new session.
         """
-        if vp is None:
+        if composite is None:
             return
 
-        vp.poc = VolumeProfileBaseIndicator.find_poc(vp)
+        composite.poc = VolumeProfileBaseIndicator.find_poc(composite)
 
         # volumes arranged by price
-        volumes_by_price = VolumeProfileBaseIndicator.sort_volumes_by_price(vp)
+        volumes_by_price = VolumeProfileBaseIndicator.sort_volumes_by_price(composite)
+
+        # # find peaks and valley
+        # composite.peaks, composite.valleys = VolumeProfileBaseIndicator.basic_peaks_and_valleys_detection(
+        #     volume_profile.bins, volume_profile.sensibility, composite)
 
         # find peaks and valley
-        vp.peaks, vp.valleys = VolumeProfileBaseIndicator.basic_peaks_and_valleys_detection(
-            volume_profile.bins, volume_profile.sensibility, vp)
+        # # composite.peaks, composite.valleys = self.basic_peaks_and_valleys_detection(
+        #     volume_profile.bins, volume_profile.sensibility, composite)
+        # composite.peaks, composite.valleys = self.scipy_peaks_and_valleys_detection(vp)
+
+        # find the low and high of the volume area
+        # composite.low_area, composite.high_area = self.single_volume_area(composite, volumes_by_price, composite.poc)

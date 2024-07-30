@@ -7,21 +7,11 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class Limits:
-    """
-    TA limits
-    """
-
-    from_timestamp: float = 0.0
-    last_timestamp: float = 0.0
-    min_price: float = 0.0
-    max_price: float = 0.0
-
-
-@dataclass
 class VolumeProfile:
     """
     Volume Profile.
+    Merged bid/ask volumes.
+    With extra levels of interest : peaks, valleys.
     """
 
     timestamp: float
@@ -30,7 +20,8 @@ class VolumeProfile:
     poc: float = 0.0
     low_area: float = 0.0
     high_area: float = 0.0
-    
+
     volumes: dict = field(default_factory=dict)
+
     peaks: list = field(default_factory=list)
     valleys: list = field(default_factory=list)

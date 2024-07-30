@@ -36,8 +36,6 @@ from strategy.trade.strategytrade import StrategyTrade
 from .strategytradercontext import StrategyTraderContext
 from .learning.trainer import Trainer
 
-from .indicator.models import Limits
-
 from common.utils import timeframe_to_str, UTC, check_yes_no_opt, yes_no_opt, integer_opt, check_integer_opt, \
     float_opt, check_float_opt
 from strategy.strategysignal import StrategySignal
@@ -69,6 +67,8 @@ class StrategyTraderBase(object):
         'position': Instrument.TRADE_POSITION,
         'ind-margin': Instrument.TRADE_IND_MARGIN,
     }
+
+    TRADE_TYPE_TO_STR = {v: k for k, v in TRADE_TYPE_MAP.items()}
 
     REPORTING_NONE = 0
     REPORTING_VERBOSE = 1
@@ -177,8 +177,6 @@ class StrategyTraderBase(object):
 
         self._initialized = StrategyTraderBase.STATE_WAITING  # initiate data before running
         self._checked = StrategyTraderBase.STATE_WAITING      # check trades/orders/positions
-
-        self._limits = Limits()     # price and timestamp ranges
 
         self._preprocessing = StrategyTraderBase.PREPROCESSING_STATE_WAITING  # 2 to 5 in progress
         self._preprocess_depth = 0  # in second, need of preprocessed data depth of history
@@ -2535,6 +2533,10 @@ class StrategyTraderBase(object):
             result['data'].append(("Min-Price", self.instrument.format_price(self.min_price)))
             result['data'].append(("Max-Trades",  "%i" % self.max_trades))
 
+            if hasattr(self, "trade_type"):
+                result['data'].append(("Trade-Type", StrategyTraderBase.TRADE_TYPE_TO_STR.get(
+                    getattr(self, "trade_type"))))
+
             result['data'].append(("----", "----"))
 
             result['data'].append(("Hedging", "Yes" if self.hedging else "No"))
@@ -2728,6 +2730,16 @@ class StrategyTraderBase(object):
     #
 
     def compute_asset_quantity(self, trader: Trader, price: float, trade_quantity: float = 0.0) -> float:
+        """
+        Adjust the given quantity or use the quantity defined on the instrument. If there is no asset for
+        the symbol of quote or if there is not enough asset quantity in quote then warn and return 0.
+        @param trader: Valid active trader
+        @param price: Entry price
+        @param trade_quantity: Quantity in quote asset or 0 to uses the configured value.
+        @return: Adjusted (min, max, step, precision) quantity in base asset amount.
+
+        @note Price is very important to compute the correct size in base asset.
+        """
         quantity = 0.0
 
         if not trade_quantity:
@@ -2736,7 +2748,7 @@ class StrategyTraderBase(object):
 
         if trader.has_asset(self.instrument.quote):
             # quantity = min(quantity, trader.asset(self.instrument.quote).free) / self.instrument.market_ask
-            if trader.has_quantity(self.instrument.quote, trade_quantity or self.instrument.trade_quantity):
+            if trader.has_quantity(self.instrument.quote, trade_quantity):
                 quantity = self.instrument.adjust_quantity(trade_quantity / price)  # and adjusted to 0/max/step
             else:
                 msg = "Not enough free quote asset %s, has %s but need %s" % (
@@ -2755,6 +2767,20 @@ class StrategyTraderBase(object):
         return quantity
 
     def compute_margin_quantity(self, trader: Trader, price: float, trade_quantity: float = 0.0) -> float:
+        """
+        Adjust the given quantity or use the quantity defined on the instrument. If there is insufficient margin then
+        warn and return 0.
+        Instrument have a trade_quantity_mode property. It defines how to calculate the final quantity.
+        In default mode the quantity is not converted but in TRADE_QUANTITY_QUOTE_TO_BASE the quantity is converted
+        into its base symbol (quantity / price). It is used for cryptocurrencies futures markets. For others case
+        the default mode is necessary.
+        @param trader: Valid active trader
+        @param price: Entry price
+        @param trade_quantity: Quantity in quote asset or 0 to uses the configured value.
+        @return: Adjusted (min, max, step, precision) quantity in base asset amount.
+
+        @note Price is very important to compute the correct size in base asset.
+        """
         quantity = 0.0
 
         if not trade_quantity:
@@ -2781,6 +2807,12 @@ class StrategyTraderBase(object):
         return quantity
 
     def check_min_notional(self, order_quantity: float, order_price: float) -> bool:
+        """
+        Check if the order_quantity at order_price match the instrument min notional.
+        @param order_quantity:
+        @param order_price:
+        @return: Boolean
+        """
         if order_quantity <= 0 or order_quantity * order_price < self.instrument.min_notional:
             # min notional not reached
             msg = "Min notional not reached for %s, order %s%s => %s%s but need %s%s" % (

@@ -25,7 +25,7 @@ def cmd_strategy_trader_info(strategy, strategy_trader, data):
     if results['error']:
         return results
 
-    with strategy_trader._mutex:
+    with strategy_trader.mutex:
         if detail == "region":
             if region_id >= 0:
                 region = None
@@ -76,7 +76,7 @@ def cmd_strategy_trader_info(strategy, strategy_trader, data):
             total_contract = 0.0
 
             # for asset, count total for active trades
-            with strategy_trader._trade_mutex:
+            with strategy_trader.trade_mutex:
                 for trade in strategy_trader._trades:
                     if trade.is_active():
                         if trade.trade_type == trade.TRADE_ASSET:

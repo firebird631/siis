@@ -12,16 +12,20 @@ from database.database import Database
 from common.utils import truncate
 
 import numpy as np
-
-
-# @todo Support of evening session and overnight session.
+import scipy.signal as sg
 
 
 class VolumeProfileBaseIndicator(Indicator):
     """
     Single or multiple Volume Profile indicator base model.
+    It could be composed using the composite volume profile to build exotic durations.
 
-    @todo Simplify only one model, keep only the version using TickType because of the imprecision of 1 min bars..
+    This indicator is compute at close because :
+      - Tick version it can update at each tick or many, there is no limitation
+      - Bar version (timeframe or non-temporal) it could only compute at close because it is too complex to withdraw
+        the previous volumes at price and update at each bar update until its close.
+
+    @todo Support of evening session and overnight session.
     """
 
     __slots__ = '_length', '_sensibility', '_volume_area', '_size', '_vps', '_current', \
@@ -49,10 +53,10 @@ class VolumeProfileBaseIndicator(Indicator):
 
         return None
 
-    def __init__(self, name: str, timeframe:  float, length: int = 10, sensibility: float = 10, volume_area: float = 70):
+    def __init__(self, name: str, timeframe: float, length: int = 10, sensibility: int = 10, volume_area: float = 70):
         super().__init__(name, timeframe)
 
-        self._compute_at_close = True  # only at close
+        self._compute_at_close = True  # only at close (that mean at each tick or each closed bar)
 
         self._length = length  # number of volumes profiles to keep back
         self._sensibility = sensibility
@@ -121,12 +125,15 @@ class VolumeProfileBaseIndicator(Indicator):
 
         vp.poc = VolumeProfileBaseIndicator.find_poc(vp)
 
-        # volumes arranged by price
-        volumes_by_price = VolumeProfileBaseIndicator.sort_volumes_by_price(vp)
-
-        # find peaks and valley
-        vp.peaks, vp.valleys = VolumeProfileBaseIndicator.basic_peaks_and_valleys_detection(
-            self._bins, self._sensibility, vp)
+        # # volumes arranged by price
+        # volumes_by_price = VolumeProfileBaseIndicator.sort_volumes_by_price(vp)
+        #
+        # # find peaks and valley
+        # # vp.peaks, vp.valleys = self.basic_peaks_and_valleys_detection(self._bins, self._sensibility, vp)
+        # vp.peaks, vp.valleys = self.scipy_peaks_and_valleys_detection(vp)
+        #
+        # # find the low and high of the volume area
+        # vp.low_area, vp.high_area = self.single_volume_area(vp, volumes_by_price, vp.poc)
 
     #
     # internal computing
@@ -184,8 +191,7 @@ class VolumeProfileBaseIndicator(Indicator):
     def sort_volumes_by_price(vp):
         return sorted([(b, v) for b, v in vp.volumes.items()], key=lambda x: x[0])
 
-    @staticmethod
-    def single_volume_area(vp, volumes_by_price, poc_price, volume_area):
+    def single_volume_area(self, vp, volumes_by_price, poc_price):
         """
         Simplest method to detect the volume area.
         Starting from the POC goes left and right until having the inner volume reached.
@@ -210,7 +216,7 @@ class VolumeProfileBaseIndicator(Indicator):
 
         sum_vols = sum(vp.volumes.values())
 
-        in_area = sum_vols * volume_area * 0.01
+        in_area = sum_vols * self._volume_area * 0.01
         out_area = 1.0 - in_area
 
         left = index
@@ -235,7 +241,34 @@ class VolumeProfileBaseIndicator(Indicator):
         return low_price, high_price
 
     @staticmethod
-    def basic_peaks_and_valleys_detection(src_bins, sensibility, vp):
+    def scipy_peaks_and_valleys_detection(vp):
+        """
+        Scipy find_peaks based peaks and valleys detection algorithm.
+        """
+        if not vp or not vp.volumes:
+            return [], []
+
+        peaks = []
+        valleys = []
+
+        # bins = np.array(self._bins)
+        # volumes = np.zeros(len(self._bins))
+
+        prices = np.array(list(vp.volumes.keys()))
+        weights = np.array(list(vp.volumes.values()))
+
+        # actual version is 1, but more efficient is 2 (to be confirmed with more tests and adjustments)
+        VolumeProfileBaseIndicator._find_peaks_and_valleys_sci_peak(weights, prices, peaks, valleys)
+        # self._find_peaks_and_valleys_sci_peak2(weights, prices, peaks, valleys)
+
+        return peaks, valleys
+
+    #
+    # internal
+    #
+
+    @staticmethod
+    def basic_peaks_and_valleys_detection(src_bins, sensibility: float, vp):
         """
         Simplest peaks and valleys detection algorithm.
         """
@@ -248,7 +281,7 @@ class VolumeProfileBaseIndicator(Indicator):
         bins = np.array(src_bins)
         volumes = np.zeros(len(src_bins))
 
-        avg = np.average(list(vp.volumes.values()))
+        # avg = np.average(list(vp.volumes.values()))
 
         for i, b in enumerate(src_bins):
             if b in vp.volumes:
@@ -284,20 +317,76 @@ class VolumeProfileBaseIndicator(Indicator):
 
         return peaks, valleys
 
+    @staticmethod
+    def _find_peaks_and_valleys_sci_peak(weights, prices, peaks, valleys):
+        """
+        Based on scipy find_peaks method.
+        """
+        l = len(weights)
+
+        distanceP = max(2, l // 6)
+        distanceV = max(2, l // 6)
+
+        M = max(weights)
+
+        heightP = M / 4
+        heightV = -M / 4
+
+        vs = sg.find_peaks(-weights, heightV, None, distanceV)[0]
+        ps = sg.find_peaks(weights, heightP, None, distanceP)[0]
+
+        # index to price
+        valleys += [prices[v] for v in vs]
+        peaks += [prices[p] for p in ps]
+
+    @staticmethod
+    def _find_peaks_and_valleys_sci_peak2(weights, prices, peaks, valleys, n_samples=20):
+        """
+        Based on scipy find_peaks method. Profile is split with nsamples per buch.
+        n_sample=20 seems OK in the first tests with btc.
+        """
+        def get_pkvl_robust(d):
+            l = len(d)
+            distanceP = max(2, l // 3)
+            distanceV = max(2, l // 3)
+            M = max(d)
+            heightP = M / 6
+            heightV = -M / 6
+            vs = sg.find_peaks(-d, heightV, None, distanceV)[0]
+            ps = sg.find_peaks(d, heightP, None, distanceP)[0]
+            return vs, ps
+
+        def split_by(n):
+            l = len(weights)
+            cpt = 0
+            while (cpt + 2) * n <= l:
+                yield weights[cpt * n:(cpt + 1) * n]
+                cpt = cpt + 1
+            yield weights[cpt * n:]
+
+        vs, ps = np.array([], dtype=int), np.array([], dtype=int)
+        for (n, d) in enumerate(split_by(n_samples)):
+            m, M = get_pkvl_robust(d)
+            vs, ps = np.hstack((vs, m + n * n_samples)), np.hstack((ps, M + n * n_samples))
+
+        # index to price
+        valleys += [prices[v] for v in vs]
+        peaks += [prices[p] for p in ps]
+
     #
-    # cache management
+    # cache management (@todo maybe move to strategy with INDICATOR_BULK signal but its a more hard than soft design...)
     #
 
-    def load(self, strategy_trader, base_timestamp, from_date, to_date=None):
-        """
-        Load from DB a range of daily volume profile, inclusive.
-        """
-        self._vps = Database.inst().get_cached_volume_profile(
-            strategy_trader.trader().name, strategy_trader.instrument.market_id, strategy_trader.strategy.identifier,
-            self._timeframe, from_date, to_date=to_date,
-            sensibility=self._sensibility, volume_area=self._volume_area)
-
-        if self._vps:
-            if self._vps[-1].timestamp <= base_timestamp < self._vps[-1].timestamp + self._timeframe:
-                # current detected
-                self._current = self._vps.pop()
+    # def load(self, strategy_trader, base_timestamp, from_date, to_date=None):
+    #     """
+    #     Load from DB a range of daily volume profile, inclusive.
+    #     """
+    #     self._vps = Database.inst().get_cached_volume_profile(
+    #         strategy_trader.trader().name, strategy_trader.instrument.market_id, strategy_trader.strategy.identifier,
+    #         self._timeframe, from_date, to_date=to_date,
+    #         sensibility=self._sensibility, volume_area=self._volume_area)
+    #
+    #     if self._vps:
+    #         if self._vps[-1].timestamp <= base_timestamp < self._vps[-1].timestamp + self._timeframe:
+    #             # current detected
+    #             self._current = self._vps.pop()
