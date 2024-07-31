@@ -90,7 +90,12 @@ class Handler(object):
         pass
 
     def is_related(self, trade: StrategyTrade):
-        return trade is not None and trade.context is not None and trade.context.name == self._context_id
+        if self._context_id:
+            # if a context is defined must match
+            return trade is not None and trade.context is not None and trade.context.name == self._context_id
+
+        # else always return True
+        return trade is not None
 
     #
     # report

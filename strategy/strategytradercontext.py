@@ -875,8 +875,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
         'specific': TRADE_QUANTITY_SPECIFIC, trade with a quantity specified by the context.
         'reinvest-max-last': TRADE_QUANTITY_REINVEST_MAX_LAST, reinvest the profit of the best (higher) winner trade.
         'increment-step': TRADE_QUANTITY_INC_STEP, each time increment of a step of size.
-        'managed': TRADE_QUANTITY_MANAGED, managed by an external policy  @see Handler and its implementation like
-         @see ReinvestGainHandler or @see DCAHandler.
+        'managed': TRADE_QUANTITY_MANAGED, managed by an external policy  @see Handler and its different implementations
 
     max_trade: Maximum integer number of trade for this context only (but could not exceed max_trade configured at
     the strategy trader).

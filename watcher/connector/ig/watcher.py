@@ -211,7 +211,7 @@ class IGWatcher(Watcher):
     def disconnect(self):
         """
         Disconnect stream and connector.
-        Try during 5 seconds in case of race condition.
+        Try during 5 seconds in case deadlock by WS thread.
         """
         super().disconnect()
 

@@ -1138,6 +1138,7 @@ class StrategyTrade(object):
     def profit_loss_delta(self, instrument: Instrument) -> float:
         """
         During the trade open, compute an estimation of the unrealized profit/loss delta in price.
+        The value is related to the direction of the trade.
         """
         # if no entry realised
         if self.e <= 0.0 or self.entry_price <= 0.0:

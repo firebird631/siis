@@ -104,7 +104,6 @@ class StrategyTraderBase(object):
 
     _initialized: int
     _check: int
-    _limits: Limits
 
     _preprocessing: int
     _preprocess_depth: int
@@ -1034,17 +1033,33 @@ class StrategyTraderBase(object):
     def compute(self, timestamp: float):
         """
         Compute the per analyser data. Overrides in timeframe and bar models.
+        It must be called during the bootstrap and the process.
         """
         pass
 
     def process(self, timestamp: float):
         """
-        Override this method to do her all the strategy work.
-        You must call the update_trades method during the process in way to manage the trades.
+        Override this method to do here all the strategy work.
+        You must call the update_trades method during the process in way to manage the trades correctly.
 
         @param timestamp Current timestamp (or in backtest the processed time in past).
         """
         pass
+
+    def finalize(self, timestamp: float):
+        """
+        Must be called at the end of each process method.
+        It calls the different handlers and managers that must be processed on price changes.
+        @param timestamp: Current timestamp in seconds
+        """
+        # process global and per contexts handles
+        self.process_handlers()
+
+        # check for alert triggers
+        self.process_alerts(timestamp)
+
+        # streaming
+        self.stream()
 
     def update_time_deviation(self, timestamp):
         if self.strategy.timestamp - timestamp > self._stats['time-deviation']:
@@ -1582,7 +1597,7 @@ class StrategyTraderBase(object):
         Update active trades when price change or a volume is traded.
         Trades are closed at stop or limit price when reached if there is no external orders.
         It also processes operations on each trade having operations.
-        And also process trades handlers if one or many are configured.
+
         Another responsibility is to update the stop and limit orders in way to reflect the changes of quantity.
         @note This is only called at each traded volume (or price change depending on the configured mode).
         """
@@ -1590,11 +1605,6 @@ class StrategyTraderBase(object):
             return
 
         trader = self.strategy.trader()
-
-        #
-        # for each trade check if the TP or SL is reached and trigger if necessary
-        #
-
         mutated = False
 
         with self._trade_mutex:
@@ -1677,7 +1687,6 @@ class StrategyTraderBase(object):
 
                     # process only on active trades
                     if not trade.is_active():
-                        # @todo timeout if not filled before condition...
                         continue
 
                     if trade.is_closing():
@@ -1717,8 +1726,6 @@ class StrategyTraderBase(object):
                 self._trades = trades_list
 
                 self.cleanup_trades(timestamp)
-
-        self.process_handlers()
 
     def cleanup_trades(self, timestamp):
         """Remove terminated, rejected, canceled and empty trades."""
@@ -2188,20 +2195,36 @@ class StrategyTraderBase(object):
     # actions
     #
 
-    def install_handler(self, handler):
+    def install_handler(self, handler: Handler):
         """
         Add a trade handler to be executed at each update, can be shared between many strategy-traders.
         """
         if handler is not None:
             with self._mutex:
-                if handler.context_id not in self._handlers:
-                    # setup the new
+                if not handler.context_id and self._global_handler is None:
+                    # global handler
+                    self._global_handler = handler
+                    self._global_handler.install(self)
+
+                elif handler.context_id not in self._handlers:
+                    # set up the new
                     self._handlers[handler.context_id] = handler
                     handler.install(self)
 
-    def uninstall_handler(self, context_id, name):
+    def uninstall_handler(self, context_id: str, name: str):
+        """
+        To remove a per context handler or the global handler with an empty context_id.
+        @param context_id: Related context name or empty
+        @param name: Name of the handler to uninstall
+        """
         with self._mutex:
-            if context_id in self._handlers:
+            if not context_id:
+                # global handler
+                if self._global_handler and self._global_handler.name() == name:
+                    self._global_handler.uninstall(self)
+                    self._global_handler = None
+
+            elif context_id in self._handlers:
                 if self._handlers[context_id].name == name:
                     self._handlers[context_id].uninstall(self)
                     del self._handlers[context_id]
@@ -2210,19 +2233,19 @@ class StrategyTraderBase(object):
         """
         Perform the installed handlers.
         """
-        if self._handlers:
-            with self._mutex:
+        with self._mutex:
+            if self._handlers:
                 for context_id, handler in self._handlers.items():
                     try:
                         handler.process(self)
                     except Exception as e:
                         error_logger.error(repr(e))
 
-                if self._global_handler:
-                    try:
-                        self._global_handler.process(self)
-                    except Exception as e:
-                        error_logger.error(repr(e))
+            if self._global_handler:
+                try:
+                    self._global_handler.process(self)
+                except Exception as e:
+                    error_logger.error(repr(e))
 
     def retrieve_handler(self, context_id: str) -> Union[Handler, None]:
         with self._mutex:
@@ -2307,8 +2330,8 @@ class StrategyTraderBase(object):
     def check_trade_timeout(self, trade: StrategyTrade, timestamp: float) -> bool:
         """
         Close an active trade that has passed its expiry after a timeout :
-            - either in profit if take-profit timeout is defined
-            - either in loss if a stop-loss timeout is defined.
+            - either in profit if take-profit timeout exceed and (min) timeout-distance (profit) is not exceed
+            - either in loss if a stop-loss timeout exceed and (min) timeout-distance (loss) is exceeded
         @return True if closed.
         """
         if timestamp <= 0.0:
@@ -2322,32 +2345,43 @@ class StrategyTraderBase(object):
             return False
 
         trade_profit_loss = trade.estimate_profit_loss_rate(self.instrument)
+        do_close = False
 
         if trade_profit_loss >= 0.0:
-            # close in profit if take-profit timeout is configured# close in profit
+            # close in profit if take-profit timeout + distance are configured
             if (trade.context and trade.context.take_profit and trade.context.take_profit.timeout > 0 and
                     trade.context.take_profit.timeout_distance != 0.0):
-                if (trade.is_duration_timeout(timestamp, trade.context.take_profit.timeout) and
-                        trade_profit_loss < trade.context.take_profit.timeout_distance):
-                    trader = self.strategy.trader()
 
-                    if trade.close(trader, self.instrument) > 0:
-                        trade.exit_reason = trade.REASON_MARKET_TIMEOUT
-
-                    return True
+                # min timeout
+                if trade.is_duration_timeout(timestamp, trade.context.take_profit.timeout):
+                    # min distance
+                    if trade.context.take_profit.timeout_distance_type == StrategyTraderContext.DIST_PERCENTILE:
+                        if trade_profit_loss < trade.context.take_profit.timeout_distance:
+                            do_close = True
+                    elif trade.context.take_profit.timeout_distance_type == StrategyTraderContext.DIST_PRICE:
+                        if trade.profit_loss_delta(self.instrument) < trade.context.take_profit.timeout_distance:
+                            do_close = True
 
         elif trade_profit_loss < 0.0:
-            # close in loss if stop-loss timeout is configured
+            # close in loss if stop-loss timeout + distance are configured
             if (trade.context and trade.context.stop_loss and trade.context.stop_loss.timeout > 0 and
                     trade.context.stop_loss.timeout_distance != 0.0):
-                if (trade.is_duration_timeout(timestamp, trade.context.stop_loss.timeout) and
-                        -trade_profit_loss > trade.context.stop_loss.timeout_distance):
-                    trader = self.strategy.trader()
 
-                    if trade.close(trader, self.instrument) > 0:
-                        trade.exit_reason = trade.REASON_MARKET_TIMEOUT
+                # min timeout
+                if trade.is_duration_timeout(timestamp, trade.context.stop_loss.timeout):
+                    # min distance
+                    if trade.context.stop_loss.timeout_distance_type == StrategyTraderContext.DIST_PERCENTILE:
+                        if -trade_profit_loss > trade.context.stop_loss.timeout_distance:
+                            do_close = True
+                    elif trade.context.stop_loss.timeout_distance_type == StrategyTraderContext.DIST_PRICE:
+                        if -trade.profit_loss_delta(self.instrument) > trade.context.take_profit.timeout_distance:
+                            do_close = True
 
-                    return True
+        if do_close:
+            trader = self.strategy.trader()
+            if trade.close(trader, self.instrument) > 0:
+                trade.exit_reason = trade.REASON_MARKET_TIMEOUT
+            return True
 
         return False
 

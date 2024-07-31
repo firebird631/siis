@@ -13,16 +13,23 @@ error_logger = logging.getLogger('siis.error.strategy.helpers.aggtradetable')
 
 
 def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=None, summ=True,
-                           group=None, ordering=None):
+                           quantities=False, stats=False, group=None, ordering=None):
     """
     Returns a table of any aggregated active and closes trades.
     """
-    columns = ('Symbol', 'P/L', 'Total', 'RPNL', 'Open', 'Best', 'Worst', 'Success', 'Failed', 'ROE',
-               'Closed', 'Cum. MFE', 'Cum. MAE', 'SL Win/Loss', 'TP Win/Loss')
+    columns = ['Symbol', 'P/L', 'Total', 'Avg EP', 'Open', 'Closed']
+
+    if quantities:
+        columns += ['RPNL', 'Qty']
+
+    if stats:
+        columns += ['Best', 'Worst', 'Success', 'Failed', 'ROE',
+                    'Cum. MFE', 'Cum. MAE', 'SL Win/Loss', 'TP Win/Loss']
+
     total_size = (len(columns), 0)
     data = []
 
-    with strategy._mutex:
+    with strategy.mutex:
         agg_trades = get_agg_trades(strategy)
         total_size = (len(columns), len(agg_trades) + (1 if summ else 0))
 
@@ -78,23 +85,33 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
             cr_perf = Color.colorize_updn("%.2f%%" % (t['perf']*100.0), 0.0, t['perf'], style=style)
             cr_rpnl = Color.colorize_updn("%g%s" % (t['rpnl'], t['rpnl-currency']), 0.0, t['rpnl'], style=style)
 
-            row = (
+            row = [
                 t['sym'],
                 cr_pnl,
                 cr_perf,
-                cr_rpnl,
+                t.get('avg-entry-price', "-"),
                 "%s/%s" % (t['num-actives-trades'], t['num-open-trades']),
-                "%.2f%%" % (t['best']*100.0),
-                "%.2f%%" % (t['worst']*100.0),
-                t['success'],
-                t['failed'],
-                t['roe'],
                 t['num-closed-trades'],
-                "%.2f%%" % (t['high']*100.0),
-                "%.2f%%" % (t['low']*100.0),
-                "%s/%s" % (t['sl-win'], t['sl-loss']),
-                "%s/%s" % (t['tp-win'], t['tp-loss']),
-            )
+            ]
+
+            if quantities:
+                row += [
+                    cr_rpnl,
+                    t.get('open-qty', "-"),
+                ]
+
+            if stats:
+                row += [
+                    "%.2f%%" % (t['best']*100.0),
+                    "%.2f%%" % (t['worst']*100.0),
+                    t['success'],
+                    t['failed'],
+                    t['roe'],
+                    "%.2f%%" % (t['high']*100.0),
+                    "%.2f%%" % (t['low']*100.0),
+                    "%s/%s" % (t['sl-win'], t['sl-loss']),
+                    "%s/%s" % (t['tp-win'], t['tp-loss']),
+                ]
 
             data.append(row[0:3] + row[3 + col_ofs:])
 
@@ -103,46 +120,66 @@ def agg_trades_stats_table(strategy, style='', offset=None, limit=None, col_ofs=
         #
 
         if summ:
-            row = (
+            row = [
                 '------',
+                '-----',
+                '-----',
                 '------',
-                '--------',
                 '----',
-                '----',
-                '-------',
-                '--------',
-                '-------',
                 '------',
-                '---',
-                '------',
-                '-------',
-                '------',
-                '-----------',
-                '-----------',
-            )
+            ]
+
+            if quantities:
+                row += [
+                    '----',
+                    '---',
+                ]
+
+            if stats:
+                row += [
+                    '----',
+                    '-----',
+                    '-------',
+                    '------',
+                    '---',
+                    '--------',
+                    '--------',
+                    '-----------',
+                    '-----------',
+                ]
 
             data.append(row[0:3] + row[3+col_ofs:])
 
             cr_pl_sum = Color.colorize_updn("%.2f%%" % (pl_sum*100.0), 0.0, pl_sum, style=style)
             cr_perf_sum = Color.colorize_updn("%.2f%%" % (perf_sum*100.0), 0.0, perf_sum, style=style)
 
-            row = (
+            row = [
                 'TOTAL',
                 cr_pl_sum,
                 cr_perf_sum,
                 '-',
                 "%s/%s" % (num_actives_trades_sum, num_open_trades_sum),
-                "%.2f%%" % (max_best*100.0),
-                "%.2f%%" % (min_worst*100.0),
-                success_sum,
-                failed_sum,
-                roe_sum,
                 success_sum + failed_sum + roe_sum,
-                '-',
-                '-',
-                "%s/%s" % (sl_win, sl_loss),
-                "%s/%s" % (tp_win, tp_loss),
-            )
+            ]
+
+            if quantities:
+                row += [
+                    '-',
+                    '-',
+                ]
+
+            if stats:
+                row += [
+                    "%.2f%%" % (max_best*100.0),
+                    "%.2f%%" % (min_worst*100.0),
+                    success_sum,
+                    failed_sum,
+                    roe_sum,
+                    '-',
+                    '-',
+                    "%s/%s" % (sl_win, sl_loss),
+                    "%s/%s" % (tp_win, tp_loss),
+                ]
 
             data.append(row[0:3] + row[3+col_ofs:])
 

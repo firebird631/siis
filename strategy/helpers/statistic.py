@@ -307,14 +307,27 @@ def compute_strategy_statistics(strategy):
             draw_downs_sqr.append((cum_pnl - max_pnl) ** 2)
 
             # MFE, MAE, ETD (gross value, no trade fees)
-            mfe_sampler.add_sample(direction * (best_price - entry_price) / entry_price)
-            mae_sampler.add_sample(direction * (entry_price - worst_price) / entry_price)
-            etd_sampler.add_sample(direction * (best_price - exit_price) / exit_price)
+            if entry_price != 0.0:
+                mfe_sampler.add_sample(direction * (best_price - entry_price) / entry_price)
+                mae_sampler.add_sample(direction * (entry_price - worst_price) / entry_price)
+            else:
+                mfe_sampler.add_sample(0.0)
+                mae_sampler.add_sample(0.0)
+
+            if exit_price != 0.0:
+                etd_sampler.add_sample(direction * (best_price - exit_price) / exit_price)
+            else:
+                etd_sampler.add_sample(0.0)
 
             # efficiency
-            eef_sampler.add_sample((best_price - entry_price) / (best_price - worst_price))
-            xef_sampler.add_sample((exit_price - worst_price) / (best_price - worst_price))
-            tef_sampler.add_sample((exit_price - entry_price) / (best_price - worst_price))
+            if best_price - worst_price != 0.0:
+                eef_sampler.add_sample((best_price - entry_price) / (best_price - worst_price))
+                xef_sampler.add_sample((exit_price - worst_price) / (best_price - worst_price))
+                tef_sampler.add_sample((exit_price - entry_price) / (best_price - worst_price))
+            else:
+                eef_sampler.add_sample(0.0)
+                xef_sampler.add_sample(0.0)
+                tef_sampler.add_sample(0.0)
 
             # keep the previous trade details
             prev_trade = t

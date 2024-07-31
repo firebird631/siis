@@ -59,16 +59,11 @@ Sum order :
 #######
 
 - Refactoring StrategyTrader ou créer un StrategyTraderStd :
-     c'est presque toujours pareil pour les : def on_market_info(self):
-     pareil pour les : def filter_market(self, timestamp: float) -> Tuple[bool, bool]:
-     presque pareil pour les price epsilon mais on ne s'en sert plus vraiment
-     presque pareil pour les process_entry
-     les process_exit sont presque jamais utilisés
-     et les def process(self, timestamp: float): sont presques les mêmes
+     - def process(self, timestamp: float): sont presque les mêmes
+     - presque pareil pour les process_entry
+     - les process_exit sont presque jamais utilisés
 
 - Ajouter une option pour creer un spread sur certain tick streamer quand le bid/ask n'est pas présent (cas bitmex par exemple)
-
-- Dans la vue aggtrade ajouter un avg entry price et total qty par market
 
 - kraken watcher et trader :
     - bug de reco perte d'information WS parfois (trade execution, order update...)
@@ -112,8 +107,6 @@ Sum order :
 # Bugs #
 ########
 
-- connector IG après la pause du weekend ne réussit pas à se reconnecter automatiquement
-
 - certains ordres avec binance ne sont pas retire du trader (oblige de reconnect pour purger la liste)
 - les ordres d'entrées market restent avec IG (avec le compte démo)
 
@@ -136,6 +129,11 @@ Sum order :
 ##########
 # Urgent #
 ##########
+
+- ajouter un block de configuration pour les handlers (ne pas oublier merge_parameters)
+- ajouter une configuration pour le DailyLimitHandler
+- ajouter une configuration pour le ReinvestGainHandler
+- ajouter une configuration pour le DCAHandler
 
 - Finir le volume profile et le composite volume profile
     - Tester avec un plot bar CLI

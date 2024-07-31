@@ -37,7 +37,7 @@ class DCAHandler(Handler):
     This handler is only dedicated to spot/asset market.
     This handler must be defined as global handler and not for a specific context.
 
-    Each time there is more than one active trade on an market this handler
+    Each time there is more than one active trade on a market this handler
     do a fusion, recomputing the average entry price and the quantity.
     Many take profit will be then managed, from one to many.
 

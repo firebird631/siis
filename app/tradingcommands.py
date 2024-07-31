@@ -2202,6 +2202,81 @@ class SetReinvestGainCommand(Command):
         return args, 0
 
 
+class SetDailyLimitCommand(Command):
+    SUMMARY = "to enable, disable or configure the daily global profit/limit manager"
+    HELP = (
+        "param1: [on|off] Enable or disable for any strategy-traders",
+        "param2: <profit> max profit in percent or account currency",
+        "param3: <loss> max loss in percent or account currency",
+    )
+
+    def __init__(self, strategy_service):
+        super().__init__('set-daily-limit', 'SDL')
+
+        self._strategy_service = strategy_service
+
+    def execute(self, args):
+        if len(args) < 1:
+            return False, "Missing parameters"
+
+        if len(args) > 3:
+            return False, "Too many parameters"
+
+        if args[0] not in ('on', 'off'):
+            return False, "First parameter must be 'on' or 'off'"
+
+        action = 'daily-limit' if args[0] == 'on' else 'normal'
+
+        profit_limit_pct = 0.0
+        profit_limit_currency = 0.0
+
+        loss_limit_pct = 0.0
+        loss_limit_currency = 0.0
+
+        if action == 'daily-limit':
+            if len(args) != 3:
+                return False, "Missing parameters"
+
+            profit = args[1]
+            try:
+                if profit.endswith('%'):
+                    profit_limit_pct = float(profit[:-1]) * 0.01
+                else:
+                    profit_limit_currency = float(profit)
+            except ValueError:
+                return False, "Invalid profit parameter for handler"
+
+            loss = args[2]
+            try:
+                if loss.endswith('%'):
+                    loss_limit_pct = float(loss[:-1]) * 0.01
+                else:
+                    loss_limit_currency = float(loss)
+            except ValueError:
+                return False, "Invalid loss parameter for handler"
+
+        elif action == 'normal':
+            pass
+
+        results = self._strategy_service.command(Strategy.COMMAND_DAILY_LIMIT, {
+            'action': action,
+            'profit-limit-pct': profit_limit_pct,
+            'profit-limit-currency': profit_limit_currency,
+            'loss-limit-pct': loss_limit_pct,
+            'loss-limit-currency': loss_limit_currency,
+        })
+
+        ok_message = "Modify daily profit/loss limit"
+
+        return self.manage_results(results, ok_message)
+
+    def completion(self, args, tab_pos, direction):
+        if len(args) <= 1:
+            return self.iterate(0, ('on', 'off'), args, tab_pos, direction)
+
+        return args, 0
+
+
 class ScriptCommand(Command):
     SUMMARY = "to execute a python script file"
     HELP = (
@@ -2488,6 +2563,7 @@ def register_trading_commands(commands_handler, watcher_service, trader_service,
     commands_handler.register(RecheckCommand(strategy_service))
 
     commands_handler.register(SetReinvestGainCommand(strategy_service))
+    commands_handler.register(SetDailyLimitCommand(strategy_service))
 
     commands_handler.register(ScriptCommand(watcher_service, trader_service, strategy_service,
                                             monitor_service, notifier_service))

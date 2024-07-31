@@ -47,6 +47,7 @@ from .command.strategycmdexitalltrade import cmd_strategy_exit_all_trade
 from .command.strategycmdmodifyall import cmd_strategy_trader_modify_all
 from .command.strategycmdcancelallpendingtrade import cmd_strategy_cancel_all_pending_trade
 from .command.strategycmdreinvestgain import cmd_strategy_reinvest_gain
+from .command.strategycmddailylimit import cmd_strategy_daily_limit
 
 from .command.strategycmdstrategytraderinfo import cmd_strategy_trader_info
 from .command.strategycmdstrategytradermodify import cmd_strategy_trader_modify
@@ -95,7 +96,8 @@ class Strategy(Runnable):
     COMMAND_INFO = 1
     COMMAND_TRADE_EXIT_ALL = 2  # close any trade for any market or only for a specific market-id
     COMMAND_TRADE_CANCEL_ALL_PENDING = 3  # cancel any trade with empty realized quantity for any markets or specific
-    COMMAND_QUANTITY_GLOBAL_SHARE = 4     # global share quantity
+    COMMAND_QUANTITY_GLOBAL_SHARE = 4     # global share quantity / reinvest handler
+    COMMAND_DAILY_LIMIT = 5     # daily profit/loss limit
 
     COMMAND_TRADE_ENTRY = 10    # manually create a new trade
     COMMAND_TRADE_MODIFY = 11   # modify an existing trade
@@ -1673,6 +1675,8 @@ class Strategy(Runnable):
             return cmd_strategy_cancel_all_pending_trade(self, data)
         elif command_type == Strategy.COMMAND_QUANTITY_GLOBAL_SHARE:
             return cmd_strategy_reinvest_gain(self, data)
+        elif command_type == Strategy.COMMAND_DAILY_LIMIT:
+            return cmd_strategy_daily_limit(self, data)
 
         elif command_type == Strategy.COMMAND_TRADE_ENTRY:
             return self.trade_command("entry", data, cmd_trade_entry)
@@ -1855,7 +1859,7 @@ class Strategy(Runnable):
 
         for t in agg_trades:
             # market_id filter
-            if market_id and agg_trades['mid'] != market_id:
+            if market_id and t['mid'] != market_id:
                 continue
 
             pl_sum += t['pl']      # non-realized PNL in percentage

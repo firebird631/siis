@@ -257,9 +257,14 @@ def closed_trades_stats_table(strategy, style='', offset=None, limit=None, col_o
                     fmt_cum_pnl = "-"
 
                 # efficiency
-                en_eff_pct = (best_price - entry_price) / (best_price - worst_price)
-                ex_eff_pct = (exit_price - worst_price) / (best_price - worst_price)
-                to_eff_pct = (exit_price - entry_price) / (best_price - worst_price)
+                if best_price - worst_price != 0.0:
+                    en_eff_pct = (best_price - entry_price) / (best_price - worst_price)
+                    ex_eff_pct = (exit_price - worst_price) / (best_price - worst_price)
+                    to_eff_pct = (exit_price - entry_price) / (best_price - worst_price)
+                else:
+                    en_eff_pct = 0.0
+                    ex_eff_pct = 0.0
+                    to_eff_pct = 0.0
 
                 row.append(fmt_cum_pnl)
                 row.append(fmt_mfe)

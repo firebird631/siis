@@ -104,7 +104,7 @@ class StrategyPositionTrade(StrategyTrade):
         self._stats['profit-loss-currency'] = instrument.settlement or instrument.quote
 
         if trader.create_order(order, instrument) > 0:
-            # keep the related position identifier if available (maybe be even if pending)
+            # keep the related position identifier if available (maybe even if pending)
             self.create_oid = order.order_id
             self.position_id = order.position_id  # mostly the same id as order-id
 
@@ -261,7 +261,7 @@ class StrategyPositionTrade(StrategyTrade):
             return self.NOTHING_TO_DO
 
         if self.create_oid:
-            # cancel the remaining buy order
+            # cancel the remaining entry order
             if trader.cancel_order(self.create_oid, instrument) > 0:
                 self.create_ref_oid = None
                 self.create_oid = None

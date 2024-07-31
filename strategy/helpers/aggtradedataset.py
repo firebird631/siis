@@ -58,12 +58,22 @@ def get_agg_trades(strategy):
                     num_trades = len(strategy_trader.trades)
                     num_actives_trades = 0
 
-                    for trade in strategy_trader.trades:
-                        # current UPNL %
-                        pl += trade.estimate_profit_loss_rate(strategy_trader.instrument)
+                    avg_entry_price = 0.0
+                    open_qty = 0.0
 
-                        if trade.is_active():
-                            num_actives_trades += 1
+                    with strategy_trader.trade_mutex:
+                        for trade in strategy_trader.trades:
+                            # current UPNL %
+                            pl += trade.estimate_profit_loss_rate(strategy_trader.instrument)
+
+                            if trade.is_active():
+                                num_actives_trades += 1
+
+                            open_qty += trade.remaining_qty()
+                            avg_entry_price += trade.entry_price
+
+                        if len(strategy_trader.trades) > 0:
+                            avg_entry_price /= len(strategy_trader.trades)
 
                 if pl != 0.0 or num_trades > 0 or success > 0 or failed > 0 or roe > 0:
                     results.append({
@@ -89,6 +99,8 @@ def get_agg_trades(strategy):
                         'sl-win': sl_win,
                         'cont-win': cont_win,
                         'cont-loss': cont_loss,
+                        'avg-entry-price': strategy_trader.instrument.format_price(avg_entry_price),
+                        'open-qty': strategy_trader.instrument.format_quantity(open_qty),
                     })
         except Exception as e:
             error_logger.error(repr(e))

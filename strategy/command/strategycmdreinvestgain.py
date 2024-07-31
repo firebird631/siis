@@ -48,7 +48,7 @@ def cmd_strategy_reinvest_gain(strategy, data):
 
         handler = ReinvestGainHandler(context_id, trade_quantity, step)
 
-        with strategy._mutex:
+        with strategy.mutex:
             for market_id, strategy_trader in strategy._strategy_traders.items():
                 # retrieve context
                 ctx = strategy_trader.retrieve_context(context_id)
@@ -63,7 +63,7 @@ def cmd_strategy_reinvest_gain(strategy, data):
                     handler._total_quantity = initial_total_qty
 
     elif action == 'normal':
-        with strategy._mutex:
+        with strategy.mutex:
             for market_id, strategy_trader in strategy._strategy_traders.items():
                 # retrieve context
                 ctx = strategy_trader.retrieve_context(context_id)

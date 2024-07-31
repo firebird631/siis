@@ -132,7 +132,7 @@ class LSClient(object):
 
     def _encode_params(self, params):
         """Encode the parameter for HTTP POST submissions, but
-        only for non empty values..."""
+        only for non-empty values..."""
         return _url_encode(
             dict([(k, v) for (k, v) in _iteritems(params) if v])
         )
@@ -201,19 +201,21 @@ class LSClient(object):
         Replace a completely consumed connection in listening for an active session.
         """
         self.lock()
+        try:
+            self._stream_connection = self._call(
+                self._control_url,
+                BIND_URL_PATH,
+                {
+                    "LS_session": self._session["SessionId"],
+                    "LS_content_length": self.content_length,
+                }
+            )
 
-        self._stream_connection = self._call(
-            self._control_url,
-            BIND_URL_PATH,
-            {
-                "LS_session": self._session["SessionId"],
-                "LS_content_length": self.content_length,
-            }
-        )
-
-        self._bind_counter += 1
-
-        self.unlock()
+            self._bind_counter += 1
+        except Exception as e:
+            error_logger.error(repr(e))
+        finally:
+            self.unlock()
 
         stream_line = self._read_from_stream()
         self._handle_stream(stream_line)
@@ -291,26 +293,28 @@ class LSClient(object):
                 logger.warning("No connection to LightStreamer")
 
     def subscribe(self, subscription):
-        """"
+        """
         Perform a subscription request to LightStreamer Server.
         """
         # Register the Subscription with a new subscription key
         self.lock()
+        try:
+            self._current_subscription_key += 1
+            self._subscriptions[self._current_subscription_key] = subscription
 
-        self._current_subscription_key += 1
-        self._subscriptions[self._current_subscription_key] = subscription
-
-        # Send the control request to perform the subscription
-        server_response = self._control({
-            "LS_Table": self._current_subscription_key,
-            "LS_op": OP_ADD,
-            "LS_data_adapter": subscription.adapter,
-            "LS_mode": subscription.mode,
-            "LS_schema": " ".join(subscription.field_names),
-            "LS_id": " ".join(subscription.item_names),
-        })
-
-        self.unlock()
+            # Send the control request to perform the subscription
+            server_response = self._control({
+                "LS_Table": self._current_subscription_key,
+                "LS_op": OP_ADD,
+                "LS_data_adapter": subscription.adapter,
+                "LS_mode": subscription.mode,
+                "LS_schema": " ".join(subscription.field_names),
+                "LS_id": " ".join(subscription.item_names),
+            })
+        except Exception as e:
+            error_logger.error(repr(e))
+        finally:
+            self.unlock()
 
         # logger.debug("Server response ---> <{0}>".format(server_response))
         return self._current_subscription_key
@@ -320,23 +324,25 @@ class LSClient(object):
         Unregister the Subscription associated to the specified subscription_key.
         """
         self.lock()
+        try:
+            if subcription_key in self._subscriptions:
+                server_response = self._control({
+                    "LS_Table": subcription_key,
+                    "LS_op": OP_DELETE
+                })
+                # logger.debug("Server response ---> <{0}>".format(server_response))
 
-        if subcription_key in self._subscriptions:
-            server_response = self._control({
-                "LS_Table": subcription_key,
-                "LS_op": OP_DELETE
-            })
-            # logger.debug("Server response ---> <{0}>".format(server_response))
-
-            if server_response == OK_CMD:
-                del self._subscriptions[subcription_key]
-                logger.debug("Unsubscribed successfully")
+                if server_response == OK_CMD:
+                    del self._subscriptions[subcription_key]
+                    logger.debug("Unsubscribed successfully")
+                else:
+                    logger.warning("Server error")
             else:
-                logger.warning("Server error")
-        else:
-            logger.warning("No subscription key {0} found!".format(subcription_key))
-
-        self.unlock()
+                logger.warning("No subscription key {0} found!".format(subcription_key))
+        except Exception as e:
+            error_logger.error(repr(e))
+        finally:
+            self.unlock()
 
     def _forward_update_message(self, update_message):
         """
@@ -414,18 +420,20 @@ class LSClient(object):
             # Clear internal data structures for session
             # and subscriptions management.
             self.lock()
+            try:
+                if self._stream_connection:
+                    self._stream_connection.close()
+                    self._stream_connection = None
 
-            if self._stream_connection:
-                self._stream_connection.close()
-                self._stream_connection = None
+                if self._session:
+                    self._session.clear()
 
-            if self._session:
-                self._session.clear()
-
-            self._subscriptions.clear()
-            self._current_subscription_key = 0
-
-            self.unlock()
+                self._subscriptions.clear()
+                self._current_subscription_key = 0
+            except Exception as e:
+                error_logger.error(repr(e))
+            finally:
+                self.unlock()
         else:
             logger.debug("Binding to this active session")
             self._stream_connection = None
@@ -450,7 +458,7 @@ class LSClient(object):
 
 #     def _encode_params(self, params):
 #         """Encode the parameter for HTTP POST submissions, but
-#         only for non empty values..."""
+#         only for non-empty values..."""
 #         return _url_encode(dict([(k, v) for (k, v) in _iteritems(params) if v]))
 
 #     def _call(self, base_url, url, body):
