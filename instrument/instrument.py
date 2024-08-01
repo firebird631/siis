@@ -17,7 +17,7 @@ import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from common.utils import UTC, timeframe_to_str, truncate, decimal_place, format_datetime
+from common.utils import UTC, timeframe_to_str, truncate, decimal_place, format_datetime, duration_to_str
 
 import logging
 logger = logging.getLogger('siis.instrument.instrument')
@@ -206,6 +206,8 @@ class TradingSession:
     Times are related to the configured instrument timezone.
     """
 
+    DAY_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
     day_of_week: int = 1   # ISO monday 1..7
     from_time: float = 0.0
     to_time: float = 0.0
@@ -216,6 +218,11 @@ class TradingSession:
             'from-time': self.from_time,
             'to-time': self.to_time
         }
+
+    def __str__(self):
+        return "%s %s to %s" % (TradingSession.DAY_OF_WEEK[self.day_of_week - 1],
+                                duration_to_str(self.from_time),
+                                duration_to_str(self.to_time))
 
 
 class Instrument(object):
@@ -337,7 +344,7 @@ class Instrument(object):
                 '_ticks', '_candles', '_buy_sells', '_base_timeframe', \
                 '_base', '_quote', '_settlement', '_trade', '_orders', \
                 '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', '_lot_size', '_contract_size',  \
-                '_timezone', '_session_offset', '_trading_sessions'
+                '_timezone', '_session_offset', '_session_duration', '_trading_sessions'
 
     _ticks: List[TickType]
     _candles: List[Candle]
@@ -398,8 +405,9 @@ class Instrument(object):
         self._contract_size = 1.0
 
         # evening session from 00h00m00s000ms to 23h59m59s999ms in UTC, tuple with float time offset and time duration
-        self._timezone = 0.0         # market timezone UTC+N
-        self._session_offset = 0.0   # day session offset from 00:00 in seconds
+        self._timezone = 0.0          # market timezone UTC+N
+        self._session_offset = 0.0    # day session offset from 00:00 UTC (in seconds)
+        self._session_duration = 0.0  # day session duration from session_offset (in seconds)
 
         # allowed trading session (empty mean anytime) else must be explicit. each session is a TradingSession model.
         self._trading_sessions = []
@@ -583,6 +591,10 @@ class Instrument(object):
     @property
     def session_offset(self) -> float:
         return self._session_offset
+
+    @property
+    def session_duration(self) -> float:
+        return self._session_duration
 
     def has_trading_sessions(self) -> bool:
         return len(self._trading_sessions) > 0
@@ -1227,6 +1239,13 @@ class Instrument(object):
                 error_logger.error("Trading session offset invalid format")
             else:
                 self._session_offset = session_offset
+
+        if 'duration' in data:
+            session_duration = Instrument.duration_from_str(data['duration'])
+            if session_duration is None:
+                error_logger.error("Trading session duration invalid format")
+            else:
+                self._session_duration = session_duration
 
         if 'trading' in data:
             if type(data['trading']) is str:

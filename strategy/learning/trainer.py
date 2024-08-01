@@ -97,7 +97,6 @@ class Trainer(object):
         self._fitness = trainer_params.get('fitness', 'default')
 
         self._next_update = 0.0
-        self._working = False      # work in progress
 
         self._mode = Trainer.MODE_NONE
 
@@ -154,7 +153,8 @@ class Trainer(object):
 
     @property
     def working(self) -> bool:
-        return self._working
+        return (self._strategy_trader and self._strategy_trader.instrument and
+                self._strategy_trader.instrument.market_id in Trainer.processing)
 
     def update(self, timestamp: float) -> bool:
         # init counter or does an initial training
@@ -171,7 +171,7 @@ class Trainer(object):
 
         self._next_update = self._next_update + self._update
 
-        # @todo call or fetch
+        # locally compute or external fetch
         if self._mode == Trainer.MODE_FETCHING:
             # from_dt, to_dt = self.compute_period()
             # from_str = from_dt.strftime("%Y-%m-%dT%H:%M:%S")
@@ -189,8 +189,6 @@ class Trainer(object):
 
             if not result:
                 return False
-
-            self._working = True
 
         return True
 
@@ -302,9 +300,6 @@ class Trainer(object):
             if not strategy_trader.activity:
                 logger.info("Strategy trader %s was in pause, now enable it !" % strategy_trader.instrument.market_id)
                 strategy_trader.set_activity(True)
-
-        # training state
-        self._working = False
 
         if self._strategy_service.backtesting:
             self._strategy_service.play_backtesting()
@@ -563,8 +558,7 @@ class Trainer(object):
                         utils.delete_learning(learning_path, learning_filename)
                         return False
 
-                    _trainer = _strategy_trader.trainer
-                    if not _trainer:
+                    if not _strategy_trader.trainer:
                         utils.delete_learning(learning_path, learning_filename)
                         return False
 
@@ -573,7 +567,7 @@ class Trainer(object):
                     utils.delete_learning(learning_path, learning_filename)
 
                     # analyse results and apply to strategy trader
-                    _trainer.complete(learning_result)
+                    _strategy_trader.trainer.complete(learning_result)
                     return True
 
         logger.info("Start a trainer thread...")

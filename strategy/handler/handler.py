@@ -104,5 +104,5 @@ class Handler(object):
     def dumps(self, strategy_trader: StrategyTraderBase) -> Dict[str, Union[str, int, float]]:
         return {
             'name': self.name(),
-            'context': self._context_id
+            'context': self._context_id or "global"
         }

@@ -3,11 +3,11 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Volume Profile indicator and composite
 
-from strategy.indicator.indicator import Indicator
-from strategy.indicator.models import VolumeProfile
-from instrument.instrument import Instrument
+import math
+from typing import Optional, List, Tuple
 
-from database.database import Database
+from instrument.instrument import Instrument
+from strategy.indicator.indicator import Indicator
 
 from common.utils import truncate
 
@@ -15,21 +15,312 @@ import numpy as np
 import scipy.signal as sg
 
 
+class BidAskVPScale(object):
+    """
+    Base model for a bid/ask volume at bin price. Each subclass must implement its own method but respect the
+    add_bid, add_ask, bid, ask, volume methods
+    The at method must return the correct index into the bins array.
+    Bins are price ascending ordered.
+    Could be better to trim left and right 0 areas.
+    """
+
+    _bins: Optional[np.array]
+
+    _min_price: float
+    _max_price: float
+
+    _sensibility: int
+
+    _price_precision: int
+    _tick_size: float
+    _tick_scale: float
+
+    _half_size: int
+
+    _poc_idx: int
+    _poc_vol: float
+
+    _peaks_idx: Optional[np.array]
+    _valleys_idx: Optional[np.array]
+
+    _val_idx: int
+    _vah_idx: int
+
+    def __init__(self, sensibility: int, tick_scale: float = 1.0):
+        self._bins = None       # 2d array of volume bid/ask, per bin price
+
+        self._min_price = 0.0   # bin price of at index 0 of bins (included from bins)
+        self._max_price = 0.0   # bin price of at last index of bins + one step (excluded from bins)
+
+        self._sensibility = sensibility
+
+        self._price_precision = 8
+        self._tick_size = 0.00000001
+
+        self._tick_scale = tick_scale
+
+        self._half_size = 0
+        self._poc_idx = -1         # real-time POC bin index
+        self._poc_vol = 0.0
+
+        self._peaks_idx = None
+        self._valleys_idx = None
+
+        self._val_idx = -1
+        self._vah_idx = -1
+
+    def setup(self, instrument: Instrument):
+        """
+        Setup some constant from instrument.
+        The tick size is scaled by the tick_scale factor.
+        """
+        if instrument is None:
+            return
+
+        self._price_precision = instrument.price_precision or 8
+        self._tick_size = instrument.tick_price or 0.00000001 * self._tick_scale
+
+    def adjust_price(self, price: float) -> float:
+        """
+        Adjust the price according to the precision.
+        """
+        if price is None:
+            price = 0.0
+
+        # adjusted price at precision and by step of pip meaning
+        return truncate(round(price / self._tick_size) * self._tick_size, self._price_precision)
+
+    def at(self, price: float) -> Tuple[float, int]:
+        """Volume and index at price. Resize as necessary"""
+        return 0.0, -1
+
+    def price_at(self, idx: int) -> float:
+        """Price at index. Only getter, does not resize if not exists"""
+        return 0.0
+
+    def volume_at(self, idx: int) -> float:
+        """Volume bid+ask at index. Only getter, does not resize if not exists"""
+        return 0.0
+
+    def add_bid(self, price: float, volume: int):
+        base_price, idx = self.at(price)
+        self._bins[0, idx] += volume
+        self._update_poc(base_price, idx)
+
+    def add_ask(self, price: float, volume: int):
+        base_price, idx = self.at(price)
+        self._bins[1, idx] += volume
+        self._update_poc(base_price, idx)
+
+    def bid(self, price: float) -> float:
+        base_price, idx = self.at(price)
+        return self._bins[0, idx]
+
+    def ask(self, price: float) -> float:
+        base_price, idx = self.at(price)
+        return self._bins[1, idx]
+
+    def volume(self, price: float) -> float:
+        base_price, idx = self.at(price)
+        return self._bins[0, idx] + self._bins[1, idx]
+
+    #
+    # helpers
+    #
+
+    def consolidate(self):
+        """
+        Trim left and right empty bins. Bin are always price ascending ordered
+        The POC index is adjusted. But VA, peaks and valleys must be defined after that.
+        """
+        left = 0
+        for i in range(0, self._bins.shape[1]):
+            if self._bins[i, 0] + self._bins[i, 1] != 0.0:
+                break
+            left += 1
+
+        right = self._bins.shape[1] - 1
+        for i in range(self._bins.shape[1]-1, 0, -1):
+            if self._bins[i, 0] + self._bins[i, 1] != 0.0:
+                break
+            right -= 1
+
+        if left > 0 or right < self._bins.shape[1] - 1:
+            self._bins = self._bins[left:right]
+
+            # adjust POC index (others are computed after trim_bins)
+            self._poc_idx -= left
+
+    #
+    # POC volume
+    #
+
+    def _update_poc(self, base_price: float, idx):
+        volume = self._bins[0, idx] + self._bins[1, idx]
+        if volume > self._poc_vol:
+            self._poc_vol = volume
+            self._poc_idx = idx
+
+    def poc_idx(self) -> int:
+        return self._poc_idx
+
+    def poc_price(self) -> float:
+        # avg price (base bin price + half of sensibility)
+        if self._poc_idx >= 0:
+            return self.price_at(self._poc_idx) + self._sensibility * 0.5
+        else:
+            return 0.0
+
+    def poc_volume(self) -> float:
+        return self._poc_vol
+
+    #
+    # volume area
+    #
+
+    def set_va_idx(self, val_idx: int, vah_idx: int):
+        self._val_idx = val_idx
+        self._vah_idx = vah_idx
+
+    def val_idx(self) -> int:
+        return self._val_idx
+
+    def vah_idx(self) -> int:
+        return self._vah_idx
+
+    def val_price(self) -> float:
+        return self.price_at(self._val_idx) if self._val_idx >= 0 else 0.0
+
+    def vah_price(self) -> float:
+        return self.price_at(self._vah_idx) if self._vah_idx >= 0 else 0.0
+
+    #
+    # peaks & valleys
+    #
+
+    def set_peaks_idx(self, ps: np.array):
+        self._peaks_idx = ps
+
+    def set_valleys_idx(self, vs: np.array):
+        self._valleys_idx = vs
+
+    @property
+    def peaks_idx(self) -> np.array:
+        return self._peaks_idx
+
+    @property
+    def valleys_idx(self) -> np.array:
+        return self._valleys_idx
+
+    @property
+    def peaks_prices(self) -> List[float]:
+        return [self.price_at(idx) for idx in self._peaks_idx]
+
+    @property
+    def valleys_prices(self) -> List[float]:
+        return [self.price_at(idx) for idx in self._valleys_idx]
+
+
+class BidAskPointScale(BidAskVPScale):
+    """
+    Dynamic array with bid/ask at price. Each bin have a width of sensibility parameter.
+    Initial array is empty. It is allocated with the first price/volume.
+    The initial half_size parameter is used to growth the array in both direction.
+    If a new price is outside the range the array is increased into both direction of an integer scale of half_size.
+    """
+
+    _growth_size: int
+
+    def init(self, price: float, half_size: int = 10):
+        # init bins with 10 bin below (including) price and 10 above (excluding)
+        adj_price = self.adjust_price(price)
+
+        base_price = int(adj_price / self._sensibility) * self._sensibility
+
+        self._min_price = base_price - half_size * self._sensibility
+        self._max_price = base_price + half_size * self._sensibility
+
+        # simply alloc with zeros
+        self._bins = np.zeros((2, 2 * half_size))
+        self._half_size = half_size
+
+        # growth size to initial size
+        self._growth_size = half_size
+
+    def realloc(self, new_half_size: int):
+        if new_half_size > self._half_size:
+            org_bins = self._bins
+            ofs = new_half_size - self._half_size
+
+            self._bins = np.zeros((2, 2 * new_half_size))
+
+            # copy
+            for i in range(0, self._half_size*2):
+                self._bins[0, i+ofs] = org_bins[0, i]
+                self._bins[1, i+ofs] = org_bins[1, i]
+
+            self._min_price -= ofs * self._sensibility
+            self._max_price += ofs * self._sensibility
+
+            self._half_size = new_half_size
+
+    def price_at(self, idx: int) -> float:
+        return min(self._min_price + idx * self._sensibility, self._max_price)
+
+    def volume_at(self, idx: int) -> float:
+        if idx < self._bins.shape[1]:
+            return self._bins[0, idx] + self._bins[1, idx]
+
+        return 0.0
+
+    def at(self, price: float):
+        adj_price = self.adjust_price(price)
+
+        if not self._half_size:
+            self.init(price)
+
+        if adj_price < self._min_price:
+            # underflow
+            new_half_size = self._half_size + math.ceil((self._min_price - adj_price) / (
+                    self._growth_size * self._sensibility)) * self._growth_size
+            self.realloc(new_half_size)
+
+        base_price = int(adj_price / self._sensibility) * self._sensibility
+
+        if base_price >= self._max_price:
+            # overflow
+            new_half_size = self._half_size + math.ceil((adj_price - self._max_price) / (
+                    self._growth_size * self._sensibility)) * self._growth_size
+            self.realloc(new_half_size)
+
+        index = int((base_price - self._min_price) // self._sensibility)
+        return base_price, index
+
+
 class VolumeProfileBaseIndicator(Indicator):
     """
     Single or multiple Volume Profile indicator base model.
     It could be composed using the composite volume profile to build exotic durations.
 
-    This indicator is compute at close because :
+    This indicator is "compute-at-close" because :
       - Tick version it can update at each tick or many, there is no limitation
       - Bar version (timeframe or non-temporal) it could only compute at close because it is too complex to withdraw
         the previous volumes at price and update at each bar update until its close.
 
-    @todo Support of evening session and overnight session.
+    There is two mode, one for computing at each bar close, another to compute at each tick.
+    The first can work with adaptive logarithmic bins. It is adapted to high amplitude bars because n points will
+    not represent the same changes in percentage.
+    But because of some markets (CFD, Futures) are priced in change per points or tick a logarithmic method could not
+    be optimal. And for highly volatile cryptocurrencies it could be interesting.
+
+    @note The per point (x sensibility factor) is the first realized.
     """
 
     __slots__ = '_length', '_sensibility', '_volume_area', '_size', '_vps', '_current', \
-        '_session_offset', '_price_precision', '_tick_size', '_range', '_bins'
+        '_session_offset', '_session_duration', '_price_precision', '_tick_size', '_bins'
+
+    _vps: List[BidAskVPScale]
+    _current: Optional[BidAskVPScale]
 
     @classmethod
     def indicator_type(cls):
@@ -42,13 +333,13 @@ class VolumeProfileBaseIndicator(Indicator):
     @classmethod
     def builder(cls, base_type: int, timeframe: float, **kwargs):
         if base_type == Indicator.BASE_TIMEFRAME:
-            from strategy.indicator.volumeprofile import VolumeProfileIndicator
+            from strategy.indicator.volumeprofile.volumeprofile import VolumeProfileIndicator
             return VolumeProfileIndicator(timeframe, **kwargs)
         elif base_type == Indicator.BASE_TICKBAR:
-            from strategy.indicator.volumeprofile import TickBarVolumeProfileIndicator
+            from strategy.indicator.volumeprofile.tickbarvolumeprofile import TickBarVolumeProfileIndicator
             return TickBarVolumeProfileIndicator(timeframe, **kwargs)
         elif base_type == Indicator.BASE_TICK:
-            from strategy.indicator.volumeprofile import TickVolumeProfileIndicator
+            from strategy.indicator.volumeprofile.tickvolumeprofile import TickVolumeProfileIndicator
             return TickVolumeProfileIndicator(timeframe, **kwargs)
 
         return None
@@ -62,13 +353,11 @@ class VolumeProfileBaseIndicator(Indicator):
         self._sensibility = sensibility
         self._volume_area = volume_area
 
-        self._session_offset = 0.0
+        self._session_offset = 0.0    # 0 means starts at 00:00 UTC
+        self._session_duration = 0.0  # 0 means full day
 
         self._price_precision = 1
         self._tick_size = 1.0
-
-        self._range = (1.0, 1.0)
-        self._bins = tuple()
 
         self._current = None
         self._vps = []
@@ -81,11 +370,7 @@ class VolumeProfileBaseIndicator(Indicator):
         self._tick_size = instrument.tick_price or 0.00000001
 
         self._session_offset = instrument.session_offset
-
-    def setup_range(self, instrument, min_price, max_price):
-        self._range = (min_price, max_price)
-        self._bins = tuple(instrument.adjust_price(price) for price in np.exp(
-            np.arange(np.log(min_price), np.log(max_price), self._sensibility * 0.01)))
+        self._session_duration = instrument.session_duration
 
     @property
     def length(self):
@@ -100,14 +385,6 @@ class VolumeProfileBaseIndicator(Indicator):
         return self._sensibility
 
     @property
-    def range(self):
-        return self._range
-
-    @property
-    def bins(self):
-        return self._bins
-
-    @property
     def current(self):
         return self._current
 
@@ -115,25 +392,25 @@ class VolumeProfileBaseIndicator(Indicator):
     def vps(self):
         return self._vps
 
-    def finalize(self, vp):
+    def finalize(self):
         """
-        Finalize the computation of the last VP and push it.
+        Finalize the computation of a volume-profile by computing the VAH, VAL and finding peaks and valleys.
         Does by update when the last trade timestamp open a new session.
         """
-        if vp is None:
+        if self._current is None:
             return
 
-        vp.poc = VolumeProfileBaseIndicator.find_poc(vp)
+        # find peaks and valley
+        # # vp.peaks, vp.valleys = self._asic_peaks_and_valleys_detection(self._bins, self._sensibility, vp)
+        self._current.peaks, self._current.valleys = self._scipy_peaks_and_valleys_detection(self._current)
 
         # # volumes arranged by price
-        # volumes_by_price = VolumeProfileBaseIndicator.sort_volumes_by_price(vp)
-        #
-        # # find peaks and valley
-        # # vp.peaks, vp.valleys = self.basic_peaks_and_valleys_detection(self._bins, self._sensibility, vp)
-        # vp.peaks, vp.valleys = self.scipy_peaks_and_valleys_detection(vp)
-        #
-        # # find the low and high of the volume area
-        # vp.low_area, vp.high_area = self.single_volume_area(vp, volumes_by_price, vp.poc)
+        # volumes_by_price = VolumeProfileBaseIndicator._sort_volumes_by_price(self._current)
+
+        # @todo update because now have bin ordered
+        # find the low and high of the volume area
+        # val_idx, vah_idx = self._single_volume_area(vp, volumes_by_price, vp.poc)
+        # self._current.set_va_idx(val_idx, vah_idx)
 
     #
     # internal computing
@@ -187,16 +464,20 @@ class VolumeProfileBaseIndicator(Indicator):
 
         return poc_price
 
-    @staticmethod
-    def sort_volumes_by_price(vp):
-        return sorted([(b, v) for b, v in vp.volumes.items()], key=lambda x: x[0])
+    #
+    # volume area
+    #
 
-    def single_volume_area(self, vp, volumes_by_price, poc_price):
+    # @staticmethod
+    # def _sort_volumes_by_price(vp):
+    #     return sorted([(b, v) for b, v in vp.volumes.items()], key=lambda x: x[0])
+
+    def _single_volume_area(self, vp, volumes_by_price, poc_price):
         """
         Simplest method to detect the volume area.
         Starting from the POC goes left and right until having the inner volume reached.
         It is not perfect because it could miss some peaks that will be important to have
-        and sometimes the best choice might not be try with centered algorithm.
+        and sometimes the best choice might not be tried with centered algorithm.
         """
         if not volumes_by_price or not poc_price:
             return 0.0, 0.0
@@ -240,35 +521,36 @@ class VolumeProfileBaseIndicator(Indicator):
 
         return low_price, high_price
 
+    #
+    # peaks and valleys
+    #
+
     @staticmethod
-    def scipy_peaks_and_valleys_detection(vp):
+    def _scipy_peaks_and_valleys_detection(vp: BidAskVPScale):
         """
         Scipy find_peaks based peaks and valleys detection algorithm.
         """
         if not vp or not vp.volumes:
             return [], []
 
-        peaks = []
-        valleys = []
-
         # bins = np.array(self._bins)
         # volumes = np.zeros(len(self._bins))
 
-        prices = np.array(list(vp.volumes.keys()))
+        prices = np.array(  list(vp.volumes.keys()))
         weights = np.array(list(vp.volumes.values()))
 
         # actual version is 1, but more efficient is 2 (to be confirmed with more tests and adjustments)
-        VolumeProfileBaseIndicator._find_peaks_and_valleys_sci_peak(weights, prices, peaks, valleys)
-        # self._find_peaks_and_valleys_sci_peak2(weights, prices, peaks, valleys)
+        ps, vs = VolumeProfileBaseIndicator._find_peaks_and_valleys_sci_peak(weights)
+        # self._find_peaks_and_valleys_sci_peak2(weights, prices, ps, vs)
 
-        return peaks, valleys
+        vp.set_peaks_idx(ps)
+        vp.set_valleys_idx(vs)
 
-    #
-    # internal
-    #
+        # # index to price
+        # return [vp.price_at(p) for p in ps], [vp.price_at(v) for v in vs]
 
     @staticmethod
-    def basic_peaks_and_valleys_detection(src_bins, sensibility: float, vp):
+    def _basic_peaks_and_valleys_detection(src_bins, sensibility: float, vp):
         """
         Simplest peaks and valleys detection algorithm.
         """
@@ -318,9 +600,10 @@ class VolumeProfileBaseIndicator(Indicator):
         return peaks, valleys
 
     @staticmethod
-    def _find_peaks_and_valleys_sci_peak(weights, prices, peaks, valleys):
+    def _find_peaks_and_valleys_sci_peak(weights):
         """
         Based on scipy find_peaks method.
+        @todo Could compute height with mean + stddev
         """
         l = len(weights)
 
@@ -335,14 +618,12 @@ class VolumeProfileBaseIndicator(Indicator):
         vs = sg.find_peaks(-weights, heightV, None, distanceV)[0]
         ps = sg.find_peaks(weights, heightP, None, distanceP)[0]
 
-        # index to price
-        valleys += [prices[v] for v in vs]
-        peaks += [prices[p] for p in ps]
+        return ps, vs
 
     @staticmethod
-    def _find_peaks_and_valleys_sci_peak2(weights, prices, peaks, valleys, n_samples=20):
+    def _find_peaks_and_valleys_sci_peak_adv(weights, n_samples=20):
         """
-        Based on scipy find_peaks method. Profile is split with nsamples per buch.
+        Based on scipy find_peaks method. Profile is split with nsamples per buck.
         n_sample=20 seems OK in the first tests with btc.
         """
         def get_pkvl_robust(d):
@@ -369,9 +650,7 @@ class VolumeProfileBaseIndicator(Indicator):
             m, M = get_pkvl_robust(d)
             vs, ps = np.hstack((vs, m + n * n_samples)), np.hstack((ps, M + n * n_samples))
 
-        # index to price
-        valleys += [prices[v] for v in vs]
-        peaks += [prices[p] for p in ps]
+        return ps, vs
 
     #
     # cache management (@todo maybe move to strategy with INDICATOR_BULK signal but its a more hard than soft design...)
@@ -390,3 +669,62 @@ class VolumeProfileBaseIndicator(Indicator):
     #         if self._vps[-1].timestamp <= base_timestamp < self._vps[-1].timestamp + self._timeframe:
     #             # current detected
     #             self._current = self._vps.pop()
+
+
+class LogVolumeProfileBaseIndicator(VolumeProfileBaseIndicator):
+    """
+    Logarithmic version of the volume profile. @see VolumeProfileBaseIndicator.
+
+    @todo
+    """
+
+    __slots__ = '_sensibility'
+
+    @classmethod
+    def indicator_type(cls):
+        return Indicator.TYPE_VOLUME
+
+    @classmethod
+    def indicator_class(cls):
+        return Indicator.CLS_INDEX
+
+    @classmethod
+    def builder(cls, base_type: int, timeframe: float, **kwargs):
+        if base_type == Indicator.BASE_TIMEFRAME:
+            from strategy.indicator.volumeprofile.logvolumeprofile import LogVolumeProfileIndicator
+            return LogVolumeProfileIndicator(timeframe, **kwargs)
+        elif base_type == Indicator.BASE_TICKBAR:
+            from strategy.indicator.volumeprofile.logtickbarvolumeprofile import LogTickBarVolumeProfileIndicator
+            return LogTickBarVolumeProfileIndicator(timeframe, **kwargs)
+        elif base_type == Indicator.BASE_TICK:
+            from strategy.indicator.volumeprofile.logtickvolumeprofile import LogTickVolumeProfileIndicator
+            return LogTickVolumeProfileIndicator(timeframe, **kwargs)
+
+        return None
+
+    def __init__(self, name: str, timeframe: float, length: int = 10, sensibility: int = 10, volume_area: float = 70):
+        super().__init__(name, timeframe)
+
+    def bin_lookup(self, price):
+        """Works for logarithmic bins"""
+        # idx = int(np.log(price) * self._sensibility)
+
+        # if 0 <= idx < len(self._bins):
+        #     return self._bins[idx]
+        # else:
+        #     return None
+
+        if price < self._bins[0]:
+            # underflow
+            return None
+
+        prev = 0.0
+
+        for b in self._bins:
+            if b > price >= prev:
+                return prev
+
+            prev = b
+
+        # last bin or overflow
+        return self._bins[-1]

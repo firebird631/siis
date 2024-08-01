@@ -37,7 +37,7 @@ from .strategytradercontext import StrategyTraderContext
 from .learning.trainer import Trainer
 
 from common.utils import timeframe_to_str, UTC, check_yes_no_opt, yes_no_opt, integer_opt, check_integer_opt, \
-    float_opt, check_float_opt
+    float_opt, check_float_opt, duration_to_str
 from strategy.strategysignal import StrategySignal
 from terminal.terminal import Terminal
 
@@ -2579,10 +2579,18 @@ class StrategyTraderBase(object):
             result['data'].append(("Trade-Short", "Yes" if self.trade_short else "No"))
             result['data'].append(("Region-Allow", "Yes" if self.region_allow else "No"))
 
+            result['data'].append(("----", "----"))
+
+            result['data'].append(("Session timezone", "UTC%s%g" % ('+' if self.instrument.timezone >= 0 else '-',
+                                                                    self.instrument.timezone)))
+            result['data'].append(("Session duration", "%s" % duration_to_str(self.instrument.session_duration)))
+            result['data'].append(("Session offset", "%s" % duration_to_str(self.instrument.session_offset)))
+
+            for n, session in enumerate(self.instrument.trading_sessions):
+                result['data'].append(("Session %i" % (n+1), "%s" % session))
+
             handlers = self.dumps_handlers()
             if handlers:
-                result['data'].append(("----", "----"))
-
                 for handler in handlers:
                     result['data'].append(("----", "----"))
                     result['data'] += ([(k, v) for k, v in handler.items()])

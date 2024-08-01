@@ -69,20 +69,21 @@ class TraderStateView(TableView):
     def on_key_pressed(self, key):
         super().on_key_pressed(key)
 
-        if (key == 'KEY_STAB' or key == 'KEY_BTAB') and Terminal.inst().mode == Terminal.MODE_DEFAULT:
-            self.toggle_update_freq()
-        elif key == 'KEY_LEFT':
-            self.prev_instrument()
-        elif key == 'KEY_RIGHT':
-            self.next_instrument()
-        elif key == 'KEY_UP':
-            with self._mutex:
-                self._report_mode += 1
-                self._refresh = 0.0
-        elif key == 'KEY_DOWN':
-            with self._mutex:
-                self._report_mode = max(0, self._report_mode - 1)
-                self._refresh = 0.0
+        if Terminal.inst().mode == Terminal.MODE_DEFAULT:
+            if key == 'KEY_STAB' or key == 'KEY_BTAB':
+                self.toggle_update_freq()
+            elif key == 'KEY_LEFT':
+                self.prev_instrument()
+            elif key == 'KEY_RIGHT':
+                self.next_instrument()
+            elif key == 'KEY_UP':
+                with self._mutex:
+                    self._report_mode += 1
+                    self._refresh = 0.0
+            elif key == 'KEY_DOWN':
+                with self._mutex:
+                    self._report_mode = max(0, self._report_mode - 1)
+                    self._refresh = 0.0
 
     def on_char(self, char):
         super().on_char(char)

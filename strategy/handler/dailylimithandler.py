@@ -43,7 +43,7 @@ class DailyLimitHandler(Handler):
     @note Because of its nature this handler is processed at each strategy trader update.
     @note It is not compatible with DCAHandler or ReinvestGainHandler.
 
-    @todo Could have a timezone info to offset daily reset
+    @todo Implement timezone offset
     @todo Implement cancel/close win/loss and add parameters to the command
     """
 
@@ -60,6 +60,8 @@ class DailyLimitHandler(Handler):
     _close_loosing: bool
     _close_winning: bool
 
+    _timezone: float
+
     _daily_limit: DailyLimit
 
     _markets: Dict[StrategyTraderBase, float]
@@ -69,7 +71,8 @@ class DailyLimitHandler(Handler):
                  loss_limit_pct: float, loss_limit_currency: float,
                  cancel_pending: bool = False,
                  close_loosing: bool = False,
-                 close_winning: bool = False):
+                 close_winning: bool = False,
+                 timezone: float = 0.0):
         """
         At least trader and one of profit limit in percentage or currency and one of loss limit in
         percentage or currency must be defined.
@@ -82,6 +85,7 @@ class DailyLimitHandler(Handler):
         @param cancel_pending: When lock trading also cancel opened (non-actives) trades
         @param close_loosing: When lock trading also close any loosing actives trades
         @param close_winning: When lock trading also close any winning actives trades
+        @param timezone: A timezone value added to UTC timestamp (can be used as a session offset value)
         """
         super().__init__("")  # not related to a specific context
 
@@ -93,9 +97,11 @@ class DailyLimitHandler(Handler):
         self._loss_limit_pct = loss_limit_pct
         self._loss_limit_currency = loss_limit_currency
 
-        self._cancel_pending: cancel_pending
-        self._close_loosing: close_loosing
-        self._close_winning: close_winning
+        self._cancel_pending = cancel_pending
+        self._close_loosing = close_loosing
+        self._close_winning = close_winning
+
+        self._timezone = timezone
 
         self._daily_limit = DailyLimit()
 

@@ -169,6 +169,16 @@
         "classpath": "strategy.indicator.volumeprofile.tickvolumeprofile.TickVolumeProfileIndicator",
         "options": {}
     },
+    "logvolumeprofile": {
+        "status": "load",
+        "classpath": "strategy.indicator.volumeprofile.volumeprofilebase.LogVolumeProfileBaseIndicator",
+        "options": {}
+    },
+    "logtickvolumeprofile": {
+        "status": "load",
+        "classpath": "strategy.indicator.volumeprofile.logtickvolumeprofile.LogTickVolumeProfileIndicator",
+        "options": {}
+    },
     "cci": {
         "status": "load",
         "classpath": "strategy.indicator.cci.cci.CCIIndicator",

@@ -69,6 +69,10 @@ def timeframe_from_str(timeframe: str) -> float:
     return TIMEFRAME_FROM_STR_MAP.get(timeframe, 0.0)
 
 
+def duration_to_str(duration: float) -> str:
+    return "%.2i:%.2i" % (duration // 3600, int(duration % 3600) // 60)
+
+
 def timestamp_to_str(timestamp: float) -> str:
     return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
 

@@ -63,6 +63,12 @@ Sum order :
      - presque pareil pour les process_entry
      - les process_exit sont presque jamais utilisés
 
+- DailyLimitHandler ajouter :
+    - timezone offset
+    - ajouter timezone sur la commande
+    - cancel/close win/loss
+    - ajouter cancel/close win/loss sur la commande
+
 - Ajouter une option pour creer un spread sur certain tick streamer quand le bid/ask n'est pas présent (cas bitmex par exemple)
 
 - kraken watcher et trader :

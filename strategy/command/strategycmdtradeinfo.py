@@ -27,7 +27,7 @@ def cmd_trade_info(strategy: Strategy, strategy_trader: StrategyTraderBase, data
 
     try:
         trade_id = int(data.get('trade-id'))
-    except Exception:
+    except ValueError:
         results['error'] = True
         results['messages'].append("Invalid trade identifier")
 
@@ -36,7 +36,7 @@ def cmd_trade_info(strategy: Strategy, strategy_trader: StrategyTraderBase, data
 
     trade = None
 
-    with strategy_trader._mutex:
+    with strategy_trader.mutex:
         if trade_id == -1 and strategy_trader.trades:
             trade = strategy_trader.trades[-1]
         else:
