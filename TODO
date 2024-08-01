@@ -113,8 +113,8 @@ Sum order :
 # Bugs #
 ########
 
-- certains ordres avec binance ne sont pas retire du trader (oblige de reconnect pour purger la liste)
-- les ordres d'entrées market restent avec IG (avec le compte démo)
+- avec trader position et IG on a un create_oid qui reste une fois réalisé et il tente de cancel order a close position
+    - c'est pas dramatique car il se fait rejeter mais à corriger
 
 - WebTrader : on ne peu pas faire des reduce de quantity < à 1 (avec TradePosition)
 - WebTrader : Si on passe en pip au lieu de % ça n'affiche pas tjs bien la valeur selon le marché pour les modify SL / TP

@@ -81,6 +81,10 @@ def is_solid_timeframe(timeframe: float) -> bool:
     return timeframe in TIMEFRAME_TO_STR_MAP
 
 
+def yes_no(boolean: bool) -> str:
+    return "Yes" if boolean else "No"
+
+
 def direction_to_str(direction: int) -> str:
     if direction > 0:
         return 'long'

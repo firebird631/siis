@@ -110,7 +110,7 @@ class TickVWAPIndicator(VWAPBaseIndicator):
         self._last = vwap
 
         # std dev
-        self._volumes_dev += tick[3] * tick[3] * tick[4]  # price^2 * volume
+        self._volumes_dev += (tick[3] * tick[3]) * tick[4]  # price^2 * volume
 
         self._dev2 = max(self._volumes_dev / self._volumes - vwap * vwap, self._dev2)
         dev = math.sqrt(self._dev2)

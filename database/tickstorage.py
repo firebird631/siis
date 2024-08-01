@@ -55,7 +55,7 @@ class TickStorage(object):
 
     def store(self, data):
         """
-        @param data tuple with (broker_id, market_id, timestamp, bid, ask, last, volume)
+        @param data tuple with (broker_id, market_id, timestamp, bid, ask, last, volume, direction)
         """
         with self._mutex:
             if isinstance(data, list):

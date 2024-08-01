@@ -2258,7 +2258,7 @@ class StrategyTraderBase(object):
     def dumps_handlers(self) -> List[Dict[str, str]]:
         """
         Dumps of any installed per context handler and of the global handler.
-        @return:
+        @return: Raw format dict
         """
         results = []
 
@@ -2273,6 +2273,29 @@ class StrategyTraderBase(object):
                 for context_id, handler in self._handlers.items():
                     try:
                         results.append(handler.dumps(self))
+                    except Exception as e:
+                        error_logger.error(repr(e))
+
+        return results
+
+    def report_handlers(self) -> List[Dict[str, str]]:
+        """
+        Report of any installed per context handler and of the global handler.
+        @return: Humanized dict
+        """
+        results = []
+
+        if self._global_handler:
+            try:
+                results.append(self._global_handler.report(self))
+            except Exception as e:
+                error_logger.error(repr(e))
+
+        if self._handlers:
+            with self._mutex:
+                for context_id, handler in self._handlers.items():
+                    try:
+                        results.append(handler.report(self))
                     except Exception as e:
                         error_logger.error(repr(e))
 
@@ -2589,7 +2612,7 @@ class StrategyTraderBase(object):
             for n, session in enumerate(self.instrument.trading_sessions):
                 result['data'].append(("Session %i" % (n+1), "%s" % session))
 
-            handlers = self.dumps_handlers()
+            handlers = self.report_handlers()
             if handlers:
                 for handler in handlers:
                     result['data'].append(("----", "----"))

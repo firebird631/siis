@@ -101,8 +101,27 @@ class Handler(object):
     # report
     #
 
+    def report(self, strategy_trader: StrategyTraderBase) -> Dict[str, Union[str, int, float]]:
+        """Dumps for persistence, communication or for display information"""
+        return {
+            'Handler': self.name(),
+            'Context': self._context_id or "Global"
+        }
+
+    #
+    # persistence / report
+    #
+
     def dumps(self, strategy_trader: StrategyTraderBase) -> Dict[str, Union[str, int, float]]:
+        """Dumps for persistence, communication or for debug"""
         return {
             'name': self.name(),
-            'context': self._context_id or "global"
+            'context': self._context_id
         }
+
+    def loads(self, data: dict):
+        """Load from previous dumps"""
+        if self.name != data.get('name', ""):
+            return
+
+        self._context_id = data.get('context', "")

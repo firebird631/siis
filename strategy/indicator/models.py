@@ -10,20 +10,22 @@ from dataclasses import dataclass, field
 class VolumeProfile:
     """
     Volume Profile.
-    Merged bid/ask volumes.
+    Merged or distinct bid/ask volumes.
     With extra levels of interest : peaks, valleys.
-    @todo should be a 2d volumes array or if keep dict price if not base per buck but mid to be more accurate
-    @todo need a bid ask version or only keep the bid ask version because to many cases after that
+    @note VA, peaks and valleys are not guarantee because they are computed by default.
     """
 
     timestamp: float     # base timestamp
     timeframe: float     # relate timeframe or 0
 
+    linear: float = 0.0
+    logarithmic: float = 0.0
+
     poc: float = 0.0     # Point of Control, in price
     val: float = 0.0     # Low value area, in price
     vah: float = 0.0     # High value area, in price
 
-    volumes: dict = field(default_factory=dict)    # price:volume
+    volumes: dict = field(default_factory=dict)    # price:volume or tuple(bid/ask)
 
     peaks: list = field(default_factory=list)      # prices of peaks
     valleys: list = field(default_factory=list)    # prices of valleys

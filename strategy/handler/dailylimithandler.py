@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union, Dict
 
-from common.utils import timestamp_to_str
+from common.utils import timestamp_to_str, yes_no
 from instrument.instrument import Instrument
 from trader.trader import Trader
 
@@ -159,21 +159,6 @@ class DailyLimitHandler(Handler):
                 if check != 0:
                     self.lock_trading(check)
 
-    def dumps(self, strategy_trader: StrategyTraderBase) -> Dict[str, Union[str, int, float]]:
-        results = super().dumps(strategy_trader)
-
-        results.update({
-            'profit-limit-pct': self._profit_limit_pct,
-            'profit-limit-currency': self._profit_limit_currency,
-            'loss-limit-pct': self._loss_limit_pct,
-            'loss-limit-currency': self._loss_limit_currency,
-            'cancel-pending': self._cancel_pending,
-            'close-loosing': self._close_loosing,
-            'close-winning': self._close_winning,
-        })
-
-        return results
-
     def is_locked(self):
         with self._mutex:
             return len(self._markets) > 0
@@ -244,3 +229,59 @@ class DailyLimitHandler(Handler):
                         with strategy_trader.mutex:
                             strategy_trader.instrument.trade_quantity = self._markets[strategy_trader]
                             del self._markets[strategy_trader]
+
+    #
+    # report
+    #
+
+    def report(self, strategy_trader: StrategyTraderBase) -> Dict[str, Union[str, int, float]]:
+        results = super().report(strategy_trader)
+
+        profit_limit = "%.2f%%" % (self._profit_limit_pct * 100.0) if self._profit_limit_pct else (
+            strategy_trader.strategy.trader().account.format_price(self._profit_limit_currency))
+
+        loss_limit = "%.2f%%" % (self._loss_limit_pct * 100.0) if self._loss_limit_pct else (
+            strategy_trader.strategy.trader().account.format_price(self._loss_limit_currency))
+
+        results.update({
+            'Timezone': "UTC%s%g" % ('+' if self._timezone >= 0 else '-', self._timezone),
+            'Profit limit': profit_limit,
+            'Loss limit': loss_limit,
+            'Cancel pending': yes_no(self._cancel_pending),
+            'Close loosing': yes_no(self._close_loosing),
+            'Close winning': yes_no(self._close_winning),
+        })
+
+        return results
+
+    #
+    # persistence
+    #
+
+    def dumps(self, strategy_trader: StrategyTraderBase) -> Dict[str, Union[str, int, float]]:
+        results = super().dumps(strategy_trader)
+
+        results.update({
+            'timezone': self._timezone,
+            'profit-limit-pct': self._profit_limit_pct,
+            'profit-limit-currency': self._profit_limit_currency,
+            'loss-limit-pct': self._loss_limit_pct,
+            'loss-limit-currency': self._loss_limit_currency,
+            'cancel-pending': self._cancel_pending,
+            'close-loosing': self._close_loosing,
+            'close-winning': self._close_winning,
+        })
+
+        return results
+
+    def loads(self, data: dict):
+        super().loads(data)
+
+        self._timezone = data.get('timezone', 0.0)
+        self._profit_limit_pct = data.get('profit-limit-pct', 0.0)
+        self._profit_limit_currency = data.get('profit-limit-currency', 0.0)
+        self._loss_limit_pct = data.get('loss-limit-pct', 0.0)
+        self._loss_limit_currency = data.get('loss-limit-currency', 0.0)
+        self._cancel_pending = data.get('cancel-pending', False)
+        self._close_loosing = data.get('close-loosing', False)
+        self._close_winning = data.get('close-winning', False)

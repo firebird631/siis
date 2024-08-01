@@ -38,10 +38,17 @@ class CompositeVolumeProfile(object):
     __slots__ = '_timeframe', '_length', '_use_current', '_vp', '_volume_profile', \
         '_last_timestamp', '_last_base_timestamp'
 
-    def __init__(self, timeframe, length, volume_profile, use_current=True):
+    def __init__(self, timeframe: float, length: int, volume_profile: VolumeProfileBaseIndicator, merge_current=False):
+        """
+
+        @param timeframe: Base timeframe of the composite VP. Must be a multiple of the used indicator.
+        @param length: Number of last profiles to merge.
+        @param volume_profile: Related volume profile indicator as source.
+        @param merge_current: During composite if true the current (non consolidated) VP is merged into.
+        """
         self._timeframe = timeframe
         self._length = length
-        self._use_current = use_current
+        self._use_current = merge_current
 
         self._last_timestamp = 0.0
         self._last_base_timestamp = 0.0
@@ -54,35 +61,37 @@ class CompositeVolumeProfile(object):
     def vp(self):
         return self._vp
 
-    def is_update_needed(self, timestamp, partial_update=True):
+    def is_update_needed(self, timestamp: float, partial_update: bool = True) -> bool:
         """
-        Returns True of the close timestamp was reached.
+        Returns true when the closing timestamp is reached.
 
         @param timestamp Current timestamp.
-        @param partial_update If True it will return True at each intermediate volume profile realized,
-            else it will wait for the length of new volumes profiles completed.
+        @param partial_update If True it will return true at each intermediate volume profile realized,
+               else it will wait for the length of new volumes profiles completed.
         """
         if partial_update:
             return timestamp >= self._last_base_timestamp + self._timeframe
         else:
             return timestamp >= self._last_base_timestamp + self._timeframe * self._length
 
-    def process(self, timestamp):
+    def process(self, timestamp: float):
         """
         Append the last volume profile if it is consolidated. This method is incremental.
         @param timestamp:
         @return:
         """
-        pass
+        # @todo
 
-    def composite(self, timestamp):
+        return self._vp
+
+    def composite(self, timestamp: float) -> VolumeProfile:
         """
         Build a complete composite profile of the given length. Never add a non consolidated volume profile.
         This method is only for initial setup, after it is preferred to uses the process incremental method to avoid
         too many calculations.
         """
         if self._volume_profile is None or not self._volume_profile.vps:
-            return
+            return self._vp
 
         volume_profile = self._volume_profile
 
@@ -110,37 +119,30 @@ class CompositeVolumeProfile(object):
                     vp.poc = b
 
         self._last_base_timestamp = volume_profile.vps[-1].timestamp
-
-        self._finalize(volume_profile, cvp)
         self._last_timestamp = timestamp
 
+        # current
+        self._vp = cvp
         return cvp
 
-    #
-    # internal methods
-    #
-
-    def _finalize(self, volume_profile, composite):
+    def finalize(self):
         """
-        Finalize the computation of the last VP and push it.
+        Finalize the computation of the current VP.
         Does by update when the last trade timestamp open a new session.
         """
-        if composite is None:
-            return
-
-        composite.poc = VolumeProfileBaseIndicator.find_poc(composite)
-
+        # todo
+        pass
         # # volumes arranged by price
         # volumes_by_price = VolumeProfileBaseIndicator._sort_volumes_by_price(composite)
-        #
+
         # # # find peaks and valley
         # # composite.peaks, composite.valleys = VolumeProfileBaseIndicator.basic_peaks_and_valleys_detection(
         # #     volume_profile.bins, volume_profile.sensibility, composite)
-        #
+
         # # find peaks and valley
         # # # composite.peaks, composite.valleys = self.basic_peaks_and_valleys_detection(
         # #     volume_profile.bins, volume_profile.sensibility, composite)
         # # composite.peaks, composite.valleys = self.scipy_peaks_and_valleys_detection(vp)
-        #
+
         # # find the low and high of the volume area
         # # composite.low_area, composite.high_area = self.single_volume_area(composite, volumes_by_price, composite.poc)

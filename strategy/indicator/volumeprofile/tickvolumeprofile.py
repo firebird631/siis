@@ -5,7 +5,7 @@
 
 from strategy.indicator.indicator import Indicator
 from strategy.indicator.models import VolumeProfile
-from instrument.instrument import Instrument
+from instrument.instrument import Instrument, TickType
 
 from database.database import Database
 
@@ -13,7 +13,7 @@ from common.utils import truncate
 
 import numpy as np
 
-from strategy.indicator.volumeprofile.volumeprofilebase import VolumeProfileBaseIndicator
+from strategy.indicator.volumeprofile.volumeprofilebase import VolumeProfileBaseIndicator, BidAskLinearScaleDict
 
 
 class TickVolumeProfileIndicator(VolumeProfileBaseIndicator):
@@ -28,27 +28,36 @@ class TickVolumeProfileIndicator(VolumeProfileBaseIndicator):
     def indicator_base(cls):
         return Indicator.BASE_TICK
 
-    def compute(self, timestamp, tick):
-        # @todo session_offset, evening/overnight session
-        if self._current and tick[0] >= self._current.timestamp + self._timeframe:
-            self.finalize(self._current)
+    def compute(self, timestamp: float, tick: TickType):
+        if self._session_offset or self._session_duration:
+            base_time = Instrument.basetime(Instrument.TF_DAY, timestamp)
+            if timestamp < base_time + self._session_offset:
+                # ignored, out of session
+                return
 
-            self._vps.append(self._current)
-            self._current = None
+            if timestamp >= base_time + self._session_offset + self._session_duration:
+                # ignored, out of session
+                return
+
+        if self._current and tick[0] >= self._current.timestamp + self._timeframe:
+            self.finalize()
 
         if self._current is None:
-            basetime = Instrument.basetime(self._timeframe, tick[0])
-            self._current = VolumeProfile(basetime, self._timeframe)
-
-        # round price to bin
-        lbin = self.bin_lookup(tick[3])
-
-        if lbin:
-            if lbin not in self._current.volumes:
-                # set volume to the bin
-                self._current.volumes[lbin] = tick[4]
+            if self._timeframe > 0:
+                base_time = Instrument.basetime(self._timeframe, tick[0])
             else:
-                # or merge
-                self._current.volumes[lbin] += tick[4]
+                base_time = tick[0]
+
+            self._current = BidAskLinearScaleDict(base_time, self._sensibility,
+                                                  self._price_precision, self._tick_size, self._tick_scale)
+
+        # -1  for bid, 1 for ask, or 0 if no info
+        if tick[5] < 0:
+            self._current.add_bid(tick[3], tick[4])
+        elif tick[5] > 0:
+            self._current.add_ask(tick[3], tick[4])
+        else:
+            self._current.add_bid(tick[3], tick[4]*0.5)
+            self._current.add_ask(tick[3], tick[4]*0.5)
 
         self._last_timestamp = timestamp
