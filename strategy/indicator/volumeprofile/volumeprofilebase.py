@@ -367,7 +367,8 @@ class BidAskLinearScaleDict(object):
     def init(self, price: float):
         adj_price = self.adjust_price(price)
 
-        base_price = int(adj_price / self._sensibility) * self._sensibility
+        # centered base price
+        base_price = int(adj_price / self._sensibility) * self._sensibility + self._sensibility * 0.5
 
         self._min_price = base_price
         self._max_price = base_price
@@ -423,20 +424,22 @@ class BidAskLinearScaleDict(object):
         return np.fromiter(sorted([sum(v) for p, v in self._bins.items()]), dtype=np.double)
 
     def base_price(self, price: float):
-        adj_price = self.adjust_price(price)
-
         if not self._bins:
             self.init(price)
 
-        return int(adj_price / self._sensibility) * self._sensibility
+        adj_price = self.adjust_price(price)
+
+        # centered price
+        return int(adj_price / self._sensibility) * self._sensibility + self._sensibility * 0.5
 
     def set_at(self, price: float):
-        adj_price = self.adjust_price(price)
-
         if not self._bins:
             self.init(price)
 
-        base_price = int(adj_price / self._sensibility) * self._sensibility
+        adj_price = self.adjust_price(price)
+
+        # centered price
+        base_price = int(adj_price / self._sensibility) * self._sensibility + self._sensibility * 0.5
 
         if base_price < self._min_price:
             self._min_price = base_price
@@ -474,10 +477,10 @@ class BidAskLinearScaleDict(object):
         self._vah_price = vah_price
 
     def val_price(self) -> float:
-        return self._val_price  # + self._sensibility * 0.5 if self._val_price > 0 else 0.0
+        return self._val_price
 
     def vah_price(self) -> float:
-        return self._vah_price  # + self._sensibility * 0.5 if self._vah_price > 0 else 0.0
+        return self._vah_price
 
     #
     # peaks & valleys
@@ -627,7 +630,7 @@ class VolumeProfileBaseIndicator(Indicator):
         timeframe = self._timeframe if self._timeframe > 0 else (self._last_timestamp - self._current.timestamp)
 
         vp = VolumeProfile(self._current.timestamp, timeframe,
-                           self._sensibility, 0.0,
+                           self._sensibility,
                            self._current.poc_price(), 0, 0)
 
         prices_array = None

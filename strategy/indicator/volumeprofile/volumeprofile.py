@@ -3,17 +3,9 @@
 # @license Copyright (c) 2020 Dream Overflow
 # Volume Profile indicator and composite
 
-from strategy.indicator.indicator import Indicator
-from strategy.indicator.models import VolumeProfile
 from instrument.instrument import Instrument
 
-from database.database import Database
-
-from common.utils import truncate
-
-import numpy as np
-
-from strategy.indicator.volumeprofile.volumeprofilebase import VolumeProfileBaseIndicator
+from strategy.indicator.volumeprofile.volumeprofilebase import VolumeProfileBaseIndicator, BidAskLinearScaleDict
 
 
 class VolumeProfileIndicator(VolumeProfileBaseIndicator):
@@ -31,34 +23,38 @@ class VolumeProfileIndicator(VolumeProfileBaseIndicator):
         # base index
         num = len(timestamps)
 
-        for b in range(num-delta, num):
+        for b in range(num - delta, num):
             # ignore non closed candles
             if timestamp < timestamps[b] + self._timeframe:
                 break
 
-            # for any new candles
-            if self._current and timestamps[b] >= self._current.timestamp + self._timeframe:
-                self.finalize(self._current)
+            if self._session_offset or self._session_duration:
+                base_time = Instrument.basetime(Instrument.TF_DAY, timestamp)
+                if timestamp < base_time + self._session_offset:
+                    # ignored, out of session
+                    continue
 
-                self._vps.append(self._current)
-                self._current = None
+                if timestamp >= base_time + self._session_offset + self._session_duration:
+                    # ignored, out of session
+                    continue
+
+            if self._current and timestamps[b] >= self._current.timestamp + self._timeframe:
+                self.finalize()
 
             if self._current is None:
-                basetime = Instrument.basetime(self._timeframe, timestamps[b])
-                self._current = VolumeProfile(basetime, self._timeframe)
+                if self._timeframe > 0:
+                    base_time = Instrument.basetime(self._timeframe, timestamps[b])
+                else:
+                    base_time = timestamps[b]
+
+                self._current = BidAskLinearScaleDict(base_time, self._sensibility,
+                                                      self._price_precision, self._tick_size, self._tick_scale)
 
             # avg price based on HLC3
             hlc3 = (highs[b] + lows[b] + closes[b]) / 3
 
-            # round price to bin
-            lbin = self.bin_lookup(hlc3)
+            # not very important to detail bid/ask volume from a source of bar
+            self._current.add_bid(hlc3, volumes[b] * 0.5)
+            self._current.add_ask(hlc3, volumes[b] * 0.5)
 
-            if lbin:
-                if lbin not in self._current.volumes:
-                    # set volume to the bin
-                    self._current.volumes[lbin] = volumes[b]
-                else:
-                    # or merge
-                    self._current.volumes[lbin] += volumes[b]
-
-        self._last_timestamp = timestamp
+            self._last_timestamp = timestamp

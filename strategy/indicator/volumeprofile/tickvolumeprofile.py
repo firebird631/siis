@@ -4,14 +4,7 @@
 # Volume Profile indicator and composite
 
 from strategy.indicator.indicator import Indicator
-from strategy.indicator.models import VolumeProfile
 from instrument.instrument import Instrument, TickType
-
-from database.database import Database
-
-from common.utils import truncate
-
-import numpy as np
 
 from strategy.indicator.volumeprofile.volumeprofilebase import VolumeProfileBaseIndicator, BidAskLinearScaleDict
 

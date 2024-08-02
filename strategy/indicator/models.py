@@ -18,8 +18,7 @@ class VolumeProfile:
     timestamp: float     # base timestamp
     timeframe: float     # relate timeframe or 0
 
-    linear: float = 0.0
-    logarithmic: float = 0.0
+    sensibility: float = 0.0    # base price per bin computation sensibility (can be linear or logarithmic)
 
     poc: float = 0.0     # Point of Control, in price
     val: float = 0.0     # Low value area, in price
