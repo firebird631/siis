@@ -59,6 +59,20 @@ traceback_logger = logging.getLogger('siis.traceback.strategy.trader')
 class StrategyTraderBase(object):
     """
     A strategy can manage multiple instrument. Strategy trader is on of the managed instruments.
+
+    @todo Composition or Mixins with aspects :
+        - Processing (than alphaprocess become a class)
+        - Context
+        - Analyser or maybe let analyser in
+        - Stats
+        - Handlers
+        - Alerts
+        - Regions
+        - File reporting (maybe not initially included only used by one strategy)
+        - Trade management / Trade checking
+        - Streaming
+        - Notifier (but notify method call streamer)
+        - Or each streaming part into its mixin and let notifier in
     """
     TRADE_TYPE_MAP = {
         'asset': Instrument.TRADE_SPOT,
@@ -132,6 +146,8 @@ class StrategyTraderBase(object):
     _alert_streamer: Union[Streamable, None]
     _region_streamer: Union[Streamable, None]
 
+    _trade_contexts_registry: Dict[str, Any]
+    _default_trader_context_class: Optional[Any]
     _trade_contexts: Dict[str, StrategyTraderContext]
 
     _analysers_registry: Dict[str, Any]
@@ -210,8 +226,9 @@ class StrategyTraderBase(object):
         self._alert_streamer = None
         self._region_streamer = None
 
-        self._default_trader_context_class = None
-        self._trade_contexts = {}  # contexts registry
+        self._trade_contexts_registry = {}          # contexts registry
+        self._default_trader_context_class = None  # default context to instantiate when no type is specified
+        self._trade_contexts = {}                  # configured and installed trading contexts
 
         self._reporting = StrategyTraderBase.REPORTING_NONE
         self._report_filename = None
@@ -274,6 +291,29 @@ class StrategyTraderBase(object):
     # strategy trade context
     #
 
+    def register_context(self, type_name: str, class_model: Any, default: bool = False):
+        """Declare a strategy trader context model class with its unique type name"""
+        if not issubclass(class_model, StrategyTraderContext):
+            error_logger.error("Trader context must be subclass of StrategyTraderContext")
+            return
+
+        if type_name and class_model:
+            self._trade_contexts_registry[type_name] = class_model
+            if default:
+                self._default_trader_context_class = class_model
+
+    def unregister_context(self, name: str):
+        """
+        Each trade context model must be registered. If necessary it can be unregistered.
+        @param name:
+        """
+        if name in self._trade_contexts_registry:
+            ctx_clazz = self._trade_contexts_registry[name]
+            if ctx_clazz == self._default_trader_context_class:
+                self._default_trader_context_class = None
+
+            del self._trade_contexts_registry[name]
+
     def set_default_trader_context(self, model_class):
         if not issubclass(model_class, StrategyTraderContext):
             error_logger.error("Default trader context must be subclass of StrategyTraderContext")
@@ -281,7 +321,7 @@ class StrategyTraderBase(object):
 
         self._default_trader_context_class = model_class
 
-    def register_context(self, ctx: Union[StrategyTraderContext, list[StrategyTraderContext]]):
+    def setup_context(self, ctx: Union[StrategyTraderContext, list[StrategyTraderContext]]):
         """
         Each trade context must be registered.
         @param ctx: Single or list|tuple of trade contexts.
@@ -303,35 +343,33 @@ class StrategyTraderBase(object):
 
             self._trade_contexts[ctx.name] = ctx
 
-    def unregister_context(self, name: str):
-        """
-        Each trade context must be registered. If necessary it can be unregistered.
-        @param name:
-        """
-        if name in self._trade_contexts:
-            del(self._trade_contexts[name])
-
-    def loads_contexts(self, params: dict, class_model=None):
+    def loads_contexts(self, params: dict):
         contexts = []
 
         logger.info("Load all strategy trader contexts for %s" % self.instrument.market_id)
 
-        context_class = self._default_trader_context_class
-        if class_model:
-            context_class = class_model
+        context_class_name = params.get('type', "")
+        if context_class_name:
+            context_class = self._trade_contexts_registry.get(context_class_name)
+        else:
+            context_class = self._default_trader_context_class
+
+        # missing or invalid context model
+        if context_class is None:
+            return contexts
 
         for name, data in params.get("contexts", {}).items():
             if data is None:
                 continue
 
             try:
-                # retrieve or instantiate
+                # retrieve previous instance (reload case) or instantiate a new one (initial load)
                 ctx = self.retrieve_context(name) or context_class(name)
                 ctx.loads(self, data)
 
                 if ctx.mode != ctx.MODE_NONE:
                     contexts.append(ctx)
-                    self.register_context(ctx)
+                    self.setup_context(ctx)
 
             except Exception as e:
                 error_logger.error("Unable to validate context %s : %s" % (name, str(e)))
@@ -946,6 +984,10 @@ class StrategyTraderBase(object):
     def has_trainer(self) -> bool:
         return self._trainer is not None
 
+    #
+    # statistics
+    #
+
     def get_stat(self, key: str) -> Union[float, int, None]:
         """
         Return a statistic value from key.
@@ -1535,6 +1577,10 @@ class StrategyTraderBase(object):
 
         return results
 
+    #
+    # trades views
+    #
+
     def dumps_trades_update(self) -> List[dict]:
         """
         Dumps the update notify state of each existing trades.
@@ -1553,38 +1599,6 @@ class StrategyTraderBase(object):
         """
         with self._mutex:
             results = self._stats['success'] + self._stats['failed'] + self._stats['roe']
-
-        return results
-
-    def dumps_active_alerts(self) -> List[dict]:
-        """
-        Dumps the active alerts. Not sorted.
-        """
-        results = []
-
-        with self._mutex:
-            for alert in self._alerts:
-                alert_dumps = alert.dumps()
-                alert_dumps['market-id'] = self.instrument.market_id
-                alert_dumps['symbol'] = self.instrument.symbol
-
-                results.append(alert_dumps)
-
-        return results
-
-    def dumps_regions(self) -> List[dict]:
-        """
-        Dumps the regions. Not sorted.
-        """
-        results = []
-
-        with self._mutex:
-            for region in self._regions:
-                region_dumps = region.dumps()
-                region_dumps['market-id'] = self.instrument.market_id
-                region_dumps['symbol'] = self.instrument.symbol
-
-                results.append(region_dumps)
 
         return results
 
@@ -1727,7 +1741,7 @@ class StrategyTraderBase(object):
 
                 self.cleanup_trades(timestamp)
 
-    def cleanup_trades(self, timestamp):
+    def cleanup_trades(self, timestamp: float):
         """Remove terminated, rejected, canceled and empty trades."""
         mutated = False
 
@@ -1839,6 +1853,10 @@ class StrategyTraderBase(object):
 
             self.notify_trade_exit(timestamp, trade)
 
+    #
+    # slots
+    #
+
     def on_received_liquidation(self, liquidation):
         """
         Receive a trade liquidation (not user trade, global).
@@ -1857,6 +1875,10 @@ class StrategyTraderBase(object):
         Slot called once the initial bulk of candles are received for each analyser.
         """
         pass
+
+    #
+    # signal helpers
+    #
 
     def check_spread(self, signal: StrategySignal) -> bool:
         """Compare spread from entry signal max allowed spread value, only if max-spread parameters is valid"""
@@ -2111,6 +2133,22 @@ class StrategyTraderBase(object):
             # no region always pass
             return allow
 
+    def dumps_regions(self) -> List[dict]:
+        """
+        Dumps the regions. Not sorted.
+        """
+        results = []
+
+        with self._mutex:
+            for region in self._regions:
+                region_dumps = region.dumps()
+                region_dumps['market-id'] = self.instrument.market_id
+                region_dumps['symbol'] = self.instrument.symbol
+
+                results.append(region_dumps)
+
+        return results
+
     #
     # alert management
     #
@@ -2191,8 +2229,33 @@ class StrategyTraderBase(object):
             # no alerts
             return None
 
+    def process_alerts(self, timestamp):
+        # check for alert triggers
+        if self.alerts:
+            alerts = self.check_alerts(timestamp, self.instrument.market_bid, self.instrument.market_ask)
+
+            if alerts:
+                for alert, result in alerts:
+                    self.notify_alert(timestamp, alert, result)
+
+    def dumps_active_alerts(self) -> List[dict]:
+        """
+        Dumps the active alerts. Not sorted.
+        """
+        results = []
+
+        with self._mutex:
+            for alert in self._alerts:
+                alert_dumps = alert.dumps()
+                alert_dumps['market-id'] = self.instrument.market_id
+                alert_dumps['symbol'] = self.instrument.symbol
+
+                results.append(alert_dumps)
+
+        return results
+
     #
-    # actions
+    # handlers
     #
 
     def install_handler(self, handler: Handler):
@@ -2302,7 +2365,7 @@ class StrategyTraderBase(object):
         return results
 
     #
-    # misc
+    # trade management helpers
     #
 
     def check_entry_canceled(self, trade: StrategyTrade) -> bool:
@@ -2523,6 +2586,10 @@ class StrategyTraderBase(object):
     def unsubscribe_info(self) -> bool:
         return False
 
+    #
+    # report state for display
+    #
+
     def report_state(self, mode=0) -> dict:
         """
         Collect the state of the strategy trader (instant) and return a dataset.
@@ -2723,7 +2790,7 @@ class StrategyTraderBase(object):
         return result
 
     #
-    # reporting
+    # file reporting
     #
 
     def report_path(self, *relative_path):
@@ -2791,7 +2858,7 @@ class StrategyTraderBase(object):
         pass
 
     #
-    # checks
+    # trades checking
     #
 
     def compute_asset_quantity(self, trader: Trader, price: float, trade_quantity: float = 0.0) -> float:
@@ -3160,21 +3227,9 @@ class StrategyTraderBase(object):
                     logger.error(repr(e))
 
     #
-    # alerts
+    # streaming helpers
     #
 
-    def process_alerts(self, timestamp):
-        # check for alert triggers
-        if self.alerts:
-            alerts = self.check_alerts(timestamp, self.instrument.market_bid, self.instrument.market_ask)
-
-            if alerts:
-                for alert, result in alerts:
-                    self.notify_alert(timestamp, alert, result)
-
-    #
-    # stream helpers
-    #
     def setup_streaming(self):
         # global stream about compute status, once per compute frame
         self._global_streamer = Streamable(self.strategy.service.monitor_service, Streamable.STREAM_STRATEGY_INFO,
