@@ -200,10 +200,12 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
             self.prev_close_price = None
 
     def get_bars(self) -> List[BarBase]:
-        """
-        Get the range-bar list to process.
-        """
+        """Get the range-bar list to process."""
         return self._range_bars[-self.depth:] if self._range_bars else []
+
+    def get_all_bars(self) -> List[BarBase]:
+        """Get all available bars."""
+        return self._range_bars
 
     def add_bars(self, range_bars_list: List[RangeBar], max_bars: int = -1):
         """

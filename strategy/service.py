@@ -493,11 +493,30 @@ class StrategyService(Service):
                         self.end_ts = 0
 
                     def run(self):
-                        Terminal.inst().info("Backtesting started...", view='status')
-
+                        # complete the preprocessing and bootstrapping. don't want time progression until any
+                        # strategy traders be prepared.
                         _strategy = self.service.strategy()
                         trader = _strategy.trader() if _strategy else None
-                        wait = False                      
+
+                        Terminal.inst().info("Preparing strategy...", view='status')
+
+                        while not _strategy.backtest_prepared():
+                            # now sync the trader base time
+                            trader.set_timestamp(self.current)
+
+                            # need initial timestamp for bootstrapping
+                            _strategy.backtest_prepare(self.current)
+
+                            time.sleep(0.000001)  # yield
+
+                            if self.abort:
+                                break
+
+                        if self.abort:
+                            return
+
+                        # now can perform backtest
+                        Terminal.inst().info("Backtesting started...", view='status')
 
                         self.begin_ts = time.time()   # bench
 

@@ -70,7 +70,18 @@ def timeframe_from_str(timeframe: str) -> float:
 
 
 def duration_to_str(duration: float) -> str:
-    return "%.2i:%.2i" % (duration // 3600, int(duration % 3600) // 60)
+    if duration >= 86400:
+        # days hour:minute
+        return "%idays %.2i:%.2i" % (duration // 86400, (duration % 86400) // 3600, int(duration % 3600) // 60)
+    elif 0 < abs(duration) < 0.001:
+        # micro
+        return "%ius" % int(duration * 1000000)
+    elif 0 < abs(duration) < 1.0:
+        # milli
+        return "%ims" % int(duration * 1000)
+    else:
+        # hour:minute
+        return "%.2i:%.2i" % (duration // 3600, int(duration % 3600) // 60)
 
 
 def timestamp_to_str(timestamp: float) -> str:
@@ -79,6 +90,17 @@ def timestamp_to_str(timestamp: float) -> str:
 
 def is_solid_timeframe(timeframe: float) -> bool:
     return timeframe in TIMEFRAME_TO_STR_MAP
+
+
+def parse_timeframe(param: Union[str, float, int]) -> float:
+    if isinstance(param, str):
+        return timeframe_from_str(param)
+    elif isinstance(param, float):
+        return param
+    elif isinstance(param, int):
+        return float(param)
+    else:
+        return 0.0
 
 
 def yes_no(boolean: bool) -> str:

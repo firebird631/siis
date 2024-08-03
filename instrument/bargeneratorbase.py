@@ -4,14 +4,16 @@
 # Range bar generators.
 
 import logging
-from typing import TYPE_CHECKING, Union, List
+from typing import TYPE_CHECKING, Union, List, Optional
+
+from strategy.mixins.generatorupdater import GeneratorUpdaterMixin
 
 if TYPE_CHECKING:
     pass
 
 from common.utils import truncate
 
-from instrument.instrument import Instrument, TickType
+from instrument.instrument import Instrument, TickType, Candle
 from instrument.bar import RangeBar, ReversalBar, TickBar, VolumeBar
 
 logger = logging.getLogger('siis.instrument.bargeneratorbase')
@@ -33,7 +35,6 @@ class BarGeneratorBase(object):
     _last_timestamp: float
     _last_price: float
     _current: Union[RangeBar, ReversalBar, TickBar, VolumeBar, None]
-    _indicators: List
 
     def __init__(self, size: int, tick_scale: float = 1.0):
         """
@@ -53,7 +54,6 @@ class BarGeneratorBase(object):
         self._last_price = 0.0
 
         self._current = None
-        self._indicators = []
 
     @property
     def size(self) -> int:
@@ -74,10 +74,6 @@ class BarGeneratorBase(object):
     @property
     def current(self) -> Union[RangeBar, ReversalBar, TickBar, VolumeBar, None]:
         return self._current
-
-    def attach_indicator(self, indicator):
-        if indicator:
-            self._indicators.append(indicator)
 
     def setup(self, instrument: Instrument):
         """
@@ -100,7 +96,12 @@ class BarGeneratorBase(object):
         # adjusted price at precision and by step of pip meaning
         return truncate(round(price / self._tick_size) * self._tick_size, self._price_precision)
 
-    def generate(self, from_ticks: List[TickType]):
+    def generate_from_candles(self, from_candles: List[Candle], ignore_non_ended: bool = True,
+                              generator_updater: Optional[GeneratorUpdaterMixin] = None):
+        return []
+
+    def generate_from_ticks(self, from_ticks: List[TickType],
+                            generator_updater: Optional[GeneratorUpdaterMixin] = None):
         """
         Generate as many range-bar as possible from the array of ticks or trades given in parameters.
         """
@@ -115,9 +116,8 @@ class BarGeneratorBase(object):
                 to_tickbars.append(to_tickbar)
 
             # alongside generate tick based indicator, close them only if a new bar
-            if self._indicators:
-                for indicator in self._indicators:
-                    indicator.generate(from_tick, finalize=to_tickbar is not None)
+            if generator_updater:
+                generator_updater.update_tick(from_tick, finalize=to_tickbar is not None)
 
             self._last_consumed += 1
 

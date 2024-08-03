@@ -917,7 +917,7 @@ class Strategy(Runnable):
 
     def send_update_strategy_trader(self, market_id: str):
         """
-        Force to wake-up a strategy-trader. This could be useful when the market is sleeping and there is
+        Force to wake up a strategy-trader. This could be useful when the market is sleeping and there is
         a user operation to perform.
         """
         strategy_trader = self._strategy_traders.get(market_id)
@@ -1420,6 +1420,29 @@ class Strategy(Runnable):
         # last done timestamp, to manage progression
         self._last_done_ts = timestamp
 
+    def backtest_prepare(self, timestamp: float):
+        """
+        Simplified version of backtest_update without instrument part, streaming. Uses for bootstrapping and
+        preprocessing.
+        """
+        # processing timestamp (until this)
+        self._timestamp = timestamp
+
+        if len(self._strategy_traders) > 3:
+            count_down = self.service.worker_pool.new_count_down(len(self._strategy_traders))
+
+            for market_id, strategy_trader in self._strategy_traders.items():
+                # parallelize jobs on workers
+                self.service.worker_pool.add_job(count_down, (
+                    self._update_strategy, (self, strategy_trader, 0.0)))
+
+            # sync before continue
+            count_down.wait()
+        else:
+            # no parallelization below 4 instruments
+            for market_id, strategy_trader in self._strategy_traders.items():
+                self._update_strategy(self, strategy_trader, 0.0)
+
     def reset(self):
         # backtesting only, the last processed timestamp
         self._last_done_ts = 0
@@ -1449,6 +1472,25 @@ class Strategy(Runnable):
                 self._prefetched = prefetched
 
         return self._running and self._preset and self._prefetched
+
+    def backtest_prepared(self) -> bool:
+        """
+        Must return True once the strategy has completed its bootstrapping and preprocessing.
+        """
+        with self._mutex:
+            prepared = True
+
+            for k, strategy_trader in self._strategy_traders.items():
+                if strategy_trader.bootstrapping != strategy_trader.STATE_NORMAL:
+                    prepared = False
+                    break
+
+                # @todo no have for the moment, need adjust state into processor
+                # if strategy_trader.preprocessing != strategy_trader.PREPROCESSING_STATE_NORMAL:
+                #     prepared = False
+                #     break
+
+        return prepared
 
     #
     # setup and processing state and condition

@@ -4,9 +4,9 @@
 # Volume Profile indicator and composite
 
 import math
-from typing import Optional, List, Tuple, Union
+import traceback
+from typing import Optional, List, Union, Dict, Tuple
 
-from instrument.instrument import Instrument
 from strategy.indicator.indicator import Indicator
 
 from common.utils import truncate
@@ -15,6 +15,10 @@ import numpy as np
 import scipy.signal as sg
 
 from strategy.indicator.models import VolumeProfile
+
+import logging
+logger = logging.getLogger('siis.strategy')
+
 
 
 class BidAskLinearScaleArray(object):
@@ -169,6 +173,9 @@ class BidAskLinearScaleArray(object):
         if volume > self._poc_vol:
             self._poc_vol = volume
             self._poc_idx = idx
+
+    def as_dict(self) -> Dict[float, Tuple[float, float]]:
+        return {}  # @todo
 
     def price_at(self, idx: int) -> float:
         return min(self._min_price + idx * self._sensibility, self._max_price)
@@ -367,14 +374,16 @@ class BidAskLinearScaleDict(object):
     def init(self, price: float):
         adj_price = self.adjust_price(price)
 
-        # centered base price
-        base_price = int(adj_price / self._sensibility) * self._sensibility + self._sensibility * 0.5
+        base_price = int(adj_price / self._sensibility) * self._sensibility
 
         self._min_price = base_price
         self._max_price = base_price
 
+        # centered base price
+        centered_base_price = base_price + self._sensibility * 0.5
+
         # initial bin
-        self._bins = {base_price: [0.0, 0.0]}
+        self._bins = {centered_base_price: [0.0, 0.0]}
 
         # reset state
         self._consolidated = False
@@ -393,15 +402,18 @@ class BidAskLinearScaleDict(object):
     def timestamp(self) -> float:
         return self._timestamp
 
+    def as_dict(self) -> Dict[float, Tuple[float, float]]:
+        return self._bins
+
     def add_bid(self, price: float, volume: float):
-        base_price, idx = self.set_at(price)
+        base_price = self.set_at(price)
         self._bins[base_price][0] += volume
         self._update_poc(base_price)
 
     def add_ask(self, price: float, volume: float):
-        base_price, idx = self.set_at(price)
+        base_price = self.set_at(price)
         self._bins[base_price][1] += volume
-        self._update_poc(idx)
+        self._update_poc(base_price)
 
     def bid(self, price: float) -> float:
         base_price = self.base_price(price)
@@ -419,9 +431,9 @@ class BidAskLinearScaleDict(object):
         """Prices array ordered by ascending"""
         return np.fromiter(sorted([p for p, v in self._bins.items()]), dtype=np.double)
 
-    def volumes_array(self) -> np.array:
-        """Volumes array ordered by ascending price"""
-        return np.fromiter(sorted([sum(v) for p, v in self._bins.items()]), dtype=np.double)
+    def volumes_by_price_array(self) -> np.array:
+        """Unified (bid+ask) volumes array ordered by ascending price"""
+        return sorted([(p, v) for p, v in self._bins.items()], key=lambda x: x[0])
 
     def base_price(self, price: float):
         if not self._bins:
@@ -437,18 +449,22 @@ class BidAskLinearScaleDict(object):
             self.init(price)
 
         adj_price = self.adjust_price(price)
+        base_price = int(adj_price / self._sensibility) * self._sensibility
 
-        # centered price
-        base_price = int(adj_price / self._sensibility) * self._sensibility + self._sensibility * 0.5
+        # centered base price
+        centered_base_price = base_price + self._sensibility * 0.5
 
         if base_price < self._min_price:
             self._min_price = base_price
-            self._bins[base_price] = [0.0, 0.0]
+            self._bins[centered_base_price] = [0.0, 0.0]
         elif base_price > self._max_price:
             self._max_price = base_price
-            self._bins[base_price] = [0.0, 0.0]
+            self._bins[centered_base_price] = [0.0, 0.0]
+        elif centered_base_price not in self._bins:
+            # intermediate price
+            self._bins[centered_base_price] = [0.0, 0.0]
 
-        return base_price
+        return centered_base_price
 
     def _update_poc(self, base_price: float):
         volume = sum(self._bins[base_price])
@@ -461,8 +477,8 @@ class BidAskLinearScaleDict(object):
     #
 
     def poc_price(self) -> float:
-        # avg price (base bin price + half of sensibility)
-        return self._poc_price  # + self._sensibility * 0.5 if self._poc_price > 0 else 0.0
+        # avg price
+        return self._poc_price
 
     @property
     def poc_volume(self) -> float:
@@ -518,7 +534,7 @@ class VolumeProfileBaseIndicator(Indicator):
     @note The per point (x sensibility factor) is the first realized.
     """
 
-    __slots__ = '_length', '_sensibility', '_volume_area', '_size', '_vps', '_current', \
+    __slots__ = '_sensibility', '_volume_area', '_size', '_vps', '_current', \
         '_session_offset', '_session_duration', '_price_precision', '_tick_size', '_tick_scale', \
         '_compute_peaks_and_valleys'
 
@@ -547,7 +563,7 @@ class VolumeProfileBaseIndicator(Indicator):
 
         return None
 
-    def __init__(self, name: str, timeframe: float, length: int = 10,
+    def __init__(self, name: str, timeframe: float,
                  sensibility: int = 10,
                  volume_area: float = 70,
                  detect_peaks_and_valleys: bool = False,
@@ -556,7 +572,6 @@ class VolumeProfileBaseIndicator(Indicator):
 
         @param name:
         @param timeframe:
-        @param length:
         @param sensibility:
         @param volume_area: 1% to 99%, 0 or below mean don't compute VA
         @param detect_peaks_and_valleys:
@@ -565,7 +580,6 @@ class VolumeProfileBaseIndicator(Indicator):
 
         self._compute_at_close = True  # only at close (that mean at each tick or each closed bar)
 
-        self._length = length  # number of volumes profiles to keep back
         self._sensibility = sensibility
         self._volume_area = volume_area
 
@@ -590,14 +604,6 @@ class VolumeProfileBaseIndicator(Indicator):
 
         self._session_offset = instrument.session_offset
         self._session_duration = instrument.session_duration
-
-    @property
-    def length(self) -> int:
-        return self._length
-
-    @length.setter
-    def length(self, length):
-        self._length = length
 
     @property
     def sensibility(self) -> float:
@@ -633,34 +639,40 @@ class VolumeProfileBaseIndicator(Indicator):
                            self._sensibility,
                            self._current.poc_price(), 0, 0)
 
-        prices_array = None
+        vp.volumes = self._current.as_dict()
+
         volumes_by_price = None
 
         if self._compute_peaks_and_valleys:
-            prices_array = self._current.prices_array()
-            volumes_by_price = self._current.volumes_array()
+            volumes_by_price = self._current.volumes_by_price_array()
 
             # find peaks and valley
             # ps, vs = VolumeProfileBaseIndicator._basic_peaks_and_valleys_detection(self._bins, self._sensibility, vp)
             ps, vs = VolumeProfileBaseIndicator._find_peaks_and_valleys_sci_peak(volumes_by_price)
             # ps, vs = VolumeProfileBaseIndicator._find_peaks_and_valleys_sci_peak_adv(volumes_by_price, 20)
 
-            # self._current.set_peaks_idx(ps)
-            # self._current.set_valleys_idx(vs)
-            self._current.set_peaks_prices([prices_array[idx] for idx in ps])
-            self._current.set_valleys_price([prices_array[idx] for idx in vs])
+            self._current.set_peaks_prices([volumes_by_price[idx][0] for idx in ps])
+            self._current.set_valleys_price([volumes_by_price[idx][0] for idx in vs])
 
             vp.peaks, vp.valleys = self._current.peaks_prices(), self._current.valleys_prices()
 
-        if 0 < self._volume_area <= 100:
-            # find the low and high of the volume area
-            val_idx, vah_idx = self._single_volume_area(prices_array, volumes_by_price, vp.poc)
+            # logger.info(vp.peaks)
+            # logger.info(vp.valleys)
 
-            # self._current.set_va_idx(val_idx, vah_idx)
-            self._current.set_va_prices(prices_array[val_idx], prices_array[vah_idx])
+        if 0 < self._volume_area <= 100:
+            if volumes_by_price is None:
+                volumes_by_price = self._current.volumes_by_price_array()
+
+            # find the low and high of the volume area
+            val_price, vah_price = self._single_volume_area(volumes_by_price, vp.poc)
+
+            self._current.set_va_prices(val_price, vah_price)
 
             vp.vah = self._current.vah_price()
             vp.val = self._current.val_price()
+
+            # logger.info(vp.val)
+            # logger.info(vp.vah)
 
         self._vps.append(vp)
 
@@ -685,54 +697,56 @@ class VolumeProfileBaseIndicator(Indicator):
     # volume area
     #
 
-    def _single_volume_area(self, price_array, volumes_by_price, poc_price):
+    def _single_volume_area(self, volumes_by_price, poc_price):
         """
         Simplest method to detect the volume area.
         Starting from the POC goes left and right until having the inner volume reached.
         It is not perfect because it could miss some peaks that will be important to have
         and sometimes the best choice might not be tried with centered algorithm.
         """
-        if not price_array or not volumes_by_price or not poc_price:
+        if not volumes_by_price or not poc_price:
             return 0.0, 0.0
 
-        index = -1
+        poc_idx = -1
+        sum_vols = 0.0
 
-        for i, p in enumerate(price_array):
-            if p == poc_price:
-                index = i
-                break
+        for i, x in enumerate(volumes_by_price):
+            if x[0] == poc_price:
+                poc_idx = i
 
-        if index < 0:
+            sum_vols += sum(x[1])
+
+        if poc_idx < 0:
             return 0.0, 0.0
 
-        low_price = 0.0
-        high_price = 0.0
-
-        sum_vols = sum(volumes_by_price)
+        va_inf_price = poc_price
+        va_sup_price = poc_price
 
         in_area = sum_vols * self._volume_area * 0.01
         # out_area = 1.0 - in_area
 
-        left = index
-        right = index
         max_index = len(volumes_by_price) - 1
-        summed = 0.0
+        summed = sum(volumes_by_price[poc_idx][1])
+
+        # start from left and right of the POC
+        left = poc_idx - 1
+        right = poc_idx + 1
 
         while summed < in_area:
-            if left >= 0 and volumes_by_price[left][1] > volumes_by_price[right][1]:
-                summed += volumes_by_price[left][1]
-                low_price = volumes_by_price[left][0]
-                left -= 1
-
-            if right < max_index:
-                summed += volumes_by_price[right][1]
-                right += 1
-                high_price = volumes_by_price[right][0]
-
             if left < 0 and right > max_index:
                 break
 
-        return low_price, high_price
+            if left >= 0 and ((right <= max_index and volumes_by_price[left] > volumes_by_price[right]) or right > max_index):
+                summed += sum(volumes_by_price[left][1])
+                va_inf_price = volumes_by_price[left][0]
+                left -= 1
+
+            elif right <= max_index:
+                summed += sum(volumes_by_price[right][1])
+                va_sup_price = volumes_by_price[right][0]
+                right += 1
+
+        return min(va_inf_price, va_sup_price), max(va_inf_price, va_sup_price)
 
     #
     # peaks and valleys
@@ -780,11 +794,16 @@ class VolumeProfileBaseIndicator(Indicator):
         return peaks, valleys
 
     @staticmethod
-    def _find_peaks_and_valleys_sci_peak(weights):
+    def _find_peaks_and_valleys_sci_peak(volumes_by_price):
         """
         Based on scipy find_peaks method.
         @todo Could compute height with mean + stddev
         """
+        weights = np.zeros(len(volumes_by_price), dtype=np.double)
+
+        for i, x in enumerate(volumes_by_price):
+            weights[i] = sum(x[1])
+
         l = len(weights)
 
         distanceP = max(2, l // 6)
@@ -795,8 +814,8 @@ class VolumeProfileBaseIndicator(Indicator):
         heightP = M / 4
         heightV = -M / 4
 
-        vs = sg.find_peaks(-weights, heightV, None, distanceV)[0]
-        ps = sg.find_peaks(weights, heightP, None, distanceP)[0]
+        vs, _ = sg.find_peaks(-weights, heightV, None, distanceV)
+        ps, _ = sg.find_peaks(weights, heightP, None, distanceP)
 
         return ps, vs
 
@@ -871,14 +890,14 @@ class LogVolumeProfileBaseIndicator(VolumeProfileBaseIndicator):
     @classmethod
     def builder(cls, base_type: int, timeframe: float, **kwargs):
         if base_type == Indicator.BASE_TIMEFRAME:
+            from strategy.indicator.volumeprofile.barlogvolumeprofile import BarLogVolumeProfileIndicator
+            return BarLogVolumeProfileIndicator(timeframe, **kwargs)
+        elif base_type == Indicator.BASE_TICKBAR:
+            from strategy.indicator.volumeprofile.barlogvolumeprofile import BarLogVolumeProfileIndicator
+            return BarLogVolumeProfileIndicator(timeframe, **kwargs)
+        elif base_type == Indicator.BASE_TICK:
             from strategy.indicator.volumeprofile.logvolumeprofile import LogVolumeProfileIndicator
             return LogVolumeProfileIndicator(timeframe, **kwargs)
-        elif base_type == Indicator.BASE_TICKBAR:
-            from strategy.indicator.volumeprofile.logtickbarvolumeprofile import LogTickBarVolumeProfileIndicator
-            return LogTickBarVolumeProfileIndicator(timeframe, **kwargs)
-        elif base_type == Indicator.BASE_TICK:
-            from strategy.indicator.volumeprofile.logtickvolumeprofile import LogTickVolumeProfileIndicator
-            return LogTickVolumeProfileIndicator(timeframe, **kwargs)
 
         return None
 

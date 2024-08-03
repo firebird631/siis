@@ -138,19 +138,8 @@ class TimeframeStrategyTrader(StrategyTraderBase):
         super().update_parameters(params)
 
     @property
-    def is_timeframes_based(self) -> bool:
-        return True
-
-    @property
     def base_timeframe(self) -> float:
         return self._base_timeframe
-
-    @property
-    def timeframes_parameters(self) -> dict:
-        """
-        Returns the dict of timeframes with name as key and settings in value.
-        """
-        return self.strategy.parameters.get('timeframes', {})
 
     def on_received_initial_bars(self, analyser_name: str):
         """
@@ -159,6 +148,13 @@ class TimeframeStrategyTrader(StrategyTraderBase):
         analyser = self._analysers.get(analyser_name)
         if analyser:
             analyser.init_generator()
+
+    def setup_generators(self):
+        """
+        Call it on receive instrument/market data.
+        """
+        for k, analyser in self._analysers.items():
+            analyser.setup_generator(self.instrument)
 
     def on_market_info(self):
         """
@@ -182,7 +178,7 @@ class TimeframeStrategyTrader(StrategyTraderBase):
                 # rest the previous last closed flag before update the current
                 analyser._last_closed = False
 
-                generated = analyser.bar_generator.generate_from_ticks(last_ticks)
+                generated = analyser.bar_generator.generate_from_ticks(last_ticks, generator_updater=analyser)
                 if generated:
                     analyser.add_bars(generated, analyser.depth)
 
@@ -219,7 +215,7 @@ class TimeframeStrategyTrader(StrategyTraderBase):
                 # update at candle timeframe
                 analyser._last_closed = False
 
-                generated = analyser.bar_generator.generate_from_candles(last_candles)
+                generated = analyser.bar_generator.generate_from_candles(last_candles, generator_updater=analyser)
                 if generated:
                     analyser.add_bars(generated, analyser.depth)
 
@@ -410,18 +406,3 @@ class TimeframeStrategyTrader(StrategyTraderBase):
                 result['data'].append(ctx.report_state(self.instrument))
 
         return result
-
-    #
-    # helpers
-    #
-
-    @staticmethod
-    def parse_timeframe(param: Union[str, float, int]) -> float:
-        if isinstance(param, str):
-            return timeframe_from_str(param)
-        elif isinstance(param, float):
-            return param
-        elif isinstance(param, int):
-            return float(param)
-        else:
-            return 0.0

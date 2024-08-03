@@ -97,7 +97,7 @@ class VWAPIndicator(VWAPBaseIndicator):
         """
         return self._tops
 
-    def generate(self, tick: TickType, finalize: bool):
+    def update(self, tick: TickType, finalize: bool):
         self._prev = self._last
 
         if tick[0] >= self._open_timestamp + Instrument.TF_1D:

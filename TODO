@@ -13,10 +13,12 @@ Bootstrap et Preprocess risque de se recouvrer dans certains cas :
             => une méthode bootstrap mais qui ne rejout pas les candles :
                 - ce qui en plus évite les imprécisions de ce pseudo replay
 
-- bootstrapping alphaprocess pourrait se faire en tick surtout quand il n'y a pas d'historique en DB
-   - on peut pas déterminer la période pour des non-temporals bar, donc obligé d'avoir une période arbitraire
-       - un param dans la config en plus
-   - à partir d'un tickstreamer procéder au bootstrapping
+- bootstrapping alphaprocess pourrait fonctionner en tick (surtout quand il n'y a pas d'historique en DB pour du live)
+   - cela dit en backtesting il suffit de commencer plus tôt le temps d'avoir assez passé de data
+   - un tickstreamer pour servir au bootstrapping (ça fait tjs redondant en backtesting)
+   - et il ne faut pas se planter sur les timestamp pour la jointure (passage vers le processing)
+        - en live au pire c'est un trou de data donc on n'est pas avancé voir embetant
+        - en backtesting c'est assez simple à éviter (ending time bootstrapping == begin time du processing)
 
 Sum order :
   - si spot : sum base (au moins sum pour EUR et USD), pour et eviter le rejet de l'API si qty insuffisante
@@ -53,15 +55,20 @@ Sum order :
  - on ajoute un IDX sur chaque bar, mais ca ne suffit pas car il faudra alors aussi transmettre les series d'idx ou au moins
    le premier et dernier idx de chaque compute
 
+- sur def compute_signal(self, instrument: Instrument, timestamp: float,
+                       prev_price: float, last_price: float) -> Optional[StrategySignal]:
+
+    last_price and prev_price ne servent quasiment jamais
+    - voir si on peu les retirer
+    - sur l'alphaprocess dans le bootstrap ils sont définie d'une façon peu précise
+
 
 #######
 # WIP #
 #######
 
-- Refactoring StrategyTrader ou créer un StrategyTraderStd :
-     - def process(self, timestamp: float): sont presque les mêmes
-     - presque pareil pour les process_entry
-     - les process_exit sont presque jamais utilisés
+- Voir pour créer un mixin qui contient des implémentation classique de process, process_entry, process_exit
+    de strategy trader qui sont quasi tjs pareil
 
 - DailyLimitHandler ajouter :
     - timezone offset
@@ -136,15 +143,19 @@ Sum order :
 # Urgent #
 ##########
 
+- ajouter dans le rebuilder une option pour générer les volumes profiles en même temps que les bars
+- voir si decide de stocker en DB les VP et autre au fur et à mesure à partir des analyser :
+    - analyser::storage method
+
 - ajouter un block de configuration pour les handlers (ne pas oublier merge_parameters)
 - ajouter une configuration pour le DailyLimitHandler
 - ajouter une configuration pour le ReinvestGainHandler
 - ajouter une configuration pour le DCAHandler
 
-- Finir le volume profile et le composite volume profile
-    - Tester avec un plot bar CLI
+- Tester un plot bar CLI sur le volume profile
 
 - transaction/rollback sur strategy trader save (on save tout ou rien sinon c'est inconsistant)
+    - on pourrait aussi avoir une transaction en DB à chaque trade notify (open, update, exit)
 
 - def update_exit_qty(order_exec): fixer le avg exit price car peut être sur plusieurs ordres de sortie
 
@@ -181,6 +192,11 @@ Sum order :
 # Uniformization #
 ##################
 
+- Finalement le rebuilder pourrait stocker la range-bar current et l'analyser la prendre au chargement
+
+- Une fois plus aucune stratégie utilisant les BarStrategyTrader supprimer le model
+- Une fois plus aucune stratégie utilisant les TimeframeStrategyTrader supprimer le model
+
 - Move from siis.py for the resting command part to command_handler
 
 - Finir les conversion des tools avec le model Tool (binarizer, fetcher, optimizer)
@@ -193,21 +209,6 @@ Sum order :
 
 - Gérer la partie locked sur le paper trader en mode asset
     - ne pas tout gérer en free, peu important car ça n'empêche pas de fonctionner
-
-- Peut etre serait il pertinant de renommer les Sub en DataSerie
-
-- Dans les profiles tickbars et confusant car il fait mention aux range-bars actuellement
-    - Soit on renomme, avec toutes les configs
-    - Soit on précise avec les options qu'il s'agit de range-bar ou autre avec tickbar restant générique
-
-- Est-il possible de merger timeframe+range-bar+session-bar... au sein du même strategytrader :
-    - Dans l'absolu oui mais le bootstrap pose un problème car il devient encore plus complexe
-    - Est ce qu'on a vraiment besoin de stratégie mélan plusieurs types de bar ?
-
-- On retire de instrument les données de type bar :
-    - Le strategy trader devient aussi generique et peut gérer des timeframe, range bar ou autre
-        - Le fichier est déjà important... arranger cela
-    - Les map timeframes et timeframes_streamers sont a merger
 
 
 #########
@@ -228,8 +229,9 @@ Sum order :
     - ajouter unirenko bar (x,y,z)
 
 - volumes indicators :
+    - cumulative volume delta
+    - mettre à jour VWAP
     - market profile indicator (+session offset/duration)
-    - cumulative volume delta indicateur
     - ancienne tickbar => footprint et completer
 
 - update to latest IG API

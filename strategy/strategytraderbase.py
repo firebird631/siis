@@ -474,18 +474,10 @@ class StrategyTraderBase(object):
     def ready(self):
         """Return True if any analyser are ready and the instrument too"""
         for k, analyser in self._analysers.items():
-            if analyser.need_initial_data():
+            if analyser.is_need_initial_data:
                 return False
 
         return True
-
-    @property
-    def is_timeframes_based(self):
-        return False
-
-    @property
-    def is_tickbars_based(self):
-        return False
 
     @property
     def base_timeframe(self) -> float:
@@ -2920,6 +2912,10 @@ class StrategyTraderBase(object):
             trade_quantity = self.instrument.trade_quantity
 
         original_quantity = trade_quantity
+
+        if not trade_quantity:
+            # specified 0 and instrument 0
+            return 0.0
 
         if self.instrument.trade_quantity_mode == Instrument.TRADE_QUANTITY_QUOTE_TO_BASE:
             trade_quantity = self.instrument.adjust_quantity(trade_quantity / price)  # and adjusted to 0/max/step

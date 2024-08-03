@@ -2,13 +2,13 @@
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2020 Dream Overflow
 # @deprecated Strategy beta processor. No longer necessary because this idea of cache is abandoned.
-
+import copy
 import time
 import traceback
 
 from datetime import datetime, timedelta
 
-from common.utils import UTC
+from common.utils import UTC, timestamp_to_str, duration_to_str
 
 from instrument.instrument import Instrument
 
@@ -232,10 +232,116 @@ def beta_bootstrap(strategy, strategy_trader):
         strategy_trader._bootstrapping = 2
 
     try:
-        if strategy_trader.is_timeframes_based:
-            timeframe_based_bootstrap(strategy, strategy_trader)
-        elif strategy_trader.is_tickbars_based:
-            tickbar_based_bootstrap(strategy, strategy_trader)
+        # captures all initials candles
+        initial_bars = {}
+
+        # compute the beginning timestamp
+        timestamp = strategy.timestamp
+        instrument = strategy_trader.instrument
+
+        for analyser in strategy_trader.analysers():
+            bars = copy.copy(analyser.get_all_bars())
+            initial_bars[analyser.name] = bars
+
+            # reset, distribute one at time
+            analyser.clear_bars()
+
+            if bars:
+                if len(bars) >= analyser.depth:
+                    # get the nearest next bar
+                    timestamp = min(timestamp, bars[analyser.depth - 1].timestamp)
+                else:
+                    timestamp = min(timestamp, bars[-1].timestamp)
+
+        # bench
+        start_time = time.time()
+
+        logger.debug("%s bootstrap begin at %s, now is %s (delta=%s)" % (
+            instrument.market_id,
+            timestamp_to_str(timestamp),
+            timestamp_to_str(strategy.timestamp),
+            duration_to_str(strategy.timestamp - timestamp)))
+
+        # initials candles
+        lower_timeframe = 0
+        # lower_bar_size = 0
+
+        for analyser in strategy_trader.analysers():
+            bars = initial_bars[analyser.name]
+
+            # feed with the initials candles
+            while bars and timestamp >= bars[0].timestamp:
+                candle = bars.pop(0)
+
+                analyser.add_bar(candle, analyser.history)
+
+                # and last is closed
+                analyser._last_closed = True
+
+                # @todo might be removed... not really useful and very useless and imprecise during boostrap (similar below)
+                # prev and last price according to the lower timeframe close
+                if not lower_timeframe or (analyser.timeframe > 0 and analyser.timeframe < lower_timeframe):
+                    lower_timeframe = analyser.timeframe
+
+                    strategy_trader.prev_price = strategy_trader.last_price
+                    strategy_trader.last_price = candle.close  # last mid close
+
+                # if not lower_bar_size or analyser.bar_size < lower_bar_size:
+                #     lower_bar_size = analyser.bar_size
+                #
+                #     strategy_trader.prev_price = strategy_trader.last_price
+                #     strategy_trader.last_price = candle.close  # last mid close
+
+        # process one lowest candle at time
+        while 1:
+            num_candles = 0
+            strategy_trader.bootstrap(timestamp)
+
+            # at least of lower timeframe
+            base_timestamp = 0.0
+            lower_timeframe = 0
+
+            # increment by the lower available timeframe
+            for analyser in strategy_trader.analysers():
+                bars = initial_bars[analyser.name]
+                if bars:
+                    if not base_timestamp:
+                        # initiate with the first
+                        base_timestamp = bars[0].timestamp
+
+                    elif bars[0].timestamp < base_timestamp:
+                        # found a lower
+                        base_timestamp = bars[0].timestamp
+
+            # feed with the next candle
+            for analyser in strategy_trader.analysers():
+                bars = initial_bars[analyser.name]
+                if bars and base_timestamp >= bars[0].timestamp:
+                    candle = bars.pop(0)
+
+                    analyser.add_bar(candle, analyser.history)
+
+                    # and last is closed
+                    analyser._last_closed = True
+
+                    if not lower_timeframe or (analyser.timeframe > 0 and analyser.timeframe < lower_timeframe):
+                        lower_timeframe = analyser.timeframe
+
+                        strategy_trader.prev_price = strategy_trader.last_price
+                        strategy_trader.last_price = candle.close  # last mid close
+
+                    num_candles += 1
+
+            # logger.info("next is %s (delta=%s) / now %s (n=%i) (low=%s)" % (base_timestamp, base_timestamp-timestamp, strategy.timestamp, num_candles, lower_timeframe))
+            timestamp = base_timestamp
+
+            if not num_candles:
+                # no more candles to process
+                break
+
+        bench_time = time.time() - start_time
+
+        logger.debug("%s bootstrapping done in %s" % (instrument.market_id, duration_to_str(bench_time)))
     except Exception as e:
         error_logger.error(repr(e))
         traceback_logger.error(traceback.format_exc())
@@ -243,124 +349,6 @@ def beta_bootstrap(strategy, strategy_trader):
     with strategy_trader.mutex:
         # bootstrapping done, can now branch to live
         strategy_trader._bootstrapping = 0
-
-
-def timeframe_based_bootstrap(strategy, strategy_trader):
-    # captures all initials candles
-    initial_candles = {}
-
-    # compute the beginning timestamp
-    timestamp = strategy.timestamp
-
-    instrument = strategy_trader.instrument
-
-    for tf, sub in strategy_trader.timeframes.items():
-        candles = instrument.candles(tf)
-        initial_candles[tf] = candles
-
-        # reset, distribute one at time
-        instrument._candles[tf] = []
-
-        if candles:
-            # get the nearest next candle
-            timestamp = min(timestamp, candles[0].timestamp + sub.depth*sub.timeframe)
-
-    logger.debug("%s timeframes bootstrap begin at %s, now is %s" % (
-        instrument.market_id, timestamp, strategy.timestamp))
-
-    # initials candles
-    lower_timeframe = 0
-
-    for tf, sub in strategy_trader.timeframes.items():
-        candles = initial_candles[tf]
-
-        # feed with the initials candles
-        while candles and timestamp >= candles[0].timestamp:
-            candle = candles.pop(0)
-
-            instrument._candles[tf].append(candle)
-
-            # and last is closed
-            sub._last_closed = True
-
-            # keep safe size
-            if(len(instrument._candles[tf])) > sub.depth:
-                instrument._candles[tf].pop(0)
-
-            # prev and last price according to the lower timeframe close
-            if not lower_timeframe or tf < lower_timeframe:
-                lower_timeframe = tf
-                strategy_trader.prev_price = strategy_trader.last_price
-                strategy_trader.last_price = candle.close  # last mid close
-
-    # process one lowest candle at time
-    while 1:
-        num_candles = 0
-        strategy_trader.bootstrap(timestamp)
-
-        # at least of lower timeframe
-        base_timestamp = 0.0
-        lower_timeframe = 0
-
-        # increment by the lower available timeframe
-        for tf, sub in strategy_trader.timeframes.items():
-            if initial_candles[tf]:
-                if not base_timestamp:
-                    # initiate with the first
-                    base_timestamp = initial_candles[tf][0].timestamp
-
-                elif initial_candles[tf][0].timestamp < base_timestamp:
-                    # found a lower
-                    base_timestamp = initial_candles[tf][0].timestamp
-
-        for tf, sub in strategy_trader.timeframes.items():
-            candles = initial_candles[tf]
-
-            # feed with the next candle
-            if candles and base_timestamp >= candles[0].timestamp:
-                candle = candles.pop(0)
-
-                instrument._candles[tf].append(candle)
-
-                # and last is closed
-                sub._last_closed = True
-
-                # keep safe size
-                if(len(instrument._candles[tf])) > sub.depth:
-                    instrument._candles[tf].pop(0)
-
-                if not lower_timeframe or tf < lower_timeframe:
-                    lower_timeframe = tf
-                    strategy_trader.prev_price = strategy_trader.last_price
-                    strategy_trader.last_price = candle.close  # last mid close
-
-                num_candles += 1
-
-        # logger.info("next is %s (delta=%s) / now %s (n=%i) (low=%s)" % (base_timestamp, base_timestamp-timestamp, strategy.timestamp, num_candles, lower_timeframe))
-        timestamp = base_timestamp
-
-        if not num_candles:
-            # no more candles to process
-            break
-
-    logger.debug("%s timeframes bootstrapping done" % instrument.market_id)
-
-
-def tickbar_based_bootstrap(strategy, strategy_trader):
-    # captures all initials ticks
-    initial_ticks = []
-
-    # compute the beginning timestamp
-    timestamp = strategy.timestamp
-
-    instrument = strategy_trader.instrument
-
-    logger.debug("%s tickbars bootstrap begin at %s, now is %s" % (instrument.market_id, timestamp, strategy.timestamp))
-
-    # @todo need tickstreamer, and call strategy_trader.bootstrap(timestamp) at per bulk of ticks (
-    #  temporal size defined)
-
-    logger.debug("%s tickbars bootstrapping done" % instrument.market_id)
 
 
 def beta_update_strategy(strategy, strategy_trader, timestamp: float):

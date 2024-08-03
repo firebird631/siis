@@ -31,6 +31,17 @@ logger = logging.getLogger('siis.strategy.strategytimeframeanalyser')
 class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
     """
     StrategyTimeframeAnalyser Timeframe data-series analyser base class.
+
+    __init__ signature for child class must be :
+        def __init__(self, name: str, strategy_trader: StrategyTraderBase, params: dict):
+            super().__init__(name, strategy_trader, params['timeframe'], params['depth'], params['history'], params)
+
+            # to your stuff here
+
+            self.setup_indicators(params)
+
+    to be invokable by a strategy trader.
+    @note This could change on a refactoring.
     """
 
     tf: float
@@ -207,10 +218,12 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
             self.prev_close_price = None
 
     def get_bars(self) -> List[Candle]:
-        """
-        Get the timeframes bars list to process.
-        """
+        """Get a slice of depth of the timeframes bars list to process."""
         return self._timeframe_bars[-self.depth:] if self._timeframe_bars else []
+
+    def get_all_bars(self) -> List[Candle]:
+        """Get all available bars."""
+        return self._timeframe_bars
 
     def get_bars_after(self, after_timestamp: float) -> List:
         """

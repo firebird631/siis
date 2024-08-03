@@ -65,9 +65,11 @@ Features
     * [x] IG CFD (forex, indices, commodities)
     * [x] Kraken Spot
     * [x] Kraken Margin (partial)
-    * [ ] ByBit Spot (not planned for now)
+    * [ ] ByBit Spot (planned)
     * [ ] ByBit Futures (planned)
     * [ ] Rithmic(TM) API (planned)
+    * [ ] MetaTrader(TM) RPC/Stream API (planned)
+    * [ ] MetaTrader(TM) Cloud API (planned)
 * Some others source of prices/volumes data fetchers
     * [x] HistData (only to import downloaded files)
     * [x] Dukascopy
@@ -104,9 +106,6 @@ Features
   * Notification
   * Audio alerts
 * Support the spread, fees and commissions on the profit/loss display
-* Possibility to compute the average entry price of owned assets for spots markets
-  * [x] Binance Spot (partially BROKEN due to some REST endpoints changes)
-  * [ ] Kraken Spot (WIP)
 * Web trader and terminal screen, display :
   * Account details and assets quantities
   * Tickers and markets information, 24h change and volume
@@ -135,16 +134,16 @@ Features
     * TomDemark TD9 ...
     * Williams Fractals
     * Willy (A William %R norm EMA variation)
-    * [See strategy indicators for more details](doc/strategies/indicators.md)
+    * [See strategy/indicators for more details](doc/strategies/indicators.md)
 * Support/Resistance indicators
     * Pivot Point Supports/Resistances
     * ATR based Supports/Resistances detection
-* Volume analysis :
-    * [x] Volume Profile (WIP)
+* Volume analysis indicators, with the possibility to configure a session (ETH, RTH, ...) : 
+    * [x] Volume Profile
     * [x] Composite Volume profile (WIP)
     * [x] VWAP (WIP)
-    * [ ] Cumulative Volume Delta (WIP)
-    * [ ] Imbalance, Footprint (planned)
+    * [x] Cumulative Volume Delta (WIP)
+    * [ ] Imbalance, Footprint (need refactoring)
 * Full automated trading or semi-automated trading
   * Notify and display signals to manually validate
 * External notifiers for signals, trading and status :
@@ -166,11 +165,29 @@ Features
         * [x] Trend channel region : slanting, symmetric or asymmetric low and high trends
     * Auto-expiration after a predefined delay
     * Cancellation above a trigger price
+* Trading session :
+    * Configurable timezone and time offset
+    * Multiple sessions per day, day of week, per market
+* Per market or global trading handler :
+    * Daily limits (max profit and max loss)
+      * Reset each day according to session timezone/offset or UTC
+      * Auto cancel/close existing positions, as option
+    * Dollar Cost Average trade :
+      * Combine the different actives trade for an asset
+    * Reinvest profit :
+      * Increase automatically the quantity per market according to their best profits
+
+Deprecated features
+-------------------
+
+* Possibility to compute the average entry price of owned assets for spots markets 
+  * [x] Binance Spot (partially BROKEN due to some REST endpoints changes)
+  * [ ] Kraken Spot
 
 ### Strategies ###
 
 Some operational strategies are available on distinct GitHub repositories :
-* [...] Coming Soon 
+  * [ ] Coming Soon 
 
 You have the ability to implements your own strategies or to ask for me services for a development and support.
 Else you can actively participate in the feedback, testing and fixing bugs.

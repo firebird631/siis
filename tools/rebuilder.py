@@ -457,7 +457,7 @@ def do_rebuilder(options):
 
                 if bar_generator:
                     # generate non-temporal bar series
-                    new_bars = bar_generator.generate(last_ticks)
+                    new_bars = bar_generator.generate_from_ticks(last_ticks)
                     if new_bars:
                         for new_bar in new_bars:
                             store_bar(target_type, new_bar)

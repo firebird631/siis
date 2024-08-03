@@ -1185,7 +1185,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
         @param instrument: Related instrument
         @param timestamp: Current timestamp
         @param prev_price: Previous last_price value
-        @param last_price: Last market trade processed price
+        @param last_price: Last market traded price
         @return:
         """
         if not self.compiled:

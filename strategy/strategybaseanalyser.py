@@ -7,15 +7,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Tuple, Union
 
+from strategy.mixins.generatorupdater import GeneratorUpdaterMixin
+
 if TYPE_CHECKING:
     from datetime import datetime
 
     from strategy.strategytraderbase import StrategyTraderBase
-    from instrument.instrument import Candle, TickType
+    from instrument.instrument import Candle, TickType, Instrument
     from monitor.streamable import Streamable
 
 
-class StrategyBaseAnalyser(object):
+class StrategyBaseAnalyser(GeneratorUpdaterMixin):
     """
     Base model for strategy analyser per timeframe or any other non-temporal bar method.
     It computes different indicators (mostly oscillators) and some states.
@@ -60,12 +62,16 @@ class StrategyBaseAnalyser(object):
 
     def init_generator(self):
         """
-        Set up the bar generator for this analyser depending on the type and configuration.
+        Initiate the bar generator for this analyser depending on the type and configuration.
         This method is called once the initial ohlc are fetched from the strategy setup process.
         """
         pass
 
-    def setup_generator(self, instrument):
+    def setup_generator(self, instrument: Instrument):
+        """
+        Set up the bar generator for this analyser depending on the instrument parameters.
+        This method is called once the market info are retrieved.
+        """
         pass
 
     def query_historical_data(self, to_date: datetime):
@@ -74,6 +80,10 @@ class StrategyBaseAnalyser(object):
         Use history size and auto compute the necessary best range.
         """
         pass
+
+    def get_all_bars(self) -> List:
+        """Get all available bars."""
+        return []
 
     def add_bar(self, bar, max_size: int = -1):
         """Add a single bar"""
@@ -189,6 +199,27 @@ class StrategyBaseAnalyser(object):
     @property
     def instrument(self):
         return self._strategy_trader.instrument
+
+    #
+    # indicator processing
+    #
+
+    def update_tick(self, tick: TickType, finalize: bool):
+        """
+        Here put any tick based indicator update.
+        Such as bar volume-profile, bar vwap, bar cumulative volume delta...
+        @param tick: Last processed tick
+        @param finalize: True if the bar just close
+        """
+        pass
+
+    def update_bar(self, bar: Candle):
+        """
+        Here put any bar based indicator update.
+        Such as bar volume-profile, bar vwap, bar cumulative volume delta...
+        @param bar: Last generated bar and closed bar
+        """
+        pass
 
     #
     # data streaming

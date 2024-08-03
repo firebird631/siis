@@ -18,10 +18,15 @@ class BarVolumeProfileIndicator(VolumeProfileBaseIndicator):
     def indicator_base(cls):
         return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
-    def __init__(self, timeframe:  float, length: int = 10, sensibility: int = 10, volume_area: float = 70):
-        super().__init__("barvolumeprofile", timeframe, length, sensibility, volume_area)
+    def __init__(self,
+                 timeframe:  float,
+                 sensibility: int = 10,
+                 volume_area: float = 70,
+                 detect_peaks_and_valleys: bool = False,
+                 tick_scale: float = 1.0):
+        super().__init__("barvolumeprofile", timeframe, sensibility, volume_area, detect_peaks_and_valleys, tick_scale)
 
-    def generate(self, bar: Candle, finalize: bool):
+    def update(self, bar: Candle, finalize: bool):
         """
         Append volumes of the bar to the current volume profile and eventually compute volume area, peaks and valleys.
         If finalize is True close the current volume profile and create a new one.
@@ -62,4 +67,3 @@ class BarVolumeProfileIndicator(VolumeProfileBaseIndicator):
 
         # retain the last tick timestamp
         self._last_timestamp = bar.timestamp
-

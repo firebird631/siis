@@ -4,9 +4,12 @@
 # OHLC timeframe bar generator.
 
 from datetime import datetime, timedelta
+from typing import List, Optional
+
 from common.utils import UTC
 
-from instrument.instrument import Candle
+from instrument.instrument import Candle, TickType
+from strategy.mixins.generatorupdater import GeneratorUpdaterMixin
 
 
 class TimeframeBarGenerator(object):
@@ -59,7 +62,8 @@ class TimeframeBarGenerator(object):
         if indicator:
             self._indicators.append(indicator)
 
-    def generate_from_candles(self, from_candles, ignore_non_ended=True):
+    def generate_from_candles(self, from_candles: List[Candle], ignore_non_ended: bool = True,
+                              generator_updater: Optional[GeneratorUpdaterMixin] = None):
         """
         Generate as many higher candles as possible from the array of candles given in parameters.
         @note Non ended candles are ignored because it will false the volume.
@@ -72,16 +76,16 @@ class TimeframeBarGenerator(object):
             if to_candle:
                 to_candles.append(to_candle)
 
-            # alongside generate tick based indicator, close them only if a new bar
-            if self._indicators:
-                for indicator in self._indicators:
-                    indicator.generate(from_candle, finalize=to_candle is not None)
+            # alongside generate bar based indicator
+            if generator_updater:
+                generator_updater.update_bar(from_candle)
 
             self._last_consumed += 1
 
         return to_candles
 
-    def generate_from_ticks(self, from_ticks):
+    def generate_from_ticks(self, from_ticks: List[TickType],
+                            generator_updater: Optional[GeneratorUpdaterMixin] = None):
         """
         Generate as many higher candles as possible from the array of ticks given in parameters.
         """
@@ -95,9 +99,8 @@ class TimeframeBarGenerator(object):
                 to_candles.append(to_candle)
 
             # alongside generate tick based indicator, close them only if a new bar
-            if self._indicators:
-                for indicator in self._indicators:
-                    indicator.generate(from_tick, finalize=to_candle is not None)
+            if generator_updater:
+                generator_updater.update_tick(from_tick, finalize=to_candle is not None)
 
             self._last_consumed += 1
 
