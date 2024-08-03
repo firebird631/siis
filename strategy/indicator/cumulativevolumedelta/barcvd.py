@@ -1,7 +1,7 @@
 # @date 2024-07-28
 # @author Frederic Scherma
 # @license Copyright (c) 2024 Dream Overflow
-# Cumulative Volume Delta indicator
+# Bar based Cumulative Volume Delta indicator
 
 from typing import List
 
@@ -14,12 +14,17 @@ from strategy.indicator.indicator import Indicator
 import numpy as np
 
 
-class TickBarCumulativeVolumeDelta(CumulativeVolumeDeltaBase):
+class BarCumulativeVolumeDelta(CumulativeVolumeDeltaBase):
     """
-    Cumulative volume delta indicator based on non-temporal (tick-bar) series (range, reversal, volume, tick, renko...).
+    Cumulative volume delta indicator based on temporal (timeframe-bar / Candle) series.
     """
+
+    @classmethod
+    def indicator_base(cls):
+        return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
+
     def __init__(self, timeframe: float, session):
-        super().__init__("cumulativevolumedelta", timeframe, session)
+        super().__init__("barcumulativevolumedelta", timeframe, session)
 
     def compute(self, timestamp, volumes):
         pass

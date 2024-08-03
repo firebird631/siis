@@ -4,5 +4,4 @@
 # Cumulative Volume Delta Package
 
 from .cvd import CumulativeVolumeDelta
-from .tickbarcvd import TickBarCumulativeVolumeDelta
-from .tickcvd import TickCumulativeVolumeDelta
+from .barcvd import BarCumulativeVolumeDelta

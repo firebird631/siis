@@ -146,12 +146,12 @@
     },
     "vwap": {
         "status": "load",
-        "classpath": "strategy.indicator.vwap.vwapbase.VWAPBaseIndicator",
+        "classpath": "strategy.indicator.vwap.vwap.VWAPIndicator",
         "options": {}
     },
-    "tickvwap": {
+    "barvwap": {
         "status": "load",
-        "classpath": "strategy.indicator.vwap.tickvwap.TickVWAPIndicator",
+        "classpath": "strategy.indicator.vwap.barvwap.BarVWAPIndicator",
         "options": {}
     },
     "stddevbands": {
@@ -159,24 +159,24 @@
         "classpath": "strategy.indicator.stddevbands.stddevbands.StdDevBandsIndicator",
         "options": {}
     },
-    "volumeprofile": {
+    "barvolumeprofile": {
         "status": "load",
-        "classpath": "strategy.indicator.volumeprofile.volumeprofilebase.VolumeProfileBaseIndicator",
+        "classpath": "strategy.indicator.volumeprofile.barvolumeprofile.BarVolumeProfileIndicator",
         "options": {}
     },
-    "tickvolumeprofile": {
+    "volumeprofile": {
         "status": "load",
-        "classpath": "strategy.indicator.volumeprofile.tickvolumeprofile.TickVolumeProfileIndicator",
+        "classpath": "strategy.indicator.volumeprofile.volumeprofile.VolumeProfileIndicator",
+        "options": {}
+    },
+    "barlogvolumeprofile": {
+        "status": "load",
+        "classpath": "strategy.indicator.volumeprofile.barlogvolumeprofile.BarLogVolumeProfileIndicator",
         "options": {}
     },
     "logvolumeprofile": {
         "status": "load",
-        "classpath": "strategy.indicator.volumeprofile.volumeprofilebase.LogVolumeProfileBaseIndicator",
-        "options": {}
-    },
-    "logtickvolumeprofile": {
-        "status": "load",
-        "classpath": "strategy.indicator.volumeprofile.logtickvolumeprofile.LogTickVolumeProfileIndicator",
+        "classpath": "strategy.indicator.volumeprofile.logvolumeprofile.LogVolumeProfileIndicator",
         "options": {}
     },
     "cci": {
@@ -206,12 +206,12 @@
     },
     "cumulativevolumedelta": {
         "status": "load",
-        "classpath": "strategy.indicator.cumulativevolumedelta.cvdbase.CumulativeVolumeDeltaBase",
+        "classpath": "strategy.indicator.cumulativevolumedelta.cvd.CumulativeVolumeDelta",
         "options": {}
     },
-    "tickcumulativevolumedelta": {
+    "barcumulativevolumedelta": {
         "status": "load",
-        "classpath": "strategy.indicator.cumulativevolumedelta.tickcvd.TickCumulativeVolumeDelta",
+        "classpath": "strategy.indicator.cumulativevolumedelta.barcvd.BarCumulativeVolumeDelta",
         "options": {}
     }
 }

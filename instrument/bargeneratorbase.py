@@ -33,6 +33,7 @@ class BarGeneratorBase(object):
     _last_timestamp: float
     _last_price: float
     _current: Union[RangeBar, ReversalBar, TickBar, VolumeBar, None]
+    _indicators: List
 
     def __init__(self, size: int, tick_scale: float = 1.0):
         """
@@ -52,6 +53,7 @@ class BarGeneratorBase(object):
         self._last_price = 0.0
 
         self._current = None
+        self._indicators = []
 
     @property
     def size(self) -> int:
@@ -72,6 +74,10 @@ class BarGeneratorBase(object):
     @property
     def current(self) -> Union[RangeBar, ReversalBar, TickBar, VolumeBar, None]:
         return self._current
+
+    def attach_indicator(self, indicator):
+        if indicator:
+            self._indicators.append(indicator)
 
     def setup(self, instrument: Instrument):
         """
@@ -107,6 +113,11 @@ class BarGeneratorBase(object):
                 # if self.size == 16:
                 #     logger.debug(str(to_tickbar))
                 to_tickbars.append(to_tickbar)
+
+            # alongside generate tick based indicator, close them only if a new bar
+            if self._indicators:
+                for indicator in self._indicators:
+                    indicator.generate(from_tick, finalize=to_tickbar is not None)
 
             self._last_consumed += 1
 

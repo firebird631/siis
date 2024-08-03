@@ -2,13 +2,8 @@
 # @author Frederic Scherma
 # @license Copyright (c) 2024 Dream Overflow
 # Cumulative Volume Delta indicator
-from typing import List
 
-from instrument.instrument import TickType
 from strategy.indicator.indicator import Indicator
-# from database.database import Database
-
-import numpy as np
 
 
 class CumulativeVolumeDeltaBase(Indicator):
@@ -38,14 +33,14 @@ class CumulativeVolumeDeltaBase(Indicator):
         @return: A new instance of the indicator
         """
         if base_type == Indicator.BASE_TIMEFRAME:
-            from strategy.indicator.cumulativevolumedelta import CumulativeVolumeDelta
-            return CumulativeVolumeDelta(timeframe, **kwargs)
+            from strategy.indicator.cumulativevolumedelta.barcvd import BarCumulativeVolumeDelta
+            return BarCumulativeVolumeDelta(timeframe, **kwargs)
         elif base_type == Indicator.BASE_TICKBAR:
-            from strategy.indicator.cumulativevolumedelta import TickBarCumulativeVolumeDelta
-            return TickBarCumulativeVolumeDelta(timeframe, **kwargs)
+            from strategy.indicator.cumulativevolumedelta.barcvd import BarCumulativeVolumeDelta
+            return BarCumulativeVolumeDelta(timeframe, **kwargs)
         elif base_type == Indicator.BASE_TICK:
-            from strategy.indicator.cumulativevolumedelta import TickCumulativeVolumeDelta
-            return TickCumulativeVolumeDelta(timeframe, **kwargs)
+            from strategy.indicator.cumulativevolumedelta.cvd import CumulativeVolumeDelta
+            return CumulativeVolumeDelta(timeframe, **kwargs)
 
         return None
 

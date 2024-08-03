@@ -169,8 +169,11 @@ class TimeframeStrategyTrader(StrategyTraderBase):
     def generate_bars_from_ticks(self, timestamp: float):
         """
         Generate the news candles from ticks.
+        @return Number of new generated bars (does not count current non-closed bar).
         @note Thread-safe method.
         """
+        num_bars = 0
+
         with self._mutex:
             last_ticks = self.instrument.detach_ticks()
 
@@ -185,6 +188,7 @@ class TimeframeStrategyTrader(StrategyTraderBase):
 
                     # last OHLC close
                     analyser._last_closed = True
+                    num_bars = len(generated)
 
                 # with the non consolidated
                 analyser.add_bar(copy.copy(analyser.bar_generator.current), analyser.depth)
@@ -194,13 +198,19 @@ class TimeframeStrategyTrader(StrategyTraderBase):
                 self.prev_price = self.last_price
                 self.last_price = last_ticks[-1][3]  # last or mid (last_ticks[-1][1] + last_ticks[-1][2]) * 0.5
 
-        self._last_ticks = last_ticks
+            # keep for computing some ticks based indicators
+            self._last_ticks = last_ticks
+
+        return num_bars
 
     def generate_bars_from_candles(self, timestamp: float):
         """
         Generate the news candles from the same base of candle.
+        @return Number of new generated bars (does not count current non-closed bar).
         @note Thread-safe method.
         """
+        num_bars = 0
+
         with self._mutex:
             last_candles = self.instrument.detach_candles()
 
@@ -215,6 +225,7 @@ class TimeframeStrategyTrader(StrategyTraderBase):
 
                     # last OHLC close
                     analyser._last_closed = True
+                    num_bars = len(generated)
 
                 # with the non consolidated
                 analyser.add_bars(copy.copy(analyser.bar_generator.current), analyser.depth)
@@ -224,7 +235,10 @@ class TimeframeStrategyTrader(StrategyTraderBase):
                 self.prev_price = self.last_price
                 self.last_price = last_candles[-1].close  # last mid close
 
-        self._last_candles = last_candles
+            # keep for computing some ticks based indicators
+            self._last_candles = last_candles
+
+        return num_bars
 
     def bootstrap(self, timestamp: float):
         """Default implementation compute any analysers and any contexts"""

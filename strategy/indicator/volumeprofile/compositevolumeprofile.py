@@ -98,7 +98,7 @@ class CompositeVolumeProfile(object):
         poc_vol = 0.0
 
         base_index = max(-self._length, -len(volume_profile.vps))
-        base_timestamp = volume_profile.vps[base_index]
+        base_timestamp = volume_profile.vps[base_index].timestamp
 
         if self._timeframe > 0:
             # adjust for fixe timeframe

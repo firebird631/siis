@@ -25,7 +25,7 @@ class VWAPBaseIndicator(Indicator):
     """
 
     __slots__ = '_days', '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', \
-        '_tops', '_bottoms', '_last_top', '_last_bottom', '_session_offset', '_volumes_dev', '_dev2'
+        '_tops', '_bottoms', '_session_offset', '_volumes_dev', '_dev2'
 
     @classmethod
     def indicator_type(cls):
@@ -38,14 +38,14 @@ class VWAPBaseIndicator(Indicator):
     @classmethod
     def builder(cls, base_type: int, timeframe: float, **kwargs):
         if base_type == Indicator.BASE_TIMEFRAME:
+            from strategy.indicator.vwap.barvwap import BarVWAPIndicator
+            return BarVWAPIndicator(timeframe, **kwargs)
+        elif base_type == Indicator.BASE_TICKBAR:
+            from strategy.indicator.vwap.barvwap import BarVWAPIndicator
+            return BarVWAPIndicator(timeframe, **kwargs)
+        elif base_type == Indicator.BASE_TICK:
             from strategy.indicator.vwap.vwap import VWAPIndicator
             return VWAPIndicator(timeframe, **kwargs)
-        elif base_type == Indicator.BASE_TICKBAR:
-            from strategy.indicator.vwap.tickbarvwap import TickBarVWAPIndicator
-            return TickBarVWAPIndicator(timeframe, **kwargs)
-        elif base_type == Indicator.BASE_TICK:
-            from strategy.indicator.vwap.tickvwap import TickVWAPIndicator
-            return TickVWAPIndicator(timeframe, **kwargs)
 
         return None
 
@@ -58,8 +58,6 @@ class VWAPBaseIndicator(Indicator):
 
         self._prev = 0.0
         self._last = 0.0
-        self._last_top = 0.0
-        self._last_bottom = 0.0
 
         self._session_offset = 0.0
 
@@ -173,8 +171,6 @@ class VWAPBaseIndicator(Indicator):
                     self._bottoms.pop(0)
 
         self._last = self._vwaps[-1]
-        self._last_top = self._tops[-1]
-        self._last_bottom = self._bottoms[-1]
         self._last_timestamp = timestamp
 
         return self._vwaps

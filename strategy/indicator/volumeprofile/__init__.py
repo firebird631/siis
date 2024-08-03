@@ -4,6 +4,5 @@
 # Volume Profile Package
 
 from .volumeprofile import VolumeProfileIndicator
-from .tickbarvolumeprofile import TickBarVolumeProfileIndicator
-from .tickvolumeprofile import TickVolumeProfileIndicator
+from .barvolumeprofile import BarVolumeProfileIndicator
 from .compositevolumeprofile import CompositeVolumeProfile

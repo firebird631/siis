@@ -1,12 +1,12 @@
 # @date 2020-06-30
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2020 Dream Overflow
-# Volume Weighted Average indicator
+# Per tick Volume Weighted Average indicator
 
 import math
 
 from strategy.indicator.indicator import Indicator
-from instrument.instrument import Instrument
+from instrument.instrument import Instrument, TickType
 from strategy.indicator.vwap.vwapbase import VWAPBaseIndicator
 
 
@@ -16,7 +16,7 @@ from strategy.indicator.vwap.vwapbase import VWAPBaseIndicator
 
 class VWAPIndicator(VWAPBaseIndicator):
     """
-    Volume Weighted Average indicator based on timeframe.
+    Per tick Volume Weighted Average indicator based on timeframe.
     It's a special indicator because it need to use an intraday timeframe.
 
     @todo Support of evening session and overnight session.
@@ -26,15 +26,11 @@ class VWAPIndicator(VWAPBaseIndicator):
     """
 
     __slots__ = '_days', '_prev', '_last', '_vwaps', '_open_timestamp', '_pvs', '_volumes', '_size', \
-                '_tops', '_bottoms', '_last_top', '_last_bottom', '_session_offset', '_volumes_dev', '_dev2'
+                '_tops', '_bottoms', '_session_offset', '_volumes_dev', '_dev2'
 
     @classmethod
-    def indicator_type(cls):
-        return Indicator.TYPE_AVERAGE_PRICE
-
-    @classmethod
-    def indicator_class(cls):
-        return Indicator.CLS_INDEX
+    def indicator_base(cls):
+        return Indicator.BASE_TICK
 
     def __init__(self, timeframe:float, days=2):
         super().__init__("vwap", timeframe, days)
@@ -45,8 +41,6 @@ class VWAPIndicator(VWAPBaseIndicator):
 
         self._prev = 0.0
         self._last = 0.0
-        self._last_top = 0.0
-        self._last_bottom = 0.0
 
         self._session_offset = 0.0
 
@@ -86,14 +80,6 @@ class VWAPIndicator(VWAPBaseIndicator):
         return self._last
 
     @property
-    def last_top(self, scale=1.0):
-        return self._last_top * scale
-
-    @property
-    def last_bottom(self, scale=1.0):
-        return self._last_bottom * scale
-
-    @property
     def vwaps(self):
         return self._vwaps
 
@@ -111,57 +97,33 @@ class VWAPIndicator(VWAPBaseIndicator):
         """
         return self._tops
 
-    def compute(self, timestamp, timestamps, highs, lows, closes, volumes):
+    def generate(self, tick: TickType, finalize: bool):
         self._prev = self._last
 
-        # only update at close, no overwrite
-        delta = min(int((timestamp - self._last_timestamp) / self._timeframe) + 1, len(timestamps))
+        if tick[0] >= self._open_timestamp + Instrument.TF_1D:
+            # new session (1 day based with offset)
+            self._pvs = 0.0
+            self._volumes = 0.0
+            self._volumes_dev = 0.0
+            self._dev2 = 0.0
+            self._open_timestamp = Instrument.basetime(Instrument.TF_1D, tick[0]) + self._session_offset
 
-        # base index
-        num = len(timestamps)
+        # cumulative
+        self._pvs += tick[3] * tick[4]  # price * volume
+        self._volumes += tick[4]
 
-        # @todo check because if not computed at close... or will not compute complete bar or will overwrite volumes
+        vwap = self._pvs / self._volumes
 
-        for b in range(num-delta, num):
-            # for any new candles
-            if timestamps[b] > self._last_timestamp:
-                if timestamps[b] >= self._open_timestamp + Instrument.TF_1D:
-                    # new session (1 day based with offset)
-                    self._pvs = 0.0
-                    self._volumes = 0.0
-                    self._volumes_dev = 0.0
-                    self._dev2 = 0.0
-                    self._open_timestamp = Instrument.basetime(Instrument.TF_1D, timestamps[b]) + self._session_offset
+        self._last = vwap
 
-                # avg price based on HLC3
-                hlc3 = (highs[b] + lows[b] + closes[b]) / 3
+        # std dev
+        self._volumes_dev += (tick[3] * tick[3]) * tick[4]  # price^2 * volume
 
-                # cumulative
-                self._pvs += hlc3 * volumes[b]
-                self._volumes += volumes[b]              
+        self._dev2 = max(self._volumes_dev / self._volumes - vwap * vwap, self._dev2)
+        dev = math.sqrt(self._dev2)
 
-                vwap = self._pvs / self._volumes
+        self._last = vwap
 
-                self._vwaps.append(vwap)
+        self._last_timestamp = tick[0]
 
-                # std dev
-                self._volumes_dev += hlc3 * hlc3 * volumes[b]
-
-                self._dev2 = max(self._volumes_dev / self._volumes - vwap * vwap, self._dev2)
-                dev = math.sqrt(self._dev2)
-
-                self._tops.append(vwap + dev)
-                self._bottoms.append(vwap - dev)
-
-                # constant fixed size
-                if len(self._vwaps) > self._size:
-                    self._vwaps.pop(0)
-                    self._tops.pop(0)
-                    self._bottoms.pop(0)
-
-        self._last = self._vwaps[-1]
-        self._last_top = self._tops[-1]
-        self._last_bottom = self._bottoms[-1]
-        self._last_timestamp = timestamp
-
-        return self._vwaps
+        return vwap

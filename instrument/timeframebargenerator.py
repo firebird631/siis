@@ -11,7 +11,7 @@ from instrument.instrument import Candle
 
 class TimeframeBarGenerator(object):
 
-    __slots__ = '_from_tf', '_to_tf', '_current_bar', '_last_timestamp', '_last_consumed'
+    __slots__ = '_from_tf', '_to_tf', '_current_bar', '_last_timestamp', '_last_consumed', '_indicators'
 
     def __init__(self, from_tf: float, to_tf: float):
         """
@@ -25,6 +25,8 @@ class TimeframeBarGenerator(object):
         self._current_bar = None
         self._last_timestamp = 0
         self._last_consumed = 0
+
+        self._indicators = []   # attached indicator the must be generated at the same time
 
     @property
     def current(self):
@@ -53,6 +55,10 @@ class TimeframeBarGenerator(object):
     def to_tf(self):
         return self._to_tf
 
+    def attach_indicator(self, indicator):
+        if indicator:
+            self._indicators.append(indicator)
+
     def generate_from_candles(self, from_candles, ignore_non_ended=True):
         """
         Generate as many higher candles as possible from the array of candles given in parameters.
@@ -65,6 +71,11 @@ class TimeframeBarGenerator(object):
             to_candle = self.update_from_candle(from_candle, ignore_non_ended)
             if to_candle:
                 to_candles.append(to_candle)
+
+            # alongside generate tick based indicator, close them only if a new bar
+            if self._indicators:
+                for indicator in self._indicators:
+                    indicator.generate(from_candle, finalize=to_candle is not None)
 
             self._last_consumed += 1
 
@@ -79,8 +90,14 @@ class TimeframeBarGenerator(object):
 
         for from_tick in from_ticks:
             to_candle = self.update_from_tick(from_tick)
+
             if to_candle:
                 to_candles.append(to_candle)
+
+            # alongside generate tick based indicator, close them only if a new bar
+            if self._indicators:
+                for indicator in self._indicators:
+                    indicator.generate(from_tick, finalize=to_candle is not None)
 
             self._last_consumed += 1
 

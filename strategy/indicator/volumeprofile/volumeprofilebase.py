@@ -536,14 +536,14 @@ class VolumeProfileBaseIndicator(Indicator):
     @classmethod
     def builder(cls, base_type: int, timeframe: float, **kwargs):
         if base_type == Indicator.BASE_TIMEFRAME:
+            from strategy.indicator.volumeprofile.barvolumeprofile import BarVolumeProfileIndicator
+            return BarVolumeProfileIndicator(timeframe, **kwargs)
+        elif base_type == Indicator.BASE_TICKBAR:
+            from strategy.indicator.volumeprofile.barvolumeprofile import BarVolumeProfileIndicator
+            return BarVolumeProfileIndicator(timeframe, **kwargs)
+        elif base_type == Indicator.BASE_TICK:
             from strategy.indicator.volumeprofile.volumeprofile import VolumeProfileIndicator
             return VolumeProfileIndicator(timeframe, **kwargs)
-        elif base_type == Indicator.BASE_TICKBAR:
-            from strategy.indicator.volumeprofile.tickbarvolumeprofile import TickBarVolumeProfileIndicator
-            return TickBarVolumeProfileIndicator(timeframe, **kwargs)
-        elif base_type == Indicator.BASE_TICK:
-            from strategy.indicator.volumeprofile.tickvolumeprofile import TickVolumeProfileIndicator
-            return TickVolumeProfileIndicator(timeframe, **kwargs)
 
         return None
 

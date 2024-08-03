@@ -158,8 +158,11 @@ class BarStrategyTrader(StrategyTraderBase):
         """
         Compute range-bar using the last received ticks.
         @param timestamp:
-        @return:
+        @return Number of new generated bars (does not count current non-closed bar).
+        @note Thread-safe method.
         """
+        num_bars = 0
+
         # update data at tick level
         with self._mutex:
             # update at tick or trade
@@ -175,6 +178,7 @@ class BarStrategyTrader(StrategyTraderBase):
 
                     # last tick bar close
                     analyser._last_closed = True
+                    num_bars = len(generated)
 
                 # with the non consolidated
                 analyser.add_bar(copy.copy(analyser.bar_generator.current), analyser.depth)
@@ -187,6 +191,8 @@ class BarStrategyTrader(StrategyTraderBase):
 
             # keep for computing some ticks based indicators
             self._last_ticks = last_ticks
+
+        return num_bars
 
     def bootstrap(self, timestamp: float):
         """Default implementation compute any analysers and any contexts"""

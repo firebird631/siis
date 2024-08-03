@@ -4,5 +4,4 @@
 # VWAP Package
 
 from .vwap import VWAPIndicator
-from .tickbarvwap import TickBarVWAPIndicator
-from .tickvwap import TickVWAPIndicator
+from .barvwap import BarVWAPIndicator
