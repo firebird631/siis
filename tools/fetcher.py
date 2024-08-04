@@ -7,8 +7,10 @@ import sys
 import time
 
 from datetime import datetime
+from typing import List
 
 from common.utils import UTC, TIMEFRAME_FROM_STR_MAP
+from watcher.event import BaseEvent
 
 from watcher.service import WatcherService
 from instrument.instrument import Instrument
@@ -132,6 +134,33 @@ def terminate(code=0):
     sys.exit(code)
 
 
+def fetch_events(fetcher, events: List[str], from_date, to_date):
+    if "economic" in events:
+        countries = []
+        currencies = []
+        importance = []
+
+        filters = []
+
+        for event in events:
+            if event.startswith("country:"):
+                countries.append(event.split(':')[1])
+            elif event.startswith("currency:"):
+                currencies.append(event.split(':')[1])
+            elif event.startswith("importance:"):
+                importance.append(event.split(':')[1])
+
+        if countries:
+            filters.append(('country', countries))
+        if currencies:
+            filters.append(('currency', currencies))
+        if importance:
+            filters.append(('importance', importance))
+
+        Terminal.inst().info("Fetch for economic events...")
+        fetcher.fetch_events(BaseEvent.EVENT_TYPE_ECONOMIC, from_date, to_date, filters)
+
+
 def do_fetcher(options):
     Terminal.inst().info("Starting SIIS fetcher using %s identity..." % options['identity'])
     Terminal.inst().flush()
@@ -210,7 +239,7 @@ def do_fetcher(options):
     if fetcher.connected:
         logger.info("Fetcher authenticated to %s, trying to collect data..." % fetcher.name)
 
-        markets = options['market'].replace(' ', '').split(',')
+        markets = options['market'].replace(' ', '').split(',') if options.get('market') else []
         target_markets = {}
 
         if options.get('target-market'):
@@ -227,6 +256,14 @@ def do_fetcher(options):
         markets = fetcher.matching_symbols_set(markets, fetcher.available_instruments())
 
         try:
+            if not markets and 'event' in options.get('spec').split(','):
+                from_date = options.get('from')
+                to_date = options.get('to')
+                spec = options.get('spec')
+
+                events = [x for x in spec.split(',') if x != "event"]
+                fetch_events(fetcher, events, from_date, to_date)
+
             for market_id in markets:
                 # map if defined
                 target_market_id = target_markets.get(market_id)

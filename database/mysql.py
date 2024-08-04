@@ -207,6 +207,29 @@ class MySql(Database):
 
         self._db.commit()
 
+    def setup_event_sql(self):
+        cursor = self._db.cursor()
+
+        # bar table
+        cursor.execute("""
+             CREATE TABLE IF NOT EXISTS economic_event(
+                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                 code VARCHAR(32) NOT NULL, 
+                 date VARCHAR(16) NOT NULL,
+                 country VARCHAR(32) NOT NULL,
+                 currency VARCHAR(4) NOT NULL,
+                 title VARCHAR(128) NOT NULL,
+                 reference VARCHAR(16) NOT NULL,
+                 level SMALLINT NOT NULL,
+                 previous VARCHAR(12) NOT NULL,
+                 actual VARCHAR(12) NOT NULL,
+                 forecast VARCHAR(12) NOT NULL,
+                 actual_meaning SMALLINT NOT NULL,
+                 previous_meaning SMALLINT NOT NULL,
+                 UNIQUE(code, date, country, currency)) ENGINE=InnoDB""")
+
+        self._db.commit()
+
     def create_ohlc_streamer(self, broker_id, market_id, timeframe, from_date, to_date, buffer_size=8192):
         """
         Create a new tick streamer.
@@ -1151,7 +1174,53 @@ class MySql(Database):
                     self._pending_range_bar_select = mks + self._pending_range_bar_select
 
     def process_volume_profile(self):
+        # @todo
         pass
+
+    def process_economic_events(self):
+        #
+        # insert economic event
+        #
+
+        if self._pending_economic_event_insert and (
+                self._pending_economic_event_select or (len(self._pending_economic_event_insert) >= 500) or (
+                time.time() - self._last_economic_event_flush >= 60)):
+
+            with self._mutex:
+                evt = self._pending_economic_event_insert
+                self._pending_economic_event_insert = []
+
+            if evt:
+                try:
+                    cursor = self._db.cursor()
+
+                    elts = []
+                    data = set()
+
+                    for ev in evt:
+                        if (ev.code, ev.date, ev.country, ev.currency) not in data:
+                            elts.append("('%s', '%s', '%s', '%s', '%s', %i, %i, '%s', '%s', '%s', %i, %i)" % (
+                                ev.code, ev.date, ev.country, ev.currency, ev.title.replace("'", "''"), ev.reference, ev.level, ev.previous, ev.actual, ev.forecast, ev.actual_meaning, ev.previous_meaning))
+                            data.add((ev.code, ev.date, ev.country, ev.currency))
+
+                    query = ' '.join((
+                                     "INSERT INTO economic_event(code, date, country, currency, title, reference, level, previous, actual, forecast, actual_meaning, previous_meaning) VALUES",
+                                     ','.join(elts),
+                                     "ON DUPLICATE KEY UPDATE title = VALUES(title), reference = VALUES(reference), level = VALUES(level), previous = VALUES(previous), actual = VALUES(actual), forecast = VALUES(forecast), actual_meaning = VALUES(actual_meaning), previous_meaning = VALUES(previous_meaning)"))
+
+                    cursor.execute(query)
+
+                    self._db.commit()
+                    cursor = None
+                except Exception as e:
+                    self.on_error(e)
+
+                    # retry the next time
+                    with self._mutex:
+                        self._pending_economic_event_insert = evt + self._pending_economic_event_insert
+
+            self._last_economic_event_flush = time.time()
+
 
     #
     # states

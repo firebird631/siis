@@ -112,6 +112,9 @@ class StrategyService(Service):
         if self._to_date and self._to_date > today:
             self._to_date = today
 
+        if not self._to_date:
+            self._to_date = today
+
         self._backtest = False
         self._backtesting_play = True
         self._begin_ts = self._from_date.timestamp() if self._from_date else 0

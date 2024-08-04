@@ -32,6 +32,8 @@ GENERATED_TF = [60, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60
 BAR_STORAGE_DELAY = 0.05  # 50ms
 MAX_PENDING_BARS = 10000
 
+# @todo volume profile generation
+
 
 # class Rebuilder(Tool):
 #     """

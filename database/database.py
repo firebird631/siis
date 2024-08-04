@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union, List
 
 import time
 import threading
@@ -15,6 +15,7 @@ from datetime import datetime
 from strategy.indicator.models import VolumeProfile
 
 from config import utils
+from watcher.event import EconomicEvent
 
 from .tickstorage import TickStorage, TickStreamer, FirstTickFinder, LastTickFinder
 from .ohlcstorage import OhlcStreamer
@@ -183,15 +184,20 @@ class Database(object):
 
         self._pending_user_trader_insert = []
         self._pending_user_trader_select = []
+
         self._pending_user_closed_trade_insert = []
 
         self._pending_liquidation_insert = []
+
+        self._pending_economic_event_select = []
+        self._pending_economic_event_insert = []
 
         self._last_ohlc_flush = 0
         self._last_ohlc_clean = time.time()
 
         self._last_range_bar_flush = 0
         self._last_vp_flush = 0
+        self._last_economic_event_flush = 0
 
         self._markets_path = None   # path where data are stored into the file-system
 
@@ -232,6 +238,8 @@ class Database(object):
         self.setup_range_bar_sql()
         self.setup_volume_profile_sql()
 
+        self.setup_event_sql()
+
         # keep data path for usage in per market DB location
         self._markets_path = pathlib.Path(options['markets-path'])
 
@@ -268,12 +276,15 @@ class Database(object):
                    self._pending_range_bar_insert or
                    self._pending_volume_profile_insert or
                    self._pending_asset_insert or
-                   self._pending_market_info_insert):
+                   self._pending_market_info_insert or
+                   self._pending_liquidation_insert or
+                   self._pending_economic_event_insert):
 
                 # force to flush the remaining
                 self._last_ohlc_flush = 0
                 self._last_range_bar_flush = 0
                 self._last_vp_flush = 0
+                self._last_economic_event_flush = 0
 
                 self.unlock()
 
@@ -328,6 +339,9 @@ class Database(object):
         pass
 
     def setup_volume_profile_sql(self):
+        pass
+
+    def setup_event_sql(self):
         pass
 
     #
@@ -554,6 +568,20 @@ class Database(object):
 
             with self._condition:
                 self._condition.notify()
+
+    #
+    # economic event
+    #
+
+    def store_economic_event(self, data: Union[EconomicEvent, List[EconomicEvent]]):
+        with self._mutex:
+            if isinstance(data, list):
+                self._pending_economic_event_insert.extend(data)
+            else:
+                self._pending_economic_event_insert.append(data)
+
+        with self._condition:
+            self._condition.notify()
 
     #
     # async loads
@@ -951,6 +979,7 @@ class Database(object):
                 self.process_ohlc()
                 self.process_range_bar()
                 self.process_volume_profile()
+                self.process_economic_events()
 
             self.process_tick()
             # self.process_quote()
@@ -968,6 +997,9 @@ class Database(object):
         pass
 
     def process_volume_profile(self):
+        pass
+
+    def process_economic_events(self):
         pass
 
     def process_tick(self):

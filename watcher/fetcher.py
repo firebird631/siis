@@ -6,7 +6,7 @@
 import time
 
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 
 from common.utils import matching_symbols_set, timeframe_to_str, UTC
 from terminal.terminal import Terminal
@@ -89,6 +89,10 @@ class Fetcher(object):
     @property
     def connected(self) -> bool:
         return False
+
+    #
+    # fetcher and helpers
+    #
 
     def fetch_and_generate(self, market_id: str, timeframe: int,
                            from_date: Optional[datetime] = None, to_date: Optional[datetime] = None, n_last: int = 1000,
@@ -470,3 +474,19 @@ class Fetcher(object):
         @return list of dict or None if error
         """
         return None
+
+    #
+    # fetch events
+    #
+
+    def fetch_events(self, event_type: int, from_date: Optional[datetime], to_date: Optional[datetime],
+                     filters: Optional[List]):
+        """
+        Retrieve the events from the source (economic calendar event...)
+        @param event_type: EVENT_TYPE_*
+        @param from_date:
+        @param to_date:
+        @param filters:
+        @return:
+        """
+        pass

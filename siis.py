@@ -340,7 +340,7 @@ def application(argv):
 
     # @todo merge as Tool model
     if options.get('tool') == "fetcher":
-        if options.get('market') and options.get('broker'):
+        if options.get('broker') and (options.get('market') or options.get('spec')):
             from tools.fetcher import do_fetcher
             do_fetcher(options)
         else:

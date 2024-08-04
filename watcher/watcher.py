@@ -53,7 +53,8 @@ class Watcher(Runnable):
     WATCHER_UNDEFINED = 0
     WATCHER_PRICE_AND_VOLUME = 1
     WATCHER_BUY_SELL_SIGNAL = 2
-    WATCHER_ALL = 1 | 2
+    WATCHER_EVENTS = 4
+    WATCHER_ALL = 1 | 2 | 4
 
     DEFAULT_PREFETCH_SIZE = 100  # by default prefetch 100 OHLCs for each stored timeframe
 
@@ -168,7 +169,7 @@ class Watcher(Runnable):
     @property
     def has_prices_and_volumes(self) -> bool:
         """
-        This watchers looks for price and volumes data.
+        These watchers looks for price and volumes data.
         """
         return self._watcher_type & Watcher.WATCHER_PRICE_AND_VOLUME == Watcher.WATCHER_PRICE_AND_VOLUME
 
@@ -178,6 +179,13 @@ class Watcher(Runnable):
         This watcher looks for buy/sell signals data.
         """
         return self._watcher_type & Watcher.WATCHER_BUY_SELL_SIGNAL == Watcher.WATCHER_BUY_SELL_SIGNAL
+
+    @property
+    def has_event_signals(self) -> bool:
+        """
+        This watcher looks for event signals data.
+        """
+        return self._watcher_type & Watcher.WATCHER_EVENTS == Watcher.WATCHER_EVENTS
 
     def connect(self):
         pass

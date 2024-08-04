@@ -1,0 +1,6 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.dukascopy.watcher.DukascopyWatcher",
+    "symbols": [],
+    "__comment": "Only market data with a 1h delay"
+}

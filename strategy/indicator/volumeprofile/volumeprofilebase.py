@@ -20,7 +20,6 @@ import logging
 logger = logging.getLogger('siis.strategy')
 
 
-
 class BidAskLinearScaleArray(object):
     """
     Dynamic array with bid/ask at price. Each bin have a width of sensibility parameter.
@@ -1061,27 +1060,3 @@ class LogVolumeProfileBaseIndicator(VolumeProfileBaseIndicator):
 
     def __init__(self, name: str, timeframe: float, length: int = 10, sensibility: int = 10, volume_area: float = 70):
         super().__init__(name, timeframe)
-
-    def bin_lookup(self, price):
-        """Works for logarithmic bins"""
-        # idx = int(np.log(price) * self._sensibility)
-
-        # if 0 <= idx < len(self._bins):
-        #     return self._bins[idx]
-        # else:
-        #     return None
-
-        if price < self._bins[0]:
-            # underflow
-            return None
-
-        prev = 0.0
-
-        for b in self._bins:
-            if b > price >= prev:
-                return prev
-
-            prev = b
-
-        # last bin or overflow
-        return self._bins[-1]

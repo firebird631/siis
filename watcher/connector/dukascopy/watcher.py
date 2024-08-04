@@ -1,7 +1,7 @@
 # @date 2023-08-19
 # @author Frederic Scherma, All rights reserved without prejudices.
 # @license Copyright (c) 2023 Dream Overflow
-# ig.com watcher implementation
+# dukascopy.com watcher implementation
 
 import copy
 import json
@@ -27,7 +27,7 @@ from common.utils import decimal_place, UTC
 
 import logging
 logger = logging.getLogger('siis.watcher.dukascopy')
-exec_logger = logging.getLogger('siis.exec.dukascopy.ig')
+exec_logger = logging.getLogger('siis.exec.dukascopy')
 error_logger = logging.getLogger('siis.error.watcher.dukascopy')
 traceback_logger = logging.getLogger('siis.traceback.watcher.dukascopy')
 

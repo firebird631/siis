@@ -34,5 +34,8 @@
     },
     "dukascopy.com": {
         "classpath": "watcher.connector.dukascopy.fetcher.DukascopyFetcher"
+    },
+    "dailyfx.com": {
+        "classpath": "watcher.connector.dailyfx.fetcher.DailyFxFetcher"
     }
 }

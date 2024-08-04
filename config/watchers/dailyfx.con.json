@@ -1,0 +1,6 @@
+{
+    "status": "load",
+    "classpath": "watcher.connector.dailyfx.watcher.DailyFxWatcher",
+    "symbols": [],
+    "__comment": "Only for economic events"
+}
