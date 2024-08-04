@@ -3,11 +3,19 @@
 # @license Copyright (c) 2018 Dream Overflow
 # Base service object with receiver.
 
-class BaseService(object):
+from abc import ABC, abstractmethod
+
+
+class BaseService(ABC):
+	"""
+	Base service model. For synchronous or asynchronous services.
+	@see Service
+	"""
 
 	def __init__(self, name: str):
 		self._name = name
 
+	@abstractmethod
 	def receiver(self, signal):
 		pass
 

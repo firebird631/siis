@@ -13,7 +13,7 @@ from terminal.terminal import Terminal
 
 class Service(BaseService):
     """
-    Base class for any service.
+    Base class for any service that need asynchronous behaviors.
     """
 
     def __init__(self, name: str, options: dict):

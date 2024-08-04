@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from abc import ABC
 from typing import TYPE_CHECKING, Optional, Union, Tuple
 
 if TYPE_CHECKING:
@@ -24,7 +25,7 @@ error_logger = logging.getLogger('siis.error.strategy.strategytradercontext')
 traceback_logger = logging.getLogger('siis.traceback.strategy.strategytradercontext')
 
 
-class StrategyTraderContextBase(object):
+class StrategyTraderContextBase(ABC):
     """
     Base model for any signal/trade context.
 
@@ -61,6 +62,10 @@ class StrategyTraderContextBase(object):
         'enabled': MODE_TRADE,
         'trade': MODE_TRADE
     }
+
+    @classmethod
+    def type_name(cls) -> str:
+        return ""
 
     def __init__(self):
         pass

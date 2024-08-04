@@ -24,23 +24,23 @@ class CumulativeVolumeDeltaBase(Indicator):
         return Indicator.CLS_CUMULATIVE
 
     @classmethod
-    def builder(cls, base_type: int, timeframe: float, **kwargs):
+    def builder(cls, base_type: int, timeframe: float, *args):
         """
         Default class builder. Base type use to distinct the type of instance (tick, tickbar, timeframe...)
         @param base_type: One of BASE_TIMEFRAME, BASE_TICK, BASE_TICKBAR
         @param timeframe: Timeframe in second or 0 if none.
-        @param kwargs: Args given to indicator __init__
+        @param args: Args given to indicator __init__
         @return: A new instance of the indicator
         """
         if base_type == Indicator.BASE_TIMEFRAME:
             from strategy.indicator.cumulativevolumedelta.barcvd import BarCumulativeVolumeDelta
-            return BarCumulativeVolumeDelta(timeframe, **kwargs)
+            return BarCumulativeVolumeDelta(timeframe, *args)
         elif base_type == Indicator.BASE_TICKBAR:
             from strategy.indicator.cumulativevolumedelta.barcvd import BarCumulativeVolumeDelta
-            return BarCumulativeVolumeDelta(timeframe, **kwargs)
+            return BarCumulativeVolumeDelta(timeframe, *args)
         elif base_type == Indicator.BASE_TICK:
             from strategy.indicator.cumulativevolumedelta.cvd import CumulativeVolumeDelta
-            return CumulativeVolumeDelta(timeframe, **kwargs)
+            return CumulativeVolumeDelta(timeframe, *args)
 
         return None
 

@@ -210,10 +210,18 @@ Sum order :
 - Gérer la partie locked sur le paper trader en mode asset
     - ne pas tout gérer en free, peu important car ça n'empêche pas de fonctionner
 
+- rajouter les type_name sur les context et simplifier pour les register
+
 
 #########
 # Bonus #
 #########
+
+- avoir une registry pour les commandes, surtout pour les command Trader et Strategy.
+    - il y en a beaucoup
+    - ça pourrait être plus souple et dynamique (ajout de custom command, même en dynamique)
+    - réduire la taille du trader.py et strategy.py au passage
+    - c'est un must to have car au final l'essentiel est là, c'est surtout en terme de design et taille des fichiers
 
 - tool trainer :: run doit override les parameters markets specifics si presents
 

@@ -291,28 +291,28 @@ class StrategyTraderBase(object):
     # strategy trade context
     #
 
-    def register_context(self, type_name: str, class_model: Any, default: bool = False):
+    def register_context(self, class_model: Any, default: bool = False):
         """Declare a strategy trader context model class with its unique type name"""
         if not issubclass(class_model, StrategyTraderContext):
             error_logger.error("Trader context must be subclass of StrategyTraderContext")
             return
 
-        if type_name and class_model:
-            self._trade_contexts_registry[type_name] = class_model
+        if class_model and class_model.type_name():
+            self._trade_contexts_registry[class_model.type_name()] = class_model
             if default:
                 self._default_trader_context_class = class_model
 
-    def unregister_context(self, name: str):
+    def unregister_context(self, type_name: str):
         """
         Each trade context model must be registered. If necessary it can be unregistered.
-        @param name:
+        @param type_name:
         """
-        if name in self._trade_contexts_registry:
-            ctx_clazz = self._trade_contexts_registry[name]
+        if type_name in self._trade_contexts_registry:
+            ctx_clazz = self._trade_contexts_registry[type_name]
             if ctx_clazz == self._default_trader_context_class:
                 self._default_trader_context_class = None
 
-            del self._trade_contexts_registry[name]
+            del self._trade_contexts_registry[type_name]
 
     def set_default_trader_context(self, model_class):
         if not issubclass(model_class, StrategyTraderContext):
@@ -447,10 +447,10 @@ class StrategyTraderBase(object):
     # analysers
     #
 
-    def register_analyser(self, type_name: str, class_model: Any):
+    def register_analyser(self, class_model: Any):
         """Declare an analyser model class with its unique type name"""
-        if type_name and class_model:
-            self._analysers_registry[type_name] = class_model
+        if class_model and class_model.type_name():
+            self._analysers_registry[class_model.type_name()] = class_model
 
     def has_analyser(self, name: str) -> bool:
         """Does contain an analyser for name"""

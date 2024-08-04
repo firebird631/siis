@@ -14,7 +14,6 @@ class VolumeProfile:
     With extra levels of interest : peaks, valleys.
     @note VA, peaks and valleys are not guarantee because they are computed by default.
     """
-
     timestamp: float     # base timestamp
     timeframe: float     # relate timeframe or 0
 

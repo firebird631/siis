@@ -65,10 +65,10 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
 
     _timeframe_bars: List[Candle]
 
-    def __init__(self, type_name: str, strategy_trader: StrategyTraderBase, timeframe: float,
+    def __init__(self, name: str, strategy_trader: StrategyTraderBase, timeframe: float,
                  depth: int, history: int, params: dict = None):
 
-        super().__init__(type_name, strategy_trader)
+        super().__init__(name, strategy_trader)
 
         params = params or {}
 

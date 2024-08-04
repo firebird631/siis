@@ -459,6 +459,23 @@ class StrategyService(Service):
         self._alerts = {}
 
     def sync(self):
+        """
+        Initial backtesting if necessary. First wait for any market data to be ready.
+        Then start a thread. This thread will first bootstrap/preprocess with history if necessary (timeless iteration),
+        then after that it process the backtest until ending time (time iteration).
+
+        The abort state stop any loop immediately.
+
+        @note Trader service is called per loop during only the time iteration of the backtest. That's mean the
+        instanced paper trader has no dedicated thread in that case (different from a live mode). And the ping/pong
+        message are only processing during the (time iteration) where there trader update are processed.
+
+        @note Strategy workers are only instanced if there is at least 4 instruments to performs. Else the processing
+        in synchronous.
+
+        @note During live mode the preparing/bootstrapping steps are done before processing of the strategy if
+        necessary and in the real time iteration. It is different because in live mode we cannot stop the time.
+        """
         # start backtesting
         if self._backtesting and not self._backtest:
             go_ready = True

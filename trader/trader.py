@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from abc import abstractmethod
 from typing import TYPE_CHECKING, List, Union, Optional, Dict
 
 if TYPE_CHECKING:
@@ -391,6 +392,8 @@ class Trader(Runnable):
     def has_margin(self, market_id: str, quantity: float, price: float) -> bool:
         """
         Return True for a margin trading if the account have sufficient free margin.
+        @note This method can be overloaded. It offers a generic way for a strategy to check if an order can be created.
+        @note If quantity is invalid (0 or lesser) it also return False.
         """
         with self._mutex:
             market = self._markets.get(market_id)
@@ -404,8 +407,8 @@ class Trader(Runnable):
     def has_quantity(self, asset_name: str, quantity: float) -> bool:
         """
         Return True if a given asset has a minimum quantity.
-        @note The benefit of this method is it can be overloaded and offers a generic way for a strategy
-        to check if an order can be created
+        @note This method can be overloaded. It offers a generic way for a strategy to check if an order can be created.
+        @note If quantity is invalid (0 or lesser) it also return False.
         """
         with self._mutex:
             asset = self._assets.get(asset_name)
@@ -418,6 +421,7 @@ class Trader(Runnable):
     def get_needed_margin(self, market_id: str, quantity: float, price: float) -> float:
         """
         Return computed required margin for a particular market, quantity and price.
+        @see has_margin Similar but return the needed margin, does not perform check for availability.
         """
         with self._mutex:
             market = self._markets.get(market_id)
@@ -513,18 +517,12 @@ class Trader(Runnable):
     # global accessors
     #
 
-    def orders(self, market_id: str) -> List:
-        """
-        Get actives order for a market id.
-        @deprecated
-        """
-        return []
-
     def get_order(self, order_id: str) -> Union[Order, None]:
         """
-        Return a copy of the trader order if exists else None.
-        @param order_id:
-        @return:
+        Retrieve locally an order given its order id (O(1) lookup) and return a copy of it.
+        @param order_id: unique order identifier str
+        @return: Copy of the order or None
+        @note Locals orders dict is normally up-to-date, except if connection was loss.
         """
         with self._mutex:
             order = self._orders.get(order_id)
@@ -535,9 +533,10 @@ class Trader(Runnable):
 
     def find_order(self, ref_order_id: str) -> Union[Order, None]:
         """
-        @deprecated
+        Retrieve locally an order given its reference order id (O(n) lookup).
         @param ref_order_id: str Reference order id
-        @return: Order
+        @return: Copy of the order or None
+        @note Locals orders dict is normally up-to-date, except if connection was loss.
         """
         result = None
 
@@ -549,23 +548,25 @@ class Trader(Runnable):
 
         return result
 
+    @abstractmethod
     def market(self, market_id: str, force: bool = False) -> Union[Market, None]:
         """
-        Market data for a market id.
-        @param market_id
+        Retrieve a market given it unique (per broker) market identifier.
+        @param market_id String unique identifier.
         @param force True to force request and cache update.
-        @return Market or None
-        @note This method is no thread safe.
+        @return Market Retrieved market or None
+        @note This method is not thread safe.
+        @warning This method must be overrides to implement the force parameter behavior.
         """
         # with self._mutex:
         return self._markets.get(market_id)
 
     def asset(self, symbol: str) -> Union[Asset, None]:
         """
-        Get asset for symbol.
+        Retrieve an asset given its unique symbol.
         @param symbol str Asset name
-        @return Asset or None
-        @note This method is no thread safe.
+        @return Retrieved asset or None
+        @note This method is not thread safe.
         """
         # with self._mutex:
         return self._assets.get(symbol)

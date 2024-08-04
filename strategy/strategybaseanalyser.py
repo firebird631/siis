@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, List, Tuple, Union
 
 from strategy.mixins.generatorupdater import GeneratorUpdaterMixin
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from monitor.streamable import Streamable
 
 
-class StrategyBaseAnalyser(GeneratorUpdaterMixin):
+class StrategyBaseAnalyser(ABC, GeneratorUpdaterMixin):
     """
     Base model for strategy analyser per timeframe or any other non-temporal bar method.
     It computes different indicators (mostly oscillators) and some states.
@@ -38,7 +39,7 @@ class StrategyBaseAnalyser(GeneratorUpdaterMixin):
     depth: int
     history: int
 
-    def __init__(self, name: str,strategy_trader: StrategyTraderBase):
+    def __init__(self, name: str, strategy_trader: StrategyTraderBase):
         self._name = name
         self._strategy_trader = strategy_trader
 
@@ -154,6 +155,7 @@ class StrategyBaseAnalyser(GeneratorUpdaterMixin):
         return self._name
 
     @classmethod
+    @abstractmethod
     def type_name(cls) -> str:
         """Internal type name (mode)."""
         return ""

@@ -36,16 +36,16 @@ class VWAPBaseIndicator(Indicator):
         return Indicator.CLS_INDEX
 
     @classmethod
-    def builder(cls, base_type: int, timeframe: float, **kwargs):
+    def builder(cls, base_type: int, timeframe: float, *args):
         if base_type == Indicator.BASE_TIMEFRAME:
             from strategy.indicator.vwap.barvwap import BarVWAPIndicator
-            return BarVWAPIndicator(timeframe, **kwargs)
+            return BarVWAPIndicator(timeframe, *args)
         elif base_type == Indicator.BASE_TICKBAR:
             from strategy.indicator.vwap.barvwap import BarVWAPIndicator
-            return BarVWAPIndicator(timeframe, **kwargs)
+            return BarVWAPIndicator(timeframe, *args)
         elif base_type == Indicator.BASE_TICK:
             from strategy.indicator.vwap.vwap import VWAPIndicator
-            return VWAPIndicator(timeframe, **kwargs)
+            return VWAPIndicator(timeframe, *args)
 
         return None
 
