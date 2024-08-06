@@ -386,10 +386,15 @@ class Trainer(object):
         watchers_params = {}
         for watcher_name, watcher_config in profile_config.get('watchers', {}).items():
             watchers_params[watcher_name] = {}
-            if market_id in watcher_config['symbols']:
-                watchers_params[watcher_name]['symbols'] = [market_id]
-            else:
-                watchers_params[watcher_name]['symbols'] = []
+
+            if 'symbol' in watcher_config:
+                if market_id in watcher_config['symbols']:
+                    watchers_params[watcher_name]['symbols'] = [market_id]
+                else:
+                    watchers_params[watcher_name]['symbols'] = []
+
+            if 'filters' in watcher_config:
+                watchers_params[watcher_name]['filters'] = copy.deepcopy(watcher_config['filters'])
 
         trader_params = {'symbols': [market_id]}
 

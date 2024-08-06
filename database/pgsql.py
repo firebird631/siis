@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 
 from importlib import import_module
-from typing import Optional
+from typing import Optional, List, Tuple
 
 from common.signal import Signal
 
@@ -243,103 +243,146 @@ class PgSql(Database):
     # sync loads
     #
 
+    def get_markets_list(self, broker_id: str) -> List[Tuple[str, str, str, str]]:
+        markets_data = []
+
+        try:
+            cursor = self._db.cursor()
+            cursor.execute("""SELECT market_id, symbol, base, quote FROM market WHERE broker_id = '%s'""" % (broker_id,))
+
+            rows = cursor.fetchall()
+
+            for row in rows:
+                markets_data.append(row)
+
+        except self.psycopg2.OperationalError as e:
+            error_logger.error(e)
+        except Exception as e:
+            self.on_error(e)
+
+        return markets_data
+
     def get_last_ohlc(self, broker_id, market_id, timeframe):
-        cursor = self._db.cursor()
+        try:
+            cursor = self._db.cursor()
 
-        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp DESC LIMIT 1""" % (
-                            broker_id, market_id, timeframe))
+            cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                            WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp DESC LIMIT 1""" % (
+                                broker_id, market_id, timeframe))
 
-        row = cursor.fetchone()
+            row = cursor.fetchone()
 
-        if row:
-            timestamp = float(row[0]) * 0.001  # to float second timestamp
-            ohlc = Candle(timestamp, timeframe)
+            if row:
+                timestamp = float(row[0]) * 0.001  # to float second timestamp
+                ohlc = Candle(timestamp, timeframe)
 
-            ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+                ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-            ohlc.set_spread(float(row[5]))
-            ohlc.set_volume(float(row[6]))
+                ohlc.set_spread(float(row[5]))
+                ohlc.set_volume(float(row[6]))
 
-            if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
-                ohlc.set_consolidated(False)  # current
+                if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
+                    ohlc.set_consolidated(False)  # current
 
-            return ohlc
+                return ohlc
+
+        except self.psycopg2.OperationalError as e:
+            error_logger.error(e)
+        except Exception as e:
+            self.on_error(e)
 
         return None
 
     def get_last_ohlc_at(self, broker_id: str, market_id: str, timeframe: float, timestamp: float):
-        cursor = self._db.cursor()
+        try:
+            cursor = self._db.cursor()
 
-        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp = %s""" % (
-                            broker_id, market_id, timeframe, int(timestamp * 1000.0)))
+            cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                            WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp = %s""" % (
+                                broker_id, market_id, timeframe, int(timestamp * 1000.0)))
 
-        row = cursor.fetchone()
+            row = cursor.fetchone()
 
-        if row:
-            timestamp = float(row[0]) * 0.001  # to float second timestamp
-            ohlc = Candle(timestamp, timeframe)
+            if row:
+                timestamp = float(row[0]) * 0.001  # to float second timestamp
+                ohlc = Candle(timestamp, timeframe)
 
-            ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+                ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-            ohlc.set_spread(float(row[5]))
-            ohlc.set_volume(float(row[6]))
+                ohlc.set_spread(float(row[5]))
+                ohlc.set_volume(float(row[6]))
 
-            if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
-                ohlc.set_consolidated(False)  # current
+                if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
+                    ohlc.set_consolidated(False)  # current
 
-            return ohlc
+                return ohlc
+
+        except self.psycopg2.OperationalError as e:
+            error_logger.error(e)
+        except Exception as e:
+            self.on_error(e)
 
         return None
 
     def get_last_range_bar(self, broker_id: str, market_id: str, size: int):
-        cursor = self._db.cursor()
+        try:
+            cursor = self._db.cursor()
 
-        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar 
-                       WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp DESC LIMIT 1""" % (
-            broker_id, market_id, size))
+            cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar 
+                           WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp DESC LIMIT 1""" % (
+                broker_id, market_id, size))
 
-        row = cursor.fetchone()
+            row = cursor.fetchone()
 
-        if row:
-            timestamp = float(row[0]) * 0.001  # to float second timestamp
-            bar = RangeBar(timestamp)
+            if row:
+                timestamp = float(row[0]) * 0.001  # to float second timestamp
+                bar = RangeBar(timestamp)
 
-            bar.set_duration(float(row[1] * 0.001))  # to float second duration
-            bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+                bar.set_duration(float(row[1] * 0.001))  # to float second duration
+                bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
 
-            bar.set_volume(float(row[6]))
+                bar.set_volume(float(row[6]))
 
-            if bar.height < size:
-                bar.set_consolidated(False)  # current
+                if bar.height < size:
+                    bar.set_consolidated(False)  # current
 
-            return bar
+                return bar
+
+        except self.psycopg2.OperationalError as e:
+            error_logger.error(e)
+        except Exception as e:
+            self.on_error(e)
 
         return None
 
     def get_last_range_bar_at(self, broker_id: str, market_id: str, size: int, timestamp: float):
-        cursor = self._db.cursor()
+        try:
+            cursor = self._db.cursor()
 
-        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
-                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp = %s""" % (
-                            broker_id, market_id, size, int(timestamp * 1000.0)))
+            cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                            WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp = %s""" % (
+                                broker_id, market_id, size, int(timestamp * 1000.0)))
 
-        row = cursor.fetchone()
+            row = cursor.fetchone()
 
-        if row:
-            timestamp = float(row[0]) * 0.001  # to float second timestamp
-            bar = RangeBar(timestamp)
+            if row:
+                timestamp = float(row[0]) * 0.001  # to float second timestamp
+                bar = RangeBar(timestamp)
 
-            bar.set_duration(float(row[1] * 0.001))  # to float second duration
-            bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+                bar.set_duration(float(row[1] * 0.001))  # to float second duration
+                bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
 
-            bar.set_volume(float(row[6]))
+                bar.set_volume(float(row[6]))
 
-            if bar.height < size:
-                bar.set_consolidated(False)  # current
+                if bar.height < size:
+                    bar.set_consolidated(False)  # current
 
-            return bar
+                return bar
+
+        except self.psycopg2.OperationalError as e:
+            error_logger.error(e)
+        except Exception as e:
+            self.on_error(e)
 
         return None
 
@@ -371,102 +414,111 @@ class PgSql(Database):
         from_time = int(from_date.timestamp())  # * 1000)
         to_time = int(to_date.timestamp())  # * 1000)
 
-        if market_id:
-            if type(market_id) is str:
-                cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
-                                WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND market_id = '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
-                                    broker_id, account_id, strategy_id, market_id, from_time, to_time))
-            elif type(market_id) is list or type(market_id) is tuple:
-                cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
-                                WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND market_id IN '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
-                                    broker_id, account_id, strategy_id, market_id, from_time, to_time))
+        try:
+            if market_id:
+                if type(market_id) is str:
+                    cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
+                                    WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND market_id = '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
+                                        broker_id, account_id, strategy_id, market_id, from_time, to_time))
+                elif type(market_id) is list or type(market_id) is tuple:
+                    cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
+                                    WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND market_id IN '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
+                                        broker_id, account_id, strategy_id, market_id, from_time, to_time))
+                else:
+                    return None
             else:
-                return None
-        else:
-            cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
-                            WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
-                                broker_id, account_id, strategy_id, from_time, to_time))
+                cursor.execute("""SELECT market_id, timestamp, data FROM user_closed_trade
+                                WHERE broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s' AND timestamp >= %s AND timestamp <= %s ORDER BY timestamp ASC""" % (
+                                    broker_id, account_id, strategy_id, from_time, to_time))
 
-        rows = cursor.fetchall()
+            rows = cursor.fetchall()
 
-        for row in rows:
-            ts = float(row[1])  # * 0.001
-            user_closed_trades.append((row[0], ts, json.loads(row[2])))
+            for row in rows:
+                ts = float(row[1])  # * 0.001
+                user_closed_trades.append((row[0], ts, json.loads(row[2])))
 
-        self._db.commit()
-        cursor = None
+            self._db.commit()
+
+        except self.psycopg2.OperationalError as e:
+            error_logger.error(e)
+        except Exception as e:
+            self.on_error(e)
 
         return user_closed_trades
 
     def get_market_info(self, broker_id: str, market_id: str):
-        cursor = self._db.cursor()
+        market_info = None
 
-        cursor.execute("""SELECT symbol,
-                            market_type, unit_type, contract_type,
-                            trade_type, orders,
-                            base, base_display, base_precision,
-                            quote, quote_display, quote_precision,
-                            settlement, settlement_display, settlement_precision,
-                            expiry, timestamp,
-                            lot_size, contract_size, base_exchange_rate,
-                            value_per_pip, one_pip_means, margin_factor,
-                            min_size, max_size, step_size,
-                            min_notional, max_notional, step_notional,
-                            min_price, max_price, step_price,
-                            maker_fee, taker_fee, 
-                            maker_commission, taker_commission,
-                            flags FROM market
-                        WHERE broker_id = '%s' AND market_id = '%s'""" % (
-            broker_id, market_id))
+        try:
+            cursor = self._db.cursor()
 
-        row = cursor.fetchone()
+            cursor.execute("""SELECT symbol,
+                                market_type, unit_type, contract_type,
+                                trade_type, orders,
+                                base, base_display, base_precision,
+                                quote, quote_display, quote_precision,
+                                settlement, settlement_display, settlement_precision,
+                                expiry, timestamp,
+                                lot_size, contract_size, base_exchange_rate,
+                                value_per_pip, one_pip_means, margin_factor,
+                                min_size, max_size, step_size,
+                                min_notional, max_notional, step_notional,
+                                min_price, max_price, step_price,
+                                maker_fee, taker_fee, 
+                                maker_commission, taker_commission,
+                                flags FROM market
+                            WHERE broker_id = '%s' AND market_id = '%s'""" % (
+                broker_id, market_id))
 
-        if row:
-            market_info = Market(market_id, row[0])
+            row = cursor.fetchone()
 
-            market_info.is_open = True
+            if row:
+                market_info = Market(market_id, row[0])
 
-            market_info.market_type = row[1]
-            market_info.unit_type = row[2]
-            market_info.contract_type = row[3]
+                market_info.is_open = True
 
-            market_info.trade = row[4]
-            market_info.orders = row[5]
+                market_info.market_type = row[1]
+                market_info.unit_type = row[2]
+                market_info.contract_type = row[3]
 
-            market_info.set_base(row[6], row[7], int(row[8]))
-            market_info.set_quote(row[9], row[10], int(row[11]))
-            market_info.set_settlement(row[12], row[13], int(row[14]))
+                market_info.trade = row[4]
+                market_info.orders = row[5]
 
-            market_info.expiry = row[15]
-            market_info.last_update_time = row[16] * 0.001
+                market_info.set_base(row[6], row[7], int(row[8]))
+                market_info.set_quote(row[9], row[10], int(row[11]))
+                market_info.set_settlement(row[12], row[13], int(row[14]))
 
-            market_info.lot_size = float(row[17])
-            market_info.contract_size = float(row[18])
-            market_info.base_exchange_rate = float(row[19])
-            market_info.value_per_pip = float(row[20])
-            market_info.one_pip_means = float(row[21])
+                market_info.expiry = row[15]
+                market_info.last_update_time = row[16] * 0.001
 
-            if row[22] is not None or row[22] != 'None':
-                if row[22] == '-':  # not defined mean 1.0 or no margin
-                    market_info.margin_factor = 1.0
-                else:
-                    market_info.margin_factor = float(row[22] or "1.0")
+                market_info.lot_size = float(row[17])
+                market_info.contract_size = float(row[18])
+                market_info.base_exchange_rate = float(row[19])
+                market_info.value_per_pip = float(row[20])
+                market_info.one_pip_means = float(row[21])
 
-            market_info.set_size_limits(float(row[23]), float(row[24]), float(row[25]))
-            market_info.set_notional_limits(float(row[26]), float(row[27]), float(row[28]))
-            market_info.set_price_limits(float(row[29]), float(row[30]), float(row[31]))
+                if row[22] is not None or row[22] != 'None':
+                    if row[22] == '-':  # not defined mean 1.0 or no margin
+                        market_info.margin_factor = 1.0
+                    else:
+                        market_info.margin_factor = float(row[22] or "1.0")
 
-            market_info.maker_fee = float(row[32])
-            market_info.taker_fee = float(row[33])
+                market_info.set_size_limits(float(row[23]), float(row[24]), float(row[25]))
+                market_info.set_notional_limits(float(row[26]), float(row[27]), float(row[28]))
+                market_info.set_price_limits(float(row[29]), float(row[30]), float(row[31]))
 
-            market_info.maker_commission = float(row[34])
-            market_info.taker_commission = float(row[35])
+                market_info.maker_fee = float(row[32])
+                market_info.taker_fee = float(row[33])
 
-            market_info.flags_from_int(row[36])
-        else:
-            market_info = None
+                market_info.maker_commission = float(row[34])
+                market_info.taker_commission = float(row[35])
 
-        cursor = None
+                market_info.flags_from_int(row[36])
+
+        except self.psycopg2.OperationalError as e:
+            error_logger.error(e)
+        except Exception as e:
+            self.on_error(e)
 
         return market_info
 
@@ -538,7 +590,7 @@ class PgSql(Database):
                                         flags = EXCLUDED.flags""", (*mi,))
 
                 self._db.commit()
-                cursor = None
+
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
 
@@ -631,8 +683,6 @@ class PgSql(Database):
                     else:
                         market_info = None
 
-                    cursor = None
-
                     # notify
                     mi[0].notify(Signal.SIGNAL_MARKET_INFO_DATA, mi[1], (mi[2], market_info))
             except self.psycopg2.OperationalError as e:
@@ -648,45 +698,6 @@ class PgSql(Database):
                 # retry the next time
                 with self._mutex:
                     self._pending_market_info_select = mis + self._pending_market_info_select
-
-        #
-        # select market list
-        #
-
-        with self._mutex:
-            mls = self._pending_market_list_select
-            self._pending_market_list_select = []
-
-        if mls:
-            try:
-                for m in mls:
-                    cursor = self._db.cursor()
-
-                    cursor.execute("""SELECT market_id, symbol, base, quote FROM market WHERE broker_id = '%s'""" % (m[1],))
-
-                    rows = cursor.fetchall()
-
-                    market_list = []
-
-                    for row in rows:
-                        market_list.append(row)
-
-                    cursor = None
-
-                    # notify
-                    m[0].notify(Signal.SIGNAL_MARKET_LIST_DATA, m[1], market_list)
-            except self.psycopg2.OperationalError as e:
-                self.try_reconnect(e)
-
-                # retry the next time
-                with self._mutex:
-                    self._pending_market_list_select = mls + self._pending_market_list_select
-            except Exception as e:
-                self.on_error(e)
-
-                # retry the next time
-                with self._mutex:
-                    self._pending_market_list_select = mls + self._pending_market_list_select
 
     def process_userdata(self):
         #
@@ -708,7 +719,7 @@ class PgSql(Database):
                             last_trade_id = EXCLUDED.last_trade_id, timestamp = EXCLUDED.timestamp, quantity = EXCLUDED.quantity, price = EXCLUDED.price, quote_symbol = EXCLUDED.quote_symbol""", (*ua,))
 
                 self._db.commit()
-                cursor = None
+
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
 
@@ -756,8 +767,6 @@ class PgSql(Database):
 
                         assets.append(asset)
 
-                    cursor = None
-
                     # notify
                     ua[0].notify(Signal.SIGNAL_ASSET_DATA_BULK, ua[2], assets)
             except self.psycopg2.OperationalError as e:
@@ -795,7 +804,7 @@ class PgSql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
-                cursor = None
+
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
 
@@ -832,8 +841,6 @@ class PgSql(Database):
                     for row in rows:
                         user_trades.append((row[0], row[1], row[2], json.loads(row[3]), json.loads(row[4])))
 
-                    cursor = None
-
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[4], user_trades)
             except self.psycopg2.OperationalError as e:
@@ -867,7 +874,6 @@ class PgSql(Database):
                         broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s'""" % (ut[0], ut[1], ut[2]))
 
                 self._db.commit()
-                cursor = None
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
 
@@ -906,7 +912,6 @@ class PgSql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
-                cursor = None
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
 
@@ -942,8 +947,6 @@ class PgSql(Database):
 
                     for row in rows:
                         user_traders.append((row[0], row[1] > 0, json.loads(row[2]), json.loads(row[3]), json.loads(row[4])))
-
-                    cursor = None
 
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_LIST, ut[4], user_traders)
@@ -981,7 +984,6 @@ class PgSql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
-                cursor = None
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
 
@@ -1033,7 +1035,6 @@ class PgSql(Database):
                     cursor.execute(query)
 
                     self._db.commit()
-                    cursor = None
                 except self.psycopg2.OperationalError as e:
                     self.try_reconnect(e)
 
@@ -1074,7 +1075,6 @@ class PgSql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
-                cursor = None
             except self.psycopg2.OperationalError as e:
                 self.try_reconnect(e)
 
@@ -1105,7 +1105,6 @@ class PgSql(Database):
                             timeframe, ts))
 
                     self._db.commit()
-                    cursor = None
                 except self.psycopg2.OperationalError as e:
                     self.try_reconnect(e)
                 except Exception as e:
@@ -1176,8 +1175,6 @@ class PgSql(Database):
                         else:
                             ohlcs.append(ohlc)
 
-                    cursor = None
-
                     # notify
                     mk[0].notify(Signal.SIGNAL_HISTORICAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
             except self.psycopg2.OperationalError as e:
@@ -1226,7 +1223,6 @@ class PgSql(Database):
                     cursor.execute(query)
 
                     self._db.commit()
-                    cursor = None
                 except self.psycopg2.OperationalError as e:
                     self.try_reconnect(e)
 
@@ -1305,8 +1301,6 @@ class PgSql(Database):
                         else:
                             bars.append(bar)
 
-                    cursor = None
-
                     # notify
                     mk[0].notify(Signal.SIGNAL_HISTORICAL_BAR_DATA_BULK, mk[1], (mk[2], mk[3], bars))
             except self.psycopg2.OperationalError as e:
@@ -1359,7 +1353,6 @@ class PgSql(Database):
                     cursor.execute(query)
 
                     self._db.commit()
-                    cursor = None
                 except self.psycopg2.OperationalError as e:
                     self.try_reconnect(e)
 
@@ -1472,11 +1465,11 @@ class PgSql(Database):
     #
 
     def on_error(self, e):
-        logger.error(repr(e))  # + '\n' + e.pgerror)
+        error_logger.error(repr(e))  # + '\n' + e.pgerror)
         time.sleep(5.0)
 
     def try_reconnect(self, e):
-        logger.error(repr(e))
+        error_logger.error(repr(e))
         time.sleep(5.0)
 
         self._db = None
@@ -1517,10 +1510,12 @@ class PgSql(Database):
         if to_date:
             base_query += " AND timestamp <= %i" % int(to_date.timestamp() * 1000)
 
-        cursor = self._db.cursor()
-        cursor.execute(base_query)
-        self._db.commit()
-        cursor = None
+        try:
+            cursor = self._db.cursor()
+            cursor.execute(base_query)
+            self._db.commit()
+        except Exception as e:
+            self.on_error(e)
 
     def cleanup_range_bar(self, broker_id: str, market_id: Optional[str] = None,
                           bar_size: Optional[int] = None,
@@ -1540,7 +1535,9 @@ class PgSql(Database):
         if to_date:
             base_query += " AND timestamp <= %i" % int(to_date.timestamp() * 1000)
 
-        cursor = self._db.cursor()
-        cursor.execute(base_query)
-        self._db.commit()
-        cursor = None
+        try:
+            cursor = self._db.cursor()
+            cursor.execute(base_query)
+            self._db.commit()
+        except Exception as e:
+            self.on_error(e)

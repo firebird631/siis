@@ -33,3 +33,22 @@ class EconomicEvent:
     @classmethod
     def event_type(cls):
         return BaseEvent.EVENT_TYPE_ECONOMIC
+
+    @staticmethod
+    def meaning_to_str(meaning):
+        if meaning == 1:
+            return "positive"
+        elif meaning == 0:
+            return "neutral"
+        elif meaning == -1:
+            return "negative",
+        else:
+            return "unknown"
+
+    def __str__(self):
+        return "%s at=%s lvl=%i curr=%s (impact=%s)" % (
+            self.code,
+            self.date.strftime("%Y-%m-%d %H:%M"),
+            self.level,
+            self.currency,
+            self.meaning_to_str(self.actual_meaning))

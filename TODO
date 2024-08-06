@@ -120,6 +120,16 @@ Sum order :
 # Bugs #
 ########
 
+- signal d'order perdu : on a ce bug de temps en temps avec kraken, quasi jamais vu avec les autres
+    - supposition :
+        - peut-etre une deco succinte du WS qui n'entraine pas une reconnection total du watcher et donc
+          pas de signal de watcher CONNECTED, par conséquence les stratégies ne se remettent pas en "check" WAITING
+          donc il n'a pas de vérifications des ordres des trades en cours
+        - potentiellement ça pourrait arriver avec les autres watchers
+    - il faut revoir la gestion de perte du flux WS order/position, les processus de reconnection internent doivent
+      emettre un état qui doit être repris par Watcher et qui alors devra avertir les autres services qu'il s'est
+      deco et reco
+
 - avec trader position et IG on a un create_oid qui reste une fois réalisé et il tente de cancel order a close position
     - c'est pas dramatique car il se fait rejeter mais à corriger
 

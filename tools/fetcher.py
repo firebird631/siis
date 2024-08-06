@@ -135,6 +135,14 @@ def terminate(code=0):
 
 
 def fetch_events(fetcher, events: List[str], from_date, to_date):
+    """
+    Example --spec=event,economic,county=United States
+    @param fetcher:
+    @param events:
+    @param from_date:
+    @param to_date:
+    @return:
+    """
     if "economic" in events:
         countries = []
         currencies = []

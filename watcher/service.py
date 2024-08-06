@@ -45,6 +45,8 @@ class WatcherService(Service):
         self._identity = options.get('identity', 'demo')
         self._backtesting = options.get('backtesting', False)
 
+        self._user_path = options.get('user-path', './')
+
         # fetchers config
         self._fetchers_config = utils.load_config(options, 'fetchers')
 
@@ -72,6 +74,11 @@ class WatcherService(Service):
 
         # paper mode options to subscribe only to public part of data
         self._paper_mode = options.get('paper-mode', False)
+
+    @property
+    def user_path(self) -> str:
+        """Base path of the application user data (generally '$HOME/.siis')"""
+        return self._user_path
 
     @property
     def monitor_service(self) -> Union[MonitorService, None]:
@@ -122,8 +129,6 @@ class WatcherService(Service):
         from watcher.connector.dummywatcher.watcher import DummyWatcher
 
         for k, watcher in self._watchers_config.items():
-            ignore = False
-
             if k == "default":
                 continue
 
@@ -174,15 +179,6 @@ class WatcherService(Service):
 
         with self._mutex:
             self._signals_handler.notify(signal)
-
-    def find_author(self, watcher_name: str, author_id: str):
-        watcher = self._watchers.get(watcher_name)
-        if watcher:
-            author = watcher.find_author(author_id)
-            if author:
-                return author
-
-        return None
 
     def watcher(self, name: str) -> Union[Watcher, None]:
         return self._watchers.get(name)
@@ -284,20 +280,16 @@ class WatcherService(Service):
         return self._identities_config.get(name, {}).get(self._identity)
 
     def fetcher_config(self, name: str) -> dict:
-        """
-        Get the configurations for a fetcher as dict.
-        """
+        """Get the overridden configurations for a fetcher as dict."""
         return self._fetchers_config.get(name, {})
 
     def watcher_config(self, name: str) -> dict:
-        """
-        Get the configurations for a watcher as dict.
-        """
+        """Get the overridden configurations for a watcher as dict."""
         return self._watchers_config.get(name, {})
 
     def _init_watchers_config(self, options: dict) -> dict:
         """
-        Get the profile configuration for a specific watcher name.
+        Complete the profile configuration for a specific watcher name with the user config and profile config.
         """
         if not self._profile_config:
             return {}
@@ -321,14 +313,16 @@ class WatcherService(Service):
                     # profile overrides any symbols
                     user_watcher_config['symbols'] = profile_watcher_config['symbols']
 
+                if 'filters' in profile_watcher_config:
+                    # profile overrides any filters
+                    user_watcher_config['filters'] = profile_watcher_config['filters']
+
                 # keep override
                 watchers_config[k] = user_watcher_config
 
         return watchers_config
 
     def profile(self, name: str) -> dict:
-        """
-        Get the profile configuration for a specific watcher name.
-        """
+        """Get the profile configuration for a specific watcher name (only the user part without the default)."""
         profile = self._profile_config.get('watchers', {})
         return profile.get(name, {})

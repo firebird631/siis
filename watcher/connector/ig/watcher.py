@@ -763,7 +763,7 @@ class IGWatcher(Watcher):
                 values = item_update['values']
 
                 #
-                # active waiting order (open/updated/deleted)
+                # waiting order (open/updated/deleted)
                 #
 
                 if values.get('WOU'):

@@ -33,7 +33,7 @@ class KrakenWatcher(Watcher):
 
     @todo position info
     @todo contract_size, value_per_pip, base_exchange_rate (initials and updates)
-    @todo fee from 30 day traded volume
+    @todo fee rate from 30 day traded volume
     @todo order book WS
 
     @see WS 'status' online|maintenance|cancel_only|limit_only|post_only

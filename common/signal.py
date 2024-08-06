@@ -36,8 +36,7 @@ class Signal(object):
 	SIGNAL_ACCOUNT_DATA = 300           # data is a tuple with (balance, free_margin, pnl, currency, risk_limit)
 	SIGNAL_MARKET_DATA = 301            # data is a tuple with (market_id, tradeable, timestamp, bid, ask, base_exchange_rate, contract_size, value_per_pip, vol24h_base, vol24h_quote)
 	SIGNAL_MARKET_INFO_DATA = 302       # data is a tuple with (market_id, Market())
-	SIGNAL_MARKET_LIST_DATA = 303       # data is an array of tuples of str (market_id, symbol, base, quote)
-	SIGNAL_MARKET_SIGNAL = 304          # @todo
+	SIGNAL_ECONOMIC_EVENT = 303         # data is an instance of EconomicEvent
 
 	SIGNAL_POSITION_OPENED = 400        # data is a (str market id, dict position details, str ref order id)
 	SIGNAL_POSITION_UPDATED = 401       # data is a (str market id, dict position details, str ref order id)

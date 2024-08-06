@@ -164,7 +164,6 @@ class Database(object):
 
         self._pending_market_info_insert = []
         self._pending_market_info_select = []
-        self._pending_market_list_select = []
 
         self._pending_asset_insert = []
         self._pending_asset_select = []
@@ -587,18 +586,6 @@ class Database(object):
     # async loads
     #
 
-    def load_market_list(self, service, broker_id: str):
-        """
-        Load the complete list of market available for a specific broker id.
-        @param service to be notified once done
-        @param broker_id: str
-        """
-        with self._mutex:
-            self._pending_market_list_select.append((service, broker_id))
-
-        with self._condition:
-            self._condition.notify()
-
     def load_market_info(self, service, broker_id: str, market_id: str):
         """
         Load a specific market info given its market id.
@@ -750,6 +737,10 @@ class Database(object):
     #
     # sync loads
     #
+
+    def get_markets_list(self, broker_id: str) -> List[Tuple[str, str, str, str]]:
+        """Load and return all market identifiers with tuple(market_id, symbol, base, quote) for a specific broker"""
+        return []
 
     def get_first_tick(self, broker_id: str, market_id: str):
         """Load and return only the first found and older stored tick."""

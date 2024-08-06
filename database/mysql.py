@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 
 from importlib import import_module
-from typing import Optional
+from typing import Optional, List, Tuple
 
 from common.signal import Signal
 
@@ -240,103 +240,136 @@ class MySql(Database):
     # sync loads
     #
 
+    def get_markets_list(self, broker_id: str) -> List[Tuple[str, str, str, str]]:
+        markets_data = []
+
+        try:
+            cursor = self._db.cursor()
+            cursor.execute("""SELECT market_id, symbol, base, quote FROM market WHERE broker_id = '%s'""" % (broker_id,))
+
+            rows = cursor.fetchall()
+
+            for row in rows:
+                markets_data.append(row)
+
+        except Exception as e:
+            self.on_error(e)
+
+        return markets_data
+
     def get_last_ohlc(self, broker_id, market_id, timeframe):
-        cursor = self._db.cursor()
+        try:
+            cursor = self._db.cursor()
 
-        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp DESC LIMIT 1""" % (
-                            broker_id, market_id, timeframe))
+            cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                            WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s ORDER BY timestamp DESC LIMIT 1""" % (
+                                broker_id, market_id, timeframe))
 
-        row = cursor.fetchone()
+            row = cursor.fetchone()
 
-        if row:
-            timestamp = float(row[0]) * 0.001  # to float second timestamp
-            ohlc = Candle(timestamp, timeframe)
+            if row:
+                timestamp = float(row[0]) * 0.001  # to float second timestamp
+                ohlc = Candle(timestamp, timeframe)
 
-            ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+                ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-            ohlc.set_spread(float(row[5]))
-            ohlc.set_volume(float(row[6]))
+                ohlc.set_spread(float(row[5]))
+                ohlc.set_volume(float(row[6]))
 
-            if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
-                ohlc.set_consolidated(False)  # current
+                if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
+                    ohlc.set_consolidated(False)  # current
 
-            return ohlc
+                return ohlc
+
+        except Exception as e:
+            self.on_error(e)
 
         return None
 
     def get_last_ohlc_at(self, broker_id: str, market_id: str, timeframe: float, timestamp: float):
-        cursor = self._db.cursor()
+        try:
+            cursor = self._db.cursor()
 
-        cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
-                        WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp = %s""" % (
-                            broker_id, market_id, timeframe, int(timestamp * 1000.0)))
+            cursor.execute("""SELECT timestamp, open, high, low, close, spread, volume FROM ohlc
+                            WHERE broker_id = '%s' AND market_id = '%s' AND timeframe = %s AND timestamp = %s""" % (
+                                broker_id, market_id, timeframe, int(timestamp * 1000.0)))
 
-        row = cursor.fetchone()
+            row = cursor.fetchone()
 
-        if row:
-            timestamp = float(row[0]) * 0.001  # to float second timestamp
-            ohlc = Candle(timestamp, timeframe)
+            if row:
+                timestamp = float(row[0]) * 0.001  # to float second timestamp
+                ohlc = Candle(timestamp, timeframe)
 
-            ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+                ohlc.set_ohlc(float(row[1]), float(row[2]), float(row[3]), float(row[4]))
 
-            ohlc.set_spread(float(row[5]))
-            ohlc.set_volume(float(row[6]))
+                ohlc.set_spread(float(row[5]))
+                ohlc.set_volume(float(row[6]))
 
-            if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
-                ohlc.set_consolidated(False)  # current
+                if ohlc.timestamp >= Instrument.basetime(timeframe, time.time()):
+                    ohlc.set_consolidated(False)  # current
 
-            return ohlc
+                return ohlc
+
+        except Exception as e:
+            self.on_error(e)
 
         return None
 
     def get_last_range_bar(self, broker_id: str, market_id: str, size: int):
-        cursor = self._db.cursor()
+        try:
+            cursor = self._db.cursor()
 
-        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar 
-                       WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp DESC LIMIT 1""" % (
-                            broker_id, market_id, size))
+            cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar 
+                           WHERE broker_id = '%s' AND market_id = '%s' AND size = %s ORDER BY timestamp DESC LIMIT 1""" % (
+                                broker_id, market_id, size))
 
-        row = cursor.fetchone()
+            row = cursor.fetchone()
 
-        if row:
-            timestamp = float(row[0]) * 0.001  # to float second timestamp
-            bar = RangeBar(timestamp)
+            if row:
+                timestamp = float(row[0]) * 0.001  # to float second timestamp
+                bar = RangeBar(timestamp)
 
-            bar.set_duration(float(row[1] * 0.001))  # to float second duration
-            bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+                bar.set_duration(float(row[1] * 0.001))  # to float second duration
+                bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
 
-            bar.set_volume(float(row[6]))
+                bar.set_volume(float(row[6]))
 
-            if bar.height < size:
-                bar.set_consolidated(False)  # current
+                if bar.height < size:
+                    bar.set_consolidated(False)  # current
 
-            return bar
+                return bar
+
+        except Exception as e:
+            self.on_error(e)
 
         return None
 
     def get_last_range_bar_at(self, broker_id: str, market_id: str, size: int, timestamp: float):
-        cursor = self._db.cursor()
+        try:
+            cursor = self._db.cursor()
 
-        cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
-                        WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp = %s""" % (
-                            broker_id, market_id, size, int(timestamp * 1000.0)))
+            cursor.execute("""SELECT timestamp, duration, open, high, low, close, volume FROM range_bar
+                            WHERE broker_id = '%s' AND market_id = '%s' AND size = %s AND timestamp = %s""" % (
+                                broker_id, market_id, size, int(timestamp * 1000.0)))
 
-        row = cursor.fetchone()
+            row = cursor.fetchone()
 
-        if row:
-            timestamp = float(row[0]) * 0.001  # to float second timestamp
-            bar = RangeBar(timestamp)
+            if row:
+                timestamp = float(row[0]) * 0.001  # to float second timestamp
+                bar = RangeBar(timestamp)
 
-            bar.set_duration(float(row[1] * 0.001))  # to float second duration
-            bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
+                bar.set_duration(float(row[1] * 0.001))  # to float second duration
+                bar.set_ohlc(float(row[2]), float(row[3]), float(row[4]), float(row[5]))
 
-            bar.set_volume(float(row[6]))
+                bar.set_volume(float(row[6]))
 
-            if bar.height < size:
-                bar.set_consolidated(False)  # current
+                if bar.height < size:
+                    bar.set_consolidated(False)  # current
 
-            return bar
+                return bar
+
+        except Exception as e:
+            self.on_error(e)
 
         return None
 
@@ -391,7 +424,6 @@ class MySql(Database):
             user_closed_trades.append((row[0], ts, json.loads(row[2])))
 
         self._db.commit()
-        cursor = None
 
         return user_closed_trades
 
@@ -463,8 +495,6 @@ class MySql(Database):
         else:
             market_info = None
 
-        cursor = None
-
         return market_info
 
     #
@@ -535,7 +565,6 @@ class MySql(Database):
                                         flags = VALUES(flags)""", (*mi,))
 
                 self._db.commit()
-                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -621,8 +650,6 @@ class MySql(Database):
                     else:
                         market_info = None
 
-                    cursor = None
-
                     # notify
                     mi[0].notify(Signal.SIGNAL_MARKET_INFO_DATA, mi[1], (mi[2], market_info))
             except Exception as e:
@@ -631,39 +658,6 @@ class MySql(Database):
                 # retry the next time
                 with self._mutex:
                     self._pending_market_info_select = mis + self._pending_market_info_select
-
-        #
-        # select market list
-        #
-
-        with self._mutex:
-            mls = self._pending_market_list_select
-            self._pending_market_list_select = []
-
-        if mls:
-            try:
-                for m in mls:
-                    cursor = self._db.cursor()
-
-                    cursor.execute("""SELECT market_id, symbol, base, quote FROM market WHERE broker_id = '%s'""" % (m[1],))
-
-                    rows = cursor.fetchall()
-
-                    market_list = []
-
-                    for row in rows:
-                        market_list.append(row)
-
-                    cursor = None
-
-                    # notify
-                    m[0].notify(Signal.SIGNAL_MARKET_LIST_DATA, m[1], market_list)
-            except Exception as e:
-                self.on_error(e)
-
-                # retry the next time
-                with self._mutex:
-                    self._pending_market_list_select = mls + self._pending_market_list_select
 
     def process_userdata(self):
         #
@@ -685,7 +679,6 @@ class MySql(Database):
                             last_trade_id = VALUES(last_trade_id), timestamp = VALUES(timestamp), quantity = VALUES(quantity), price = VALUES(price), quote_symbol = VALUES(price)""", (*ua,))
 
                 self._db.commit()
-                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -727,8 +720,6 @@ class MySql(Database):
 
                         assets.append(asset)
 
-                    cursor = None
-
                     # notify
                     ua[0].notify(Signal.SIGNAL_ASSET_DATA_BULK, ua[2], assets)
             except Exception as e:
@@ -760,7 +751,6 @@ class MySql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
-                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -791,8 +781,6 @@ class MySql(Database):
                     for row in rows:
                         user_trades.append((row[0], row[1], row[2], json.loads(row[3]), json.loads(row[4])))
 
-                    cursor = None
-
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADE_LIST, ut[4], user_trades)
             except Exception as e:
@@ -820,7 +808,6 @@ class MySql(Database):
                         broker_id = '%s' AND account_id = '%s' AND strategy_id = '%s'""" % (ut[0], ut[1], ut[2]))
 
                 self._db.commit()
-                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -852,7 +839,6 @@ class MySql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
-                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -882,8 +868,6 @@ class MySql(Database):
 
                     for row in rows:
                         user_traders.append((row[0], row[1] > 0, json.loads(row[2]), json.loads(row[3]), json.loads(row[4])))
-
-                    cursor = None
 
                     # notify
                     ut[0].notify(Signal.SIGNAL_STRATEGY_TRADER_LIST, ut[4], user_traders)
@@ -926,7 +910,6 @@ class MySql(Database):
                     cursor.execute(query)
 
                     self._db.commit()
-                    cursor = None
                 except Exception as e:
                     self.on_error(e)
 
@@ -958,7 +941,6 @@ class MySql(Database):
                 cursor.execute(query)
 
                 self._db.commit()
-                cursor = None
             except Exception as e:
                 self.on_error(e)
 
@@ -983,7 +965,6 @@ class MySql(Database):
                             timeframe, ts))
 
                     self._db.commit()
-                    cursor = None
                 except Exception as e:
                     self.on_error(e)
 
@@ -1052,8 +1033,6 @@ class MySql(Database):
                         else:
                             ohlcs.append(ohlc)
 
-                    cursor = None
-
                     # notify
                     mk[0].notify(Signal.SIGNAL_HISTORICAL_CANDLE_DATA_BULK, mk[1], (mk[2], mk[3], ohlcs))
             except Exception as e:
@@ -1089,7 +1068,6 @@ class MySql(Database):
                     cursor.execute(query)
 
                     self._db.commit()
-                    cursor = None
                 except Exception as e:
                     self.on_error(e)
 
@@ -1162,8 +1140,6 @@ class MySql(Database):
                         else:
                             bars.append(bar)
 
-                    cursor = None
-
                     # notify
                     mk[0].notify(Signal.SIGNAL_HISTORICAL_BAR_DATA_BULK, mk[1], (mk[2], mk[3], bars))
             except Exception as e:
@@ -1211,7 +1187,6 @@ class MySql(Database):
                     cursor.execute(query)
 
                     self._db.commit()
-                    cursor = None
                 except Exception as e:
                     self.on_error(e)
 
@@ -1258,10 +1233,13 @@ class MySql(Database):
         if to_date:
             base_query += " AND timestamp <= %i" % int(to_date.timestamp() * 1000)
 
-        cursor = self._db.cursor()
-        cursor.execute(base_query)
-        self._db.commit()
-        cursor = None
+        try:
+            cursor = self._db.cursor()
+            cursor.execute(base_query)
+            self._db.commit()
+        except Exception as e:
+            self.on_error(e)
+
 
     def cleanup_range_bar(self, broker_id: str, market_id: Optional[str] = None,
                           bar_size: Optional[int] = None,
@@ -1280,7 +1258,9 @@ class MySql(Database):
         if to_date:
             base_query += " AND timestamp <= %i" % int(to_date.timestamp() * 1000)
 
-        cursor = self._db.cursor()
-        cursor.execute(base_query)
-        self._db.commit()
-        cursor = None
+        try:
+            cursor = self._db.cursor()
+            cursor.execute(base_query)
+            self._db.commit()
+        except Exception as e:
+            self.on_error(e)

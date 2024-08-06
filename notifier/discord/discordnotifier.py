@@ -377,10 +377,6 @@ class DiscordNotifier(Notifier):
             # @todo
             return
 
-        elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
-            # @todo
-            return
-
         #
         # store for comparison and queries
         #

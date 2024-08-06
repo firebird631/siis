@@ -215,9 +215,6 @@ class DesktopNotifier(Notifier):
                 signal.data['trade-id'],
                 signal.data['symbol'])
 
-        elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
-            return
-
         elif signal.signal_type == Signal.SIGNAL_WATCHDOG_TIMEOUT:
             return
 

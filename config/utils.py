@@ -172,6 +172,13 @@ def identities(config_path):
 
 
 def load_config(options, attr_name):
+    """
+    Load a config file, starting with the initial config and then if found a user version
+    load it and overrides using the user values.
+    @param options: Option dict with the application paths
+    @param attr_name: Name of the config sub-path to loads (example "watcher/ig.com")
+    @return:
+    """
     default_config = {}
 
     default_file = pathlib.Path(options['working-path'], 'config', attr_name + '.json')

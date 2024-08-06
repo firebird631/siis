@@ -29,12 +29,15 @@ class Fetcher(object):
 
     GENERATED_TF list (from 1 sec to 1 week).
 
-    @todo Manage the case of 3m because, high 5m is not a multiple of 3m, so 5m need 1m like 3m, but
-        the method remove the 1m generated candle once used for the 3m, maybe use a ref counter
+    @warning Cascaded generation can only work for multiple of the preceding timeframe and only one multiple. In others
+        words that's mean, if you generate 1min bars, and next is 5 min, you can then have 15 min, 30 min... but you
+        cannot have 1 min, 5min, 10min, 15min, 30min, because then 10min will consume the 5min (its predecessor) and
+        then the 15min will have no input... and then the 30min neither...
+
+    @note A good practice is to generate the lower common timeframe and then make different generations (w/wo cascaded).
     """
 
     # candles from 1m to 1 week
-    # GENERATED_TF = [60, 60*3, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7]
     GENERATED_TF = [60, 60*5, 60*15, 60*30, 60*60, 60*60*2, 60*60*4, 60*60*24, 60*60*24*7, 30*24*60*60]
 
     TICK_STORAGE_DELAY = 0.05  # 50ms

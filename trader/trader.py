@@ -95,8 +95,6 @@ class Trader(Runnable):
         self._positions = {}
         self._assets = {}
 
-        self._commands = []
-
         self._markets = {}
 
         self._timestamp = 0
@@ -260,7 +258,7 @@ class Trader(Runnable):
         # signals processing
         #
 
-        count = 0
+        # count = 0
 
         while self._signals:
             signal = self._signals.popleft()
@@ -309,37 +307,8 @@ class Trader(Runnable):
                 if signal.signal_type == Signal.SIGNAL_ASSET_DATA_BULK:
                     self.on_assets_loaded(signal.data)
 
-            if count > 10:
-                # no more than per loop
-                break
-
-        #
-        # commands processing
-        # @deprecated was used to do not have the possibility to trigger manually a social copy signal (expiration)
-        #
-
-        if self._commands:
-            i = 0
-            now = time.time()
-
-            with self._mutex:
-                for command in self._commands:
-                    # remove commands older than 180 seconds
-                    if now - command['timestamp'] > Trader.PURGE_COMMANDS_DELAY:
-                        del self._commands[i]
-
-                    i += 1
-
-        return True
-
-    def _purge_commands(self):
-        """
-        Purge older commands.
-        Not trade safe method.
-        """
-        if len(self._commands) > Trader.MAX_COMMANDS_QUEUE:
-            size = len(self._commands) - Trader.MAX_COMMANDS_QUEUE
-            self._commands = self._commands[size:]
+            # if count > 10:
+            #     break
 
     def command(self, command_type: int, data: dict) -> Union[dict, None]:
         """

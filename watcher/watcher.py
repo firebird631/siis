@@ -91,8 +91,6 @@ class Watcher(Runnable):
 
     _name: str
     _service: WatcherService
-    _authors: Dict[str, Author]
-    _positions: Dict[str, Position]
     _watcher_type: int
 
     _ready: bool
@@ -120,8 +118,6 @@ class Watcher(Runnable):
 
         self._name = name
         self._service = service
-        self._authors = {}
-        self._positions = {}
         self._watcher_type = watcher_type
 
         self._ready = False
@@ -334,16 +330,7 @@ q
     #
 
     def receiver(self, signal: Signal):
-        if signal.source == Signal.SOURCE_WATCHER:
-            if signal.source_name != self._name:
-                # only interested in the watcher of the same name
-                return
-
-            elif signal.signal_type not in (Signal.SIGNAL_MARKET_LIST_DATA,):
-                return
-
-            # signal of interest
-            self._signals.append(signal)
+        pass
 
     def pre_run(self):
         Terminal.inst().message("Running watcher %s..." % self._name)
@@ -378,9 +365,6 @@ q
     def name(self) -> str:
         return self._name
 
-    def find_author(self, author_id: str) -> Union[Author, None]:
-        return self._authors.get(str(author_id))
-
     @property
     def service(self) -> WatcherService:
         return self._service
@@ -395,7 +379,7 @@ q
             if self.connected:
                 Terminal.inst().action("Watcher worker %s is alive and connected" % self._name, view='content')
             else:
-                Terminal.inst().action("Watcher worker %s is alive but waiting for (re)connection %s" % self._name,
+                Terminal.inst().action("Watcher worker %s is alive but waiting for (re)connection" % self._name,
                                        view='content')
 
         if watchdog_service:

@@ -466,6 +466,8 @@ def application(argv):
         watchdog_service.start(options)
     except Exception as e:
         Terminal.inst().error(str(e))
+        traceback_logger.error(traceback.format_exc())
+
         terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
                   view_service, notifier_service)
         sys.exit(-1)
@@ -479,6 +481,8 @@ def application(argv):
             watchdog_service.add_service(monitor_service)
         except Exception as e:
             Terminal.inst().error(str(e))
+            traceback_logger.error(traceback.format_exc())
+
             terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
                       view_service, notifier_service)
             sys.exit(-1)
@@ -488,6 +492,8 @@ def application(argv):
         notifier_service.start(options)
     except Exception as e:
         Terminal.inst().error(str(e))
+        traceback_logger.error(traceback.format_exc())
+
         terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
                   view_service, notifier_service)
         sys.exit(-1)
@@ -497,6 +503,8 @@ def application(argv):
     #     watchdog_service.add_service(view_service)
     # except Exception as e:
     #     Terminal.inst().error(str(e))
+    #     traceback_logger.error(traceback.format_exc())
+    #
     #     terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
     #               view_service, notifier_service)
     #     sys.exit(-1)
@@ -507,6 +515,8 @@ def application(argv):
         Database.inst().setup(options)
     except Exception as e:
         Terminal.inst().error(str(e))
+        traceback_logger.error(traceback.format_exc())
+
         terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
                   view_service, notifier_service)
         sys.exit(-1)
@@ -518,6 +528,8 @@ def application(argv):
         watchdog_service.add_service(watcher_service)
     except Exception as e:
         Terminal.inst().error(str(e))
+        traceback_logger.error(traceback.format_exc())
+
         terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
                   view_service, notifier_service)
         sys.exit(-1)
@@ -529,6 +541,8 @@ def application(argv):
         watchdog_service.add_service(trader_service)
     except Exception as e:
         Terminal.inst().error(str(e))
+        traceback_logger.error(traceback.format_exc())
+
         terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
                   view_service, notifier_service)
         sys.exit(-1)
@@ -549,6 +563,8 @@ def application(argv):
         watchdog_service.add_service(strategy_service)
     except Exception as e:
         Terminal.inst().error(str(e))
+        traceback_logger.error(traceback.format_exc())
+
         terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
                   view_service, notifier_service)
         sys.exit(-1)
@@ -602,11 +618,13 @@ def application(argv):
     Terminal.inst().message("Steady...", view='notice')
 
     if view_service:
-        # setup the default views
+        # set up the default views
         try:
             setup_default_views(view_service, watcher_service, trader_service, strategy_service)
         except Exception as e:
             Terminal.inst().error(str(e))
+            traceback_logger.error(traceback.format_exc())
+
             terminate(watchdog_service, watcher_service, trader_service, strategy_service, monitor_service,
                       view_service, notifier_service)
             sys.exit(-1)
@@ -842,18 +860,25 @@ def application(argv):
                         value_changed = True
                         Terminal.inst().info("Current typing canceled", view='status')
 
-                # display strategy trading time (update max once per second)
-                if strategy_service.timestamp - prev_timestamp >= 1.0:
-                    mode = "live"
+                # display strategy trading time and backtesting progression
+                if time.time() - prev_timestamp >= 0.1:
                     if trader_service.backtesting:
                         mode = "Backtesting %.2f%%" % strategy_service.backtest_progress + (
                             " (paused)" if not strategy_service.backtesting_play else "")
+
+                        if strategy_service.timestamp > 0.0:
+                            details = datetime.fromtimestamp(strategy_service.timestamp).strftime('%a %Y-%m-%d %H:%M:%S')
+                        else:
+                            details = "Preparing..."
                     elif trader_service.paper_mode:
                         mode = "Paper-mode"
+                        details = datetime.fromtimestamp(strategy_service.timestamp).strftime('%a %Y-%m-%d %H:%M:%S')
+                    else:
+                        mode = "live"
+                        details = datetime.fromtimestamp(strategy_service.timestamp).strftime('%a %Y-%m-%d %H:%M:%S')
 
-                    Terminal.inst().message("%s - %s" % (mode, datetime.fromtimestamp(
-                        strategy_service.timestamp).strftime('%a %Y-%m-%d %H:%M:%S')), view='notice')
-                    prev_timestamp = strategy_service.timestamp
+                    Terminal.inst().message("%s - %s" % (mode, details), view='notice')
+                    prev_timestamp = time.time()
 
                 # synchronous operations here
                 watcher_service.sync()

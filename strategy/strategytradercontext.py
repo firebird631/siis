@@ -529,7 +529,7 @@ class EXTakeProfit(EntryExit):
     def percentile_distance_from_limit(signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
         """
         Return in percentile the distance from a price (could be close execution price) and trade take profit price.
-        The distance is always a positive value.
+        @note The distance is oriented by the direction (a profitable price returns a positive value).
         """
         if signal_or_trade.take_profit > 0.0:
             return signal_or_trade.direction * (signal_or_trade.take_profit - price) / price
@@ -540,12 +540,27 @@ class EXTakeProfit(EntryExit):
     def price_distance_from_limit(signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
         """
         Return the distance from a price (could be close execution price) and trade take profit price.
-        The distance is always a positive value.
+        @note The distance is oriented by the direction (a profitable price returns a positive value).
         """
         if signal_or_trade.take_profit > 0.0:
             return signal_or_trade.direction * (signal_or_trade.take_profit - price)
 
         return 0.0
+
+    def check_min_distance_from_limit(self, signal_or_trade: Union[StrategyTrade, StrategySignal], price: float) -> bool:
+        """
+        Check if the minimal distance price to take-profit is respected.
+        @param signal_or_trade: Valid trade or signal.
+        @param price: Current price
+        @return:
+        """
+        if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+            return EXTakeProfit.percentile_distance_from_limit(signal_or_trade, price) >= self.distance
+
+        elif self.distance_type == StrategyTraderContext.DIST_PRICE:
+            return EXTakeProfit.price_distance_from_limit(signal_or_trade, price) >= self.distance
+
+        return False
 
     def clamp_limit(self, signal: StrategySignal):
         """
@@ -577,6 +592,40 @@ class EXTakeProfit(EntryExit):
                             signal, signal.entry_price) > self.distance:
                         signal.take_profit = signal.entry_price - self.distance
 
+    def take_profit_from_price(self, signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
+        """
+        Compute the fixed take-profit price for a trade or signal from distance to given price.
+        And return the computed value.
+        @param signal_or_trade:
+        @param price: Last close execution price or any other price.
+        @return: The price of the take-profit or 0 if not defined.
+        @note The take-profit price can never be lower in long or higher in short than the current signal or
+        trade take-profit price.
+        Except if the current value is not defined (take_profit_price = 0)
+        """
+        if self.type == StrategyTraderContext.PRICE_FIXED and self.distance > 0.0:
+            if self.distance_type == StrategyTraderContext.DIST_PERCENTILE:
+                if signal_or_trade.direction > 0:
+                    take_profit_price = price * (1.0 + self.distance)
+                    if signal_or_trade.take_profit == 0.0 or take_profit_price >= signal_or_trade.take_profit:
+                        return take_profit_price
+
+                elif signal_or_trade.direction < 0:
+                    take_profit_price = price * (1.0 - self.distance)
+                    if signal_or_trade.take_profit == 0.0 or take_profit_price <= signal_or_trade.take_profit:
+                        return take_profit_price
+
+            elif self.distance_type == StrategyTraderContext.DIST_PRICE:
+                if signal_or_trade.direction > 0:
+                    take_profit_price = price + self.distance
+                    if signal_or_trade.take_profit == 0.0 or take_profit_price >= signal_or_trade.take_profit:
+                        return take_profit_price
+
+                elif signal_or_trade.direction < 0:
+                    take_profit_price = price - self.distance
+                    if signal_or_trade.take_profit == 0.0 or take_profit_price <= signal_or_trade.take_profit:
+                        return take_profit_price
+
     def compute_take_profit(self, signal: StrategySignal) -> float:
         """
         Compute the fixed take profit price for a signal. Entry price must be defined and direction too.
@@ -599,6 +648,13 @@ class EXTakeProfit(EntryExit):
         return signal.take_profit
 
     def apply_initial_limit(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade, hard: bool = True):
+        """
+        When a limit price is defined on the order but only on the soft (locally) size. This method would help
+        to force to apply the modification to the position or by creating a limit exit order at actual
+        take profit price.
+
+        @note Have no effect if a limit order is already defined or if the position already have a take profit price.
+        """
         if not trade:
             return
 
@@ -638,7 +694,7 @@ class EXStopLoss(EntryExit):
     def percentile_distance_from_stop(signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
         """
         Return in percentile the distance from a price (could be close execution price) and trade stop loss price.
-        The distance is always a positive value.
+        @note The distance is oriented by the direction (a loosing price returns a positive value).
         """
         if signal_or_trade.stop_loss > 0.0:
             return signal_or_trade.direction * (price - signal_or_trade.stop_loss) / signal_or_trade.stop_loss
@@ -649,7 +705,7 @@ class EXStopLoss(EntryExit):
     def price_distance_from_stop(signal_or_trade: Union[StrategySignal, StrategyTrade], price: float) -> float:
         """
         Return the distance from a price (could be close execution price) and trade stop loss price.
-        The distance is always a positive value.
+        @note The distance is oriented by the direction (a loosing price returns a positive value).
         """
         if signal_or_trade.stop_loss > 0.0:
             return signal_or_trade.direction * (price - signal_or_trade.stop_loss)
@@ -694,6 +750,12 @@ class EXStopLoss(EntryExit):
         return signal.stop_loss
 
     def apply_initial_stop(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade, hard: bool = True):
+        """
+        When a stop price is defined on the order but only on the soft (locally) size. This method would help
+        to force to apply the modification to the position or by creating a stop exit order at actual stop price.
+
+        @note Have no effect if a stop order is already defined or if the position already have a stop price.
+        """
         if not trade:
             return
 
@@ -1223,6 +1285,16 @@ class StrategyTraderContext(StrategyTraderContextBase):
         """
         return 0.0
 
+    def custom_dynamic_take_profit(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade):
+        """
+        Overload it to update the take-profit of a trade.
+        This method is called only if the method is set to custom.
+        @param strategy_trader:
+        @param trade:
+        @return New take-profit price or 0 if no changes.
+        """
+        return 0.0
+
     def apply_breakeven(self, strategy_trader: StrategyTraderBase, trade: StrategyTrade, hard=True):
         """
         Default breakeven policy. It checks if the breakeven apply to a trade and modify the stop-loss price
@@ -1234,7 +1306,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
         if not trade or not strategy_trader or not self.breakeven:
             return
 
-        if self.breakeven.consolidated:
+        if not self.breakeven.consolidated:
             # only if timeframe is configured
             return
 
@@ -1277,7 +1349,7 @@ class StrategyTraderContext(StrategyTraderContextBase):
             return
 
         # only if timeframe is configured
-        if self.dynamic_stop_loss.consolidated:
+        if not self.dynamic_stop_loss.consolidated:
             return
 
         close_exec_price = strategy_trader.instrument.close_exec_price(trade.dir)
@@ -1328,10 +1400,47 @@ class StrategyTraderContext(StrategyTraderContextBase):
         @param strategy_trader:
         @param trade:
         @param hard:
-
-        @todo complete as for apply_dynamic_stop_loss
         """
-        pass
+        if not trade or not strategy_trader or not self.dynamic_take_profit:
+            return
+
+        if not self.dynamic_take_profit.consolidated:
+            # only if timeframe is configured
+            return
+
+        close_exec_price = strategy_trader.instrument.close_exec_price(trade.dir)
+        if not close_exec_price:
+            return
+
+        # last stop must be at minimal defined distance (gross distance)
+        if not self.dynamic_take_profit.check_min_distance_from_limit(trade, close_exec_price):
+            return
+
+        new_take_profit_price = 0.0
+
+        if self.dynamic_take_profit.type == self.PRICE_FIXED:
+            # fixed distance without offset or spread
+            new_take_profit_price = self.dynamic_take_profit.take_profit_from_price(trade, close_exec_price)
+
+        elif self.dynamic_stop_loss.type == self.PRICE_CUSTOM:
+            # custom method call
+            new_take_profit_price = self.custom_dynamic_take_profit(strategy_trader, trade)
+
+        # do nothing if take-profit is decreased in absolute (only safer)
+        # and this avoids flooding due to possible imprecision error
+        if new_take_profit_price > 0.0:
+            if trade.direction > 0 and new_take_profit_price <= trade.take_profit:
+                new_take_profit_price = 0.0
+            elif trade.direction < 0 and new_take_profit_price >= trade.take_profit:
+                new_take_profit_price = 0.0
+
+        if new_take_profit_price > 0.0:
+            new_take_profit_price = strategy_trader.instrument.adjust_price(new_take_profit_price)
+            if new_take_profit_price != trade.take_profit:
+                try:
+                    strategy_trader.trade_modify_take_profit(trade, new_take_profit_price, hard)
+                except Exception as e:
+                    error_logger.error(repr(e))
 
     #
     # context state reporting

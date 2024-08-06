@@ -3,18 +3,23 @@
 # @license Copyright (c) 2024 Dream Overflow
 # dailyfx.com watcher implementation
 
-import time
-import copy
-from datetime import datetime, timedelta, date
+import json
 from typing import Optional, List, Union
 
+import os
+import time
+import copy
 import requests
 import traceback
 
+from datetime import datetime, timedelta, date
+
 from common.utils import parse_datetime, UTC
 from database.database import Database
+
 from watcher.event import BaseEvent, EconomicEvent
 from watcher.fetcher import Fetcher
+from watcher.service import WatcherService
 
 import logging
 
@@ -42,17 +47,40 @@ class DailyFxFetcher(Fetcher):
         "currency"
     ]
 
+    WRITE_TO_LOCAL_CACHE = False
+    READ_FROM_LOCAL_CACHE = False
+    LOCAL_CACHE_DIR = "dailyfx"   # from "user-path"
+
     CURRENCIES = [
-        "USD",
-        "EUR",
-        "CAD",
-        "GBP",
         "AUD",
-        "NZD",
-        "JPY",
+        "EUR",
+        "BRL",
+        "CAD",
         "CNY",
+        "COP",
+        "CZK",
+        "DKK",
+        "HKD",
+        "HUF",
+        "IDR",
+        "JPY",
+        "MXN",
+        "NZD",
+        "NOK",
+        "PHP",
+        "PLN",
+        "RUB",
+        "SGD",
+        "ZAR",
         "KRW",
-        # ...
+        "SEK",
+        "CHF",
+        "TWD",
+        "THB",
+        "GBP",
+        "USD",
+        "ILS",
+        "INR",
     ]
 
     SYMBOLS_USD_LVL3 = [
@@ -285,12 +313,14 @@ class DailyFxFetcher(Fetcher):
         "POSITIVE": 1
     }
 
-    def __init__(self, service):
+    def __init__(self, service: WatcherService):
         super().__init__("dailyfx.com", service)
 
         self._host = "dailyfx.com"
         self._connector = None
         self._session = None
+
+        self._cache_data_path = os.path.join(service.user_path, self.LOCAL_CACHE_DIR)
 
     def connect(self):
         super().connect()
@@ -337,7 +367,68 @@ class DailyFxFetcher(Fetcher):
     # fetch events
     #
 
-    def parse_and_filter_economic_events(self, data: dict, filters: List, date_filter: Union[date, datetime] = None):
+    def fetch_events(self, event_type: int, from_date: Optional[datetime], to_date: Optional[datetime],
+                     filters: Optional[List]):
+        if not from_date:
+            from_date = datetime.today().replace(tzinfo=UTC())
+        if not to_date:
+            to_date = datetime.today().replace(tzinfo=UTC())
+
+        begin = from_date
+        end = to_date
+
+        curr = copy.copy(begin)
+        delta = timedelta(days=1)
+
+        count = 0
+
+        if event_type == BaseEvent.EVENT_TYPE_ECONOMIC:
+            while curr <= end:
+                if self.READ_FROM_LOCAL_CACHE:
+                    # only for testing from cached files
+                    try:
+                        filename = os.path.join(self._cache_data_path, curr.strftime("%Y%m%d")+".json")
+                        if os.path.exists(filename):
+                            with open(filename, "r") as f:
+                                data = json.load(f)
+                                self.store_calendar_events(data, filters, curr)
+                    except IOError as e:
+                        error_logger.error(repr(e))
+                else:
+                    url = '/'.join((self.PROTOCOL, self.BASE_URL, curr.strftime("%Y-%m-%d")))
+                    try:
+                        response = self._session.get(url)
+                        if response.status_code == 200:
+                            data = response.json()
+
+                            # only store current day events
+                            count += self.store_calendar_events(data, filters, curr)
+
+                            if self.WRITE_TO_LOCAL_CACHE:
+                                try:
+                                    filename = os.path.join(self._cache_data_path, curr.strftime("%Y%m%d") + ".json")
+                                    with open(filename, "w") as f:
+                                        f.write(data)
+                                except IOError as e:
+                                    error_logger.error(repr(e))
+
+                    except requests.RequestException as e:
+                        error_logger.error(repr(e))
+
+                    time.sleep(self.FETCH_DELAY)
+
+                curr = curr + delta
+
+        return count
+
+    # done = []
+
+    #
+    # helpers
+    #
+
+    @staticmethod
+    def parse_and_filter_economic_events(data: dict, filters: List, date_filter: Union[date, datetime] = None):
         """
         Each filter is a tuple with (category, List[values])
 
@@ -385,7 +476,7 @@ class DailyFxFetcher(Fetcher):
                     continue
 
             for _filter in filters:
-                if _filter[0] not in self.FILTER_CATEGORIES:
+                if _filter[0] not in DailyFxFetcher.FILTER_CATEGORIES:
                     continue
 
                 if not _filter[1]:
@@ -399,7 +490,7 @@ class DailyFxFetcher(Fetcher):
                 event = EconomicEvent()
 
                 event.code = d.get('symbol', "")
-                event.date = event_date
+                event.date = event_date.replace(tzinfo=UTC())
                 event.title = d.get('title', "")
                 event.level = d.get('importanceNum', 0)
                 event.country = d.get('country', "")
@@ -408,59 +499,33 @@ class DailyFxFetcher(Fetcher):
                 event.actual = d.get('actual', "")
                 event.forecast = d.get('forecast', "")
                 event.reference = d.get('reference', "")  # datetime.strptime(d.get('reference', ""), "%b").month if d.get('reference') else 0
-                event.actual_meaning = self.MEANINGS.get(d.get('economicMeaning', {}).get('actual', "UNKNOWN"), -2)
-                event.previous_meaning = self.MEANINGS.get(d.get('economicMeaning', {}).get('previous', "UNKNOWN"), -2)
+                event.actual_meaning = DailyFxFetcher.MEANINGS.get(d.get('economicMeaning', {}).get('actual', "UNKNOWN"), -2)
+                event.previous_meaning = DailyFxFetcher.MEANINGS.get(d.get('economicMeaning', {}).get('previous', "UNKNOWN"), -2)
 
                 events.append(event)
 
         return events
 
-    def fetch_events(self, event_type: int, from_date: Optional[datetime], to_date: Optional[datetime],
-                     filters: Optional[List]):
-        if not from_date:
-            from_date = datetime.today().replace(tzinfo=UTC())
-        if not to_date:
-            to_date = datetime.today().replace(tzinfo=UTC())
-
-        begin = from_date
-        end = to_date
-
-        curr = copy.copy(begin)
-        delta = timedelta(days=1)
-
-        if event_type == BaseEvent.EVENT_TYPE_ECONOMIC:
-            while curr <= end:
-                # # only for testing from cached files
-                # try:
-                #     with open("/home/frederic/dailyfx/calendar%s" % curr.strftime("%Y%m%d"), "r") as f:
-                #         import json
-                #         data = json.load(f)
-                #         self.store_calendar_events(data, filters, curr)
-                # except:
-                #     pass
-
-                url = '/'.join((self.PROTOCOL, self.BASE_URL, curr.strftime("%Y-%m-%d")))
-                response = self._session.get(url)
-                if response.status_code == 200:
-                    data = response.json()
-                    self.store_calendar_events(data, curr)
-
-                time.sleep(self.FETCH_DELAY)
-
-                curr = curr + delta
-
-    done = []
-    count = 0
-
-    def store_calendar_events(self, data, filters: List, date_filter: date):
+    @staticmethod
+    def store_calendar_events(data, filters: List, date_filter: date) -> int:
         if not data:
-            return
+            return 0
 
-        filtered_objects = self.parse_and_filter_economic_events(data, filters, date_filter)
-        for evt in filtered_objects:
-            self.count += 1
-            if evt.code not in self.done:
-                self.done.append(evt.code)
-                print("\"%s\",  # %s" % (evt.code, evt.title))
+        filtered_objects = DailyFxFetcher.parse_and_filter_economic_events(data, filters, date_filter)
+
+        # for evt in filtered_objects:
+        #     print(evt.__dict__)
+
+        # only to list any codes and currencies
+        # for evt in filtered_objects:
+        #     # if evt.currency not in self.done:
+        #     #     self.done.append(evt.currency)
+        #     #     print("\"%s\"," % evt.currency)
+        #
+        #     # if evt.code not in self.done:
+        #     #     self.done.append(evt.code)
+        #     #     print("\"%s\",  # %s" % (evt.code, evt.title))
 
         Database.inst().store_economic_event(filtered_objects)
+
+        return len(filtered_objects)

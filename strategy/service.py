@@ -509,8 +509,8 @@ class StrategyService(Service):
                         self.base_timeframe = base_timeframe
 
                         # bench begin and end timestamp
-                        self.begin_ts = 0
-                        self.end_ts = 0
+                        self.bench_begin_ts = 0
+                        self.bench_end_ts = 0
 
                     def run(self):
                         # complete the preprocessing and bootstrapping. don't want time progression until any
@@ -538,7 +538,7 @@ class StrategyService(Service):
                         # now can perform backtest
                         Terminal.inst().info("Backtesting started...", view='status')
 
-                        self.begin_ts = time.time()   # bench
+                        self.bench_begin_ts = time.time()   # bench
 
                         if _strategy and trader:
                             while self.current < self.end + self.timestep:
@@ -571,7 +571,7 @@ class StrategyService(Service):
                                 if self.abort:
                                     break
 
-                        self.end_ts = time.time()
+                        self.bench_end_ts = time.time()
 
                 self._timestep_thread = TimeStepThread(self, self._begin_ts, self._end_ts, self._timestep,
                                                        self._timeframe, self._time_factor)
@@ -586,7 +586,7 @@ class StrategyService(Service):
 
             strategy = self._strategy
             if strategy and strategy.running:
-                progress += strategy.progress()
+                progress = strategy.progress()
 
             total = self._end_ts - self._begin_ts
             remaining = self._end_ts - progress
@@ -595,19 +595,19 @@ class StrategyService(Service):
 
             if pc - self._backtest_progress >= 1.0 and pc < 100.0:
                 self._backtest_progress = pc
-                Terminal.inst().info("Backtesting %s%%..." % round(pc), view='status')
+                # Terminal.inst().info("Backtesting %s%%..." % round(pc), view='status')
 
             if self._end_ts - progress <= 0.0:
                 # finished !
                 self._backtest_progress = 100.0
 
                 # backtesting done => waiting user
-                Terminal.inst().info("Backtesting 100% finished !", view='status')
+                # Terminal.inst().info("Backtesting 100% finished !", view='status')
 
                 # bench message
                 logger.info("Backtested %i samples within a duration of %s" % (
                     int((self._timestep_thread.current - self._timestep_thread.begin) / self._timestep_thread.timestep),
-                    format_delta(self._timestep_thread.end_ts - self._timestep_thread.begin_ts)))
+                    format_delta(self._timestep_thread.bench_end_ts - self._timestep_thread.bench_begin_ts)))
 
                 # write trainer output data if specified
                 if self._learning:

@@ -149,9 +149,6 @@ class AndroidNotifier(Notifier):
             messages = self.format_strategy_alert(signal.data, locale)
             message = '\n'.join(messages)
 
-        elif signal.signal_type == Signal.SIGNAL_MARKET_SIGNAL:
-            return
-
         elif signal.signal_type == Signal.SIGNAL_WATCHDOG_TIMEOUT:
             if 'timeout' not in self._watchdog:
                 return

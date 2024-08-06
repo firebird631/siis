@@ -8,6 +8,8 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Any, Tuple, Dict, Union, Optional, List
 
+from watcher.event import EconomicEvent
+
 if TYPE_CHECKING:
     from .strategy import Strategy
     from .strategybaseanalyser import StrategyBaseAnalyser
@@ -1849,23 +1851,22 @@ class StrategyTraderBase(object):
     # slots
     #
 
-    def on_received_liquidation(self, liquidation):
-        """
-        Receive a trade liquidation (not user trade, global).
-        """
-        pass
-
     def on_market_info(self):
-        """
-        When receive initial or update of market/instrument data.
-        Default implementation compile any contexts.
-        """
+        """Slot called when receive initially market data and further updates. Instrument is up-to-date."""
         self.compiles_all_contexts()
 
     def on_received_initial_bars(self, analyser: str):
+        """Slot called once the initial bulk of candles are received for a specific analyser."""
+        pass
+
+    def on_received_liquidation(self, market_id: str, timestamp: float, direction: int, price: float, quantity: float):
         """
-        Slot called once the initial bulk of candles are received for each analyser.
+        Slot called at each market trade liquidation (not user trade but others actors).
         """
+        pass
+
+    def on_received_economic_event(self, economic_event: EconomicEvent):
+        """Slot called for each economic event. It has to be filtered and locally stored for later usages."""
         pass
 
     #

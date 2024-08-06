@@ -15,6 +15,8 @@ def install(options):
     home = pathlib.Path.home()
     if home.exists():
         if sys.platform == "linux":
+            user_path = pathlib.Path(home, '.siis')
+
             config_path = pathlib.Path(home, '.siis', 'config')
             log_path = pathlib.Path(home, '.siis', 'log')
             reports_path = pathlib.Path(home, '.siis', 'reports')
@@ -23,12 +25,16 @@ def install(options):
         elif sys.platform == "windows":
             app_data = os.getenv('APPDATA')
 
+            user_path = pathlib.Path(home, app_data, '.siis')
+
             config_path = pathlib.Path(home, app_data, 'siis', 'config')
             log_path = pathlib.Path(home, app_data, 'siis', 'log')
             reports_path = pathlib.Path(home, app_data, 'siis', 'reports')
             markets_path = pathlib.Path(home, app_data, 'siis', 'markets')
             learning_path = pathlib.Path(home, app_data, 'siis', 'learning')
         else:
+            user_path = pathlib.Path(home, '.siis')
+
             config_path = pathlib.Path(home, '.siis', 'config')
             log_path = pathlib.Path(home, '.siis', 'log')
             reports_path = pathlib.Path(home, '.siis', 'reports')
@@ -38,11 +44,19 @@ def install(options):
         # uses cwd
         home = pathlib.Path(os.getcwd())
 
+        user_path = pathlib.Path(home, 'user')
+
         config_path = pathlib.Path(home, 'user', 'config')
         log_path = pathlib.Path(home, 'user', 'log')
         reports_path = pathlib.Path(home, 'user', 'reports')
         markets_path = pathlib.Path(home, 'user', 'markets')
         learning_path = pathlib.Path(home, 'user', 'learning')
+
+    # .siis/
+    if not user_path.exists():
+        user_path.mkdir(parents=True)
+
+    options['user-path'] = str(user_path)
 
     # config/
     if not config_path.exists():

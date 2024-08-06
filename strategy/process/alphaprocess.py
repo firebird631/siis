@@ -349,6 +349,8 @@ def alpha_setup_backtest(strategy, from_date: datetime, to_date: datetime, base_
         if not watcher:
             continue
 
+        # @todo what about WATCHER_EVENTS
+
         # subscribes for market data and query history
         for analyser in strategy_trader.analysers():
             if not analyser:

@@ -956,12 +956,23 @@ class Strategy(Runnable):
         #     while (not len(self._signals) or not self._ping):
         #         self._condition.wait()
 
+        if not self._preset:
+            # preset when watchers are ready, else don't consume the signal
+            if self.check_watchers():
+                self.preset()
+            else:
+                return True
+
         do_update = set()
 
         while self._signals:
             signal = self._signals.popleft()
             if signal is None:
                 continue
+
+            #
+            # from strategy
+            #
 
             if signal.source == Signal.SOURCE_STRATEGY:
                 if signal.signal_type == Signal.SIGNAL_MARKET_INFO_DATA:
@@ -1056,6 +1067,10 @@ class Strategy(Runnable):
                     strategy_trader = self._strategy_traders.get(signal.data)
                     if strategy_trader:
                         do_update.add(strategy_trader)
+
+            #
+            # from watcher
+            #
 
             elif signal.source == Signal.SOURCE_WATCHER:
                 if signal.signal_type == Signal.SIGNAL_STREAM_TICK_DATA:
@@ -1276,9 +1291,14 @@ class Strategy(Runnable):
                     # interest in liquidation data
                     strategy_trader = self._strategy_traders.get(signal.data[0])
                     if strategy_trader:
-                        strategy_trader.on_received_liquidation(signal.data)
+                        strategy_trader.on_received_liquidation(*signal.data)
 
                         do_update.add(strategy_trader)
+
+                elif signal.signal_type == Signal.SIGNAL_ECONOMIC_EVENT:
+                    # interest in economic event
+                    for k, strategy_trader in self._strategy_traders.items():
+                        strategy_trader.on_received_economic_event(signal.data)
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_CONNECTED:
                     # initiate the strategy prefetch initial data, only once all watchers are ready
@@ -1290,10 +1310,10 @@ class Strategy(Runnable):
                                 with strategy_trader.mutex:
                                     # force to reinitialize
                                     # @todo could be done only after a certain delay
-                                    # strategy_trader._initialized = 1
+                                    # strategy_trader._initialized = StrategyTraderBase.STATE_WAITING
 
                                     # force to recheck the trades
-                                    strategy_trader._checked = 1
+                                    strategy_trader._checked = strategy_trader.STATE_WAITING
 
                                 do_update.add(strategy_trader)
                     else:
@@ -1307,10 +1327,10 @@ class Strategy(Runnable):
                                 with strategy_trader.mutex:
                                     # force to reinitialize
                                     # @todo could be done only after a certain delay
-                                    # strategy_trader._initialized = 1
+                                    # strategy_trader._initialized = StrategyTraderBase.STATE_WAITING
 
                                     # force to recheck the trades
-                                    strategy_trader._checked = 1
+                                    strategy_trader._checked = strategy_trader.STATE_WAITING
  
                                 do_update.add(strategy_trader)
 
@@ -1581,6 +1601,7 @@ class Strategy(Runnable):
                     # non interested in this instrument/symbol
                     return
 
+            # filter by instrument for candle data
             elif signal.signal_type == Signal.SIGNAL_STREAM_CANDLE_DATA:
                 if signal.data[1].timeframe != self.base_timeframe:
                     # must be of equal to the base timeframe only
