@@ -14,7 +14,7 @@ import traceback
 
 from datetime import datetime
 
-from common.utils import parse_utc_datetime, fix_thread_set_name, UTC
+from common.utils import parse_utc_datetime, fix_thread_set_name, UTC, duration_to_str, timeframe_to_str
 
 from watcher.service import WatcherService
 
@@ -863,8 +863,14 @@ def application(argv):
                 # display strategy trading time and backtesting progression
                 if time.time() - prev_timestamp >= 0.1:
                     if trader_service.backtesting:
-                        mode = "Backtesting %.2f%%" % strategy_service.backtest_progress + (
-                            " (paused)" if not strategy_service.backtesting_play else "")
+                        time_factor = options.get('time-factor', 0)
+                        base_timeframe = options.get('timeframe', 0)
+
+                        mode = "Backtesting %.2f%% %s(%s by step of %gs %s)" % (
+                                strategy_service.backtest_progress, "[paused] " if not strategy_service.backtesting_play else "",
+                                timeframe_to_str(base_timeframe),
+                                options['timestep'],
+                                "x%g" % (1 / ((1 / time_factor) * options['timestep'])) if time_factor else "xMax")
 
                         if strategy_service.timestamp > 0.0:
                             details = datetime.fromtimestamp(strategy_service.timestamp).strftime('%a %Y-%m-%d %H:%M:%S')

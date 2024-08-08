@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import traceback
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, List, Union, Optional
 
@@ -26,6 +27,8 @@ from common.utils import timeframe_to_str
 
 import logging
 logger = logging.getLogger('siis.strategy.strategytimeframeanalyser')
+error_logger = logging.getLogger('siis.error.strategy.strategytimeframeanalyser')
+traceback_logger = logging.getLogger('siis.traceback.strategy.strategytimeframeanalyser')
 
 
 class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
@@ -125,12 +128,16 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
             if param is not None:
                 if self._strategy_trader.strategy.indicator(param[0]):
                     # instantiate and setup indicator
-                    indicator = self._strategy_trader.strategy.indicator(param[0]).builder(
-                        Indicator.BASE_TIMEFRAME, self.tf, *param[1:])
+                    try:
+                        indicator = self._strategy_trader.strategy.indicator(param[0]).builder(
+                            Indicator.BASE_TIMEFRAME, self.tf, *param[1:])
 
-                    indicator.setup(self._strategy_trader.instrument)
+                        indicator.setup(self._strategy_trader.instrument)
 
-                    setattr(self, ind, indicator)
+                        setattr(self, ind, indicator)
+                    except Exception as e:
+                        error_logger.error(str(e))
+                        traceback_logger.error(traceback.format_exc())
                 else:
                     logger.error("Indicator %s not found for %s on timeframe %s" % (
                         param[0], ind, timeframe_to_str(self.tf)))
@@ -160,7 +167,7 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
             adj_from_date, adj_to_date, n_last = self.instrument.adjust_date_and_last_n(
                 self.history, self.depth, begin_date, end_date)
 
-            watcher = self.instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+            watcher = self.instrument.watcher(Watcher.WATCHER_MARKET_DATA)
             if watcher:
                 watcher.query_historical_timeframe_bars(self.instrument.market_id, self.name, self.timeframe,
                                                         from_date=adj_from_date, to_date=adj_to_date, n_last=n_last)
@@ -197,7 +204,7 @@ class StrategyTimeframeAnalyser(StrategyBaseAnalyser):
                 self.close_price = self.price.close[-2]
                 self.open_price = self.price.open[-2]
 
-            # last closed candle processed (reset before next gen)
+            # last closed candle processed (reset before next gen) done by strategy trader at update bar
             # self._last_closed = False
 
         elif self.close_price is None or self.open_price is None:

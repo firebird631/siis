@@ -291,7 +291,7 @@ def initiate_strategy_trader(strategy, strategy_trader):
 
     try:
         # retrieve the related price and volume watcher
-        watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+        watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_MARKET_DATA)
         if watcher:
             timeframes = {}
 
@@ -344,28 +344,33 @@ def alpha_setup_backtest(strategy, from_date: datetime, to_date: datetime, base_
         if not strategy_trader.instrument:
             continue
 
-        # retrieve the related price and volume watcher
-        watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
-        if not watcher:
-            continue
+        # retrieve the related market data watcher
+        market_data_watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_MARKET_DATA)
+        if market_data_watcher:
+            # subscribes for market data and query history
+            for analyser in strategy_trader.analysers():
+                if not analyser:
+                    continue
 
-        # @todo what about WATCHER_EVENTS
+                analyser.query_historical_data(from_date)
 
-        # subscribes for market data and query history
-        for analyser in strategy_trader.analysers():
-            if not analyser:
-                continue
+            # fetch market info from the DB
+            Database.inst().load_market_info(strategy.service, market_data_watcher.name, strategy_trader.instrument.market_id)
 
-            analyser.query_historical_data(from_date)
+            # create a feeder per instrument for ticks history
+            feeder = StrategyDataFeeder(strategy, strategy_trader.instrument.market_id, [], True)
+            strategy.add_feeder(feeder)
 
-        # fetch market info from the DB
-        Database.inst().load_market_info(strategy.service, watcher.name, strategy_trader.instrument.market_id)
+            feeder.initialize(market_data_watcher.name, from_date, to_date)
 
-        # create a feeder per instrument for ticks history
-        feeder = StrategyDataFeeder(strategy, strategy_trader.instrument.market_id, [], True)
-        strategy.add_feeder(feeder)
+        # retrieve the related event watcher
+        event_data_watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_EVENTS)
+        if event_data_watcher:
+            # create a feeder per instrument for ticks history
+            feeder = StrategyDataFeeder(strategy, strategy_trader.instrument.market_id, [], True)
+            strategy.add_feeder(feeder)
 
-        feeder.initialize(watcher.name, from_date, to_date)
+            feeder.initialize(market_data_watcher.name, from_date, to_date)
 
     # complete initialization state
     for strategy_trader in strategy_traders:

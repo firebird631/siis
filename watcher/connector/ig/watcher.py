@@ -73,7 +73,7 @@ class IGWatcher(Watcher):
     MAX_CONCURRENT_SUBSCRIPTIONS = 40
 
     def __init__(self, service):
-        super().__init__("ig.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
+        super().__init__("ig.com", service, Watcher.WATCHER_MARKET_DATA)
 
         self._host = "ig.com"
         self._connector = None
@@ -1273,6 +1273,8 @@ class IGWatcher(Watcher):
 
         # previously it was code, now they change with name...
         market.set_quote(currency, instrument['currencies'][0].get('symbol', currency), quote_precision)
+
+        # 'country': 'US', 'DE', ...
 
         if instrument.get('marginFactor') and market.is_open:
             if instrument.get('marginFactorUnit', '') == "PERCENTAGE":

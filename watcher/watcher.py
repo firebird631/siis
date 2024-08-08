@@ -51,7 +51,7 @@ class Watcher(Runnable):
     UPDATE_MARKET_INFO_DELAY = 4*60*60  # 4h between each market data info fetch
 
     WATCHER_UNDEFINED = 0
-    WATCHER_PRICE_AND_VOLUME = 1
+    WATCHER_MARKET_DATA = 1
     WATCHER_BUY_SELL_SIGNAL = 2
     WATCHER_EVENTS = 4
     WATCHER_ALL = 1 | 2 | 4
@@ -167,7 +167,7 @@ class Watcher(Runnable):
         """
         These watchers looks for price and volumes data.
         """
-        return self._watcher_type & Watcher.WATCHER_PRICE_AND_VOLUME == Watcher.WATCHER_PRICE_AND_VOLUME
+        return self._watcher_type & Watcher.WATCHER_MARKET_DATA == Watcher.WATCHER_MARKET_DATA
 
     @property
     def has_buy_sell_signals(self) -> bool:

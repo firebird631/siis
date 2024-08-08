@@ -227,6 +227,14 @@ Sum order :
 # Bonus #
 #########
 
+- sur stats longest flat period, comment décompter les weekend et jours offs ?
+    - on pourrait peut être mesurer les gaps de flux et ne pas compter ces periodes (mais pas si évident que ça en pratique)
+    - de même sur la version C++
+- peut être avoir une option pour changer la période (monthly) en daily des ratio (sortino, sharpe, ulcer)
+    - simple mais demande un petit refactoring
+    - les 2 pourraient au final être intéressants
+    - de même sur la version C++
+
 - avoir une registry pour les commandes, surtout pour les command Trader et Strategy.
     - il y en a beaucoup
     - ça pourrait être plus souple et dynamique (ajout de custom command, même en dynamique)

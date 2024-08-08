@@ -4,7 +4,7 @@
 # Volume Profile indicator and composite
 
 import math
-import traceback
+
 from typing import Optional, List, Union, Dict, Tuple
 
 from strategy.indicator.indicator import Indicator
@@ -533,7 +533,7 @@ class VolumeProfileBaseIndicator(Indicator):
     @note The per point (x sensibility factor) is the first realized.
     """
 
-    __slots__ = '_sensibility', '_volume_area', '_size', '_vps', '_current', \
+    __slots__ = '_history', '_sensibility', '_volume_area', '_size', '_vps', '_current', \
         '_session_offset', '_session_duration', '_price_precision', '_tick_size', '_tick_scale', \
         '_compute_peaks_and_valleys'
 
@@ -563,24 +563,28 @@ class VolumeProfileBaseIndicator(Indicator):
         return None
 
     def __init__(self, name: str, timeframe: float,
+                 history_size: int = 10,
                  sensibility: int = 10,
-                 volume_area: float = 70,
+                 value_area: float = 70,
                  detect_peaks_and_valleys: bool = False,
                  tick_scale: float = 1.0):
         """
 
         @param name:
-        @param timeframe:
-        @param sensibility:
-        @param volume_area: 1% to 99%, 0 or below mean don't compute VA
-        @param detect_peaks_and_valleys:
+        @param timeframe: Related timeframe or 0 if non-temporal
+        @param history_size: Max kept previous profiles
+        @param sensibility: Bin width
+        @param value_area: 1% to 99%, 0 or below mean don't compute VA
+        @param detect_peaks_and_valleys: If true compute peaks and valleys at close
         """
         super().__init__(name, timeframe)
 
-        self._compute_at_close = True  # only at close (that mean at each tick or each closed bar)
+        self._compute_at_close = True  # no effect
+
+        self._history = history_size
 
         self._sensibility = sensibility
-        self._volume_area = volume_area
+        self._volume_area = value_area
 
         self._compute_peaks_and_valleys = detect_peaks_and_valleys
 
@@ -635,6 +639,17 @@ class VolumeProfileBaseIndicator(Indicator):
     @property
     def vps(self) -> List[VolumeProfile]:
         return self._vps
+
+    def has_values(self, min_samples=1) -> bool:
+        return len(self._vps) >= min_samples
+
+    def last(self) -> VolumeProfile:
+        """Last closed volume profile (not the current computed)"""
+        return self._vps[-1] if self._vps else None
+
+    def history(self, index=-1):
+        """Return a previous closed volume profile (negative index based)"""
+        return self._vps[index] if index < 0 and -index <= len(self._vps) else None
 
     def update_value_area(self):
         """Force to update value area of the current volume profile."""
@@ -715,6 +730,10 @@ class VolumeProfileBaseIndicator(Indicator):
             # logger.info(vp.vah)
 
         self._vps.append(vp)
+
+        if len(self._vps) > self._history:
+            # pop left
+            self._vps.pop(0)
 
         # force to create a new one
         self._current = None
@@ -1058,5 +1077,9 @@ class LogVolumeProfileBaseIndicator(VolumeProfileBaseIndicator):
 
         return None
 
-    def __init__(self, name: str, timeframe: float, length: int = 10, sensibility: int = 10, volume_area: float = 70):
+    def __init__(self, name: str, timeframe: float,
+                 history_size: int = 10,
+                 sensibility: int = 10,
+                 detect_peaks_and_valleys: bool = False,
+                 tick_scale: float = 1.0):
         super().__init__(name, timeframe)

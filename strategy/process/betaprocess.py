@@ -465,7 +465,7 @@ def initiate_strategy_trader(strategy, strategy_trader):
 
     instrument = strategy_trader.instrument
     try:
-        watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+        watcher = instrument.watcher(Watcher.WATCHER_MARKET_DATA)
         if watcher:
             # update from last ticks
             watcher.subscribe(instrument.market_id, None, -1, None)
@@ -492,7 +492,7 @@ def beta_setup_backtest(strategy, from_date, to_date, base_timeframe=Instrument.
     """
     for market_id, instrument in strategy._instruments.items():
         # retrieve the related price and volume watcher
-        watcher = instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+        watcher = instrument.watcher(Watcher.WATCHER_MARKET_DATA)
 
         # create a feeder per instrument and fetch ticks only
         feeder = StrategyDataFeeder(strategy, instrument.market_id, [], True)

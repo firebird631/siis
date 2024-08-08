@@ -16,7 +16,12 @@ class BarLogVolumeProfileIndicator(LogVolumeProfileBaseIndicator):
     def indicator_base(cls):
         return Indicator.BASE_TIMEFRAME | Indicator.BASE_TICKBAR
 
-    def __init__(self, timeframe:  float, length:  int = 10, sensibility: int = 10, volume_area: float = 70):
-        super().__init__("barlogvolumeprofile", timeframe, length, sensibility, volume_area)
+    def __init__(self, timeframe: float,
+                 history_size: int = 10,
+                 sensibility: int = 10,
+                 value_area: float = 70,
+                 detect_peaks_and_valleys: bool = False,
+                 tick_scale: float = 1.0):
+        super().__init__("barlogvolumeprofile", timeframe, history_size, sensibility, value_area, detect_peaks_and_valleys, tick_scale)
 
     # @todo generate

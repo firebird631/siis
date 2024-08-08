@@ -70,10 +70,11 @@ Features
     * [ ] Rithmic(TM) API (planned)
     * [ ] MetaTrader(TM) RPC/Stream API (planned)
     * [ ] MetaTrader(TM) Cloud API (planned)
-* Some others source of prices/volumes data fetchers
-    * [x] HistData (only to import downloaded files)
-    * [x] Dukascopy
-    * [ ] AlphaVantage (planned)
+* Others source of data supported
+    * [x] HistData (price/volume) (only to import downloaded files)
+    * [x] Dukascopy (price/volume)
+    * [x] DailyFx Economic Event (Calendar)
+    * [ ] AlphaVantage (price/volume) (planned)
 * Fetching of OHLC history data in SQL database
 * Fetching of ticks or trades history data optimized files
 * Multiple instances can be executed at the same time

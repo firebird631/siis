@@ -592,7 +592,7 @@ class Strategy(Runnable):
                         time.sleep(self.service.fetch_delay)
 
                     if watcher.has_prices_and_volumes:
-                        instrument.add_watcher(Watcher.WATCHER_PRICE_AND_VOLUME, watcher)
+                        instrument.add_watcher(Watcher.WATCHER_MARKET_DATA, watcher)
 
                     if watcher.has_buy_sell_signals:
                         instrument.add_watcher(Watcher.WATCHER_BUY_SELL_SIGNAL, watcher)
@@ -1156,7 +1156,7 @@ class Strategy(Runnable):
                                 # append the current OHLC from the watcher on live mode
                                 with strategy_trader.mutex:
                                     if not self.service.backtesting:
-                                        analyser.add_bar(instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME).
+                                        analyser.add_bar(instrument.watcher(Watcher.WATCHER_MARKET_DATA).
                                                          current_ohlc(instrument.market_id, signal.data[1]))
 
                                     analyser.ack_initial_data()
@@ -1298,7 +1298,8 @@ class Strategy(Runnable):
                 elif signal.signal_type == Signal.SIGNAL_ECONOMIC_EVENT:
                     # interest in economic event
                     for k, strategy_trader in self._strategy_traders.items():
-                        strategy_trader.on_received_economic_event(signal.data)
+                        with strategy_trader.mutex:
+                            strategy_trader.on_received_economic_event(signal.data)
 
                 elif signal.signal_type == Signal.SIGNAL_WATCHER_CONNECTED:
                     # initiate the strategy prefetch initial data, only once all watchers are ready
@@ -1402,6 +1403,13 @@ class Strategy(Runnable):
 
             # update last trade data from last tick coming from feed
             trader.on_trade_market(instrument.market_id, instrument.ticks()[-1])
+
+        # economic events
+        if feeder.has_economic_events:
+            economic_events = feeder.feed_economic_events(timestamp)
+            if economic_events:
+                for economic_event in economic_events:
+                    strategy_trader.on_received_economic_event(economic_event)
 
         # update strategy as necessary
         if updated:

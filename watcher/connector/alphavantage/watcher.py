@@ -63,7 +63,7 @@ class AlphaVantageWatcher(Watcher):
     }
 
     def __init__(self, service):
-        super().__init__("alphavantage.co", service, Watcher.WATCHER_PRICE_AND_VOLUME)
+        super().__init__("alphavantage.co", service, Watcher.WATCHER_MARKET_DATA)
         
         self._connector = None
 

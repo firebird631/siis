@@ -104,7 +104,7 @@ class BitMexWatcher(Watcher):
     _connector: Union[Connector, None]
 
     def __init__(self, service):
-        super().__init__("bitmex.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
+        super().__init__("bitmex.com", service, Watcher.WATCHER_MARKET_DATA)
 
         self._connector = None
 

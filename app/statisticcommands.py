@@ -190,8 +190,11 @@ class DrawStatsCommand(Command):
             best = float(t['stats']['best-price'])
             worst = float(t['stats']['worst-price'])
 
-            to_eff_pct = (axp - aep) / (best - worst)
-            series.append(to_eff_pct * 100.0)
+            if best - worst != 0.0:
+                to_eff_pct = (axp - aep) / (best - worst)
+                series.append(to_eff_pct * 100.0)
+            else:
+                series.append(0.0)
 
         if avg:
             x_series.append(list(MM_n(7, series)))
@@ -225,8 +228,11 @@ class DrawStatsCommand(Command):
             best = float(t['stats']['best-price'])
             worst = float(t['stats']['worst-price'])
 
-            en_eff_pct = (best - aep) / (best - worst)
-            series.append(en_eff_pct * 100.0)
+            if best - worst != 0.0:
+                en_eff_pct = (best - aep) / (best - worst)
+                series.append(en_eff_pct * 100.0)
+            else:
+                series.append(0.0)
 
         if avg:
             x_series.append(list(MM_n(7, series)))
@@ -260,8 +266,11 @@ class DrawStatsCommand(Command):
             best = float(t['stats']['best-price'])
             worst = float(t['stats']['worst-price'])
 
-            ex_eff_pct = (axp - worst) / (best - worst)
-            series.append(ex_eff_pct * 100.0)
+            if best - worst != 0.0:
+                ex_eff_pct = (axp - worst) / (best - worst)
+                series.append(ex_eff_pct * 100.0)
+            else:
+                series.append(0.0)
 
         if avg:
             x_series.append(list(MM_n(7, series)))

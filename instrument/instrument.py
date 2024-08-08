@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, List, Union, Optional, Tuple, Dict
 
+from watcher.event import EconomicEvent
+
 if TYPE_CHECKING:
     from watcher.watcher import Watcher
     from .bar import RangeBar
@@ -344,7 +346,8 @@ class Instrument(object):
                 '_ticks', '_candles', '_buy_sells', '_base_timeframe', \
                 '_base', '_quote', '_settlement', '_trade', '_orders', \
                 '_hedging', '_expiry', '_value_per_pip', '_one_pip_means', '_lot_size', '_contract_size',  \
-                '_timezone', '_session_offset', '_session_duration', '_trading_sessions'
+                '_timezone', '_session_offset', '_session_duration', '_trading_sessions', \
+                '_economic_events'
 
     _ticks: List[TickType]
     _candles: List[Candle]
@@ -353,6 +356,8 @@ class Instrument(object):
 
     _watchers: Dict[int, Watcher]
     _trading_sessions: List[TradingSession]
+
+    _economic_events: List[EconomicEvent]
 
     def __init__(self, market_id: str, symbol: str, alias: Optional[str] = None):
         self._watchers = {}
@@ -411,6 +416,9 @@ class Instrument(object):
 
         # allowed trading session (empty mean anytime) else must be explicit. each session is a TradingSession model.
         self._trading_sessions = []
+
+        # recent up-to-date filtered economics event of interested (generally managed by the strategy trader)
+        self._economic_events = []
 
     def add_watcher(self, watcher_type: int, watcher: Watcher):
         if watcher:
@@ -1264,6 +1272,22 @@ class Instrument(object):
                     for session in trading_sessions:
                         if session not in self._trading_sessions:
                             self._trading_sessions.append(session)
+
+    #
+    # economics events
+    #
+
+    def add_economic_event(self, economic_event: EconomicEvent):
+        if economic_event:
+            self._economic_events.append(economic_event)
+
+    @property
+    def economic_events(self) -> List[EconomicEvent]:
+        return self._economic_events
+
+    def set_economic_events(self, economic_events: List[EconomicEvent]):
+        """Replace the list (ref copy)"""
+        self._economic_events = economic_events
 
     #
     # static

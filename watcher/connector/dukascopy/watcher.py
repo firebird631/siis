@@ -40,4 +40,4 @@ class DukascopyWatcher(Watcher):
     """
 
     def __init__(self, service):
-        super().__init__("dukascopy.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
+        super().__init__("dukascopy.com", service, Watcher.WATCHER_MARKET_DATA)

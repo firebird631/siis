@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import traceback
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, List, Tuple, Union, Optional
 
@@ -114,13 +115,17 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
         for ind, param in params['indicators'].items():
             if param is not None:
                 if self._strategy_trader.strategy.indicator(param[0]):
-                    # instantiate and setup indicator
-                    indicator = self._strategy_trader.strategy.indicator(param[0]).builder(
-                        Indicator.BASE_TICKBAR, 0.0, *param[1:])
+                    try:
+                        # instantiate and setup indicator
+                        indicator = self._strategy_trader.strategy.indicator(param[0]).builder(
+                            Indicator.BASE_TICKBAR, 0.0, *param[1:])
 
-                    indicator.setup(self._strategy_trader.instrument)
+                        indicator.setup(self._strategy_trader.instrument)
 
-                    setattr(self, ind, indicator)
+                        setattr(self, ind, indicator)
+                    except Exception as e:
+                        error_logger.error(str(e))
+                        traceback_logger.error(traceback.format_exc())
                 else:
                     logger.error("Indicator %s not found for %s on bar %s" % (param[0], ind, self.rb))
             else:
@@ -142,7 +147,7 @@ class StrategyRangeBarAnalyser(StrategyBaseAnalyser):
             adj_from_date, adj_to_date, n_last = self.instrument.adjust_date_and_last_n(
                 self.history, self.depth, begin_date, end_date)
 
-            watcher = self.instrument.watcher(Watcher.WATCHER_PRICE_AND_VOLUME)
+            watcher = self.instrument.watcher(Watcher.WATCHER_MARKET_DATA)
             if watcher:
                 watcher.query_historical_range_bars(self.instrument.market_id, self.name, self.timeframe,
                                                     to_date=adj_to_date, n_last=n_last)

@@ -168,6 +168,10 @@ def compute_strategy_statistics(strategy):
     @return: A dataclass StrategyTimeStatistics
 
     @note The Configured percent mode is without reinvestment.
+
+    @note Do not be confused, the percent stats are computed with the percentage version of the PNL of the trade.
+          Whereas the currency stats are computed with the currency version of the PNL. It could make the difference
+          because the percent mode is not weighted by the size of the trade.
     """
     if not strategy:
         return StrategyStatistics()
@@ -253,13 +257,19 @@ def compute_strategy_statistics(strategy):
             # max time to recover (by percentage)
             if cum_pnl_pct >= max_pnl_pct:
                 max_pnl_pct = cum_pnl_pct
-                max_time_to_recover_pct = max(max_time_to_recover_pct, trade_lrx_ts - max_pnl_pct_ts)
+
+                if max_pnl_pct_ts > 0.0:
+                    max_time_to_recover_pct = max(max_time_to_recover_pct, trade_lrx_ts - max_pnl_pct_ts)
+
                 max_pnl_pct_ts = trade_lrx_ts
 
             # max time to recover (by currency)
             if cum_pnl >= max_pnl:
                 max_pnl = cum_pnl
-                max_time_to_recover = max(max_time_to_recover, trade_lrx_ts - max_pnl_ts)
+
+                if max_pnl_pct_ts > 0.0:
+                    max_time_to_recover = max(max_time_to_recover, trade_lrx_ts - max_pnl_ts)
+
                 max_pnl_ts = trade_lrx_ts
 
             # longest flat period and average trades per day

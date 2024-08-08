@@ -71,7 +71,7 @@ class BinanceFuturesWatcher(Watcher):
     }
 
     def __init__(self, service):
-        super().__init__("binancefutures.com", service, Watcher.WATCHER_PRICE_AND_VOLUME)
+        super().__init__("binancefutures.com", service, Watcher.WATCHER_MARKET_DATA)
 
         self._connector = None
         self._depths = {}  # depth chart per symbol tuple (last_id, bids, asks)

@@ -16,6 +16,7 @@ from strategy.indicator.models import VolumeProfile
 
 from config import utils
 from watcher.event import EconomicEvent
+from .economiceventstorage import EconomicEventStreamer
 
 from .tickstorage import TickStorage, TickStreamer, FirstTickFinder, LastTickFinder
 from .ohlcstorage import OhlcStreamer
@@ -112,6 +113,8 @@ class Database(object):
 
     It is planned to add the non temporal-bar as temporal OHLC are. It was planned to cache them into distinct
     SQLite DB but finally will be centralized into the SQL DB.
+
+    @todo Could add country code field on market_info
     """
     __instance = None
 
@@ -814,6 +817,19 @@ class Database(object):
         Create a new OHLC streamer. It comes from OHLC database table.
         """
         return OhlcStreamer(self._db, broker_id, market_id, timeframe, from_date, to_date, buffer_size)
+
+    def create_economic_event_streamer(self, country: str, currency: str, min_level: int,
+                                       from_date: datetime, to_date: datetime, buffer_size: int = 1000):
+        """
+        Create a new streamer of economic events.
+        @param country:
+        @param currency:
+        @param min_level:
+        @param from_date:
+        @param to_date:
+        @return:
+        """
+        return EconomicEventStreamer(self._db, from_date, to_date, country, currency, min_level, buffer_size)
 
     #
     # User

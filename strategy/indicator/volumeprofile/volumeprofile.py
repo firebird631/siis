@@ -15,11 +15,12 @@ class VolumeProfileIndicator(VolumeProfileBaseIndicator):
     """
 
     def __init__(self, timeframe: float,
+                 history_size: int = 10,
                  sensibility: int = 1,
-                 volume_area: float = 70,
+                 value_area: float = 70,
                  detect_peaks_and_valleys: bool = False,
                  tick_scale: float = 1.0):
-        super().__init__("volumeprofile", timeframe, sensibility, volume_area, detect_peaks_and_valleys, tick_scale)
+        super().__init__("volumeprofile", timeframe,  history_size, sensibility, value_area, detect_peaks_and_valleys, tick_scale)
 
     @classmethod
     def indicator_base(cls):
@@ -37,6 +38,18 @@ class VolumeProfileIndicator(VolumeProfileBaseIndicator):
         @param tick: Tick by tick to process generation
         @param finalize: Set to True when a bar just close
         """
+        if finalize:
+            self.finalize()
+
+        if self._current is None:
+            if self._timeframe > 0:
+                base_time = Instrument.basetime(self._timeframe, tick[0])
+            else:
+                base_time = tick[0]
+
+            self._current = BidAskLinearScaleDict(base_time, self._sensibility,
+                                                  self._price_precision, self._tick_size, self._tick_scale)
+
         if self._session_offset or self._session_duration:
             # compute daily base time only if a session is defined
             base_time = Instrument.basetime(Instrument.TF_DAY, tick[0])
@@ -49,15 +62,6 @@ class VolumeProfileIndicator(VolumeProfileBaseIndicator):
                 # ignored, out of session
                 return
 
-        if self._current is None:
-            if self._timeframe > 0:
-                base_time = Instrument.basetime(self._timeframe, tick[0])
-            else:
-                base_time = tick[0]
-
-            self._current = BidAskLinearScaleDict(base_time, self._sensibility,
-                                                  self._price_precision, self._tick_size, self._tick_scale)
-
         # -1  for bid, 1 for ask, or 0 if no info
         if tick[5] < 0:
             self._current.add_bid(tick[3], tick[4])
@@ -66,9 +70,6 @@ class VolumeProfileIndicator(VolumeProfileBaseIndicator):
         else:
             self._current.add_bid(tick[3], tick[4]*0.5)
             self._current.add_ask(tick[3], tick[4]*0.5)
-
-        if finalize:
-            self.finalize()
 
         # retain the last tick timestamp
         self._last_timestamp = tick[0]

@@ -3,6 +3,9 @@
 # @license Copyright (c) 2024 Dream Overflow
 # Event type and model
 
+from datetime import datetime
+from typing import Optional
+
 
 class BaseEvent:
 
@@ -16,6 +19,8 @@ class BaseEvent:
 
 class EconomicEvent:
 
+    date: Optional[datetime]
+
     def __init__(self):
         self.code = ""
         self.date = None
@@ -23,10 +28,10 @@ class EconomicEvent:
         self.level = 0
         self.country = ""
         self.currency = ""
-        self.previous = 0.0
-        self.actual = 0.0
-        self.forecast = 0.0
-        self.reference = 0
+        self.previous = ""
+        self.actual = ""
+        self.forecast = ""
+        self.reference = ""
         self.actual_meaning = -2
         self.previous_meaning = -2
 
@@ -46,7 +51,7 @@ class EconomicEvent:
             return "unknown"
 
     def __str__(self):
-        return "%s at=%s lvl=%i curr=%s (impact=%s)" % (
+        return "%s at=%s UTC lvl=%i curr=%s (impact=%s)" % (
             self.code,
             self.date.strftime("%Y-%m-%d %H:%M"),
             self.level,
