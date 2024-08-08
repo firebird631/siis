@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Union, TYPE_CHECKING
+from typing import Union, TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from strategy.strategy import Strategy
@@ -36,6 +36,9 @@ class DefaultEconomicEventMixin(object):
     """
     Default implementation of on_received_economic_event, mixin
     """
+
+    _economic_events_codes: List[str]
+
     def __init__(self, strategy: Strategy, instrument: Instrument, base_timeframe: float, params: dict):
         super().__init__(strategy, instrument, base_timeframe, params)
 
@@ -45,7 +48,7 @@ class DefaultEconomicEventMixin(object):
 
         self._economic_events_country = ""
         self._economic_events_currency = ""
-        self._economic_events_min_level = 0
+        self._economic_events_min_level = 1
         self._economic_events_codes = []
 
         if economic_event_params:
@@ -53,6 +56,22 @@ class DefaultEconomicEventMixin(object):
             self._economic_events_country = economic_event_params.get('country', "")
             self._economic_events_currency = economic_event_params.get('currency', "")
             self._economic_events_min_level = importance_str_to_level(economic_event_params.get('importance', ""))
+
+    @property
+    def economic_event_country(self) -> str:
+        return self._economic_events_country
+
+    @property
+    def economic_event_currency(self) -> str:
+        return self._economic_events_currency
+
+    @property
+    def economic_event_min_level(self) -> int:
+        return self._economic_events_min_level
+
+    @property
+    def economic_event_codes(self) -> List[str]:
+        return self._economic_events_codes
 
     def on_received_economic_event(self,  # type: Union[DefaultEconomicEventMixin, StrategyTraderBase]
                                    economic_event: EconomicEvent):

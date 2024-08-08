@@ -1779,13 +1779,14 @@ class StrategyTraderBase(object):
             # realized profit/loss
             net_profit_loss_rate = trade.net_profit_loss_rate()
 
-            best_pl = (trade.best_price() - trade.entry_price if trade.direction > 0 else
-                       trade.entry_price - trade.best_price()) / trade.entry_price
+            if trade.entry_price != 0:
+                best_pl = trade.direction * (trade.best_price() - trade.entry_price) / trade.entry_price
+                worst_pl = trade.direction * (trade.worst_price() - trade.entry_price) / trade.entry_price
+            else:
+                best_pl = 0
+                worst_pl = 0
 
-            worst_pl = (trade.worst_price() - trade.entry_price if trade.direction > 0 else
-                        trade.entry_price - trade.worst_price()) / trade.entry_price
-
-            # perf summed here it means that it is not done during partial closing
+                # perf summed here it means that it is not done during partial closing
             if net_profit_loss_rate != 0.0:
                 self._stats['perf'] += net_profit_loss_rate  # total profit/loss percent
                 self._stats['best'] = max(self._stats['best'], net_profit_loss_rate)  # retains the best win

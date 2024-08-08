@@ -84,7 +84,7 @@ class StrategyDataFeeder(object):
 
         if self._country or self._currency:
             self._economic_events_streamer = Database.inst().create_economic_event_streamer(
-                watcher_name, self._country, self._currency, self._min_level, from_date=from_date, to_date=to_date)
+                self._country, self._currency, self._min_level, from_date=from_date, to_date=to_date)
 
         self._initialized = True
 

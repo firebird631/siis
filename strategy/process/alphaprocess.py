@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 
 from common.utils import UTC, timestamp_to_str, duration_to_str
 from instrument.instrument import Instrument
+from strategy.mixins.defaulteconomiceventmixin import DefaultEconomicEventMixin
 
 from watcher.watcher import Watcher
 
@@ -344,6 +345,17 @@ def alpha_setup_backtest(strategy, from_date: datetime, to_date: datetime, base_
         if not strategy_trader.instrument:
             continue
 
+        # retrieve the related event watcher
+        event_data_watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_EVENTS)
+        if event_data_watcher and isinstance(strategy_trader, DefaultEconomicEventMixin):
+            evt_country = strategy_trader.economic_event_country
+            evt_currency = strategy_trader.economic_event_currency
+            evt_min_level = strategy_trader.economic_event_min_level
+        else:
+            evt_country = None
+            evt_currency = None
+            evt_min_level = 1
+
         # retrieve the related market data watcher
         market_data_watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_MARKET_DATA)
         if market_data_watcher:
@@ -358,16 +370,8 @@ def alpha_setup_backtest(strategy, from_date: datetime, to_date: datetime, base_
             Database.inst().load_market_info(strategy.service, market_data_watcher.name, strategy_trader.instrument.market_id)
 
             # create a feeder per instrument for ticks history
-            feeder = StrategyDataFeeder(strategy, strategy_trader.instrument.market_id, [], True)
-            strategy.add_feeder(feeder)
-
-            feeder.initialize(market_data_watcher.name, from_date, to_date)
-
-        # retrieve the related event watcher
-        event_data_watcher = strategy_trader.instrument.watcher(Watcher.WATCHER_EVENTS)
-        if event_data_watcher:
-            # create a feeder per instrument for ticks history
-            feeder = StrategyDataFeeder(strategy, strategy_trader.instrument.market_id, [], True)
+            feeder = StrategyDataFeeder(strategy, strategy_trader.instrument.market_id, [], True,
+                                        evt_country, evt_currency, evt_min_level)
             strategy.add_feeder(feeder)
 
             feeder.initialize(market_data_watcher.name, from_date, to_date)

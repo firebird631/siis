@@ -597,6 +597,11 @@ class Strategy(Runnable):
                     if watcher.has_buy_sell_signals:
                         instrument.add_watcher(Watcher.WATCHER_BUY_SELL_SIGNAL, watcher)
 
+            # special case for no symbol specific
+            if watcher.has_event_signals:
+                for k, instrument in self._instruments.items():
+                    instrument.add_watcher(Watcher.WATCHER_EVENTS, watcher)
+
         # now can set up backtest or live mode global states and loads previous trades
         if self.service.backtesting:
             self._setup_backtest(self, self.service.from_date, self.service.to_date, self.service.timeframe)
